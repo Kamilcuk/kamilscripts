@@ -1,0 +1,7 @@
+.gitencryptpassword
+
+# makepkg orphans
+src
+pkg
+bash-scripts-*.pkg.tar.xz
+

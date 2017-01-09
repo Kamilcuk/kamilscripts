@@ -1,0 +1,9 @@
+[filter "encrypt"]
+        smudge = .gitencrypt/encryptfilter smudge %f
+        clean =  .gitencrypt/encryptfilter clean %f
+        required=true
+[diff   "encrypt"]
+        textconv = .gitencrypt/encryptfilter diff
+[merge]
+        renormalize=true
+

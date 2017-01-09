@@ -1,0 +1,4 @@
+*crypt*/** filter=encrypt diff=encrypt
+*crypt*    filter=encrypt diff=encrypt
+.gitencrypt/password filter=encrypt diff=encrypt
+.gitencrypt/encryptfilter -filter -diff
