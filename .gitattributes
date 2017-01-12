@@ -1,4 +1,6 @@
 *crypt*/** filter=encrypt diff=encrypt
 *crypt*    filter=encrypt diff=encrypt
+crypted/** filter=encrypt diff=encrypt
+clonethisrepo_crypted.sh filter=encrypt diff=encrypt
 .gitencrypt/password filter=encrypt diff=encrypt
 .gitencrypt/encryptfilter -filter -diff
