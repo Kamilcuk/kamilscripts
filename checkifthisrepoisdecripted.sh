@@ -1,12 +1,27 @@
-#!/bin/bash -xe
-if ! grep -q "dupa" resources_public/usr/lib/kamil-scripts/test-public.txt; then
+#!/bin/bash -e
+cryptdir=crypted
+if ! grep -q "dupa" public/test-public.txt; then
 	echo "public test failed."
 fi
-if ! grep -q "dupa" resources_crypted/usr/lib/kamil-scripts/test-encrypted.txt; then
+if ! grep -q "dupa" crypted/test-crypted.txt; then
 	echo "cos jest nie tak! skrypt jest zaszyfrowany!!"
 	exit 1
 else
-	echo "Jest encrypted!"
-	echo "Jest OK!"
+	echo "To repozytorium jest zdeszyfrowane poprawnie."
 fi
+
+
+if ! findmnt union 2>/dev/null >/dev/null ; then
+	echo "and union directory not mounted!"
+	exit 2
+fi
+if ! grep -q "dupa" union/test-crypted.txt ; then
+	echo "unoin/test-encrypte.txt fail"
+	exit 3
+fi
+if ! grep -q "dupa" union/test-public.txt ; then
+	echo "union/test-public.txt fail"
+	exit 4
+fi
+echo "oraz union direcotry jest poprawnie zamontowany."
 

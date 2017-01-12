@@ -1,4 +1,7 @@
+union
+
 .gitencryptpassword
+.gitencrypt/*password*
 
 # makepkg orphans
 src
