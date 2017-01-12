@@ -14,7 +14,7 @@ mount_overlayfs() {
 
 mount_unionfs() {
 	#sudo mount -t unionfs -o dirs=/tmp/dir1/=RW:/home/users/kamil/=RO unionfs /tmp/aufs-root/
-	unionfs "$(pwd)/crypted"=RW:"$(pwd)/public"=RO "$union"
+	sudo unionfs -o cow,allow_other "$(pwd)/crypted"=RW:"$(pwd)/public"=RO "$union"
 }
 
 checkdirisempty() {
@@ -40,7 +40,7 @@ case "$1" in
 		echo "but $union is not mounted!"
 		exit 2;
 	fi
-	fusermount -u $union
+	sudo umount $union
 	echo "Success - unmounted $union"
 	;;
 *)

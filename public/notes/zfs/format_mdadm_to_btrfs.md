@@ -1,16 +1,19 @@
+# zfs
+## init
+
 for i in 1 2 3; do
 	dd if=/dev/zero of=/tmp/testdisc$1 bs=1M count=200
 	losetup /dev/loop$i /tmp/testdisc$1
 done
 
-##
+## check
 
 for i in 1 2 3; do dd if=/dev/urandom of=dupa$i count=200 bs=1M; done
 md5sum /tmp/mountpoint/* > /tmp/md5sumountpoint
 
 echo -ne "$(md5sum /tmp/mountpoint/*)""\n""$(cat /tmp/md5sumountpoint)"
 
-##
+## mdadm
 
 mdadm --create mdtest --raid-devices=2 -l 1 --metadata=0.90 /dev/loop1 /dev/loop3
 mkfs.ext4 /dev/md/mdtest
@@ -20,7 +23,7 @@ mdadm --manage mdtest --fail /dev/loop3
 mdadm --manage /dev/md/mdtest --remove /dev/loop3
 mdadm --manage /dev/md/mdtest --add /dev/loop3
 
-##
+## btrfs
 
 mkfs.btrfs -d raid1 -m raid1 /dev/loop1 /dev/loop3 -f -L test
 mount /dev/loop1 ./mountpoint
@@ -38,7 +41,7 @@ btrfs balance start -{d,m}usage=0 -vf --full-balance .
 btrfs balance start -{d,m}convert=raid1 -vf --full-balance .
 btrfs device delete missing .
 
-##
+## zfs
 
 zpool create -f -o ashift=12 zroot mirror /dev/loop1 /dev/loop3
 zfs set atime=on zroot
@@ -50,7 +53,7 @@ zfs mount
 zpool offline zroot /dev/loop3
 zpool online zroot /dev/loop3
 
-##
+## zfs what did
 
 # zfs create with missing disc
 d=/dev/disk/by-id/ata-ST3500320AS_6QM0NX3Y-part6
@@ -77,8 +80,8 @@ mount=/mnt/temp1
 zpool import -d /dev/mapper/ -R "$mount" leoroot
 
 
-############################### 10.sty.2016
-
+## zfs 10.sty.2016
+```
 
 # zpool create \
 	>         -o ashift=12 \
@@ -124,6 +127,6 @@ leoroot  feature@embedded_data       active                      local
 leoroot  feature@bookmarks           enabled                     local
 leoroot  feature@filesystem_limits   enabled                     local
 leoroot  feature@large_blocks        enabled                     local
-
-################################################################################################
+```
+###
 
