@@ -44,7 +44,7 @@ case "$1" in
 	echo "Success - unmounted $union"
 	;;
 *)
-	[ -e ./union/.gitignore ] && rm ./union/.gitignore
+	[ ! -d "$union" ] && mkdir "$union"
 	if checkdirisempty "$union" ; then
 		echo "fail - $union directory is not empty!"
 		exit 2
