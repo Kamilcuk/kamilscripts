@@ -1,5 +1,8 @@
 union
 
+.crypted*
+.public*
+
 .gitencryptpassword
 .gitencrypt/*password*
 

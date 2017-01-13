@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
 union=$(pwd)/union
+public=$(pwd)/public
+crypted=$(pwd)/crypted
 
 mount_overlayfs() {
 	# sadly i have zfs, overlayfs does not work on top zfs... :( buuuuuu!
@@ -14,7 +16,11 @@ mount_overlayfs() {
 
 mount_unionfs() {
 	#sudo mount -t unionfs -o dirs=/tmp/dir1/=RW:/home/users/kamil/=RO unionfs /tmp/aufs-root/
-	sudo unionfs -o cow,allow_other "$(pwd)/crypted"=RW:"$(pwd)/public"=RO "$union"
+	(
+		set -x
+		sudo unionfs -o allow_other "$crypted"=RW:"$public"=RW "$union"
+		#sudo unionfs -o allow_other "$crypted"=RO:"$public"=RO "$union"
+	)
 }
 
 checkdirisempty() {
@@ -43,15 +49,22 @@ case "$1" in
 	sudo umount $union
 	echo "Success - unmounted $union"
 	;;
-*)
+-c)
+	echo "Copying public and crypted folders."
+	cp -a $public $(pwd)/.public_copy
+	sudo cp -a $crypted $(pwd)/.crypted_copy
+	public=$(pwd)/.public_copy
+	crypted=$(pwd)/.crypted_copy
+	;;&
+-m|*)
 	[ ! -d "$union" ] && mkdir "$union"
+        if checkdirismounted "$union" ; then
+                echo "$union directory is already mounted!"
+                exit 0
+        fi
 	if checkdirisempty "$union" ; then
 		echo "fail - $union directory is not empty!"
 		exit 2
-	fi
-	if checkdirismounted "$union" ; then
-		echo "fail - $union directory is already mounted!"
-		exit 3
 	fi
 	if ! mount_unionfs ; then
 		echo "mount failed!"

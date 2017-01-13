@@ -47,6 +47,7 @@ memchroot_mount_handler () {
       tar.bz2)
          msg "Unpacking chroot from ${memchroot} bzip2+tar archive file."
          tar -jxf "${localmemchroot}" -C "${1}"
+	 ;;
       *)
          msg "Unknown ${memchroot} extension \"${ext}\". No idea how to parse it."
          msg "Leaving filesystem mounted readonly in ${tempmnt}"

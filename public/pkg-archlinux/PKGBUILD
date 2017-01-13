@@ -3,8 +3,8 @@
 # Maintainer: Kamil Cukrowski <kamilcukrowski@gmail.com>
 # cross-build with: CARCH="armv7h" makepkg  --nodeps --clean -f
 
-pkgbase=kamil-bash-scripts
-pkgname=kamil-bash-scripts
+pkgbase=kamil-scripts
+pkgname=kamil-scripts
 pkgver="1"
 pkgrel="1"
 epoch=
@@ -14,7 +14,7 @@ url="www.dyzio.pl"
 license=('GPL')
 groups=()
 depends=( "bash>=4" )
-makedepends=()
+makedepends=( "rsync" )
 checkdepends=()
 optdepends=()
 provides=()
@@ -30,8 +30,7 @@ md5sums=()
 validpgpkeys=()
 
 build() {
-	echo "rsync -avh $(pwd) \$srcdir/"
-	rsync -avh "$(pwd)" "$srcdir/"
+	rsync -avh "$(readlink -f ../../resources)"/* "$srcdir"/
 }	
 
 package() {

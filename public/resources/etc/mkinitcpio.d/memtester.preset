@@ -1,0 +1,11 @@
+# mkinitcpio preset file for the 'linux' package
+
+ALL_config="/etc/mkinitcpio.d/memtester.conf"
+ALL_kver="/boot/vmlinuz-memtester"
+
+PRESETS=('default')
+
+#default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-memtester.img"
+#default_options=""
+
