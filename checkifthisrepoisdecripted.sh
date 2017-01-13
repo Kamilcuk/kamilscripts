@@ -13,15 +13,15 @@ fi
 
 if ! findmnt union 2>/dev/null >/dev/null ; then
 	echo "and union directory not mounted!"
-	exit 2
+else
+	echo "oraz union direcotry jest poprawnie zamontowany."
+	if ! grep -q "dupa" union/test-crypted.txt ; then
+		echo "unoin/test-encrypted.txt fail"
+		exit 3
+	fi
+	if ! grep -q "dupa" union/test-public.txt ; then
+		echo "union/test-public.txt fail"
+		exit 4
+	fi
 fi
-if ! grep -q "dupa" union/test-crypted.txt ; then
-	echo "unoin/test-encrypte.txt fail"
-	exit 3
-fi
-if ! grep -q "dupa" union/test-public.txt ; then
-	echo "union/test-public.txt fail"
-	exit 4
-fi
-echo "oraz union direcotry jest poprawnie zamontowany."
 

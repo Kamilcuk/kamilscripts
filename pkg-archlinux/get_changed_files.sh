@@ -1,11 +1,13 @@
 #!/bin/bash -e
 
 
-gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
+#gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
+gitdir="$(dirname $(dirname $(readlink -f "$0")))"
 cd $gitdir
-./mountunion.sh
+uniondir=./pkg-archlinux/src/
+./pkg-archlinux/rsync_all_pkg_resources.sh
 
-files=( $(cd "$(readlink -f union/resources)" && find -type f | sed 's/^\.\///g' ) )
+files=( $(cd "$(readlink -f $uniondir)" && find -type f | sed 's/^\.\///g' ) )
 
 case "$1" in
 -d)
@@ -15,8 +17,8 @@ case "$1" in
                         echo "/${f}: No such file."
                         continue;
                 fi
-                if ! cmp /${f} union/resources/${f} >/dev/null 2>&1; then
-                        diff -u --color -- union/resources/${f} /${f}
+                if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
+                        diff -u --color -- $uniondir/${f} /${f}
                 fi
         done
 	;;
@@ -27,7 +29,7 @@ case "$1" in
 			echo "/${f}: No such file."
 			continue;
 		fi
-		if ! cmp /${f} union/resources/${f} ; then
+		if ! cmp /${f} $uniondir/${f} ; then
 			str+="/${f} "
 		fi
 	done
@@ -44,7 +46,7 @@ case "$1" in
 	# uasge()
 	cat << EOF 
 
-USAGE:	./get_changed_files.sh [-u|-a]
+USAGE:	./get_changed_files.sh [-d|-a]
 	
 	pokazuje jakie pliki sie zmienily
 EOF

@@ -30,7 +30,7 @@ md5sums=()
 validpgpkeys=()
 
 build() {
-	rsync -avh "$(readlink -f ../../resources)"/* "$srcdir"/
+	../rsync_all_pkg_resources.sh
 }	
 
 package() {

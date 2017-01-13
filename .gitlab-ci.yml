@@ -1,0 +1,24 @@
+stages:
+- builddockers
+- buildpkgs
+build_archlinuxbuilder:
+  image: docker:git
+  stage: builddockers
+  services:
+  - docker:dind
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker build -t registry.gitlab.com/kamilcuk/kamil-scripts pkg-archlinux
+    - docker push registry.gitlab.com/kamilcuk/kamil-scripts
+  when: manual
+build_pkg-archlinux:
+  stage: buildpkgs
+  image: registry.gitlab.com/kamilcuk/kamil-scripts
+  script:
+    - chown nobody:nobody -R .
+    - cd pkg-archlinux
+    - sudo -u nobody ./makepkg.sh
+  artifacts:
+    paths:
+    - pkg-archlinux/kamil-scripts-*.pkg.tar.xz
+  when: manual

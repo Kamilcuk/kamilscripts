@@ -26,7 +26,8 @@ esac
 shift
 
 ## parse input -- set locals
-gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
+#gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
+gitdir="$(dirname $(dirname $(readlink -f "$0")))"
 cd $gitdir
 
 srcs=( "$@" )

@@ -2,6 +2,19 @@
 # Uncomment only required functions and remove any functions
 # you don't need (and this header).
 
+check_changed() {
+	if ! hash paccheck; then
+		echo "paccheck utility not found. please install pacutils"
+	fi
+	if ! paccheck --md5sum --quiet kamil-scripts ; then
+		echo;
+		echo "Changed files found! Updating this package will overwrite these files!"
+	fi
+	echo "Continue? [y]"
+	read a
+	[ "$a" != y ] && exit
+}
+
 ## arg 1:  the new package version
 pre_install() {
 	:
@@ -17,7 +30,7 @@ post_install() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 pre_upgrade() {
-	:
+	check_changed
 	# do something here
 }
 
