@@ -1,0 +1,17 @@
+#!/bin/bash
+# Kamil Cukrowski
+# under beerware license
+
+stresser_mount_handler () {
+   # this is not really a mount handler. it's init script
+   exec /usr/local/bin/qqstresserscript init
+}
+
+run_hook() {
+   if [ -n "${stresser}" ]; then
+      mount_handler="stresser_mount_handler"
+   fi
+}
+
+
+# vim:set ts=4 sw=4 ft=sh et:

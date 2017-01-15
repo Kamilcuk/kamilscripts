@@ -24,23 +24,13 @@ init)
 	openvt -c 2 -- /bin/bash --login +m
 	openvt -c 3 -- /bin/bash --login +m
 	openvt -c 4 -- /bin/bash +m -c "env TERM=xterm htop;"
-	openvt -c 10 -- /bin/bash +m -c "watch -n 1 /usr/local/bin/qqmemtestertestscript info"
-	openvt -c 11 -- /usr/local/bin/qqmemtestertestscript background
+	openvt -c 4 -- /bin/bash +m -c "env TERM=xterm htop;"
+	openvt -c 5 -- /usr/local/bin/qqstresserscript mprime
+	openvt -c 10 -- /bin/bash +m -c "watch -n 1 /usr/local/bin/qqstresserscript info"
+	openvt -c 11 -- /usr/local/bin/qqstresserscript background
 	openvt -c 12 -- dmesg -wH
 
 	qq_get_info
-
-	echo "## Found $cores cores with $speed MHz each."
-	echo "## Found $memfree MB free memory. Will test $memtest MB per core."
-	if test "${memtest}" -le 30; then
-		echo "Really low memory on this system"
-		echo "Droping to interactive shell."
-		exec /bin/bash
-	fi
-
-	for i in $( seq 5 $((cores+4)) ); do
-		openvt -c ${i} -- /bin/bash -xc "tty; memtester $memtest;"
-	done
 
 	echo
 	echo
@@ -52,22 +42,22 @@ init)
 	echo "tty2 -> /bin/bash --login +m"
 	echo "tty3 -> /bin/bash --login +m"
 	echo "tty4 -> htop"
-	echo "tty{5, 6, ...} -> memtester"
-	echo "tty10 -> watch qqmemtestertestscript info"
-	echo "tty11 -> qqmemtestertestscript backgroud"
+	echo "tty5 -> mprime"
+	echo "tty10 -> watch qqstresserscript info"
+	echo "tty11 -> qqstresserscript backgroud"
 	echo "tty12 -> dmesg -wH"
-	sleep 5
-	exec /bin/bash --login +m
+	watch -n1 qqstresserscript info
+	/bin/bash --login +m
 	;;
 
 info)
 	qq_get_info
 
 	echo "# $cores cores! with speed: $speed MHz. $memfree MB free memory."
-	echo "There are $(ps -ax -o command | grep "^memtester" | wc -l) memtesters running!"
 	echo -n "Date:   "; date
 	echo -n 'Uptime: '; uptime;
 	echo -n "free:   "; free | grep Mem;
+	echo -n "LoadAvg:"; cat /proc/loadavg
 	echo "# sensors";
 	sensors | sed '/^$/d';
 	echo
@@ -142,6 +132,21 @@ EOF
 			logger "CPU TEMP TOO HIGH: $temp"
 			halt
 		fi
+	done
+	;;
+mprime)
+	qq_get_info
+	memorytouse="${memorytouse:-$2}"
+	if [ -z "$memorytouse" ]; then
+		if [ $memfree -gt 1000 ]; then
+			memorytouse=$(( memfree-1000 ))
+		fi
+	fi
+	( trap "" INT; cat <( rm prime.txt; 
+		echo -ne "N\n4\n13\n\n\n${memorytouse}\n\n\n";
+	) - ) | mprime;
+	while true; do
+		mprime
 	done
 	;;
 *)

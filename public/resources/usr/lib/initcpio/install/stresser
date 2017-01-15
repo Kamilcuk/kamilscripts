@@ -1,21 +1,14 @@
 #!/bin/bash
 
 build() {
-	if ! hash memtester; then
-		echo "ERROR - you must install memtester package first!"
-		echo "yaourt -S --noconfirm memtester"
-		exit 1
-	fi
-
 	map add_binary \
 		beep sed ifconfig dhcpcd w3m ssh watch uptime sleep bash sh seq \
-		su awk cat sleep echo killall memtester ps sensors bash openvt \
+		su awk cat sleep echo killall ps sensors bash openvt \
 		htop lsusb hostname mesg ls ip cut date top dmesg watch \
 		ssh-keygen touch chgrp chmod sensors-detect who whoami getent \
-		tty ethtool
+		tty ethtool mprime
 
-    add_file "/usr/lib/initcpio/qqmemtestertestscript" "/usr/local/bin/qqmemtestertestscript"
-
+    add_file "/usr/lib/initcpio/qqstresserscript" "/usr/local/bin/qqstresserscript"
 
     add_runscript
 
@@ -26,15 +19,15 @@ build() {
 
 help() {
     cat <<HELPEOF
-This hooks allows to run memtester extensive testing on boot if set.
+This hooks allows to run mprime extensive testing on boot if set.
 
 Command line options:
-	This hook activates if memtester=y is set.
-	Omiting setting memtester=... will result in normal booting.
+	This hook activates if stresser=y is set.
+	Omiting setting stresser=... will result in normal booting.
 
 Example:
 
-		memtester=y
+		stresser=y
 
 HELPEOF
 }
