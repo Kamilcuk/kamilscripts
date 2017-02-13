@@ -357,11 +357,12 @@ setWinsGoal_1()
 	# parallel - better performance with many windows
 	for i in $(seq ${winsgoal[size]}); do	
 		(
-			# unmaximize
-			# remove "Always on top" property
-			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,above,maximized_vert,maximized_horz
-
 			${1:-}
+
+			# remove "Always on top" property
+			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,above
+			# unmaximize
+			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,maximized_vert,maximized_horz
 
 			# do the resaize part
 			wmctrl -i -r ${winsgoal[windowhex_$i]} -e \
