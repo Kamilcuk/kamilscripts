@@ -2,17 +2,18 @@
 # Uncomment only required functions and remove any functions
 # you don't need (and this header).
 
+
+log() { echo "kamil-scripts: ""$@" >&2; }
 check_changed() {
 	if ! hash paccheck; then
-		echo "paccheck utility not found. please install pacutils"
+		log "paccheck utility not found. please install pacutils"
 	fi
 	if ! paccheck --md5sum --quiet kamil-scripts ; then
-		echo;
-		echo "Changed files found! Updating this package will overwrite these files!"
+		log "Changed files found. Updating this package will overwrite these files."
+		log "killall pacman"
+		killall pacman
+		exit 1
 	fi
-	echo "Continue? [y]"
-	read a
-	[ "$a" != y ] && exit
 }
 
 ## arg 1:  the new package version
@@ -37,7 +38,7 @@ pre_upgrade() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 post_upgrade() {
-	:
+	log " -> Now you you can do CTRL+C twice to omit regenerating linux initrd"
 	# do something here
 }
 

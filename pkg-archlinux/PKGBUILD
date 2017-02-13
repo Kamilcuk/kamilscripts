@@ -5,7 +5,7 @@
 
 pkgbase=kamil-scripts
 pkgname=kamil-scripts
-pkgver="1"
+pkgver="$(git describe --abbrev=0 --tags)"
 pkgrel="1"
 epoch=
 pkgdesc=""

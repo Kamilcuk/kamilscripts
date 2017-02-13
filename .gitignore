@@ -1,13 +1,5 @@
 union
 
-.crypted*
-.public*
-
 .gitencryptpassword
 .gitencrypt/*password*
-
-# makepkg orphans
-src
-pkg
-bash-scripts-*.pkg.tar.xz
 

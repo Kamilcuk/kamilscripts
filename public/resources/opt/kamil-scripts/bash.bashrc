@@ -12,9 +12,9 @@ _YELLOW="\[\033[33;1m\]"
 _NORMAL="$(tput sgr0 2> /dev/null)"
 # PS1
 if  test "$UID" -eq 0 -a -t; then
-	export PS1="$_YELLOW\$? ${_RED}$(hostname) ${_BOLD}${_BLUE}\w$_NORMAL\n\\$ "
+  export PS1="$_YELLOW\$? ${_RED}$(hostname) ${_BOLD}${_BLUE}\w$_NORMAL\n\\$ "
 else
-	export PS1="$_YELLOW\$? ${_GREEN}\u@$(hostname) ${_BOLD}${_BLUE}\w$_NORMAL\n\\$ "
+  export PS1="$_YELLOW\$? ${_GREEN}\u@$(hostname) ${_BOLD}${_BLUE}\w$_NORMAL\n\\$ "
 fi
 
 export EDITOR="/usr/bin/vim"
@@ -33,11 +33,11 @@ if ! test "$UID" -eq 0 -a -t; then
 	alias pacmann='sudo pacman --noconfirm'
 fi
 
-export PATH="/home/users/kamil/bin:$PATH"
-export HISTFILE=$HOME/.bash_history
+export PATH="$PATH:/home/users/kamil/bin"
+export HISTFILE="$HOME/.bash_history"
 export HISTIGNORE="123:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *:[ \t]*:pwd:clear" # more
 export VDPAU_DRIVER=r600
-export SDL_AUDIODRIVER=alsaa
+export SDL_AUDIODRIVER=alsa
 
 # For good measure, make all history environment variables read-only.
 typeset -r HISTCONTROL
@@ -53,20 +53,18 @@ export TMPDIR=/tmp
 mesg y
 
 hist2() {
-	history | grep -a "$@";
+  history | grep -a "$@";
 }
 alias ls='ls --color -F'
-hash rsync && alias cp='rsync --info=progress2 '
+hash rsync && alias cp='rsync --info=progress2'
 alias ping='ping -4'
 
 notifycomplete() { 
-	local pre='notifycomplete:'
-	echo "$pre last command exited with $?"; 
-	local sound="paplay --volume=65536 /usr/share/sounds/freedesktop/stereo/complete.oga"
-	while true; do
-		$sound >/dev/null
-		sleep 2; 
-	done;
+  echo "notifycomplete: last command exited with $?"
+  while true; do
+    paplay --volume=65536 /usr/share/sounds/freedesktop/stereo/complete.oga >/dev/null
+    sleep 2 
+  done
 }
 
 
