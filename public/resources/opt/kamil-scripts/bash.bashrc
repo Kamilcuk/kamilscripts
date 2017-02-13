@@ -35,7 +35,7 @@ fi
 
 export PATH="$PATH:/home/users/kamil/bin"
 export HISTFILE="$HOME/.bash_history"
-export HISTIGNORE="123:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *:[ \t]*:pwd:clear" # more
+export HISTIGNORE="123:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear" # more
 export VDPAU_DRIVER=r600
 export SDL_AUDIODRIVER=alsa
 
