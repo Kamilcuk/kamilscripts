@@ -18,9 +18,9 @@ rsyncargs=()
 
 if [ "$1" != '-s' ]; then
 	( set -x
-	rsync -avh --delete "${rsyncargs=[@]}" "$dstdir"
+	rsync -avh --delete "${rsyncargs[@]}" "$dstdir"
 	)
 else 
-	rsync -ah  --delete "${rsyncargs=[@]}" "$dstdir"
+	rsync -ah  --delete "${rsyncargs[@]}" "$dstdir"
 fi
 

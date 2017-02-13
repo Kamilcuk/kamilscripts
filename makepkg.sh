@@ -1,0 +1,1 @@
+pkg-archlinux/makepkg.sh

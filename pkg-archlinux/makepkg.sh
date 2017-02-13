@@ -12,5 +12,8 @@ fi
 
 cd pkg-archlinux
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
-makepkg "$@"
+# TODO export BUILDDIR=/tmp/kamil-scripts-makepkg
+( set -x
+  makepkg -c "$@"
+)
 

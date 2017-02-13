@@ -1,3 +1,5 @@
+Public README.md
+
 # kamil-scripts
 My own bash scripts, configuration itp itd.
 
@@ -12,10 +14,12 @@ Hasło znajduje się... łatwo znaleść.
 Do klonowania repozytorium użyj skryptu clonethisrepo_crypted.sh  
 
 # License
-see LICENSE file  
+under GPL-3.0
+see LICENSE file
+but some files are under [Beerware](https://pl.wikipedia.org/wiki/Beerware)
 
 # Author
-Kamil Cukrowski <kamilcukrowski @ g-m-a-i-l.com>  
+Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`
 
 # Links
 [dyzio](www.dyzio.pl)
