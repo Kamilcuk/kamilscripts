@@ -1,0 +1,11 @@
+# mkinitcpio preset file for the 'linux' package
+
+ALL_config="/etc/mkinitcpio.d/stresser.conf"
+ALL_kver="/boot/vmlinuz-stresser"
+
+PRESETS=('default')
+
+#default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-stresser.img"
+#default_options=""
+

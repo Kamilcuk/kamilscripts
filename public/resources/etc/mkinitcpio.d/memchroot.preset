@@ -1,11 +1,1 @@
-# mkinitcpio preset file for the 'linux' package
-
-ALL_config="/etc/mkinitcpio.d/memchroot.conf"
-ALL_kver="/boot/vmlinuz-memchroot"
-
-PRESETS=('default')
-
-#default_config="/etc/mkinitcpio.conf"
-default_image="/boot/initramfs-memchroot.img"
-#default_options=""
-
+/opt/kamil-scripts/etc/mkinitcpio.d/memchroot.preset
