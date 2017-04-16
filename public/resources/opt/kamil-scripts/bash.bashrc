@@ -31,7 +31,10 @@ alias hist='history | grep -a '
 if ! test "$UID" -eq 0 -a -t; then
         alias pacman='sudo pacman'
 	alias pacmann='sudo pacman --noconfirm'
+else
+	alias pacmann='pacman --noconfirm'
 fi
+alias yaourtn='yaourt --noconfirm'
 
 export PATH="$PATH:/home/users/kamil/bin"
 export HISTFILE="$HOME/.bash_history"
@@ -52,14 +55,14 @@ export TMP=/tmp
 export TMPDIR=/tmp
 mesg y
 
-hist2() {
-  history | grep -a "$@";
-}
 alias ls='ls --color -F'
-hash rsync && alias cp='rsync --info=progress2'
 alias ping='ping -4'
 
-notifycomplete() { 
+
+qqhist() {
+	history | grep -a "$@"
+}
+qqnotifycomplete() { 
   echo "notifycomplete: last command exited with $?"
   while true; do
     paplay --volume=65536 /usr/share/sounds/freedesktop/stereo/complete.oga >/dev/null

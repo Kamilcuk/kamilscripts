@@ -10,6 +10,7 @@ check_changed() {
 	fi
 	if ! paccheck --md5sum --quiet kamil-scripts ; then
 		log "Changed files found. Updating this package will overwrite these files."
+		log "You can remove files to change this to warning."
 		log "killall pacman"
 		killall pacman
 		exit 1
@@ -39,6 +40,7 @@ pre_upgrade() {
 ## arg 2:  the old package version
 post_upgrade() {
 	log " -> Now you you can do CTRL+C twice to omit regenerating linux initrd"
+	sleep 0.5
 	# do something here
 }
 

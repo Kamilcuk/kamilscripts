@@ -1,0 +1,19 @@
+[Unit]
+Description=Kamil Cukrowski System shutdown actions
+ConditionPathExists=/etc/rc-local/shutdown
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/bin/run-parts --verbose --regex='^[a-zA-Z0-9_\\.-]+$' --arg=shutdown /etc/rc-local/shutdown
+RemainAfterExit=yes
+KillSignal=SIGINT
+SyslogFacility=local7
+
+[Unit]
+DefaultDependencies=no
+After=rc-local-run-parts@boot.service basic.target
+Before=shutdown.target
+
+[Install]
+WantedBy=shutdown.target
+

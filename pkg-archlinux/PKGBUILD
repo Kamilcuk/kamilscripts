@@ -13,7 +13,7 @@ arch=( "any" )
 url="www.dyzio.pl"
 license=('GPL')
 groups=()
-depends=( "bash>=4" )
+depends=( "bash>=4" "run-parts" )
 makedepends=( "rsync" )
 checkdepends=()
 optdepends=()

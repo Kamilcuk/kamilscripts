@@ -112,8 +112,8 @@ populateWinsInfo()
 		#winsinfo[window_$i]=$WINDOW
 		winsinfo[x_$i]=$X
 		winsinfo[y_$i]=$Y
-		winsinfo[width_$i]=$WIDTH
-		winsinfo[height_$i]=$HEIGHT
+		#winsinfo[width_$i]=$WIDTH
+		#winsinfo[height_$i]=$HEIGHT
 		#winsinfo[screen_$i]=$SCREEN
 		#winsinfo[midX_$i]=$((winsinfo[x_$i]+winsinfo[width_$i]/2))
 		#winsinfo[midY_$i]=$((winsinfo[y_$i]+winsinfo[height_$i]/2))
@@ -163,8 +163,9 @@ populateBorderInfo() {
 
 populateDestinations() {
 	# this is screen split chooser
-	local mode="${1}"
-	local geo=( $(getScreenGeometry) )
+	local mode geo
+	mode="${1}"
+	geo=( $(getScreenGeometry) )
 	case "$mode" in
 	1)
 		destinations[x_1]=0
@@ -206,7 +207,7 @@ populateDestinations() {
 		destinations[height_1]=$((geo[1]/2))
 
 		destinations[x_2]=0
-		destinations[y_2]=$((destinations[height_1]))
+		destinations[y_2]=$((destinations[height_1]+1))
 		destinations[width_2]=$(( geo[0] - destinations[x_2] ))
 		destinations[height_2]=$((geo[1] - destinations[y_2] ))
 		destinations[size]=2
@@ -362,11 +363,10 @@ setWinsGoal_1()
 			# remove "Always on top" property
 			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,above
 			# unmaximize
-			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,maximized_vert,maximized_horz
-
-			# do the resaize part
-			wmctrl -i -r ${winsgoal[windowhex_$i]} -e \
-				0,${winsgoal[x_$i]},${winsgoal[y_$i]},${winsgoal[width_$i]},${winsgoal[height_$i]}
+			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,maximized_vert,maximized_horz 
+			# reseize and move to specified position
+			wmctrl -i -r ${winsgoal[windowhex_$i]} \
+				-e 0,${winsgoal[x_$i]},${winsgoal[y_$i]},${winsgoal[width_$i]},${winsgoal[height_$i]}
 		) &
 	done
 	wait
@@ -383,6 +383,9 @@ setWinsGoal()
 ######################## globals ########################
 
 DEBUG=${DEBUG:-false}
+SPEED=${SPEED:-false}
+$DEBUG && set -x
+$SPEED && PS4='$(date "+%s.%N ($LINENO) + ")'
 # struct { size, [ windowhex_$i, window_$i, x_$i, y_$i, heigth_$i, width_$i : i=1...size ] } winsinfo;
 declare -A winsinfo
 # struct { size, [ x_$i, y_$i, heigth_$i, width_$i : i=1...size ] } destinations;
