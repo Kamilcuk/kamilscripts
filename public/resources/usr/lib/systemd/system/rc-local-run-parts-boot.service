@@ -1,15 +1,13 @@
 [Unit]
 Description=Kamil Cukrowski System boot actions
-ConditionPathExists=/etc/rc-local/boot
+ConditionPathExists=/etc/rc-local/
 
 [Service]
 Type=oneshot
-ExecStart=-/usr/bin/run-parts --verbose --regex='^[a-zA-Z0-9_\\.-]+$' --arg=boot /etc/rc-local/boot
+ExecStart=-/usr/bin/run-parts --verbose --regex='^[a-zA-Z0-9_\\.-]+$' --arg=boot /etc/rc-local/
 RemainAfterExit=yes
 KillSignal=SIGINT
 SyslogFacility=local7
-
-
 TimeoutSec=0
 
 [Install]

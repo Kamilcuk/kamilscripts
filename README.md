@@ -13,12 +13,12 @@ Plik który szyfruje znajduje się w .gitencrypt/encryptfilter.
 Hasło znajduje się... łatwo znaleść.   
 Do klonowania repozytorium użyj skryptu clonethisrepo_crypted.sh  
 
-# License
-under GPL-3.0
-see LICENSE file
-but some files are under [Beerware](https://pl.wikipedia.org/wiki/Beerware)
+# Notice
 
-# Author
+Puste katalogi zaznaczaj pustym .gitignore
+
+# License & Author
+Beerware license, see LICENSE file
 Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`
 
 # Links

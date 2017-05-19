@@ -48,7 +48,9 @@ package() {
 		elif [ -L "$path" ]; then
 			echo "Installing symlink    $path"
 			cp -a $srcdir/$path $pkgdir/$path
-		elif [ -s "$path" ]; then
+		elif [ -s "$path" ] && [ "$(basename $path)" != ".gitignore" ]; then
+			# install a file, but only if it's not .gitignore
+			# using empty .gitignore to mark empty directories
 			echo "Installing file       $path"
 			install $opts -m 0644 $srcdir/$path $pkgdir/$path
 		else

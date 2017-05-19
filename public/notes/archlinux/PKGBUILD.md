@@ -20,6 +20,7 @@ pkgdesc=""
 arch=()
 url=""
 license=('GPL')
+# license=('custom:beerware')
 groups=()
 depends=()
 makedepends=()
