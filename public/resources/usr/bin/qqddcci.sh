@@ -270,7 +270,7 @@ EOF
 I2CBUS=5 # global variable, referenced by ddcci module
 VAl=
 VCP=
-silent=true
+silent=false
 capabilities=false
 donesmth=false
 while getopts ":i:Vdr:w:qvhC" opt; do
@@ -301,7 +301,7 @@ checkNotEmpty I2CBUS
 if [ -n "$VCP" ]; then
 	VCP=$(printf "%u" "$VCP")
 	if [ -z "$VAL" ]; then
-		if $silent; then
+		if ! $silent; then
 			echo "Reading $(ddcci_translate $VCP)"
 		fi
 		ddcci_get_vcp $VCP
@@ -313,7 +313,7 @@ if [ -n "$VCP" ]; then
 			exit 1
 		fi
 		ddcci_set_vcp $VCP $VAL
-		if $silent; then
+		if ! $silent; then
 			echo "Setting $(ddcci_translate $VCP)=$VAL"
 		fi
 	fi

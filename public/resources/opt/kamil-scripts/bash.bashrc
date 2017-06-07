@@ -70,4 +70,6 @@ qqnotifycomplete() {
   done
 }
 
-
+octave_eval() {
+	octave -q -f -W --eval "$*"
+}
