@@ -60,7 +60,7 @@ alias ping='ping -4'
 
 
 qqhist() {
-	history | grep -a "$@"
+	history | grep -a "$*"
 }
 qqnotifycomplete() { 
   echo "notifycomplete: last command exited with $?"
@@ -70,6 +70,4 @@ qqnotifycomplete() {
   done
 }
 
-octave_eval() {
-	octave -q -f -W --eval "$*"
-}
+

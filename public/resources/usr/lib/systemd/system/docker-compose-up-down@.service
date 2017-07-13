@@ -1,0 +1,16 @@
+[Unit]
+Description=Dockerizer docker-compose-up-down@%i in /opt/dockerapps/%i
+After=docker.service
+BindsTo=docker.service
+Conflicts=shutdown.target reboot.target halt.target
+ 
+[Service]
+RemainAfterExit=true
+WorkingDirectory=/opt/dockerapps/%i
+ExecStartPre=/usr/bin/docker-compose down
+ExecStart=/usr/bin/sh -c "/usr/bin/docker-compose pull && exec /usr/bin/docker-compose up"
+ExecStop=/usr/bin/docker-compose down
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,31 +1,17 @@
-[Unit]
-Description=Systemd journal on %I
-Documentation=man:journalctl(8)
-Documentation=http://0pointer.de/blog/projects/serial-console.html
-After=systemd-user-sessions.service plymouth-quit-wait.service
+.include /usr/lib/systemd/system/getty@.service
 
-# On systems without virtual consoles, don't start any getty. Note
-# that serial gettys are covered by serial-getty@.service, not this
-# unit.
-ConditionPathExists=/dev/tty0
+[Unit]
+Description=Systemd journal output on %I
+Documentation=man:journalctl(8)
 
 [Service]
 StandardOutput=tty
-# the VT is cleared by TTYVTDisallocate
+ExecStart=
 ExecStart=/usr/bin/journalctl -af -n1000
-Type=idle
-Restart=always
-RestartSec=0
-UtmpIdentifier=%I
-TTYPath=/dev/%I
-TTYReset=yes
-TTYVHangup=yes
-TTYVTDisallocate=yes
-KillMode=process
-IgnoreSIGPIPE=no
-SendSIGHUP=yes
+Environment=
 
 [Install]
-WantedBy=getty.target
+WantedBy=multi-user.target
+DefaultInstance=
 DefaultInstance=tty11
 

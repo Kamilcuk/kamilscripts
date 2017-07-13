@@ -1,0 +1,18 @@
+[Unit]
+Description=dvblast on %I adapter
+After=network.target
+ConditionPathExists=/dev/dvb/adapter%I
+
+[Service]
+Type=simple
+# FREQUENCY variable should be overriden by drop-in configuration or environment file
+Environment=FREQUENCY=ERROR 
+Environment=BANDWITH=8
+EnvironmentFile=-/etc/dvblast/dvblast.%I.env
+ExecStart=/usr/bin/dvblast --logger --logger-ident "dvblast@%I" --bandwidth $BANDWITH --frequency $FREQUENCY --adapter %I --config-file /etc/dvblast/dvblast.%I.conf
+RestartSec=60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
