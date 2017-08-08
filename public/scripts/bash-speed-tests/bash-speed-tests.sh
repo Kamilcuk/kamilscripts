@@ -358,6 +358,8 @@ mode_switch_prepare_tests_desc() {
 			". $tmpfile2; f_sed2 $tmpfile >/dev/null;"
 		)
 		;;
+	8)
+		f
 	*) 
 		echo "Unknown mode."; usage; exit 1; ;;
 	esac

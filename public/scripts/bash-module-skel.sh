@@ -1,23 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
-# This is example bash module skeleton
-# Creted by Kamil Cukrowski (C) 2017. Under MIT License
+# These are examples of bash module skeleton
+# Created by Kamil Cukrowski (C) 2017. Under MIT License
 
 # module using global variable name #######################
 
 skel_init() {
-	declare -g -a $1
-	eval "$1[0]=0"
+	declare -g -a "$1=( [0]=0 )"
 }
 skel_add() {
-	eval "$1[0]=$(($1[0]+$2))"
+	declare -g -a "$1=( [0]=$(($1[0]+$2)) )"
 }
 skel_getValue() {
 	eval "echo \${$1[0]}"
 }
 skel_destroy() {
-	eval unset $1
+	unset $1
 }
 
 echo "module using global variable name"
@@ -67,7 +66,7 @@ myskel=$(skel_destroy myskel)
 # module using local variable pointer name better #######################
 
 skel_priv_echo() {
-	echo "local $@;$(declare -p -- $@|tr '\n' ';')"
+	echo "$(declare -p -- $@|tr '\n' ';')"
 }
 skel_priv_init() {
 	local _skel_vars
@@ -127,13 +126,11 @@ skel_priv_save() {
 	declare -p skel > $1
 }
 skel_add() {
-	local skel
 	. $1
 	skel[0]=$((skel[0]+$2))
 	declare -p skel > $1
 }
 skel_getValue() {
-	local skel
 	. $1
 	echo ${skel[0]}
 	declare -p skel > $1
@@ -159,14 +156,12 @@ skel_init() {
 	declare -p skel >&$1
 }
 skel_add() {
-	local skel
-	eval "$(head -n1 <&$1)"
+	$(head -n1 <&$1)
 	skel[0]=$((skel[0]+$2))
 	declare -p skel >&$1
 }
 skel_getValue() {
-	local skel
-	eval "$(head -n1 <&$1)"
+	$(head -n1 <&$1)
 	echo ${skel[0]}
 	declare -p skel >&$1
 }
@@ -193,7 +188,7 @@ skel_priv_init() {
 	skel_priv_save
 }
 skel_priv_save() {
-	echo "local ${_skel_vars[@]};$(declare -p -- ${_skel_vars[@]} | tr '\n' ';')" >&$_skel_glob
+	echo "$(declare -p -- ${_skel_vars[@]} | tr '\n' ';')" >&$_skel_glob
 }
 skel_priv_load() {
 	head -n1 <&$1
@@ -207,12 +202,12 @@ skel_init() {
 	skel_priv_init "$1" skel
 }
 skel_add() {
-	eval "$(skel_priv_load "$1")"
+	eval $(skel_priv_load "$1")
 	skel[0]=$((skel[0]+$2))
 	skel_priv_save
 }
 skel_getValue() {
-	eval "$(skel_priv_load "$1")"
+	eval $(skel_priv_load "$1")
 	echo ${skel[0]}
 	skel_priv_save
 }
@@ -229,5 +224,4 @@ skel_getValue 5
 skel_destroy 5
 
 # eof ######################################################
-
-
+#echo ${skel[0]}
