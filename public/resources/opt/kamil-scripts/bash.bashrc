@@ -69,5 +69,10 @@ qqnotifycomplete() {
     sleep 2 
   done
 }
-
+priority_cpu_low()    { nice -n -100     "$@"; }
+priority_cpu_normal() { nice -n -$(nice) "$@"; }
+priority_cpu_high()   { nice -n 100      "$@"; }
+priority_io_low()     { ionice -c 3      "$@"; }
+priority_io_normal()  { ionice -c 0      "$@"; }
+priority_io_high()    { ionice -c 1      "$@"; }
 

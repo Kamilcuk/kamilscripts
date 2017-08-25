@@ -1,47 +1,48 @@
-#!/bin/bash -eu
+#!/bin/bash
 # file qqsplitscreenpip.sh
 # Written by Kamil Cukrowski
-# under BeerWare license
-# i am waiting for soo many beers!
-######################## functions ######################
+set -euo pipefail
+# functions ###############################################################
 
 usage() {
-	echo '
-Usage:
-	qqsplitscreenpip.sh -[a|g|1|2|2v|2v_16:5|3vl]
+	local n
+	n=qqsplitscreenpip.sh
+	cat >&2 <<EOF
+Usage: $n -[options] test|auto|gui|grid [additional params...]
 
 Description:
 	Script inspired by "LG Screen Split (PIP)"
 	Watch ex. https://youtu.be/gRktqmYzXco?t=47
 	Script moves and reseises windows on current desktop,
 	depending on the mdoe (screen layout) you choose
-	
+
+Mode:
+	auto [count]  - auto mode, tries to guess mode from window count
+	                it may take also parameter, which forces window count to specified
+	gui           - pops out graphical chooser
+	grid          - passes grid options to grid_layout and sets windows
+	test          - run internal test, used in development only
+
 Options:
-	-a          - auto mode, tries to guess mode from window count
-	-g          - pops out graphical chooser
-	-1          - one scren only
-	-2          - same as -2v
-	-2v         - two screen verticaly 1:1
-	-2v_16:5    - two screen vertivally 16:5
-	-2h         - two screen horizontaly 1:1
-	-3vl        - three screen vertically left 1:1:1
+	-h            - print this help and exit
+	-v            - more verbose ouptut
+	-t            - test mode, don't move windows. Implicates -v
+
+Options passed to grid_layout:
+	-x x_ratios
+	-y y_ratios
+	-s row:col:rowSpan:colSpan
+	-R xcount:ycount
 
 Examples:
-	qqsplitscreenpip.sh -1
-	qqsplitscreenpip.sh -g
-	qqsplitscreenpip.sh -2v
+	$n auto
+	$n gui
 
-Notice:
-	Written by Kamil Cukrowski
-	Under BeerWare license
-	Version 0.1
-'
-echo >/dev/null '
-INFO:
-- if you would like to add more options/modes, edit populateDestinations()
+Written by Kamil Cukrowski (C) 2017. Under MIT license. Version 1.0.1
+EOF
+cat >/dev/null <<EOF
 TODO:
 - script fails to unmaximize windows
-- options like -2v_x:y -> two screen vertically with ratio x:y
 - PIP hover option - automagically on top
 
 Remeber axis:
@@ -62,379 +63,362 @@ v
 
 Y
 
-'
+EOF
 }
+
+error() { echo "ERROR: " "$@" >&2; }
+warning() { echo "WARN : " "$@" >&2; }
+fatal() { echo "FATAL: $@" >&2; exit 1; }
+verbose() { if ${VERBOSE:-false}; then echo "$@"; fi; }
+debug() { if ${DEBUG:-false}; then echo "$@"; fi; }
+verbose_var_column() { verbose $var; verbose "${!var}" | column -t; verbose; }
 
 checkUtilities() {
-	for i in sed bc xwininfo wmctrl cut xdotool; do
+	for i in sed bc xwininfo wmctrl cut xdotool xargs; do
 		if ! hash $i >/dev/null; then
-			echo "ERROR - ${FUNCNAME[0]} - utlity $i not found."
-			exit 1
+			fatal "${FUNCNAME[0]} - utlity $i not found."
 		fi
 	done
+	if [ ${BASH_VERSION%%.*} -lt 4 ]; then
+		fatal "BASH_VERSION is lower then 4"
+	fi
 }
 
-getPanelHeight() 
-{
-	local  wmctrll="$(wmctrl -l)"
-	case "$wmctrll" in
-	*"xfce4-panel"*)
-		xdotool getwindowgeometry -shell $(echo "$wmctrll" | grep xfce4-panel | cut -d' ' -f1) | grep HEIGHT | cut -d'=' -f2
-		;;
-	*)
-		echo "WARNING - ${FUNCNAME[0]} - unknownn panel - returning 20" >&2
+run_tests() {
+	# arguments are in format "function arg1 arg2|expected function output"
+	local t failed=false
+	for t; do
+
+		cmd=$(echo "$t"|cut -d'|' -f1)
+		expected_res=$(echo "$t"|cut -d'|' -f2)
+
+		res=$(eval "$cmd")
+
+		if [ "$res" != "$expected_res" ]; then
+			echo "ERROR: $cmd returned vs expected resturn"
+			echo "^ \"$res\""
+			echo "^ \"$expected_res\""
+			failed=true
+		else
+			echo "+ $cmd returned \"$res\""
+		fi
+		
+	done
+	if $failed; then
+		echo "ERROR - some command failed" >&2
+		exit 1
+	fi
+}
+
+# screen functions ###########################################################################################
+
+getPanelHeight() {
+	# add more panels if needed
+	local w
+	w="$(wmctrl -l | tr -s ' ' | cut -d' ' -f1,4-)"
+	if echo "$w" | grep -q "xfce4-panel"; then
+		xdotool getwindowgeometry -shell $(echo "$w" | grep xfce4-panel | cut -d' ' -f1) | grep HEIGHT | cut -d'=' -f2
+	else
+		warning "${FUNCNAME[0]} - unknown panel - returning 20" >&2
 		echo "20"
-		;;
-	esac
+	fi
 }
 
-getScreenGeometry()
-{
+getScreenGeometry() {
 	xwininfo -root | awk '/-geometry/{gsub(/+|x/," ");print $2,($3-'"$(getPanelHeight)"')}'  
 }
 
-getWinsOnCurrentDesktop()
-{  
-	wmctrl -l | awk -v var=$(xdotool get_desktop) '{if ($2 == var) print $0;}' | cut -d' '  -f1
+getWinsOnCurrentDesktop() {
+	wmctrl -l | awk -v var=$(xdotool get_desktop) '{if ($2 == var) print $1;}'
 }
 
-populateWinsInfo() 
-{
-	local wins
-	local WINDOW X Y WIDTH HEIGHT SCREEN
-	wins="$(getWinsOnCurrentDesktop)"
-	local i
-	i=0;
-	for w in $wins; do
-		i=$((i+1))
-		eval $(xdotool getwindowgeometry --shell $w)
-		winsinfo[windowhex_$i]=$w
-		#winsinfo[window_$i]=$WINDOW
-		winsinfo[x_$i]=$X
-		winsinfo[y_$i]=$Y
-		#winsinfo[width_$i]=$WIDTH
-		#winsinfo[height_$i]=$HEIGHT
-		#winsinfo[screen_$i]=$SCREEN
-		#winsinfo[midX_$i]=$((winsinfo[x_$i]+winsinfo[width_$i]/2))
-		#winsinfo[midY_$i]=$((winsinfo[y_$i]+winsinfo[height_$i]/2))
-	done
-	winsinfo[size]=$i;
-}
-
-printWinsInfo() {
-	local var=${1:-winsinfo}
-	eval echo "\"$var[size]=\${$var[size]}\""
-	for i in $(eval seq \${$var[size]}); do
-		eval echo "\"$var[windowhex_$i]=\${$var[windowhex_$i]}
-$var[window_$i]=\\\${$var[window_$i]}
-$var[x_$i]=\${$var[x_$i]}
-$var[y_$i]=\${$var[y_$i]}
-$var[width_$i]=\${$var[width_$i]}
-$var[height_$i]=\${$var[height_$i]}
-$var[screen_$i]=\\\${$var[screen_$i]}
-$var[midX_$i]=\\\${$var[midX_$i]}
-$var[midY_$i]=\\\${$var[midY_$i]}\""
-	done
-}
-
-getBorderInfo()
-{
+getBorderInfo() {
 	# http://unix.stackexchange.com/questions/14159/how-do-i-find-the-window-dimensions-and-position-accurately-including-decoration
-	local id="${1}"
-	xprop _NET_FRAME_EXTENTS -id "$id" | \
-		grep "NET_FRAME_EXTENTS" | \
-		cut -d '=' -f 2 | \
-		tr -d ' ' | tr ',' ' ' 
+	# returns: left right top bottom
+	xprop _NET_FRAME_EXTENTS -id "$1" | cut -d'=' -f2- | tr -d ' ' | tr ',' ' ' 
 }
 
-populateBorderInfo() {
-	local borders
-	borders=( $(getBorderInfo "$1") )
-	borderinfo[0]=${borders[0]}
-	borderinfo[1]=${borders[1]}
-	borderinfo[2]=${borders[2]}
-	borderinfo[3]=${borders[3]}
-	borderinfo["width of left border"]=${borders[0]}
-	borderinfo["width of right border"]=${borders[1]}
-	borderinfo["height of title bar"]=${borders[2]}
-	borderinfo["height of bottom border"]=${borders[3]}
-	# declare -p borderinfo
+getWinsInfoOnCurrentDesktop() {
+	# output format: WINDOWID:X:Y:WIDTH:HEIGHT:SCREEN:
+	# WINDOW X Y WIDTH HEIGHT SCREEN BORDERLEFT BORDERRIGHT BORDERTOP BORDERBOTTOM
+	local w
+	w=$(getWinsOnCurrentDesktop)
+	for w in $w; do
+		echo "$w $(xdotool getwindowgeometry --shell $w|cut -d= -f2|tr '\n' ' ') $(getBorderInfo $w)"
+	done
 }
 
-populateDestinations() {
-	# this is screen split chooser
-	local mode geo
-	mode="${1}"
-	geo=( $(getScreenGeometry) )
-	case "$mode" in
-	1)
-		destinations[x_1]=0
-		destinations[y_1]=0
-		destinations[width_1]=$(( geo[0] - destinations[x_1] ))
-		destinations[height_1]=$((geo[1] - destinations[y_1] ))
-		destinations[size]=1
-		;;
-	2|2v) # 2 screen vertivally 1:1
-		destinations[x_1]=0
-		destinations[y_1]=0
-		destinations[width_1]=$(( geo[0]/2 ))
-		destinations[height_1]=$((geo[1]))
+# grid layout functions ########################################################################################
 
-		destinations[x_2]=$(( destinations[width_1] ))
-		destinations[y_2]=0
-		destinations[width_2]=$(( geo[0] - destinations[x_2] ))
-		destinations[height_2]=$((geo[1] - destinations[y_2] ))
-		destinations[size]=2
-		;;
-	2v_16:5) # 2 screen vertivally 16:5
-		local sum=$((16+5))
+# pair destinations with windows functions ################################################################################33
 
-		destinations[x_1]=0
-		destinations[y_1]=0
-		destinations[width_1]=$(( geo[0]*16/sum ))
-		destinations[height_1]=$((geo[1] - destinations[y_1]))
+calculateArea() {
+	# arguments: x1 y1 x2 y2
+	echo "$(( ( x2>x1 ? x2-x1 : x1-x2 ) * ( y2>y1 ? y2-y1 : y1-y2 ) ))"
+}
 
-		destinations[x_2]=$(( destinations[width_1] ))
-		destinations[y_2]=0
-		destinations[width_2]=$(( geo[0] - destinations[x_2] ))
-		destinations[height_2]=$((geo[1] - destinations[y_2] ))
-		destinations[size]=2
-		;;
-	2h) # 2 screen horizontally
-		destinations[x_1]=0
-		destinations[y_1]=0
-		destinations[width_1]=$(( geo[0]))
-		destinations[height_1]=$((geo[1]/2))
+caculateCover_2D() {
+	# arguments: x1 x2 X1 X2
+	# arguments: a c A C
+	read a c A C <<<"$@"
+	echo "$(( 
+		a<A ?
+			c<A ?
+				0
+				: 
+				c<C ? 
+					c-A
+					:
+					C-A
+			:
+			a<C ?
+				c<C ? 
+					c-a
+					:
+					C-a
+				:
+				0
+	))"
+}
 
-		destinations[x_2]=0
-		destinations[y_2]=$((destinations[height_1]+1))
-		destinations[width_2]=$(( geo[0] - destinations[x_2] ))
-		destinations[height_2]=$((geo[1] - destinations[y_2] ))
-		destinations[size]=2
-		;;
-	3|3vl) # 3 screem vertically left
-		destinations[x_1]=0
-		destinations[y_1]=0
-		destinations[width_1]=$(( geo[0]/2 ))
-		destinations[height_1]=$((geo[1]))
+caculateCover_2D_test() {
+	local -a tests
+	tests=(
+		"0 1 2 4|0"
+		"0 2 2 4|0"
+		"0 3 2 4|1"
+		"0 4 2 4|2"
+		"1 4 2 4|2"
+		"3 4 2 4|1"
+		"1 5 2 4|2"
+		"4 5 2 4|0"
+		"5 6 2 4|0"
+	)
+	run_tests "${tests[@]/#/caculateCover_2D }"
+}
 
-		destinations[x_2]=$(( destinations[width_1] ))
-		destinations[y_2]=0
-		destinations[width_2]=$(( geo[0] - destinations[x_2] ))
-		destinations[height_2]=$(( geo[1]/2 ))
+calculateCover() {
+	# arguments: x1 y1 x2 y2 x3 y3 x4 y4
+	# output: cover of rectanglne (x1,y1,x2,y2) over recrangle (x3,y3,x4,y4)
+	echo $(( $(caculateCover_2D $1 $3 $5 $7) * $(caculateCover_2D $2 $4 $6 $8) ))
+}
 
-		destinations[x_3]=$(( destinations[x_2] ))
-		destinations[y_3]=$(( destinations[height_2] ))
-		destinations[width_3]=$((  geo[0] - destinations[x_3] ))
-		destinations[height_3]=$(( geo[1] - destinations[y_3] ))
-		destinations[size]=3
-		;;
-	*)
-		echo "ERROR - ${FUNCNAME[0]} - not implemented"
-		exit 1
-		;;
-	esac
+calculateCover_test() {
+	local -a tests
+	tests=(
+		"0 0 2 2 2 2 4 4|0"
+		"0 0 6 6 2 2 4 4|4"
+		"0 0 3 3 2 2 4 4|1"
+		"0 0 3 4 2 2 4 4|2"
+		"2 2 3 4 2 2 4 4|2"
+		"3 3 4 4 2 2 4 4|1"
+		"4 4 5 5 2 2 4 4|0"
+	)
+	run_tests "${tests[@]/#/calculateCover }"
+}
 
-	# sanity checks 
-	if [ ${destinations[size]} -ne ${destinations[size]} ]; then
-		echo "ERROR - ${FUNCNAME[0]} - \${destinations[size]} is not a number"
-		exit 1
+pairWindowsOnGrid()
+{
+	local tmp cx cy cwidth cheight ccnt id window wx wy wwidth wheight wscreen bleft bright btop bbottom border
+	local cells="$1" # IFS=: read cx cy cwidth cheight
+	local wins="$2" # IFS=: read id window wx wy wwidth wheight wscreen bleft bright btop bbottom
+	local winscnt=$(wc -l <<<"$2")
+
+	# calculate distance between every window and cell
+	wins=$(
+		while read wins_line; do
+			IFS=' ' read _ _ wx wy wwidth wheight _ <<<"$wins_line"
+			while read cells_line; do
+				read cx cy cwidth cheight <<<"$cells_line"
+				echo "$cells_line $(
+					calculateCover $cx $cy $((cx+cwidth)) $((cy+cheight)) $wx $wy $((wx+wwidth)) $((wy+wheight))
+				) $wins_line"
+			done <<<"$cells"
+		done <<<"$wins"
+	)
+	if $VERBOSE; then echo "wins_on_cells"; echo "$wins" | column -t; echo; fi >&2
+
+	# add windows counter to the end of the cell
+	cells=$(sed 's/$/ 0/' <<<"$cells") # read cx cy cwidth cheight ccnt
+
+	# run as many times as there are windows
+	for i in $(seq $winscnt); do
+
+			# find cell with smallest number of windows on it
+			tmp=$(sort -k5 -n <<<"$cells" | head -n1)
+			IFS=' ' read cx cy cwidth cheight ccnt <<<"$tmp"
+
+			# find unpaired window that is the best for this cell - has biffest calculated cover
+			tmp=$(grep "^$cx $cy " <<<"$wins" | sort -k5 -n | tail -n1)
+			IFS=' ' read cx cy cwidth cheight dist id window wx wy wwidth wheight wscreen bleft bright btop bbottom <<<"$tmp"
+
+			# window id should be moved to $cx $cy $cwidth $cheight with respect to borders
+			echo "$id $((cx)) $((cy)) $((cwidth-bleft-bright)) $((cheight-btop-bbottom))" # why? 
+			#echo "$id $((cx)) $((cy)) $((cwidth-bright-bleft)) $((cheight-bbottom-btop))" # why? 
+
+			# remove window id from wins_cover, it is used
+			wins=$(awk "\$6 != \"$id\"" <<<"$wins")
+			# increment cell windows counter
+			cells=$(
+				grep -v "^$cx $cy " <<<"$cells";
+				echo "$cx $cy $cwidth $cheight $((ccnt+1))";
+			)
+	done
+
+	if [ -n "$wins" ]; then
+		fatal "not all windows covered, which is indefinitly strange"
 	fi
-	for i in $(seq ${destinations[size]}); do
-		for n in x y width height; do
-			if eval [ -z "\"\${destinations[${n}_$i]}\"" ]; then
-				eval echo "\"ERROR - ${FUNCNAME[0]} - destinations[${n}_$i] is empty - \${destinations[${n}_$i]} \""
-				exit 1
-			fi
-		done
-	done
-	#declare -p destinations
 }
 
-distancePoints() {
-	local X1="$1" Y1="$2" X2="$3" Y2="$4"
-	echo "sqrt( ($X1-$X2)^2 + ($Y1-$Y2)^2 )" | bc
-}
-
-compareFloat(){
-	# ex. compareFloat 1.010101 '>' 2.300330
-	# remember to put '>' and '<' in apostrophes
-	[ "$(echo "${1}${2}${3}" | bc -l)" -eq 1 ]
-}
-
-floatToInt() {
-	# may not work on negative numbers, but we dont care
-	echo "scale=0; (${1}+0.5)/1;" | bc 
-}
-
-copyAssociativeArray() {
-	# http://stackoverflow.com/questions/6660010/bash-how-to-assign-an-associative-array-to-another-variable-name-e-g-rename-t
-	eval $(typeset -A -p FROM|sed 's/ FROM=/ TO=/')
-}
-
-pairWinsWithDestinations()
-{
-	local dist tmp smallest_value smallest_desti
-	local dest_left dtimes_smallest
-	local bigNumber=1000000000
-
-	# copy exported associative variables
-	local dest
-	eval $(typeset -A -p destinations|sed 's/ destinations=/ dest=/')
-	local wi
-	eval $(typeset -A -p winsinfo|sed 's/ winsinfo=/ wi=/')
-
-	local dtimes # dtimes[$d] represents how many windows are in specified destination $d
-	declare -A dtimes
-	# initialize with zeros
-	for d in $(seq ${dest[size]}); do
-		dtimes[$d]=0
-	done
-
-	# for every window
-	for i in $(seq ${wi[size]}); do
-
-		# find number of windows on destinations with smallest number of windows in it
-		# find smallest number in dtimes
-		dtimes_smallest=${bigNumber}
-		for d in $(seq ${dest[size]}); do
-			if [[ $dtimes_smallest -gt ${dtimes[$d]} ]]; then
-				dtimes_smallest=${dtimes[$d]}
-			fi
-		done
-
-		# create set of destinations with smallest number of windows on it
-		# filter out all the destinations that have more than dtimes_smallest windows
-		dest_left=""
-		for d in $(seq ${dest[size]}); do
-			if [[ ${dtimes[$d]} -le $dtimes_smallest ]]; then
-				dest_left+=" $d"
-			fi
-		done
-
-		# get destination from filtered destinations, that is the closest to the window
-		smallest_value=${bigNumber}
-		smallest_desti=0
-		for d in ${dest_left}; do
-			dist=$(distancePoints ${wi[x_$i]} ${wi[y_$i]} ${dest[x_$d]} ${dest[y_$d]} )
-			#echo $dist $smallest_value
-			#if [[ $(floatToInt $smallest_value) -gt $(floatToInt $dist) ]]; then
-			if compareFloat $smallest_value '>' $dist; then
-				smallest_value=$dist
-				smallest_desti=$d
-			fi
-		done
-
-		# this window goes to $smallest_desti destination - we increment dtimes[$d]
-		d=$smallest_desti
-		dtimes[$d]=$((dtimes[$d]+1))
-		if [[ $d -eq 0 ]]; then
-			echo "ERROR - pairWinsWithDestinations() - [[ $d -eq 0 ]] "
-			exit 1
-		fi
-
-		# update return variable - take x , y , width and height from destination
-		winsgoal[windowhex_$i]=${wi[windowhex_$i]}
-		#winsgoal[window_$i]=${wi[window_$i]}
-		winsgoal[x_$i]=${dest[x_$d]}
-		winsgoal[y_$i]=${dest[y_$d]}
-		winsgoal[width_$i]=${dest[width_$d]}
-		winsgoal[height_$i]=${dest[height_$d]}
-		#winsgoal[screen_$i]=${wi[screen_$i]}
-		#winsgoal[midX_$i]=$((winsgoal[x_$i]+winsgoal[width_$i]/2))
-		#winsgoal[midY_$i]=$((winsgoal[y_$i]+winsgoal[height_$i]/2))
-
-		# adjust with boarder
-		populateBorderInfo "${winsgoal[windowhex_$i]}"
-		winsgoal[width_$i]=$((  winsgoal[width_$i]  - borderinfo["width of right border"] - borderinfo["width of left border"]    ))
-		winsgoal[height_$i]=$(( winsgoal[height_$i] - borderinfo["height of title bar"]   - borderinfo["height of bottom border"] ))
-	done
-	winsgoal[size]=${wi[size]}
-	#declare -p winsgoal
-}
-
-setWinsGoal_1()
-{
+setWins_in() {
+	local cmd="${cmd:-:}"
 	# parallel - better performance with many windows
-	for i in $(seq ${winsgoal[size]}); do	
+	while read id x y width height; do
 		(
-			${1:-}
-
+			$cmd
 			# remove "Always on top" property
-			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,above
+			wmctrl -i -r $id -b remove,above 
 			# unmaximize
-			wmctrl -i -r ${winsgoal[windowhex_$i]} -b remove,maximized_vert,maximized_horz 
+			wmctrl -i -r $id -b remove,maximized_vert,maximized_horz
 			# reseize and move to specified position
-			wmctrl -i -r ${winsgoal[windowhex_$i]} \
-				-e 0,${winsgoal[x_$i]},${winsgoal[y_$i]},${winsgoal[width_$i]},${winsgoal[height_$i]}
+			wmctrl -i -r $id -e 0,$x,$y,$width,$height
 		) &
-	done
+	done <<<"$@"
 	wait
 }
-setWinsGoal() 
-{
-	setWinsGoal_1 "set -x"
-	# i run that twice - must be a buf in wmctrl when parallel running
-	# is faster anyway
-	setWinsGoal_1
+setWins() {
+	local cmd=':'
+	if $VERBOSE; then
+		cmd='set -x'
+	fi
+	setWins_in "$@"
+	setWins_in "$@"
+}
+
+# auto guess ######################################################33
+
+modeAutoGuess() {
+	local cnt=$1
+	local x=1 y=1
+	while (( (x*y) < cnt )); do
+		if [ $x -le $y ]; then
+			(( x+=1 ))
+		else
+			(( y+=1 ))
+		fi
+	done
+	if (( (x*y) > cnt )); then
+		echo -n "-s 0:0:0:$(( (x*y) - cnt )) "
+	fi
+	echo "-R $x:$y grid"
 }
 
 ######################## main ###########################
 ######################## globals ########################
 
 DEBUG=${DEBUG:-false}
+VERBOSE=${VERBOSE:-false}
 SPEED=${SPEED:-false}
 $DEBUG && set -x
 $SPEED && PS4='$(date "+%s.%N ($LINENO) + ")'
-# struct { size, [ windowhex_$i, window_$i, x_$i, y_$i, heigth_$i, width_$i : i=1...size ] } winsinfo;
-declare -A winsinfo
-# struct { size, [ x_$i, y_$i, heigth_$i, width_$i : i=1...size ] } destinations;
-declare -A destinations
-# struct { size, [ windowhex_$i, window_$i, x_$i, y_$i, heigth_$i, width_$i : i=1...size ]  } winsgoal;
-declare -A winsgoal
-# struct { width of left border, width of right border, height of title bar, height of bottom border } borderinfo;
-declare -A borderinfo
 
 ######################## locals #########################
 ######################## getopt #########################
 
-case "${1:---help}" in
--a)
-	$0 -"$(getWinsOnCurrentDesktop | wc -w)"
+if [ $# -eq 0 ]; then usage; exit 1; fi
+tmp=$(getopt -o R:x:y:s:htv -n 'qqsplitscreenpip.sh' -- "$@")
+eval set -- "$tmp"
+grid_args=() TEST=false
+while true; do
+	case "$1" in
+
+
+	# grid_layout options
+	-R) grid_args+=( "$2" ); shift; ;;
+	-x) grid_args+=( "$1" "$2" ); shift; ;;
+	-y) grid_args+=( "$1" "$2" ); shift; ;;
+	-s) grid_args+=( "$1" "$2" ); shift; ;;
+
+	-t) TEST=true; VERBOSE=true; ;;
+	-v) VERBOSE=true; ;;
+	-h) usage; exit 1; ;;
+	--) shift; break; ;;
+	*) echo "Internal error"; exit 1; ;;
+	esac
+	shift
+done
+if [ $# -eq 0 ]; then usage; exit 1; fi
+
+
+rerun() {
+	local -a myargs=()
+	if $VERBOSE; then 
+		myargs+=(-v);
+	fi;
+	if $TEST; then
+		myargs+=(-t);
+	fi;
+	verbose "+ exec $0 ${myargs[@]} $*"
+	exec "$0" "${myargs[@]}" "$@"
+}
+
+
+grid_layout="qqgrid_layout.sh"
+if ! hash "$grid_layout" 2>/dev/null; then
+	warning "Command $grid_layout was not found in path"
+	if -x "./qqgrid_layout.sh"; then
+		grid_layout="./qqgrid_layout.sh"
+		warning "Using $grid_layout as grid_layout"
+	else
+		fatal "Command grid_layout could not be found"
+	fi
+fi
+
+case "$1" in
+test)
+	caculateCover_2D_test
+	calculateCover_test
 	;;
--g)
+auto)
+	window_cnt=${2:-$(getWinsOnCurrentDesktop | wc -w)}
+	tmp=$(modeAutoGuess $window_cnt)
+	verbose "modeAutoGuess $window_cnt returned \"$tmp\""
+	rerun "${myargs[@]}" $tmp
+	;;
+gui)
 	ans=$( zenity --list \
 		--title "qq Screen Split (PIP)" \
 		--text "Mode for OnScreenDisplay?" \
 		--radiolist --column "Pick" --column "Mode" \
+		FALSE "auto" \
 		FALSE "1 screen" \
 		TRUE  "2 screen vertical 1:1"   \
 		FALSE "2 screen vertical 16:5"  \
 		FALSE "2 sceeen horizontal 1:1" \
 		FALSE "3 screen vertical left 1:1:1" )
 	case "$ans" in
-	"1 screen")                     $0 -1; ;;
-	"2 screen vertical 1:1")        $0 -2v; ;;
-	"2 screen vertical 16:5")       $0 -2v_16:5; ;;
-	"2 sceeen horizontal 1:1")      $0 -2h; ;;
-	"3 screen vertical left 1:1:1") $0 -3vl; ;;
+	"auto")                         rerun auto; ;;
+	"1 screen")                     rerun -R 1:1 grid; ;;
+	"2 screen vertical 1:1")        rerun -R 2:1 grid; ;;
+	"2 screen vertical 16:5")       rerun -x 16:5 -R 2:1 grid; ;;
+	"2 sceeen horizontal 1:1")      rerun -R 1:2 grid; ;;
+	"3 screen vertical left 1:1:1") rerun -R 1:3 grid; ;;
 	esac
 	;;
--debug)
-	DEBUG=true
-	. $0 "${2:-}"
-	printWinsInfo winsinfo
-	declare -p destinations
-	printWinsInfo winsgoal
-	declare -p borderinfo
+grid)
+	screen_geometry=$(getScreenGeometry|tr ' ' 'x') #|while read x y; do echo ${x}x$(( y-$(getPanelHeight) )); done)
+	verbose_var_column screen_geometry
+	verbose_var_column grid_args
+	grid=$(./qqgrid_layout.sh -r $screen_geometry "${grid_args[@]}" | tr ' ' '\n' | tr ':' ' ')
+	verbose_var_column grid
+	wins=$(getWinsInfoOnCurrentDesktop)
+	verbose_var_column wins
+	wins_grid=$(pairWindowsOnGrid "$grid" "$wins")
+	verbose_var_column wins_grid
+	if $TEST; then
+		wmctrl() { echo "wmctrl $*"; }
+	fi
+	setWins "$wins_grid"
 	;;
--[0-9]*)
-	populateWinsInfo
-	populateDestinations ${1#-}
-	pairWinsWithDestinations
-	setWinsGoal
-	;;
-*)
-	usage
-	;;
+*) usage; exit 1; ;;
 esac

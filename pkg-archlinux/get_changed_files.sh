@@ -1,53 +1,90 @@
-#!/bin/bash -e
+#!/bin/bash
+set -ueo pipefail
 
+# functions ##############################3
+
+usage() {
+	cat <<EOF
+Usage:
+	$0 <ONE OPTION>
+
+Options:
+	-P 	- run paccheck, show filenames between installed files and repo
+	-D	- show diff of files returned by -P
+	-O  - overwrite files returned by -P in filesystem by repo - not implemented
+	-I 	- overwrite files returned by -P in repo by filesystem - not implemented
+
+	-p	- show all filenames differing between filesystem and repo
+	-d	- show diff of files returned by -p
+	-o  - overwrite files returned by -p in filesystem by repo - not implemented
+	-i 	- overwrite files returned by -p in repo by filesystem - not implemented
+
+	-h 	- show this help and exit
+
+Written by Kamil Cukrowski (c) 2017. Under MIT license.
+EOF
+}
+
+printDiff() { 
+	local f="$1"
+	if [ ! -e /${f} ]; then
+		echo "/${f}: No such file."
+		return
+	fi
+	if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
+		diff -u --color -- $uniondir/${f} /${f} || true
+	fi
+}
+
+printDiffFilename() { 
+	local f="$1"
+	if [ ! -e /${f} ]; then
+		echo "/${f}: No such file."
+		return
+	fi
+	if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
+		echo "$f"
+	fi
+}
+
+main_case() {
+case "${1:--h}" in
+-P)
+	paccheck --md5sum --quiet kamil-scripts | awk '{print $2}' | sed -e "s/^'//" -e "s/'$//"
+	;;
+-D)
+	for f in $(main_case -P); do
+		printDiff $f
+	done
+	;;
+
+-p)
+	files=( $(cd "$(readlink -f $uniondir)" && find -type f | sed 's/^\.\///g' ) )
+	str=""
+	for f in "${files[@]}"; do
+		printDiffFilename $f
+	done
+	;;
+-d)
+	for f in $(main_case -p); do
+     	printDiff "$f"
+    done
+	;;
+
+*)
+	usage; exit 1;
+	;;
+esac
+}
+
+# main ##############################################
 
 #gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
 gitdir="$(dirname $(dirname $(readlink -f "$0")))"
 cd $gitdir
 uniondir=./pkg-archlinux/src/
-./pkg-archlinux/rsync_all_pkg_resources.sh
+./pkg-archlinux/rsync_all_pkg_resources.sh >/dev/null
+echo
 
-files=( $(cd "$(readlink -f $uniondir)" && find -type f | sed 's/^\.\///g' ) )
 
-case "$1" in
--d)
-        str=""
-        for f in "${files[@]}"; do
-                if [ ! -e /${f} ]; then
-                        echo "/${f}: No such file."
-                        continue;
-                fi
-                if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
-                        diff -u --color -- $uniondir/${f} /${f}
-                fi
-        done
-	;;
--a)
-	str=""
-	for f in "${files[@]}"; do
-		if [ ! -e /${f} ]; then
-			echo "/${f}: No such file."
-			continue;
-		fi
-		if ! cmp /${f} $uniondir/${f} ; then
-			str+="/${f} "
-		fi
-	done
-	
-	echo;
-	if [ -z "$str" ]; then
-		echo "No files differ!"
-	else
-		echo "To add files to packages type following command:"
-		echo "./add_files_to_package.sh [public|crypted] $str"
-	fi
-	;;
-*)
-	# uasge()
-	cat << EOF 
-
-USAGE:	./get_changed_files.sh [-d|-a]
-	
-	pokazuje jakie pliki sie zmienily
-EOF
-esac
+main_case "$@"

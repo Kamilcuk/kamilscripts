@@ -11,7 +11,7 @@ ExecStart=/usr/bin/journalctl -af -n1000
 Environment=
 
 [Install]
+WantedBy=
 WantedBy=multi-user.target
-DefaultInstance=
-DefaultInstance=tty11
+DefaultInstance=tty12
 

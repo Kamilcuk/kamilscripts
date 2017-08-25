@@ -11,7 +11,7 @@ ExecStart=/usr/bin/dmesg -wH
 Environment=
 
 [Install]
+WantedBy=
 WantedBy=multi-user.target
-DefaultInstance=
-DefaultInstance=tty12
+DefaultInstance=tty11
 
