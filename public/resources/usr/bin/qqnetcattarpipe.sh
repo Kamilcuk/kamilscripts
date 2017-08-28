@@ -89,7 +89,7 @@ inraw)
 in)
 	OUT=$(readlink -f "$3")
 	set -x;
-	nc -4 "${ncopts[@]}" -l "$2" | tar "${taropts[@]}" -z -x -f - -C "$OUT";
+	nc -4 "${ncopts[@]}" -l "$2" | tar "${taropts[@]}" -z -x -f -p - -C "$OUT";
 	;;
 test)
 	test 
