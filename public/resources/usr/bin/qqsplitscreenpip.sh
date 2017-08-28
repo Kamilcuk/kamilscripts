@@ -71,7 +71,7 @@ warning() { echo "WARN : " "$@" >&2; }
 fatal() { echo "FATAL: $@" >&2; exit 1; }
 verbose() { if ${VERBOSE:-false}; then echo "$@"; fi; }
 debug() { if ${DEBUG:-false}; then echo "$@"; fi; }
-verbose_var_column() { verbose $var; verbose "${!var}" | column -t; verbose; }
+verbose_var_column() { verbose $1; verbose "${!1}" | column -t; verbose; }
 
 checkUtilities() {
 	for i in sed bc xwininfo wmctrl cut xdotool xargs; do
@@ -110,26 +110,58 @@ run_tests() {
 	fi
 }
 
+# check function ############################################################################################
+
+
+check() { 
+	if eval "$1"; then :; else
+		eval "echo \"ERROR: check: \$1 => $1\"" >&2;
+		echo "ERROR: $2" >&2; 
+		exit 1; 
+	fi; 
+}
+
+check_number() { 
+	check '[ "${'"$1"'}" -eq "${'"$1"'}" ] 2>/dev/null' "${2:-}"; 
+}
+
+check_number_greater_equal() {
+	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'$2'" ]] 2>/dev/null' "${3:-}"; 
+}
+
+check_number_range() { 
+	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'$2'" && "${'"$1"'}" -le "'$3'" ]] 2>/dev/null' "${4:-}"; 
+}
+
 # screen functions ###########################################################################################
+# its really hard to parse these values obtained from wmctrl in bash, dunno why
+# i think bash is lacking a good utility to do column-based filtering
+
+grepColumn() {
+	local column=$1 match=$2 print=${3:-'$0'}
+	awk '{if ( $'"$1"' == "'"$2"'" ) print '"$3"'; }'
+}
+
+getCurrentDesktop() {
+	wmctrl -d | awk '{if ($2 == "*" ) print $1;}'
+}
 
 getPanelHeight() {
 	# add more panels if needed
 	local w
-	w="$(wmctrl -l | tr -s ' ' | cut -d' ' -f1,4-)"
-	if echo "$w" | grep -q "xfce4-panel"; then
-		xdotool getwindowgeometry -shell $(echo "$w" | grep xfce4-panel | cut -d' ' -f1) | grep HEIGHT | cut -d'=' -f2
+	w=$(wmctrl -l -G | awk '{if ($2 == "-1") print $0;}' | tr -s ' ')
+	if echo "$w" | cut -d' ' -f8- | grep -q -x "xfce4-panel"; then
+		echo "$w" | awk '{if ($8 == "xfce4-panel") print $0;}' | tr -s ' ' | cut -d' ' -f6
 	else
-		warning "${FUNCNAME[0]} - unknown panel - returning 20" >&2
-		echo "20"
+		fatal "${FUNCNAME[0]} - unknown panel - returning 20" >&2
 	fi
 }
 
 getScreenGeometry() {
-	xwininfo -root | awk '/-geometry/{gsub(/+|x/," ");print $2,($3-'"$(getPanelHeight)"')}'  
-}
-
-getWinsOnCurrentDesktop() {
-	wmctrl -l | awk -v var=$(xdotool get_desktop) '{if ($2 == var) print $1;}'
+	#xwininfo -root | awk '/-geometry/{gsub(/+|x/," ");print $2,($3-'"$(getPanelHeight)"')}'  
+	local tmp
+	tmp=$(getPanelHeight)
+	wmctrl -l -G | awk '{ if ($2 == "-1" && $8 == "Desktop") print $0; }' | tr -s ' ' | cut -d' ' -f5,6 | awk '{print $1,($2-'"$tmp"')}'  
 }
 
 getBorderInfo() {
@@ -138,14 +170,22 @@ getBorderInfo() {
 	xprop _NET_FRAME_EXTENTS -id "$1" | cut -d'=' -f2- | tr -d ' ' | tr ',' ' ' 
 }
 
-getWinsInfoOnCurrentDesktop() {
-	# output format: WINDOWID:X:Y:WIDTH:HEIGHT:SCREEN:
-	# WINDOW X Y WIDTH HEIGHT SCREEN BORDERLEFT BORDERRIGHT BORDERTOP BORDERBOTTOM
+getWinsOnCurrentDesktop() {
 	local w
-	w=$(getWinsOnCurrentDesktop)
-	for w in $w; do
-		echo "$w $(xdotool getwindowgeometry --shell $w|cut -d= -f2|tr '\n' ' ') $(getBorderInfo $w)"
-	done
+	w=$(getCurrentDesktop)
+	wmctrl -l | awk -v var="$w" '{if ($2 == var) print $1;}'
+}
+
+getWinsInfoOnCurrentDesktop() {
+	# output format:
+	# WINDOW X Y WIDTH HEIGHT SCREEN BORDERLEFT BORDERRIGHT BORDERTOP BORDERBOTTOM
+	local tmp
+	tmp=$(getCurrentDesktop)
+	tmp=$(wmctrl -l -G | awk -v var="$tmp" '{if ($2 == var) print $0;}')
+	while read wid wscreen wx wy wwidth wheight _; do
+		tmp=$(getBorderInfo $wid)
+		echo "$wid $wx $wy $wwidth $wheight $wscreen $tmp"
+	done <<<"$tmp"
 }
 
 # grid layout functions ########################################################################################
@@ -219,15 +259,15 @@ calculateCover_test() {
 
 pairWindowsOnGrid()
 {
-	local tmp cx cy cwidth cheight ccnt id window wx wy wwidth wheight wscreen bleft bright btop bbottom border
+	local tmp cx cy cwidth cheight ccnt wid wx wy wwidth wheight wscreen bleft bright btop bbottom border
 	local cells="$1" # IFS=: read cx cy cwidth cheight
-	local wins="$2" # IFS=: read id window wx wy wwidth wheight wscreen bleft bright btop bbottom
+	local wins="$2" #  IFS=: read wid wx wy wwidth wheight wscreen bleft bright btop bbottom
 	local winscnt=$(wc -l <<<"$2")
 
 	# calculate distance between every window and cell
 	wins=$(
 		while read wins_line; do
-			IFS=' ' read _ _ wx wy wwidth wheight _ <<<"$wins_line"
+			IFS=' ' read _ wx wy wwidth wheight _ <<<"$wins_line"
 			while read cells_line; do
 				read cx cy cwidth cheight <<<"$cells_line"
 				echo "$cells_line $(
@@ -250,14 +290,14 @@ pairWindowsOnGrid()
 
 			# find unpaired window that is the best for this cell - has biffest calculated cover
 			tmp=$(grep "^$cx $cy " <<<"$wins" | sort -k5 -n | tail -n1)
-			IFS=' ' read cx cy cwidth cheight dist id window wx wy wwidth wheight wscreen bleft bright btop bbottom <<<"$tmp"
+			IFS=' ' read cx cy cwidth cheight dist wid wx wy wwidth wheight wscreen bleft bright btop bbottom <<<"$tmp"
 
-			# window id should be moved to $cx $cy $cwidth $cheight with respect to borders
-			echo "$id $((cx)) $((cy)) $((cwidth-bleft-bright)) $((cheight-btop-bbottom))" # why? 
-			#echo "$id $((cx)) $((cy)) $((cwidth-bright-bleft)) $((cheight-bbottom-btop))" # why? 
+			# window wid should be moved to $cx $cy $cwidth $cheight with respect to borders
+			echo "$wid $((cx)) $((cy)) $((cwidth-bleft-bright)) $((cheight-btop-bbottom))" # why? 
+			#echo "$wid $((cx)) $((cy)) $((cwidth-bright-bleft)) $((cheight-bbottom-btop))" # why? 
 
-			# remove window id from wins_cover, it is used
-			wins=$(awk "\$6 != \"$id\"" <<<"$wins")
+			# remove window wid from wins_cover, it is used
+			wins=$(awk "\$6 != \"$wid\"" <<<"$wins")
 			# increment cell windows counter
 			cells=$(
 				grep -v "^$cx $cy " <<<"$cells";
@@ -366,19 +406,16 @@ rerun() {
 grid_layout="qqgrid_layout.sh"
 if ! hash "$grid_layout" 2>/dev/null; then
 	warning "Command $grid_layout was not found in path"
-	if -x "./qqgrid_layout.sh"; then
-		grid_layout="./qqgrid_layout.sh"
+	if [ -x "./qqgrid_layout.sh" ]; then
+		grid_layout="$(readlink -f ./qqgrid_layout.sh)"
 		warning "Using $grid_layout as grid_layout"
 	else
 		fatal "Command grid_layout could not be found"
 	fi
 fi
 
+
 case "$1" in
-test)
-	caculateCover_2D_test
-	calculateCover_test
-	;;
 auto)
 	window_cnt=${2:-$(getWinsOnCurrentDesktop | wc -w)}
 	tmp=$(modeAutoGuess $window_cnt)
@@ -406,19 +443,35 @@ gui)
 	esac
 	;;
 grid)
-	screen_geometry=$(getScreenGeometry|tr ' ' 'x') #|while read x y; do echo ${x}x$(( y-$(getPanelHeight) )); done)
-	verbose_var_column screen_geometry
-	verbose_var_column grid_args
-	grid=$(./qqgrid_layout.sh -r $screen_geometry "${grid_args[@]}" | tr ' ' '\n' | tr ':' ' ')
+	tmp=$(getScreenGeometry) #|tr ' ' 'x') #|while read x y; do echo ${x}x$(( y-$(getPanelHeight) )); done)
+	read -a screen_geometry <<<"$tmp"
+	check_number screen_geometry[0]
+	check_number screen_geometry[1]
+	verbose_var_column screen_geometry[@]
+
+	if [ "${#grid_args[@]}" -eq 0 ]; then
+		usage
+		fatal "grid_args number are equal to zero"
+		exit 1
+	fi
+	verbose_var_column grid_args[@]
+	grid=$($grid_layout -r "${screen_geometry[0]}x${screen_geometry[1]}" "${grid_args[@]}" | tr ' ' '\n' | tr ':' ' ')
 	verbose_var_column grid
+
 	wins=$(getWinsInfoOnCurrentDesktop)
 	verbose_var_column wins
+
 	wins_grid=$(pairWindowsOnGrid "$grid" "$wins")
 	verbose_var_column wins_grid
+
 	if $TEST; then
 		wmctrl() { echo "wmctrl $*"; }
 	fi
 	setWins "$wins_grid"
+	;;
+test)
+	caculateCover_2D_test
+	calculateCover_test
 	;;
 *) usage; exit 1; ;;
 esac
