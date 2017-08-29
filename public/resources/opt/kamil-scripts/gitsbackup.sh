@@ -16,8 +16,16 @@ $TEST && git() { echo "git $*"; }
 usage() {
 	n=gitsbackup.sh
 	cat >&2 <<EOF
-Usage:
-	$n <backup dir> <config>...
+Usage: $n [OPTIONS] <backup dir> <config>...
+
+Options:
+     -i         - print all supported repositotries with info
+     -q         - try to print as less as possible
+     -n         - set niceness level as high as possible
+     -u <user>  - run script as specified user
+                  (as that user may have ssh keys to some repos)
+     -t         - print list of repos without doing anything
+     -h         - print this help and exit
 
 Backups all found repositories into backup dir, using:
 'git clone --mirror and git remote update'.
@@ -30,75 +38,228 @@ Config:
 	Config contains arguments to function getAllRepos defined inside the script.
 
 Examples:
-	$n /tmp/ github.com:UserName gitlab.com:GITLAB_PRIVATE_TOKEN
+	$n /tmp/ github.com:\${UserName} gitlab.com:\${GITLAB_PRIVATE_TOKEN}
 
-Written by Kamil Cukrowski (C) 2017. Under MIT License.
+Written by Kamil Cukrowski (C) 2017. Under MIT License. Version 0.1.1
 EOF
 }
 
+DEBUG=${DEBUG:-false}
+debug() { if $DEBUG; then     echo "$@"; fi; }
+VERBOSE=${VERBOSE:-true}
+verbose() { if $VERBOSE; then echo "$@"; fi; }
+warning() {                   echo "WARN:  ""$@" >&2; }
+error() {                     echo "ERROR: ""$@" >&2; }
+fatal() {                     echo "FATAL: ""$@" >&2; exit 1; }
+
 if hash jq 2>/dev/null; then
-	jq_get() { jq -r ".[].$1"; }
+	jq_get() { jq -r ".${2:-}[].$1"; }
 else
 	jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'$1'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
 fi
 
-getAllRepos() {
-	# download all repos belonging to specified user/token on specified site
-	case "$1" in
-	gitlab.com) curl -s --header "PRIVATE-TOKEN: $2" 'https://gitlab.com/api/v3/projects' | jq_get ssh_url_to_repo; ;;
-	github.com) curl -s "https://api.github.com/users/$2/repos" | jq_get ssh_url; ;;
-	esac
+backup_repos_do() {
+	local url=$1 dir=$2
+	verbose "backup_repo $url to $dir"
+	if [ ! -d "$dir" ]; then
+		git clone --mirror "$url" "$dir"
+	fi
+	git --git-dir="$dir" remote update
 }
 
+# main function
 backup_repos() {
-	local output="$1" dir url
+	# args: <outputdir> <git repo url>....
+	local output="$1" url
 	shift
-
 	for url; do
-		dir="$output/$url"
-		echo "backup_repos: $dir"
-
-		if [ ! -d "$dir" ]; then
-			git clone --mirror "$url" "$dir"
-		fi
-		git --git-dir="$dir" remote update
-
+		backup_repos_do "$url" "$output/$(sed -e 's;^\([a-z]*\)://;\1_;' <<<"$url")"
 	done
+}
+
+# repos* subsystem - for downloading git repos url-s ####################################################
+
+repos_supported=()
+repos_supported_info=()
+
+reposAddSupported() {
+	repos_supported+=( "$1" )
+	shift
+	repos_supported_info+=( "$@" )
+}
+
+reposGet() { 
+	local repo="$1" r
+	shift
+	for r in "${repos_supported[@]}"; do
+		if [ "$r" == "$repo" ]; then
+			debug 'found "$r" == "$repo" '
+			reposGet_${repo} "$@"
+			return 0
+		fi
+	done
+	error "Passing repo $repo not found!"
+	return 1
+}
+
+reposGetCheck() { 
+	local repo="$1"
+	shift
+	for r in "${repos_supported[@]}"; do
+		if [ "$r" == "$repo" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+reposPrintSupported() {
+	local tmp1 tmp func args desc
+	if [ "${#repos_supported[@]}" -eq 0 ]; then
+		echo "No repos supported"
+		return 1;
+	fi
+	tmp=$( paste <(printf "%s\n" "${repos_supported[@]}") <(printf "%s\n" "${repos_supported_info[@]}") )
+	while read func args desc; do
+		temp+="${func}:${args}#${desc}"$'\n'
+	done <<<"$tmp"
+	column -s'#' -t <<<"$temp"
+}
+
+
+# config #####################################################################
+
+reposAddSupported github.com                "<user_name>    - backup repos for user"
+reposGet_github.com() { 
+	local username=$1
+	curl -s "https://api.github.com/users/${username}/repos" | jq_get ssh_url; 
+}
+
+reposAddSupported gitlab.com_token          "<private-token> - backup repos using speicfied private-token from gitlab.com"
+reposGet_gitlab.com_token() { 
+	local private_token=$1
+	curl -s --header "PRIVATE-TOKEN: $private_token" 'https://gitlab.com/api/v3/projects' | jq_get ssh_url_to_repo; 
+}
+
+reposAddSupported aur.archlinux.org_aurjson "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
+reposGet_aur.archlinux.org_aurjson() { 
+	local maintainer=$1
+	curl -s 'https://aur.archlinux.org/rpc/?v=5&type=search&by=maintainer&arg='$maintainer | \
+		jq_get Name results | \
+		sed 's;\(.*\);ssh://aur@aur.archlinux.org/\1.git;'
+}
+
+reposAddSupported aur.archlinux.org         "<maintainer>   - same as aur.archlinux.org_aurjson"
+reposGet_aur.archlinux.org() { reposGet_aur.archlinux.org_aurjson "$@"; }
+
+reposAddSupported aur.archlinux.org_html "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
+reposGet_aut.archlinux.org_html() {
+	local maintainer=$1
+	curl -s 'https://aur.archlinux.org/packages/?SeB=m&K='${maintainer} | \
+		xmllint --html --xpath '//table[@class="results"]//tr/td[1]/a/@href' - | \
+  		tr ' ' '\n' | sed -e '/^$/d' -e 's;^href="/packages/;;' -e 's;/"$;;' \
+		sed 's;\(.*\);aur@aur.archlinux.org:/\1.git;'
 }
 
 
 # main #######################################################################
 
-if [ "$#" -lt 2 ]; then usage; exit 1; fi;
-if [ "$(whoami)" != "kamil" ]; then exec sudo -u kamil "$0" "$@"; fi
+if [ $# -eq 0 ]; then usage; exit 1; fi
+allargs=$(getopt -o ithqnu: -n 'gitsbackup.sh' -- "$@")
+eval set -- "$allargs"
+testRepos=false;
+while true; do
+	case "$1" in
+	-i) reposPrintSupported; exit 0; ;;
+	-t) testRepos=true; ;;
+	-h) usage; exit 0; ;;
+	-q) VERBOSE=false; ;;
+	-n) 
+		ionice -c 3 -p $BASHPID >/dev/null # set Idle I/O scheduling priority
+		renice -n 5 -p $BASHPID >/dev/null # set niceness level
+		;;
+	-u) 
+		if [ "$(whoami)" != "$2" ]; then 
+			name="$2"
+			eval set -- "$allargs" # restore all arguments
+			sudo -E -u "$name" "$0" "$@"
+			exit $?
+		fi
+		shift; ;; # we never get here
+	--) shift; break; ;;
+	*) fatal "Internal error in getopt"; exit 1; ;;
+	esac
+	shift
+done
 
-ionice -c 3 -p $BASHPID >/dev/null # set Idle I/O scheduling priority
-renice -n 5 -p $BASHPID >/dev/null # set niceness level
+if [ "$#" -lt 2 ]; then usage; exit 1; fi;
 
 # input arguments config
 OUTPUTDIR="$1"
 shift
 
-# load repos list
-repos=""
-for i; do
-	args=( $(echo "$i" | tr ':' ' ') )
-	echo "Getting all repos from ${args[0]}"
-	add=$(getAllRepos "${args[@]}")
-	if [ -z "$add" ]; then
-		echo "ERROR config argument "$i" resulted in 0 repos"
-		exit 1
+# sanity check all repos if such exist
+while IFS=: read -a args; do
+	if ! reposGetCheck "${args[@]}"; then
+		fatal "Error parsing \"${args[@]}\" argument. Check input arguments."
 	fi
-	repos+=" $add"
-done
+done <<<$(printf "%s\n" "$@")
 
-echo "Found $(wc -w <<<$repos) repos to backup."
-$TEST && echo $repos
+# propagate repos list
+repos=""
+while IFS=: read -a args; do
 
-# backup repos
-backup_repos "$OUTPUTDIR" $repos
+	verbose "Repos from \"${args[@]}\":"
+
+	if ! add=$(reposGet "${args[@]}"); then
+		fatal "Error gettting repo from \"${args[@]}\". Check input arguments"
+	fi
+	if [ -z "$add" ]; then
+		fatal "Getting repos from \"${args[@]}\" resulted in 0 repos."
+	fi
+	repos+="$add"$'\n'
+
+	verbose "$add"
+
+done <<<$(printf "%s\n" "$@")
+
+verbose "Found $(wc -w <<<"$repos") git repos."
+
+# shuffle repos list, to distrubute usage on repos evenly
+repos=$(echo "$repos" | sort -R)
+
+if $testRepos; then
+	backup_repos_check() {
+		echo
+		echo "Checking repos validity:"
+		for r; do
+			echo -n "git ls-remote $r -- "
+			if ! git ls-remote $r >/dev/null; then
+				echo
+				fatal "Internal error: $r is not a valid git repository"
+			fi
+			echo "OK"
+			sleep 0.5 # ddos protection
+		done
+	}
+	backup_repos_do() {
+		local url=$1 dir=$2
+		echo "$url -> $dir"
+	}
+
+	echo
+	echo "--> Repos list:"
+	echo "--> Legend: repo_url -> dir_where_repo_will_be_downloaded"
+	backup_repos "$OUTPUTDIR" $repos
+	backup_repos_check $repos
+	echo "--> And all repos are ok"
+else
+	backup_repos "$OUTPUTDIR" $repos
+fi
+
 
 wait
 echo
 echo "Success!"
+
 
