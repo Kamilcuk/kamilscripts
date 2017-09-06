@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 # Written by Kamil Cukrowski (C) 2017
-# All right reserved. 
+# All rights reserved. 
 #
 ################################ globals ###############################
 
@@ -407,33 +407,34 @@ Envornment variables:
 Usage examples:
     qqremember
 
-Author: Kamil Cukrowski <kamilcukrowski_at_gmail_dot_com> (c) 2017
+Author: Kamil Cukrowski <kamilcukrowski_at_gmail_dot_com> (c) 2017 Version 0.1.1
 
 EOFUSAGE
 }
 
 ############################## main #####################################
 
-## getopts
-while getopts ":c:hu:C:S:E" opt; do
-	case $opt in
-		c) CONFIG=${OPTARG}; ;;
-		h) usage; exit; ;;
-		u) UNTIL=${OPTARG}; ;;
-		C) COMMAND=${OPTARG}; ;;
-		S) case ${OPTARG} in 
-			true|false) SWIETA=${OPTARG}; ;; 
-			*) error "Invalid option -S ${OPTARG}"; usage; exit 1 ; ;;
-		   esac; ;;
-		E) usageExampleConfig; exit; ;;
-		\?) error "Invalid option: -$OPTARG"; usage; exit 1; ;;
-		:)  error "Option -$OPTARG requires an argument."; usage; exit 1; ;;
+ARGS=$(getopt -o ":c:hu:C:S:E" -n "qqremember" -- "$@")
+eval set -- "$ARGS"
+while true; do
+	case "$1" in
+		-c) CONFIG=$2; shift; ;;
+		-h) usage; exit; ;;
+		-u) UNTIL=$2; shift; ;;
+		-C) COMMAND=$2; shift; ;;
+		-S) case "$2" in 
+			true|false) SWIETA=$2; ;; 
+			*) error "Invalid option -S $2"; usage; exit 1 ; ;;
+		   esac; shift; ;;
+		-E) usageExampleConfig; exit; ;;
+		*) error "getopt internal error"; usage; exit 1; ;;
+		--) shift 2; break; ;;
 	esac
+	shift;
 done
-shift $((OPTIND-1))
 
 ## sanity
-[ ! -e ${CONFIG} ] && { echo "config=${CONFIG} not found"; exit 1; }
+if [ ! -r "$CONFIG" ]; then error "config=${CONFIG} not found"; exit 1; fi
 
 ## load main variables COMMAND and CONFIG
 {
