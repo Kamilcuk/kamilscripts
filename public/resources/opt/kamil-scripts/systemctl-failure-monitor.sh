@@ -49,7 +49,7 @@ EOF
 fi
 
 log_myname=$(basename $0)
-log() { echo "$myname:" "$@"; }
+log() { echo "$log_myname:" "$@"; }
 
 # main #################################################
 
