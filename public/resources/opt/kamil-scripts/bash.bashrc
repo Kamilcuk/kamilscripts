@@ -23,8 +23,7 @@ export HISTSIZE=600000
 export HISTCONTROL="ignorespace:erasedups"
 alias l='ls -alF --color -h --group-directories-first'
 alias o='less'
-alias hist='history | grep -a '
-
+hist() { eval "history $( while [ $# -ne 0 ]; do echo -n " | grep \"\$$#\""; shift; done; )"; }
 
 # ------------- local -----------------
 
@@ -38,7 +37,7 @@ alias yaourtn='yaourt --noconfirm'
 
 export PATH="$PATH:/home/users/kamil/bin"
 export HISTFILE="$HOME/.bash_history"
-export HISTIGNORE="123:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear" # more
+export HISTIGNORE="123:234:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear" # more
 export VDPAU_DRIVER=r600
 export SDL_AUDIODRIVER=alsa
 
@@ -75,4 +74,8 @@ priority_cpu_high()   { nice -n 100      "$@"; }
 priority_io_low()     { ionice -c 3      "$@"; }
 priority_io_normal()  { ionice -c 0      "$@"; }
 priority_io_high()    { ionice -c 1      "$@"; }
+
+# parallel make
+export NUMCPUS=$(grep -c '^processor' /proc/cpuinfo)
+alias pmake='time nice make -j$NUMCPUS --load-average=$NUMCPUS'
 
