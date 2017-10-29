@@ -81,9 +81,7 @@ esac
 
 #gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
 gitdir="$(dirname $(dirname $(readlink -f "$0")))"
-cd $gitdir
-uniondir=./pkg-archlinux/src/
-./pkg-archlinux/rsync_all_pkg_resources.sh >/dev/null
+uniondir=../resources/
 echo
 
 

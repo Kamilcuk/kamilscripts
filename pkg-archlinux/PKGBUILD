@@ -14,7 +14,7 @@ url="www.dyzio.pl"
 license=('GPL')
 groups=()
 depends=( "bash>=4" "run-parts" )
-makedepends=( "rsync" )
+makedepends=()
 checkdepends=()
 optdepends=()
 provides=()
@@ -29,32 +29,10 @@ noextract=()
 md5sums=()
 validpgpkeys=()
 
-build() {
-	../rsync_all_pkg_resources.sh
-}	
-
+prepare() {
+	cp -a ../../resources/* $srcdir
+}
 package() {
-	# all files from srcdir with -g root -o root, dirs with mode 0755
-	# executable files with mode 0755, non-executable files - 0644
-
-	while read path; do
-		opts=" -g root -o root "
-		if   [ -d "$path" ]; then
-			echo "Creating directory    $path"
-			install $opts -m 0755 -d $pkgdir/$path
-		elif [ -x "$path" ]; then
-			echo "Installing executable $path"
-			install $opts -m 0755 $srcdir/$path $pkgdir/$path
-		elif [ -L "$path" ]; then
-			echo "Installing symlink    $path"
-			cp -a $srcdir/$path $pkgdir/$path
-		elif [ -s "$path" ] && [ "$(basename $path)" != ".gitignore" ]; then
-			# install a file, but only if it's not .gitignore
-			# using empty .gitignore to mark empty directories
-			echo "Installing file       $path"
-			install $opts -m 0644 $srcdir/$path $pkgdir/$path
-		else
-			echo "No install for        $path !!!"
-		fi
-	done <<< "$(cd $srcdir && find .)"
+	cp -a $srcdir/* $pkgdir
+	chown -R root:root $pkgdir
 }
