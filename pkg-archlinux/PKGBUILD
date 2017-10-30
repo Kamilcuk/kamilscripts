@@ -1,17 +1,17 @@
 ####
 # Maintainer: Kamil Cukrowski <kamilcukrowski@gmail.com>
 
-pkgbase=kamil-scripts
+pkgbase=
 pkgname=kamil-scripts
-pkgver=0.3.1
+pkgver=0.3.1.r1.g7ce2cbe
 pkgrel=1
 epoch=
-pkgdesc=""
-arch=( "any" )
-url="https://github.com/Kamilcuk/kamil-scripts"
-license=('GPL')
+pkgdesc='Kamil Cukrowski kamil-scripts private public scripts'
+arch=('any')
+url="https://github.com/Kamilcuk/$pkgname"
+license=('MIT' 'custom:Beerware')
 groups=()
-depends=( "bash>=4" "run-parts" )
+depends=('run-parts')
 makedepends=()
 checkdepends=()
 optdepends=()
@@ -20,7 +20,7 @@ conflicts=()
 replaces=()
 backup=( etc/bash_completion.d/kamil-scripts.sh etc/rc-local/01-example-script )
 options=()
-install=$pkgname.install
+install="$pkgname.install"
 changelog=
 source=( "${pkgname}::git+${url}.git" )
 noextract=()
