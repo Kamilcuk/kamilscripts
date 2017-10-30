@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ------------------- GLOBAL ----------------------
-[ -d /etc/bash_completion.d ] && . /etc/bash_completion.d/*
+#[ -d /etc/bash_completion.d ] && . /etc/bash_completion.d/*
 
 # colors
 _RED="$(tput setaf 1 2>/dev/null)"
@@ -56,7 +56,6 @@ mesg y
 
 alias ls='ls --color -F'
 alias ping='ping -4'
-
 
 qqhist() {
 	history | grep -a "$*"
