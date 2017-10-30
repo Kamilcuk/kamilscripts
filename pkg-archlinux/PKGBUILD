@@ -3,7 +3,7 @@
 
 pkgbase=kamil-scripts
 pkgname=kamil-scripts
-pkgver=0.2.4.r9.gba435b6
+pkgver=0.3.1
 pkgrel=1
 epoch=
 pkgdesc=""
@@ -32,6 +32,6 @@ pkgver() {
 	git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
 }
 package() {
-	cp -a "$pkgname"/* "$pkgdir"
+	cp -a "$pkgname"/resources/* "$pkgdir"
 	chown -R root:root "$pkgdir"
 }
