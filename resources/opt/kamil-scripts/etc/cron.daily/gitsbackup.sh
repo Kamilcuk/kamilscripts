@@ -1,1 +1,0 @@
-/opt/kamil-scripts/gitsbackup.sh

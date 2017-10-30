@@ -1,21 +1,23 @@
-# This is a default template for a post-install scriptlet.
-# Uncomment only required functions and remove any functions
-# you don't need (and this header).
+#!/bin/bash
+set -euo pipefail
 
+# Private functions ###########################
 
-log() { echo "kamil-scripts: ""$@" >&2; }
+msg() { echo "kamil-scripts: ""$@" >&2; }
 check_changed() {
 	if ! hash paccheck; then
-		log "paccheck utility not found. please install pacutils"
+		msg "paccheck utility not found. please install pacutils"
 	fi
 	if ! paccheck --md5sum --quiet kamil-scripts ; then
-		log "Changed files found. Updating this package will overwrite these files."
-		log "You can remove files to change this to warning."
-		log "killall pacman"
+		msg "Changed files found. Updating this package will overwrite these files."
+		msg "You can remove files to change this to warning."
+		msg "killall pacman"
 		killall pacman
 		exit 1
 	fi
 }
+
+# Public functions #############################
 
 ## arg 1:  the new package version
 pre_install() {
@@ -39,8 +41,7 @@ pre_upgrade() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 post_upgrade() {
-	log " -> Now you you can do CTRL+C twice to omit regenerating linux initrd"
-	sleep 0.5
+	:
 	# do something here
 }
 

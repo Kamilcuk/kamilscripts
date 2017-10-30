@@ -2,7 +2,7 @@
 Description=Kamil Cukrowski Systemctl Failure Monitor for %i
 
 [Service]
-ExecStart=/opt/kamil-scripts/systemctl-failure-monitor.sh %i
+ExecStart=/usr/lib/kamil-scripts/systemctl-failure-monitor.sh %i
 
 [Install]
 WantedBy=multi-user.target
