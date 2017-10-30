@@ -1,16 +1,14 @@
 ####
-# Organization: netemera.com
 # Maintainer: Kamil Cukrowski <kamilcukrowski@gmail.com>
-# cross-build with: CARCH="armv7h" makepkg  --nodeps --clean -f
 
 pkgbase=kamil-scripts
 pkgname=kamil-scripts
-pkgver="$(git describe --tags $(git rev-list --tags --max-count=1))"
-pkgrel="1"
+pkgver=0.2.4.r9.gba435b6
+pkgrel=1
 epoch=
 pkgdesc=""
 arch=( "any" )
-url="www.dyzio.pl"
+url="https://github.com/Kamilcuk/kamil-scripts"
 license=('GPL')
 groups=()
 depends=( "bash>=4" "run-parts" )
@@ -20,19 +18,20 @@ optdepends=()
 provides=()
 conflicts=()
 replaces=()
-backup=()
+backup=( etc/bash_completion.d/kamil-scripts.sh etc/rc-local/01-example-script )
 options=()
 install=$pkgname.install
 changelog=
-source=()
+source=( "${pkgname}::git+${url}.git" )
 noextract=()
-md5sums=()
+md5sums=('SKIP')
 validpgpkeys=()
 
-prepare() {
-	cp -a ../../resources/* $srcdir
+pkgver() {
+	cd "$pkgname"
+	git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
 }
 package() {
-	cp -a $srcdir/* $pkgdir
-	chown -R root:root $pkgdir
+	cp -a "$pkgname"/* "$pkgdir"
+	chown -R root:root "$pkgdir"
 }
