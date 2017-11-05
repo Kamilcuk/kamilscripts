@@ -2,22 +2,30 @@
 # file: /usr/lib/systemd/system-sleep/01-example-script
 # doc:  https://www.freedesktop.org/software/systemd/man/systemd-suspend.service.html
 case "$1" in
-"pre")
+'pre')
 	;;
-"post")
+'post')
+	;;
+esac
+case "$2" in
+'suspend')
+	;;
+'hibernate')
+	;;
+'hybrid-sleep')
 	;;
 esac
 case "$1 $2" in
-"pre suspend")
+'pre suspend')
 	;;
-"post suspend")
+'post suspend')
 	;;
-"pre hibernate")
+'pre hibernate')
 	;;
-"post hibernate")
+'post hibernate')
 	;;
-"pre hybrid-sleep")
+'pre hybrid-sleep')
 	;;
-"post hybrid-sleep")
+'post hybrid-sleep')
 	;;
 esac

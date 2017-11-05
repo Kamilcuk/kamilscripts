@@ -3,7 +3,7 @@
 
 pkgbase=
 pkgname=kamil-scripts
-pkgver=0.3.1.r1.g7ce2cbe
+pkgver=0.3.1.r3.ge43fd42
 pkgrel=1
 epoch=
 pkgdesc='Kamil Cukrowski kamil-scripts private public scripts'
@@ -11,7 +11,7 @@ arch=('any')
 url="https://github.com/Kamilcuk/$pkgname"
 license=('MIT' 'custom:Beerware')
 groups=()
-depends=('run-parts')
+depends=()
 makedepends=()
 checkdepends=()
 optdepends=()
