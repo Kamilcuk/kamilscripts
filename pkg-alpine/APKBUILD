@@ -1,0 +1,36 @@
+# Contributor: Kamil Cukrowski <kamilcukrowski@gmail.com>
+# Maintainer: Kamil Cukrowski <kamilcukrowski@gmail.com>
+pkgname=kamil-scritps
+pkgver=$(git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g' | cut -d'.' -f1-3)
+pkgrel=0
+pkgdesc="Kamil Cukrowski custom package files"
+url="https://github.com/Kamilcuk/kamil-scripts"
+arch="noarch"
+license="BSD"
+depends=""
+makedepends="zip"
+install=""
+subpackages=""
+source="https://github.com/Kamilcuk/kamil-scripts/archive/master.zip"
+builddir="$srcdir/"
+sha512sums="f02a97b143c104618394ea3939cb68b6463a404075f858e148d66dd1c42893efb2c96afb8fc0f409529f931af0c37917de83231fd29b5830b2e1d8bc020ef7bb  master.zip"
+
+prepare() {
+        default_prepare
+}
+
+build() {
+	:;
+}
+
+check() {
+	:;
+}
+
+package() {
+	mkdir -p "$pkgdir"
+	cp -a "$srcdir/kamil-scripts-master/"resources/* "$pkgdir"
+	find "$pkgdir" -type d -exec chmod o-w {} \;
+	chown -R root:root "$pkgdir"
+}
+
