@@ -1,0 +1,8 @@
+[Unit]
+Description = Run gitsbackup.sh
+ConfitionPathExists=/etc/gitsbackup.conf
+
+[Service]
+Type = oneshot
+EnvironmentFile=/etc/gitsbackup.conf
+ExecStart = /usr/bin/gitsbackup.sh $args

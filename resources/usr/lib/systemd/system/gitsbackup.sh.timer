@@ -1,0 +1,7 @@
+[Unit]
+Description = Daily gitsbackup.sh run
+
+[Timer]
+OnCalendar=Daily
+AccuracySec=1d
+Persistent=true
