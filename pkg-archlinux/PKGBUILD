@@ -3,7 +3,7 @@
 
 pkgbase=
 pkgname=kamil-scripts
-pkgver=0.3.1.r3.ge43fd42
+pkgver=0.3.2
 pkgrel=1
 epoch=
 pkgdesc='Kamil Cukrowski kamil-scripts private public scripts'
