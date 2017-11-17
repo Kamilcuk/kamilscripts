@@ -1,0 +1,10 @@
+[Unit]
+Description = Daily backupbashhistory.sh run
+
+[Timer]
+OnCalendar = Daily
+AccuracySec = 1d
+Persistent = true
+
+[Install]
+WantedBy = multi-user.target
