@@ -1,0 +1,12 @@
+[Unit]
+Description=Run qqrdiffbackup.sh@%I
+ConditionPathExists=/etc/qqrdiffbackup.sh-%I.conf
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '. "/etc/qqrdiffbackup.sh-%I.conf"; qqrdiffbackup.sh "$${args[@]}"'
+CPUSchedulingPolicy=batch
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+

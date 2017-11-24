@@ -1,9 +1,9 @@
 [Unit]
-Description = Run backupbashhistory.sh
-ConditionPathExists = /etc/backupbashhistory.sh.conf
+Description=Run backupbashhistory.sh
+ConditionPathExists=/etc/backupbashhistory.sh.conf
 
 [Service]
-Type = oneshot
-ExecStart = /usr/bin/backupbashhistory.sh $args
-EnvironmentFile = /etc/backupbashhistory.sh.conf
+Type=oneshot
+EnvironmentFile=/etc/backupbashhistory.sh.conf
+ExecStart=/usr/bin/backupbashhistory.sh $args
 

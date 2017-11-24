@@ -1,0 +1,15 @@
+[Unit]
+Description=Pacman mirrorlist update
+Requires=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/pacman.d/mirrorlist
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/reflector \
+	--protocol http --protocol https \
+	--latest 30 --number 20 --sort rate \
+	--save /etc/pacman.d/mirrorlist
+
+[Install]
+RequiredBy=multi-user.target

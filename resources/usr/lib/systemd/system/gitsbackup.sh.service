@@ -1,8 +1,15 @@
 [Unit]
-Description = Run gitsbackup.sh
-ConditionPathExists = /etc/gitsbackup.sh.conf
+Description=Run gitsbackup.sh
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/gitsbackup.sh.conf
 
 [Service]
-Type = oneshot
-EnvironmentFile = /etc/gitsbackup.sh.conf
-ExecStart = /usr/bin/gitsbackup.sh $args
+Type=oneshot
+EnvironmentFile=/etc/gitsbackup.sh.conf
+ExecStart=/usr/bin/gitsbackup.sh $args
+CPUSchedulingPolicy=batch
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+

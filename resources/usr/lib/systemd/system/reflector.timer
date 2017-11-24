@@ -1,0 +1,10 @@
+[Unit]
+Description=Run reflector monthly
+
+[Timer]
+OnCalendar=monthly
+RandomizedDelaySec=12h
+Persistent=true
+
+[Install]
+WantedBy=multi-user.target

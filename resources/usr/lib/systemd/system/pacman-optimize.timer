@@ -1,8 +1,8 @@
 [Unit]
-Description=Daily gitsbackup.sh run
+Description=Run pacman-optimize monthly
 
 [Timer]
-OnCalendar=Daily
+OnCalendar=monthly
 AccuracySec=1d
 Persistent=true
 

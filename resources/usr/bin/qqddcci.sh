@@ -1,28 +1,67 @@
-#!/bin/bash -e
+#!/bin/bash
 # file: qqddcci.sh
 # licensed under MIT+Beerware Kamil Cukrowski 
 #
 # based on http://www.chrisbot.com/uploads/1/3/8/4/13842915/ddcciv1r1.pdf
 # based on VESA(TM) DDC/CI(TM) Standard
 ########################### variables config #################################
+set -euo pipefail
 
 DEBUG=${DEBUG:-false}
 VERBOSE=${VERBOSE:-false}
-CHKSUM=${CKSUM:-true}
-$DEBUG && set -x
+QUIET=${QUIET:-false}
 
-############################ functions ###########################
+# Functions ######################################################################
 
+usage() {
+        local n=$(basename $0)
+        cat <<EOF
+Usage: 
+	$n [options] -r VCP
+	$n [options] -r VCP -w Value
+	$n [options] -C
+	$n [options] -t STRING
 
-checkNotEmpty() {
+This shell script uses i2c-tools to control monitor via ddc/ci interface.
+
+Modes options:
+   -r VCP                 read VCP value
+   -r VCP -w VALUE        write VALUE to VCP
+   -C                     query capabilities string
+   -t STRING              translate value to hex and description of VCP register number
+Other options:
+   -i I2CBUS              an integer or an I2C bus name (default: 5)
+   -d                     turn debug messages on
+   -q                     be silent
+   -h                     print this text and quit
+
+Examples:
+   $n -i 5 -r 0x10
+   $n -i 5 -r 0x8d -w 0x00
+   $n -i 5 -t 0x10 -t 20
+   $n -i 5 -t "Select Color Preset"
+
+Version 0.0.2
+Written by Kamil Cukrowski (C) 2017. 
+Licensed jointly under MIT License and Beerware License.
+EOF
+}
+
+debug() { if $DEBUG; then echo "DEBUG: ${FUNCNAME[1]}():" "$@"; fi; }
+info()  { if ! $QUIET; then echo "$@"; fi; }
+warn()  { echo "WARN : ${FUNCNAME[1]}():" "$@" >&2; }
+error() { echo "ERROR: ${FUNCNAME[1]}():" "$@" >&2; }
+fatal() { echo "FATAL: ${FUNCNAME[1]}():" "$@" >&2; exit 1; }
+
+checkVarNotEmpty() {
 	if [ -z "$(eval echo \${$1:-})" ]; then
-		perror "Variable $1 is empty!"
+		error "Variable $1 is empty!"
 		return 1
 	fi
 }
-checkNumber() { 
+checkVarIsNumber() { 
 	if [ "$(eval echo \${$1:-})" -ne "$(eval echo \${$1:-})" ]; then
-		perror "Variable $1=$(eval echo \$$1) is not a number!"
+		error "Variable $1=$(eval echo \$$1) is not a number!"
 		return 1;
 	fi
 }
@@ -38,8 +77,6 @@ testCalcCrc() {
 	echo "0x35 =? $(calcCrc $(printf "0x%02x" $((0x37<<1))) 0x51 0x84 0x03 0x8d 0x00 0x00)"
 	echo "0x34 =? $(calcCrc $(printf "0x%02x" $((0x37<<1))) 0x51 0x84 0x03 0x8d 0x00 0x01)"
 }
-
-perror() { echo "${FUNCNAME[1]}: ERROR: $@" >&2; }
 
 ################# ddcci
 
@@ -67,25 +104,26 @@ _ddcci_read() {
 	local str len
 	# remove leading line | convert to stream of bytes | upper to lower | remove new lines
 	str=$(
-		i2cdump -y $I2CBUS $ddcci_dest_addr i | \
-	 		tail -n +2 | cut -d' ' -f2-17 | tr '\n' ' ' | \
-			sed 's/\([[:xdigit:]][[:xdigit:]]\)/0x\1/g' | tr '[:upper:]' '[:lower:]'
-	)
+		i2cdump -y $I2CBUS $ddcci_dest_addr i \
+		| tail -n +2 | cut -d' ' -f2-17 | tr '\n' ' ' \
+		| tr ' ' $'\t' |  tr '[:upper:]' '[:lower:]' \
+		| sed 's/\([[:xdigit:]][[:xdigit:]]\)/0x\1/g'
+	) 
 	# extract length from the message and strip the message to the length
-	len=$(( ( $(echo "$str" | cut -d' ' -f2) & (~0x80) ) + 3 ))
-	$VERBOSE && echo "received msg with length=$(echo "$str" | cut -d' ' -f2)|$(( $(echo "$str" | cut -d' ' -f2) & (~0x80) ))|$len" >&2
-	str=$(echo "$str" | cut -d' ' -f-$len)
+	len=$(( ( $(echo "$str" | cut -f2) & (~0x80) ) + 3 ))
+	debug "received msg with length=$(echo "$str" | cut -f2)|$(( $(echo "$str" | cut -f2) & (~0x80) ))|$len" >&2
+	str=$(echo "$str" | cut -f-$len)
 	# some sanity checks - checksum and read address
-	if [ $(echo ${str} | cut -d' ' -f1) != $ddcci_read_src_addr ]; then
-		perror "$(echo ${str} | cut -d' ' -f1) != $ddcci_read_src_addr - ddcci_read_src_addr"
+	if [ $(echo "$str" | cut -f1) != $ddcci_read_src_addr ]; then
+		error "$(echo "$str" | cut -f1) != $ddcci_read_src_addr - ddcci_read_src_addr"
 		return 1
 	fi
-	if $CHKSUM; then
+	if ${DDCCI_CHKSUM:-true}; then
 		local calcrc msgcrc
-		calcrc=$(calcCrc $ddcci_virtual_host_address $(echo "$str" | cut -d' ' -f-$((len-1)) ) )
-		msgcrc=$(echo ${str} | cut -d' ' -f$((len)))
+		calcrc=$(calcCrc $ddcci_virtual_host_address $(echo "$str" | cut -f-$((len-1)) ) )
+		msgcrc=$(echo "$str" | cut -f$((len)))
 		if [ $msgcrc != $calcrc ]; then
-			perror "$msgcrc != $calcrc - checksum error"
+			error "$msgcrc != $calcrc - checksum error"
 			return 1
 		fi
 	fi
@@ -100,23 +138,32 @@ ddcci_set_vcp() {
 	_ddcci_write 0x03 $(printf "0x%02x 0x%02x 0x%02x" $1 $(( ($2&0xff00)>>8 )) $(( $2&0x00ff )) )
 	sleep 0.05
 }
+
 ddcci_get_vcp() {
 	local str
-	_ddcci_write 0x01 $(printf "0x%02x" $1)
+	_ddcci_write 0x01 $(printf "0x%02x" "$1")
 	sleep 0.05
 	str=( $(_ddcci_read) )
 	sleep 0.05
 	if [ ${str[2]} != 0x02 ]; then
-		perror "${str[2]} != 0x02 == VCP Feature reply op code"
+		error "${str[2]} != 0x02 == VCP Feature reply op code"
 		return 1
 	fi
-	# results returned in "global" variable ddcii_resp
-	ddcci_res["resultcode"]=$(case $(( ${str[3]} )) in 0) echo "NoError" ;; 1) echo "Unsupported VCP Code" ;; esac)
+	# results returned in "global" variable ddcci_resp
+	local -g ddcci_res
+	ddcci_res["resultcode"]=$(case $(( ${str[3]} )) in
+		0) echo "NoError" ;; 
+		1) echo "Unsupported VCP Code" ;; 
+	esac)
 	ddcci_res["vcp"]=${str[4]}
-	ddcci_res["vcp_type"]=$( case $(( ${str[5]} )) in 0) echo "Set parameter" ;; 1) echo "Momentary" ;; esac)
+	ddcci_res["vcp_type"]=$( case $(( ${str[5]} )) in 
+		0) echo "Set parameter" ;; 
+		1) echo "Momentary" ;; 
+	esac)
 	ddcci_res["max"]=$(( ${str[6]}<<8 | ${str[7]} ))
 	ddcci_res["present"]=$(( ${str[8]}<<8 | ${str[9]} ))
 }
+
 ddcci_get_timing() {
 	local str
 	_ddcci_write 0x07
@@ -125,10 +172,12 @@ ddcci_get_timing() {
 	echo "${str[@]}"
 	sleep 0.05
 }
+
 ddcci_save_current_settings() {
 	_ddcci_write 0x0C
 	sleep 0.2
 }
+
 ddcci_capabilities() { 
 	local str bs
 	bs=$((20-6))
@@ -136,7 +185,7 @@ ddcci_capabilities() {
 		_ddcci_write 0xf3 $(printf "0x%02x 0x%02x" $((i>>8)) $((i&0xff)) )
 		sleep 0.05
 		# theres something wrong with i2c or i2cdump - i get only 20 valid bytes max
-		str=$( CHKSUM=false _ddcci_read | cut -d' ' -f6-$((5+bs)))
+		str=$( DDCCI_CHKSUM=false _ddcci_read | cut -f6-$((5+bs)))
 		echo -n "$str" | xxd -r | sed 's/)/)\n/g'
 		if [ $(echo "$str" | wc -w) -ne $bs ]; then
 			break;
@@ -145,189 +194,204 @@ ddcci_capabilities() {
 	done
 	echo
 }
+
+ddcci_translate_arr="
+	0x00	Degauss
+	0x01	Degauss
+	0x02	Secondary Degauss
+	0x04	Reset Factory Defaults
+	0x05	SAM: Reset Brightness and Contrast
+	0x06	Reset Factory Geometry
+	0x08	Reset Factory Default Color
+	0x0a	Reset Factory Default Position
+	0x0c	Reset Factory Default Size
+	0x0e	SAM: Image Lock Coarse
+	0x10	Brightness
+	0x12	Contrast
+	0x14	Select Color Preset
+	0x16	Red Video Gain
+	0x18	Green Video Gain
+	0x1a	Blue Video Gain
+	0x1c	Focus
+	0x1e	SAM: Auto Size Center
+	0x20	Horizontal Position
+	0x22	Horizontal Size
+	0x24	Horizontal Pincushion
+	0x26	Horizontal Pincushion Balance
+	0x28	Horizontal Misconvergence
+	0x2a	Horizontal Linearity
+	0x2c	Horizontal Linearity Balance
+	0x30	Vertical Position
+	0x32	Vertical Size
+	0x34	Vertical Pincushion
+	0x36	Vertical Pincushion Balance
+	0x38	Vertical Misconvergence
+	0x3a	Vertical Linearity
+	0x3c	Vertical Linearity Balance
+	0x3e	SAM: Image Lock Fine
+	0x40	Parallelogram Distortion
+	0x42	Trapezoidal Distortion
+	0x44	Tilt (Rotation)
+	0x46	Top Corner Distortion Control
+	0x48	Top Corner Distortion Balance
+	0x4a	Bottom Corner Distortion Control
+	0x4c	Bottom Corner Distortion Balance
+	0x50	Hue
+	0x52	Saturation
+	0x54	Color Curve Adjust
+	0x56	Horizontal Moire
+	0x58	Vertical Moire
+	0x5a	Auto Size Center Enable/Disable
+	0x5c	Landing Adjust
+	0x5e	Input Level Select
+	0x60	Input Source Select
+	0x62	Audio Speaker Volume Adjust
+	0x64	Audio Microphone Volume Adjust
+	0x66	On Screen Display Enable/Disable
+	0x68	Language Select
+	0x6c	Red Video Black Level
+	0x6e	Green Video Black Level
+	0x70	Blue Video Black Level
+	0x8d	Mute
+	0xa2	Auto Size Center
+	0xa4	Polarity Horizontal Synchronization
+	0xa6	Polarity Vertical Synchronization
+	0xa8	Synchronization Type
+	0xaa	Screen Orientation
+	0xac	Horizontal Frequency
+	0xae	Vertical Frequency
+	0xb0	Settings
+	0xb6	b6 r/o
+	0xc6	c6 r/o
+	0xc8	c8 r/o
+	0xc9	c9 r/o
+	0xca	On Screen Display
+	0xcc	SAM: On Screen Display Language
+	0xd4	Stereo Mode
+	0xd6	SAM: DPMS control (1 - on/4 - stby)
+	0xdc	SAM: MagicBright (1 - text/2 - internet/3 - entertain/4 - custom)
+	0xdf	VCP Version
+	0xe0	SAM: Color preset (0 - normal/1 - warm/2 - cool)
+	0xe1	SAM: Power control (0 - off/1 - on)
+	0xe2	e2 r/w
+	0xed	SAM: Red Video Black Level
+	0xee	SAM: Green Video Black Level
+	0xef	SAM: Blue Video Black Level
+	0xf5	SAM: VCP Enable
+"
+
 ddcci_translate() {
-	case "$(printf "0x%02x" "$1")" in
-	0x00) echo "Degauss"; ;;
-	0x01) echo "Degauss"; ;;
-	0x02) echo "Secondary Degauss"; ;;
-	0x04) echo "Reset Factory Defaults"; ;;
-	0x05) echo "SAM: Reset Brightness and Contrast"; ;;
-	0x06) echo "Reset Factory Geometry"; ;;
-	0x08) echo "Reset Factory Default Color"; ;;
-	0x0a) echo "Reset Factory Default Position"; ;;
-	0x0c) echo "Reset Factory Default Size"; ;;
-	0x0e) echo "SAM: Image Lock Coarse"; ;;
-	0x10) echo "Brightness"; ;;
-	0x12) echo "Contrast"; ;;
-	0x14) echo "Select Color Preset"; ;;
-	0x16) echo "Red Video Gain"; ;;
-	0x18) echo "Green Video Gain"; ;;
-	0x1a) echo "Blue Video Gain"; ;;
-	0x1c) echo "Focus"; ;;
-	0x1e) echo "SAM: Auto Size Center"; ;;
-	0x20) echo "Horizontal Position"; ;;
-	0x22) echo "Horizontal Size"; ;;
-	0x24) echo "Horizontal Pincushion"; ;;
-	0x26) echo "Horizontal Pincushion Balance"; ;;
-	0x28) echo "Horizontal Misconvergence"; ;;
-	0x2a) echo "Horizontal Linearity"; ;;
-	0x2c) echo "Horizontal Linearity Balance"; ;;
-	0x30) echo "Vertical Position"; ;;
-	0x32) echo "Vertical Size"; ;;
-	0x34) echo "Vertical Pincushion"; ;;
-	0x36) echo "Vertical Pincushion Balance"; ;;
-	0x38) echo "Vertical Misconvergence"; ;;
-	0x3a) echo "Vertical Linearity"; ;;
-	0x3c) echo "Vertical Linearity Balance"; ;;
-	0x3e) echo "SAM: Image Lock Fine"; ;;
-	0x40) echo "Parallelogram Distortion"; ;;
-	0x42) echo "Trapezoidal Distortion"; ;;
-	0x44) echo "Tilt (Rotation)"; ;;
-	0x46) echo "Top Corner Distortion Control"; ;;
-	0x48) echo "Top Corner Distortion Balance"; ;;
-	0x4a) echo "Bottom Corner Distortion Control"; ;;
-	0x4c) echo "Bottom Corner Distortion Balance"; ;;
-	0x50) echo "Hue"; ;;
-	0x52) echo "Saturation"; ;;
-	0x54) echo "Color Curve Adjust"; ;;
-	0x56) echo "Horizontal Moire"; ;;
-	0x58) echo "Vertical Moire"; ;;
-	0x5a) echo "Auto Size Center Enable/Disable"; ;;
-	0x5c) echo "Landing Adjust"; ;;
-	0x5e) echo "Input Level Select"; ;;
-	0x60) echo "Input Source Select"; ;;
-	0x62) echo "Audio Speaker Volume Adjust"; ;;
-	0x64) echo "Audio Microphone Volume Adjust"; ;;
-	0x66) echo "On Screen Display Enable/Disable"; ;;
-	0x68) echo "Language Select"; ;;
-	0x6c) echo "Red Video Black Level"; ;;
-	0x6e) echo "Green Video Black Level"; ;;
-	0x70) echo "Blue Video Black Level"; ;;
-	0x8d) echo "Mute"; ;;
-	0xa2) echo "Auto Size Center"; ;;
-	0xa4) echo "Polarity Horizontal Synchronization"; ;;
-	0xa6) echo "Polarity Vertical Synchronization"; ;;
-	0xa8) echo "Synchronization Type"; ;;
-	0xaa) echo "Screen Orientation"; ;;
-	0xac) echo "Horizontal Frequency"; ;;
-	0xae) echo "Vertical Frequency"; ;;
-	0xb0) echo "Settings"; ;;
-	0xb6) echo "b6 r/o"; ;;
-	0xc6) echo "c6 r/o"; ;;
-	0xc8) echo "c8 r/o"; ;;
-	0xc9) echo "c9 r/o"; ;;
-	0xca) echo "On Screen Display"; ;;
-	0xcc) echo "SAM: On Screen Display Language"; ;;
-	0xd4) echo "Stereo Mode"; ;;
-	0xd6) echo "SAM: DPMS control (1 - on/4 - stby)"; ;;
-	0xdc) echo "SAM: MagicBright (1 - text/2 - internet/3 - entertain/4 - custom)"; ;;
-	0xdf) echo "VCP Version"; ;;
-	0xe0) echo "SAM: Color preset (0 - normal/1 - warm/2 - cool)"; ;;
-	0xe1) echo "SAM: Power control (0 - off/1 - on)"; ;;
-	0xe2) echo "e2 r/w"; ;;
-	0xed) echo "SAM: Red Video Black Level"; ;;
-	0xee) echo "SAM: Green Video Black Level"; ;;
-	0xef) echo "SAM: Blue Video Black Level"; ;;
-	0xf5) echo "SAM: VCP Enable"; ;;
-	*)    echo "Unknown($1)"; ;;
-esac
+	local tmp=$1
+	case "$tmp" in
+	[0-9]*)
+		tmp=$(printf "0x%02x" "$1")
+		tmp=$(cut -f2 <<<"$ddcci_translate_arr" | grep -n     "$tmp" | cut -d':' -f1 || true)
+		;;
+	*)
+		tmp=$(cut -f3- <<<"$ddcci_translate_arr" | grep -n -x "$tmp" | cut -d':' -f1 || true)
+		;;
+	esac
+	if [ -z "$tmp" ]; then
+		warn "String \"$1\" is not found in database"
+		return 1;
+	fi
+	if [ $(echo "$tmp" | wc -l) -gt 2 ]; then
+		warn "String \"$1\" returned multiple answers!"
+		return 1
+	fi
+	for tmp in $tmp; do
+		cat -n <<<"$ddcci_translate_arr" | grep "^\ *${tmp}"$'\t' | cut -f3-
+	done
 }
+
+ddcci_translate_to_desc() {
+	local tmp
+	tmp=$(ddcci_translate "$@")
+	read _ tmp <<<"$tmp"
+	echo "$tmp"
+}
+
+ddcci_translate_to_hex() {
+	local tmp
+	tmp=$(ddcci_translate "$@")
+	read tmp _ <<<"$tmp"
+	echo "$tmp"
+}
+
 ############## eof ddcci
 
 ################################## main ############################
 
-trap '[ $? != 0 ] && perror "$0:$LINENO: Last command returned $?. Exiting! Dumping stack: ${FUNCNAME[@]}"' EXIT
+if $DEBUG; then
+	trap '[ $? != 0 ] && error "$0:$LINENO: Last command returned $?. Exiting! Dumping stack: ${FUNCNAME[@]}"' EXIT
+fi
 
-usage() {
-        local n=$(basename $0)
-        cat <<EOF
-Usage: $n [-hvq] [-i I2CBUS] [-r VCP [-w value]] [-C]
-
-This shell script uses i2c-tools to control monitor via ddc/ci interface.
-
-   -i I2CBUS              an integer or an I2C bus name (default: 5)
-   -V                     verbose mode
-   -d                     debug mode (set -x)
-   -r VCP                 query vcp values
-   -w VAL                 value to write to CTRL
-   -q                     be silent
-   -h                     print this text and quit
-   -v                     same as -h
-   -C                     query capabilities
-
-Examples:
-   $n -i 5 -r 0x01
-   $n -i 5 -r 0x8d -w 0x00
-
-Version 0.0.1
-Written by Kamil Cukrowski (c) 2017
-Under MIT+Beerware License
-EOF
-}
+# Parse Input
 
 [ $# -eq 0 ] && { usage; exit 1; } || true
 
 I2CBUS=5 # global variable, referenced by ddcci module
-VAl=
-VCP=
-silent=false
-capabilities=false
-donesmth=false
-while getopts ":i:Vdr:w:qvhC" opt; do
-  case $opt in
-    i) I2CBUS=$OPTARG; ;;
-    V) VERBOSE=true; ;;
-    d) DEBUG=true; set -x; ;; 
-    r) VCP=$OPTARG; ;;
-    w) VAL=$OPTARG; ;;
-    q) silent=true; ;;
-    v|h) usage; exit 1; ;;
-    C) capabilities=true; ;;
-    \?) echo "Invalid option: -$OPTARG" >&2; usage; exit 1; ;;
-    :) echo "Option -$OPTARG requires an argument." >&2; usage; exit 1;  ;;
-  esac
+VAL="" VCP="" translate=() capabilities=false donesmth=false
+
+if ! ARGS=$(getopt -n "ddcci.sh" -o ":i:Vdr:w:qvhCt:" -- "$@"); then
+	usage; echo; fatal "Failed parsing options.";
+fi
+eval set -- $ARGS
+
+while true; do
+	case "$1" in
+    -i) I2CBUS=$2; shift; ;;
+    -d) DEBUG=true;  ;; 
+    -r) VCP=$2; shift; ;;
+    -w) VAL=$2; shift; ;;
+    -q) QUIET=true; ;;
+    -h) usage; exit 1; ;;
+    -C) capabilities=true; ;;
+	-t) translate+=( "$2" ); shift; ;;
+    --) shift; break ;;
+    *) break ;;
+  	esac
+  	shift;
 done
 
-if $VERBOSE; then
+if $DEBUG; then
   i2cset() {
-    (set -x; command i2cset "$@")
+    echo + i2cset "$@" >&2
+    command i2cset "$@"
   }
   i2cdump() {
-    (set -x; command i2cdump "$@") | tee >(head -n5 >&2; echo >&2) | (sleep 0.2; cat)
+  	echo + i2cdump "$@" >&2
+  	command i2cdump "$@" | tee >(head -n5 >&2; echo >&2) | (sleep 0.2; cat)
   }
 fi
 
-checkNotEmpty I2CBUS
+checkVarNotEmpty I2CBUS
+
+# Main Work
+
 if [ -n "$VCP" ]; then
-	VCP=$(printf "%u" "$VCP")
+	VCP=$(ddcci_translate_to_hex "$VCP")
 	if [ -z "$VAL" ]; then
-		if ! $silent; then
-			echo "Reading $(ddcci_translate $VCP)"
-		fi
-		ddcci_get_vcp $VCP
+		info "Reading $(ddcci_translate_to_desc "$VCP")"
+		ddcci_get_vcp "$VCP"
 		declare -p ddcci_res | sed 's/^declare -A //'
 	else
 		VAL=$(printf "%u" "$VAL")
 		if [ "$VAL" -lt 0  -o "$VAL" -gt 4096 ]; then
-			perror "Value to write VAL=$VAL must be between <0,4096>"
+			error "Value to write VAL=$VAL must be between <0,4096>"
 			exit 1
 		fi
-		ddcci_set_vcp $VCP $VAL
-		if ! $silent; then
-			echo "Setting $(ddcci_translate $VCP)=$VAL"
-		fi
+		info "Setting $(ddcci_translate $VCP)=$VAL"
+		ddcci_set_vcp "$VCP" "$VAL"
 	fi
-	donesmth=true
-fi
-
-if $capabilities; then
+elif $capabilities; then
 	ddcci_capabilities
-	donesmth=true
-fi
-
-if ! $donesmth; then
-	perror "Nothing to do?"
-	usage
-	exit 1
+elif [ -n "${translate+x}" ]; then
+	info "Hex"$'\t'"Description"
+	for t in "${translate[@]}"; do
+		ddcci_translate "$t"
+	done
+else
+	usage; echo; fatal "Got nothing to do";
 fi
 

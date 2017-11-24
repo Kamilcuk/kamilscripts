@@ -35,26 +35,29 @@ esac
 tout=/tmp/$name.timer
 echo "Generating $tout ..."
 printf '[Unit]
-Description = %s
+Description=%s
 
 [Timer]
-OnCalendar = %s
-AccuracySec = 1d
-Persistent = true
+OnCalendar=%s
+AccuracySec=1d
+Persistent=true
 
 [Install]
-WantedBy = multi-user.target
+WantedBy=multi-user.target
 ' "$tdesc" "$toncalendar" > "$tout"
 
 sout=/tmp/$name.service
 echo "Generating $sout ..."
 printf '[Unit]
-Description = %s
+Description=%s
 '"$saddunit"'
 [Service]
-Type = oneshot
-ExecStart = %s '"$saddexecstart"'
+Type=oneshot
+ExecStart=%s '"$saddexecstart"'
 '"$saddservice"'
+
+[Install]
+WantedBy=multi-user.target
 ' "$sdesc" "$sexec" > "$sout"
 echo "DONE!"
 
