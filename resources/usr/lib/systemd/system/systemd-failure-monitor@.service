@@ -1,0 +1,10 @@
+[Unit]
+Description=Notify %i on systemd service failure
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemd-failure-monitor.sh %i
+
+[Install]
+WantedBy=multi-user.target
+
