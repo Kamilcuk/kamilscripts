@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Private functions ###########################
 
-msg() { echo "kamil-scripts: ""$@" >&2; }
+msg() { echo "kamil-scripts:" "$@" >&2; }
 check_changed() {
 	if ! hash paccheck; then
 		msg "paccheck utility not found. please install pacutils"

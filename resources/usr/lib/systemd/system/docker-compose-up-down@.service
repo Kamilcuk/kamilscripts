@@ -5,10 +5,12 @@ BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
 [Service]
-RemainAfterExit=true
+Type=simple
 WorkingDirectory=/opt/dockerapps/%i
+TimeoutStartSec=6000
 ExecStartPre=/usr/bin/docker-compose down
-ExecStart=/usr/bin/sh -c "/usr/bin/docker-compose pull && exec /usr/bin/docker-compose up"
+ExecStartPre=/usr/bin/docker-compose pull
+ExecStart=/usr/bin/docker-compose up
 ExecStop=/usr/bin/docker-compose down
 
 [Install]

@@ -5,7 +5,7 @@ BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
 [Service]
-RemainAfterExit=true
+Type=simple
 WorkingDirectory=/opt/dockerapps/%i
 ExecStart=/usr/bin/docker-compose start
 ExecStop=/usr/bin/docker-compose stop
