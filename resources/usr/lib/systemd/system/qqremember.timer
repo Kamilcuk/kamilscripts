@@ -1,8 +1,8 @@
 [Unit]
-Description=Run backupbashhistory.sh Daily
+Description=Run qqremember Daily
 
 [Timer]
-OnCalendar=Daily
+OnCalendar=*-*-* 06:00:00
 AccuracySec=1d
 Persistent=true
 

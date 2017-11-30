@@ -523,7 +523,7 @@ done
 				swietaRuchome "$startsec" "$stopsec";
 			fi
 		)
-		export -f parseEvent error debug cronDayCalcNext calcEventTimeDesc
+		export -f parseEvent error debug fatal cronDayCalcNext calcEventTimeDesc
 		if $PARALLEL; then
 			xargs -L1 -P10 bash -c 'parseEvent "$@"' -- "$startsec" "$stopsec"
 		else
@@ -542,6 +542,7 @@ done
 
 ## use command with "lines" as standart input
 /bin/bash $(if $DEBUG;then echo "-x";fi;) -c "$COMMAND" <<<"$lines"
+
 wait
 debug "SUCCESS!"
 

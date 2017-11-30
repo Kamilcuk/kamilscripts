@@ -18,13 +18,13 @@ fi
 d="Run $name";       read -e -p "Service description string? default: '$d' "  ssdesc      ; : ${sdesc:=$d}
 d="/usr/bin/$name";  read -e -p "Service ExecStart? default: '$d' "           sexec       ; : ${sexec:=$d}
 d="Daily";           read -e -p "OnCalendar timer? default: '$d' "            toncalendar ; : ${toncalendar:=$d}
-d="$toncalendar $name run"; read -e -p "Timer description string? default: '$d' " tdesc   ; : ${tdesc:=$d}
+d="Run $name $toncalendar"; read -e -p "Timer description string? default: '$d' " tdesc   ; : ${tdesc:=$d}
 
 read -e -p "Add args from config file /etc/$name.conf to service? [y*|*] default: 'no' " ans ; : ${ans:=no}
 case $ans in 
-	[Yy]*) echo "Adding $condpath and $envpath..."; 
+	[Yy]*) echo "Adding ConditionPathExists and EnvironmentFile..."; 
 		saddunit+="ConditionPathExists = /etc/$name.conf"$'\n'; 
-		saddexecstart+="\$args"
+		sexec+=" \$args"
 		saddservice+="EnvironmentFile = /etc/$name.conf"$'\n';
 		;;
 	*) ;;
@@ -34,30 +34,32 @@ esac
 
 tout=/tmp/$name.timer
 echo "Generating $tout ..."
-printf '[Unit]
-Description=%s
+cat > "$tout" <<EOF
+[Unit]
+Description=$tdesc
 
 [Timer]
-OnCalendar=%s
+OnCalendar=$toncalendar
 AccuracySec=1d
 Persistent=true
 
 [Install]
 WantedBy=multi-user.target
-' "$tdesc" "$toncalendar" > "$tout"
+EOF
 
 sout=/tmp/$name.service
 echo "Generating $sout ..."
-printf '[Unit]
-Description=%s
-'"$saddunit"'
+cat > "$sout" <<EOF
+[Unit]
+Description=$sdesc
+$saddunit
 [Service]
 Type=oneshot
-ExecStart=%s '"$saddexecstart"'
-'"$saddservice"'
+ExecStart=$sexec
+$saddservice
 
 [Install]
 WantedBy=multi-user.target
-' "$sdesc" "$sexec" > "$sout"
+EOF
 echo "DONE!"
 

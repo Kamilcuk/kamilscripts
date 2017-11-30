@@ -1,0 +1,11 @@
+[Unit]
+Description=Run qqremember
+ConditionPathExists=/etc/qqremember.conf
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/qqremember.conf
+ExecStart=/usr/bin/qqremember $args
+
+[Install]
+WantedBy=multi-user.target

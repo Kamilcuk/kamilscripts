@@ -3,10 +3,10 @@
 Description=QEMU virtual machine
 
 [Service]
-Environment="type=system-x86_64" "haltcmd=kill -INT $MAINPID"
+Environment="type=system-x86_64" "args=" "haltcmd=kill -INT $MAINPID"
 EnvironmentFile=/etc/conf.d/qemu.d/%i
 PIDFile=/tmp/%i.pid
-ExecStart=/usr/bin/env qemu-${type} -name %i -nographic -pidfile /tmp/%i.pid $args
+ExecStart=/usr/bin/env qemu-${type} -name %i -nographic -pidfile /tmp/%i.pid ${args}
 ExecStop=/bin/sh -c ${haltcmd}
 TimeoutStopSec=30
 KillMode=none

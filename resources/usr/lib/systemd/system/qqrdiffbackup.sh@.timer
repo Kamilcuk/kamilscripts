@@ -1,10 +1,10 @@
 [Unit]
-Description = Daily qqrdiffbackup.sh@%I run
+Description=Run qqrdiffbackup.sh@%I Daily
 
 [Timer]
-OnCalendar = Daily
-AccuracySec = 1d
-Persistent = true
+OnCalendar=Daily
+AccuracySec=1d
+Persistent=true
 
 [Install]
-WantedBy = multi-user.target
+WantedBy=multi-user.target
