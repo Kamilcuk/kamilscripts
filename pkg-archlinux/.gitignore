@@ -1,5 +1,4 @@
-pkg
-src
-*.pkg.tar.gz
-*.pkg.tar.xz
-kamil-scripts
+*
+!.gitignore
+!PKGBUILD*
+!*.install
