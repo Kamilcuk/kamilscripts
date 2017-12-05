@@ -1,0 +1,59 @@
+#!/bin/bash
+set -euo pipefail
+
+# Private functions ###########################
+
+msg() { echo "kamil-scripts:" "$@" >&2; }
+check_changed() {
+	if ! hash paccheck; then
+		msg "paccheck utility not found. please install pacutils"
+	fi
+	if ! paccheck --md5sum --quiet kamil-scripts ; then
+		msg "Changed files found. Updating this package will overwrite these files."
+		msg "You can remove files to change this to warning."
+		msg "killall pacman"
+		killall pacman
+		exit 1
+	fi
+}
+
+# Public functions #############################
+
+## arg 1:  the new package version
+pre_install() {
+	:
+	# do something here
+}
+
+## arg 1:  the new package version
+post_install() {
+	:
+	# do something here
+}
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+pre_upgrade() {
+	check_changed
+	# do something here
+}
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+post_upgrade() {
+	:
+	# do something here
+}
+
+## arg 1:  the old package version
+pre_remove() {
+	:
+	# do something here
+}
+
+## arg 1:  the old package version
+post_remove() {
+	:
+	# do something here
+}
+
