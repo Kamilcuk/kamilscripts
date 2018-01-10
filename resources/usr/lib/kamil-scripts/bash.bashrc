@@ -78,3 +78,7 @@ priority_io_high()    { ionice -c 1      "$@"; }
 export NUMCPUS=$(grep -c '^processor' /proc/cpuinfo)
 alias pmake='time nice make -j$NUMCPUS --load-average=$NUMCPUS'
 
+default_bashrc_input() {
+	fortune
+}
+

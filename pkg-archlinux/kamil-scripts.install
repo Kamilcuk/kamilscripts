@@ -7,13 +7,14 @@ msg() { echo "kamil-scripts:" "$@" >&2; }
 check_changed() {
 	if ! hash paccheck; then
 		msg "paccheck utility not found. please install pacutils"
-	fi
-	if ! paccheck --md5sum --quiet kamil-scripts ; then
-		msg "Changed files found. Updating this package will overwrite these files."
-		msg "You can remove files to change this to warning."
-		msg "killall pacman"
-		killall pacman
-		exit 1
+	else
+		if ! paccheck --md5sum --quiet kamil-scripts ; then
+			msg "Changed files found. Updating this package will overwrite these files."
+			msg "You can remove files to change this to warning."
+			msg "killall pacman"
+			killall pacman
+			exit 1
+		fi
 	fi
 }
 

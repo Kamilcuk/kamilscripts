@@ -3,6 +3,6 @@ set -euo pipefail
 cd $(dirname $(readlink -f $0))/pkg-archlinux
 rm -v -f *.pkg.tar.xz
 sudo -u kamil makepkg -p ${1:-PKGBUILD} -c
-namcap *.pkg.tar.xz
+if hash namcap &>/dev/null; then namcap *.pkg.tar.xz; fi
 sudo -u kamil makepkg -p ${1:-PKGBUILD} -i
 
