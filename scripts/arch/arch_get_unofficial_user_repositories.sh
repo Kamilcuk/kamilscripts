@@ -5,9 +5,8 @@ DEBUG=true
 url="https://wiki.archlinux.org/index.php/unofficial_user_repositories#youtube-dl"
 file=/tmp/.unofficial_user_repositories
 
-if [ ! -e "$file" ]; then
-	curl -s "$url" > $file
-fi
+
+curl -sS -z "$file" -o "$file" "$url"
 
 debug() { $DEBUG && echo "$@" >&2 || true; }
 gen1() { echo -n "<span class=\"mw-headline\" id=\"$1"; }
@@ -45,45 +44,89 @@ getTypeSigned() {
 
 # main #######################################################################
 
-all=() # output
-if true; then
+prefile=$(xmllint --html --xpath '//div[@class="mw-parser-output"]' $file)
+content=$(echo "$prefile" \
+| sed -e 's/<li>/     \* /' -e '/^<[^>]*>$/d' \
+	-e 's/<strong>/     /' -e 's/<p>/     /' \
+	-e 's/<[^>]*>//g' \
+	-e 's/\&lt;/</g;s/\&gt;/>/g;'  \
+| sed -n -e '/^Any/,$p' | sed -n -e '/^<!--/q;p' \
+| sed -e '/^[[:space:]]*$/d' -e '/^   [^ ]/{N;s/\n   [^ ]/ /;}' \
+      -e 's/^\(\[\|Server\|#\)/     > \1/' \
+| sed -e '
+:a;/^     \* /{
+	N; 
+	/\n     \* /{ 
+		h; s/\n.*//; p; g;
+		s/.*\n//; ba;
+	};
+	s/\n       / /g;
+}' \
+      -e 's/^\([^ ].*\)/END_OF_SECTION\n\1/' \
+| tail -n +2;
+echo "END_OF_SECTION"
+)
 
-type=""
-signed=""
-lasttype=""
-lastsigned=""
-num=0
-while read line; do
-	eval "$(getTypeSigned "$line")"
-	if [[ -z "$type" && -z "$signed" ]]; then
-		startnum=$num
-	else
-		if [[ "$type" != "$lasttype" || "$signed" != "$lastsigned" ]] ; then
-			new="name=${lasttype}_$lastsigned start=$startnum stop=$num"
-			all+=( "$new" )
-			debug "new $new"
-			lasttype=$type
-			lastsigned=$signed
-			startnum=$num
-		fi
-	fi
-	num=$((num+1));
-done <$file
-new="name=${lasttype}_$lastsigned start=$startnum stop=$num"
-all+=( "$new" )
-debug "new $new"
 
-fi
+accumulator=""
+IFS=''
+while read -r line; do
+	case "$line" in
+	END_OF_SECTION)
+		section="$accumulator"
+		accumulator=""
 
-declare -p all
-#declare -a all=([0]="name=_ start=207 stop=208" [1]="name=Any_ start=208 stop=211" [2]="name=Any_signed start=211 stop=261" [3]="name=Any_unsigned start=261 stop=269" [4]="name=Both_i686_and_x86_64_unsigned start=269 stop=272" [5]="name=Both_i686_and_x86_64_signed start=272 stop=446" [6]="name=Both_i686_and_x86_64_unsigned start=446 stop=552" [7]="name=i686_only_unsigned start=552 stop=553" [8]="name=i686_only_signed start=553 stop=564" [9]="name=i686_only_unsigned start=564 stop=594" [10]="name=x86_64_only_unsigned start=594 stop=595" [11]="name=x86_64_only_signed start=595 stop=794" [12]="name=x86_64_only_unsigned start=794 stop=1054")
+		sectionname=$(echo "$section" | head -n1)
+		section=$(echo "$section" | tail -n+2)
+		case "$sectionname" in
+		Any|x86_64)
+			stype=$sectionname; 
+			if [ -n "$section" ]; then
+				echo
+				echo "# Section $stype"
+				echo "$section" | sed 's/^/#/'
+				echo '#'
+			fi
+			;;
+		Signed|Unsigned)
+			ssigned=$sectionname;
+			echo
+			echo "# <=== Section: $stype $ssigned ==> ############################# "
+			echo "# Section: $sectionname ######################### "
+			echo "$section" | sed 's/^/#/'
+			echo '#'
+			;;
+		*)
+			if [ -z "$stype" -o -z "$ssigned" ]; then
+				echo "ERROR [ -z "$stype" -o -z "$ssigned" ]" >&2a
+				continue;
+			fi
+			conf=$(echo "$section" | sed -n -e '/^     > /s/^     > //p')
+			if [ -z "$conf" ]; then
+				continue;
+			fi
+			echo
+			echo "# Name: $sectionname"
+			echo "$section" | grep -v '^     > ' | sed 's/^[[:space:]]*/# /'
+			echo "$conf"
+			arch=x86_64
+			repo=$(echo "$conf" | head -n1 | sed 's/\[//;s/\]//')
+			url=$(echo "$section" | grep '^     > Server = ' | head -n1 | sed 's/.*= //')
+			url=$(echo "$url"'/$repo.db' | sed -e 's/$arch/'"$arch"'/' -e 's/$repo/'"$repo"'/')
+			echo $url
+			CURLOPTS=""
+			case "$repo" in archlinuxgr-any) CURLOPTS=-k; ;; esac
+			url_head=$(curl $CURLOPTS --head "$url")
+			last_modified=$(echo "$url_head" | grep -i '^last-modified: ' | sed 's/^[^:]*: //')
+			last_modified=$(date --date="$last_modified" "+%F %T")
+			echo "# repo last modified: $last_modified"
+			;;
+		esac
 
-for i in "${all[@]}"; do
-	eval "$i"
-	servers="$(sed -n "$start,$stop"p "$file" | grep -B1 "^Server = " | grep -v -x "^--" || true)"
-	if [ -n "$servers" ]; then
-		echo
-		echo "# $name -------------------------------------------"
-		echo "$servers"
-	fi
-done
+		;;
+	*)
+		accumulator+="$line"$'\n'
+		;;
+	esac
+done <<<"$content"
+
