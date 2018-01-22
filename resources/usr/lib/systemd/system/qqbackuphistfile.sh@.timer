@@ -1,5 +1,5 @@
 [Unit]
-Description=Run backupbashhistory.sh Daily
+Description=Run backuphistfile.sh@%i Daily
 
 [Timer]
 OnCalendar=Daily

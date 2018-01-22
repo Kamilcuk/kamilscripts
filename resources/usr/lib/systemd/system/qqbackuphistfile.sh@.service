@@ -4,6 +4,9 @@ ConditionPathExists=/etc/backupbashhistory.sh.conf
 
 [Service]
 Type=oneshot
-EnvironmentFile=/etc/backupbashhistory.sh.conf
-ExecStart=/usr/bin/backupbashhistory.sh $args
+ExecStart=/usr/bin/backupbashhistory.sh %i
+
+[Install]
+WantedBy=multi-user.target
+
 
