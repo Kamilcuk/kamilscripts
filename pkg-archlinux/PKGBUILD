@@ -3,7 +3,7 @@
 
 pkgbase=
 pkgname=kamil-scripts
-pkgver=0.3.3.r22.g874c2d1
+pkgver=0.3.3.r24.gbf41160
 pkgrel=1
 epoch=
 pkgdesc='These are Kamil Cukrowski private/public scripts. Do not use.'
@@ -14,7 +14,7 @@ groups=()
 depends=()
 makedepends=()
 checkdepends=()
-optdepends=(pacutils)
+optdepends=(pacutils bash sh python)
 provides=()
 conflicts=()
 replaces=()

@@ -4,6 +4,7 @@
 [ -e PKGBUILD ] && . PKGBUILD
 
 package() {
+	echo "PKGBUILD.testing build"
 	cp -a ../../resources/* "$pkgdir"
 	chown -R root:root "$pkgdir"
 }
