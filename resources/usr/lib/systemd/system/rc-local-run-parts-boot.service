@@ -3,12 +3,11 @@ Description=Kamil Cukrowski System boot actions
 ConditionPathExists=/etc/rc-local/
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=-/bin/sh -c 'for f in /etc/rc-local/*; do if [ -x "$f" ]; then echo %n executing "$f" "$@"; "$f" "$@"; fi; done;' -- boot
 RemainAfterExit=yes
 KillSignal=SIGINT
 SyslogFacility=local7
-TimeoutSec=0
 
 [Install]
 WantedBy=multi-user.target

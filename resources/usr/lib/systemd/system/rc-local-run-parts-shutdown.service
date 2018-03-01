@@ -1,14 +1,11 @@
 [Unit]
 Description=Kamil Cukrowski System shutdown actions
 ConditionPathExists=/etc/rc-local/
-DefaultDependencies=no
-After=rc-local-run-parts-boot.service basic.target
-Before=shutdown.target
 
 [Service]
 Type=oneshot
-ExecStart=-/bin/sh -c 'for f in /etc/rc-local/*; do if [ -x "$f" ]; then echo %n executing "$f" "$@"; "$f" "$@"; fi; done;' -- shutdown
 RemainAfterExit=yes
+ExecStop=-/bin/sh -c 'for f in /etc/rc-local/*; do if [ -x "$f" ]; then echo %n executing "$f" "$@"; "$f" "$@"; fi; done;' -- shutdown
 KillSignal=SIGINT
 SyslogFacility=local7
 

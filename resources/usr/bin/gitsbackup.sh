@@ -5,11 +5,13 @@
 set -euo pipefail
 
 # priv config
-DEBUG=${DEBUG:-false}
-TEST=${TEST:-false}
+: ${DEBUG:=false}
+: ${TEST:=false}
+: ${VERBOSE:=true}
+: ${DDOSSLEEP:=0.5}
 
 $DEBUG && set -x
-$TEST && git() { echo "git $*"; }
+$TEST && git() { echo git "$@"; }
 
 # functions ###############################################
 
@@ -19,13 +21,19 @@ usage() {
 Usage: $n [OPTIONS] <backup dir> <config>...
 
 Options:
-     -i         - print all supported repositotries with info
-     -q         - try to print as less as possible
-     -n         - set niceness level as high as possible
-     -u <user>  - run script as specified user
-                  (as that user may have ssh keys to some repos)
-     -t         - print list of repos without doing anything
-     -h         - print this help and exit
+     -i --info        - print all supported repositories syntax with info
+     -q --quiet       - try to print as less as possible
+     -n --setnice     - set niceness level as high as possible
+     -u --user <user> - run script as specified user
+                        (as that user may have ssh keys to some repos)
+     -t --testrepos   - after syncing, test every repo with git ls-remote
+     -h --help        - print this help and exit
+
+Enviromental variables:
+     TEST=false       - set to true to mask git cmd
+     DEBUG=false      - set to true to enable debugging
+     VERBOSE=true     - set to false to do the same as --quiet
+     DDOSSLEEP=0.5    - argument passed to sleep(1) for pretecting against ddos
 
 Backups all found repositories into backup dir, using:
 'git clone --mirror and git remote update'.
@@ -44,9 +52,7 @@ Written by Kamil Cukrowski (C) 2017. Under MIT License. Version 0.1.1
 EOF
 }
 
-DEBUG=${DEBUG:-false}
 debug() { if $DEBUG; then     echo "$@"; fi; }
-VERBOSE=${VERBOSE:-true}
 verbose() { if $VERBOSE; then echo "$@"; fi; }
 warning() {                   echo "WARN:  ""$@" >&2; }
 error() {                     echo "ERROR: ""$@" >&2; }
@@ -165,23 +171,23 @@ reposGet_aut.archlinux.org_html() {
 # main #######################################################################
 
 if [ $# -eq 0 ]; then usage; exit 1; fi
-allargs=$(getopt -o ithqnu: -n 'gitsbackup.sh' -- "$@")
-eval set -- "$allargs"
+ARGS=$(getopt -o ithqnu: -l info,testrepos,help,quiet,setnice,user: -n 'gitsbackup.sh' -- "$@")
+eval set -- "$ARGS"
 testRepos=false;
 while true; do
 	case "$1" in
-	-i) reposPrintSupported; exit 0; ;;
-	-t) testRepos=true; ;;
-	-h) usage; exit 0; ;;
-	-q) VERBOSE=false; ;;
-	-n) 
+	-i | --info ) reposPrintSupported; exit 0; ;;
+	-t | --testrepos ) testRepos=true; ;;
+	-h | --help ) usage; exit 0; ;;
+	-q | --quiet ) VERBOSE=false; ;;
+	-n | --setnice) 
 		ionice -c 3 -p $BASHPID >/dev/null # set Idle I/O scheduling priority
 		renice -n 5 -p $BASHPID >/dev/null # set niceness level
 		;;
-	-u) 
+	-u | --user)
 		if [ "$(whoami)" != "$2" ]; then 
 			name="$2"
-			eval set -- "$allargs" # restore all arguments
+			eval set -- "$ARGS" # restore all arguments
 			sudo -E -u "$name" "$0" "$@"
 			exit $?
 		fi
@@ -239,7 +245,7 @@ if $testRepos; then
 				fatal "Internal error: $r is not a valid git repository"
 			fi
 			echo "OK"
-			sleep 0.5 # ddos protection
+			sleep $DDOSSLEEP # ddos protection
 		done
 	}
 	backup_repos_do() {
@@ -248,7 +254,7 @@ if $testRepos; then
 	}
 
 	echo
-	echo "--> Repos list:"
+	echo "--> Testing repos:"
 	echo "--> Legend: repo_url -> dir_where_repo_will_be_downloaded"
 	backup_repos "$OUTPUTDIR" $repos
 	backup_repos_check $repos

@@ -117,6 +117,8 @@ trap "trap_exit" EXIT
 
 # print result
 echo
+up_speed=$(printf "%.3f" "$up_speed")
+down_speed=$(printf "%.3f" "$down_speed")
 echo "
 Upload speed:   #$up_speed#kB/s
 Download speed: #$down_speed#kB/s" | rev | column -s'#' -o' ' -t | rev

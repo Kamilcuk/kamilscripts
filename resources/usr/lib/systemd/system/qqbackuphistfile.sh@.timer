@@ -1,5 +1,5 @@
 [Unit]
-Description=Run backuphistfile.sh@%i Daily
+Description=Run backuphistfile.sh@%I Daily
 
 [Timer]
 OnCalendar=Daily

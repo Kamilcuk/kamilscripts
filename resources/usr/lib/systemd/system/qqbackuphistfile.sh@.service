@@ -4,7 +4,7 @@ ConditionPathExists=/etc/backupbashhistory.sh.conf
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/backupbashhistory.sh %i
+ExecStart=/usr/bin/qqbackuphistfile.sh %I
 
 [Install]
 WantedBy=multi-user.target
