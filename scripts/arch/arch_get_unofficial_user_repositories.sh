@@ -1,13 +1,10 @@
 #!/bin/bash
-set -ue
+set -ueo pipefail; export SHELLOPTS
+
 DEBUG=${DEBUG:-false}
-DEBUG=true
-url="https://wiki.archlinux.org/index.php/unofficial_user_repositories#youtube-dl"
-file=/tmp/.unofficial_user_repositories
 
-
-curl -sS -z "$file" -o "$file" "$url"
-
+LOGLVL=2
+log() { if [ "$1" -le "${LOGLVL:-2}" ]; then shift; echo "$@"; fi; }
 debug() { $DEBUG && echo "$@" >&2 || true; }
 gen1() { echo -n "<span class=\"mw-headline\" id=\"$1"; }
 gen2() { echo -n "\">$1</span>"; }
@@ -42,91 +39,58 @@ getTypeSigned() {
         esac
 }
 
+remove_html_tags() { 
+	sed 's/<[^>]*>//g' | sed '/^$/d'
+}
+
+extract_between_tag() {
+	local tag
+	tag=$1
+	while read -r line; do 
+		log 5 "read 2 $line" >&2
+		if [[ $line =~ '<'"$tag"'>' ]]; then 
+				break;
+		fi;
+	done;
+	tmp=$line
+	while ! [[ $line =~ '</'"$tag"'>' ]] && read -r line; do 
+		log 5 "read 3 $line" >&2
+		tmp+=$'\n'"$line"
+	done
+	echo "$tmp"
+}
+
+sign_all_keys() {
+		cat file | grep Key-ID | grep -v "Not\|repo" | awk '{print $3}' | xargs -n1 -I{} -- sudo bash -c 'echo pacman-key --recv-keys {}; echo pacman-key --finger {}; echo pacman-key --lsign-key {}'
+}
 # main #######################################################################
 
-prefile=$(xmllint --html --xpath '//div[@class="mw-parser-output"]' $file)
-content=$(echo "$prefile" \
-| sed -e 's/<li>/     \* /' -e '/^<[^>]*>$/d' \
-	-e 's/<strong>/     /' -e 's/<p>/     /' \
-	-e 's/<[^>]*>//g' \
-	-e 's/\&lt;/</g;s/\&gt;/>/g;'  \
-| sed -n -e '/^Any/,$p' | sed -n -e '/^<!--/q;p' \
-| sed -e '/^[[:space:]]*$/d' -e '/^   [^ ]/{N;s/\n   [^ ]/ /;}' \
-      -e 's/^\(\[\|Server\|#\)/     > \1/' \
-| sed -e '
-:a;/^     \* /{
-	N; 
-	/\n     \* /{ 
-		h; s/\n.*//; p; g;
-		s/.*\n//; ba;
-	};
-	s/\n       / /g;
-}' \
-      -e 's/^\([^ ].*\)/END_OF_SECTION\n\1/' \
-| tail -n +2;
-echo "END_OF_SECTION"
+url="https://wiki.archlinux.org/index.php/unofficial_user_repositories"
+file=/tmp/.unofficial_user_repositories
+
+( set -x;
+	curl -s -z "$file" -o "$file" "$url"
 )
 
+xmllint --html --xpath '//div[@class="mw-parser-output"]' "$file" \
+| while read -r line; do
+	log 5 "read $line"
+	if   [[ $line =~ ^'<h2><span class="mw-headline" '.*igned ]]; then
+		r_section=$(remove_html_tags <<<"$line")
+		echo
+		echo "# --------- $r_section ------------"
+		echo
+	elif [[ $line =~ ^'<h3><span class="mw-headline" ' ]]; then
+		r_name=$(remove_html_tags <<<"$line")
+		r_comment=$(extract_between_tag ul | remove_html_tags)
+		r_server=$(extract_between_tag pre | remove_html_tags)
 
-accumulator=""
-IFS=''
-while read -r line; do
-	case "$line" in
-	END_OF_SECTION)
-		section="$accumulator"
-		accumulator=""
-
-		sectionname=$(echo "$section" | head -n1)
-		section=$(echo "$section" | tail -n+2)
-		case "$sectionname" in
-		Any|x86_64)
-			stype=$sectionname; 
-			if [ -n "$section" ]; then
-				echo
-				echo "# Section $stype"
-				echo "$section" | sed 's/^/#/'
-				echo '#'
-			fi
-			;;
-		Signed|Unsigned)
-			ssigned=$sectionname;
-			echo
-			echo "# <=== Section: $stype $ssigned ==> ############################# "
-			echo "# Section: $sectionname ######################### "
-			echo "$section" | sed 's/^/#/'
-			echo '#'
-			;;
-		*)
-			if [ -z "$stype" -o -z "$ssigned" ]; then
-				echo "ERROR [ -z "$stype" -o -z "$ssigned" ]" >&2a
-				continue;
-			fi
-			conf=$(echo "$section" | sed -n -e '/^     > /s/^     > //p')
-			if [ -z "$conf" ]; then
-				continue;
-			fi
-			echo
-			echo "# Name: $sectionname"
-			echo "$section" | grep -v '^     > ' | sed 's/^[[:space:]]*/# /'
-			echo "$conf"
-			arch=x86_64
-			repo=$(echo "$conf" | head -n1 | sed 's/\[//;s/\]//')
-			url=$(echo "$section" | grep '^     > Server = ' | head -n1 | sed 's/.*= //')
-			url=$(echo "$url"'/$repo.db' | sed -e 's/$arch/'"$arch"'/' -e 's/$repo/'"$repo"'/')
-			echo $url
-			CURLOPTS=""
-			case "$repo" in archlinuxgr-any) CURLOPTS=-k; ;; esac
-			url_head=$(curl $CURLOPTS --head "$url")
-			last_modified=$(echo "$url_head" | grep -i '^last-modified: ' | sed 's/^[^:]*: //')
-			last_modified=$(date --date="$last_modified" "+%F %T")
-			echo "# repo last modified: $last_modified"
-			;;
-		esac
-
-		;;
-	*)
-		accumulator+="$line"$'\n'
-		;;
-	esac
-done <<<"$content"
-
+		echo "# $r_name"
+		sed 's/^/#   /' <<<"$r_comment"
+		echo "$r_server"
+		if [ "$r_section" = "Unsigned" ]; then
+			echo "SigLevel = PackageOptional"
+		fi
+		echo
+	fi
+done
