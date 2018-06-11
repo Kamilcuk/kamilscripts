@@ -1,0 +1,16 @@
+
+variables:
+  PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
+archbuild:
+  image: base/archlinux
+  script:
+  - pacman -Sy --needed --noconfirm base-devel git
+  - cp -a pkg-archlinux /tmp
+  - cd /tmp/pkg-archlinux
+  - chown -R nobody:nobody .
+  - sudo -u nobody makepkg
+  - mv *.pkg.tar.xz /
+  artifacts:
+    paths:
+    - /*.pkg.tar.xz
+
