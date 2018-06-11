@@ -9,7 +9,7 @@ archbuild:
   - cd /tmp/pkg-archlinux
   - chown -R nobody:nobody .
   - sudo -u nobody makepkg
-  - mv *.pkg.tar.xz /
+  - mv -v *.pkg.tar.xz /
   artifacts:
     paths:
     - /*.pkg.tar.xz
