@@ -8,8 +8,10 @@ archbuild:
   - cd pkg-archlinux
   - chown -R nobody:nobody .
   - sudo -u nobody makepkg
-  - mv -v *.pkg.tar.xz ..
+  - cd ..
+  - mkdir output
+  - mv -v pkg-archlinux/*.pkg.tar.xz output
   artifacts:
     paths:
-    - *.pkg.tar.xz
+    - output
 
