@@ -5,12 +5,11 @@ archbuild:
   image: base/archlinux
   script:
   - pacman -Sy --needed --noconfirm base-devel git
-  - cp -a pkg-archlinux /tmp
-  - cd /tmp/pkg-archlinux
+  - cd pkg-archlinux
   - chown -R nobody:nobody .
   - sudo -u nobody makepkg
-  - mv -v *.pkg.tar.xz /
+  - mv -v *.pkg.tar.xz ..
   artifacts:
     paths:
-    - /*.pkg.tar.xz
+    - *.pkg.tar.xz
 
