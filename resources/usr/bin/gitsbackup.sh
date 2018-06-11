@@ -141,10 +141,16 @@ reposGet_github.com() {
 	curl -s "https://api.github.com/users/${username}/repos" | jq_get ssh_url; 
 }
 
-reposAddSupported gitlab.com_token          "<private-token> - backup repos using speicfied private-token from gitlab.com"
-reposGet_gitlab.com_token() { 
+reposAddSupported gitlab.com_v3_token      "<private-token> - backup repos using speicfied private-token from gitlab.com/api/v3"
+reposGet_gitlab.com_v3_token() { 
 	local private_token=$1
 	curl -s --header "PRIVATE-TOKEN: $private_token" 'https://gitlab.com/api/v3/projects' | jq_get ssh_url_to_repo; 
+}
+
+reposAddSupported gitlab.com_v4_token      "<private-token> - backup repos using speicfied private-token from gitlab.com/api/v4"
+reposGet_gitlab.com_v4_token() {
+        local private_token=$1
+        curl -s --header "PRIVATE-TOKEN: $private_token" 'https://gitlab.com/api/v4/projects?membership=true' | jq_get ssh_url_to_repo
 }
 
 reposAddSupported aur.archlinux.org_aurjson "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
