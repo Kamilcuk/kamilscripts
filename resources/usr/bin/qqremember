@@ -3,7 +3,7 @@
 # All rights reserved. 
 #
 ################################ globals ###############################
-set -euo pipefail
+set -euo pipefail; export SHELLOPTS
 
 DEBUG=${DEBUG:-false}
 
@@ -465,7 +465,7 @@ if ! ARGS=$(getopt -n "qqremember" -o ":c:dhu:C:S:P:E" -- "$@"); then
 fi
 eval set -- "$ARGS"
 CONFIG=${CONFIG:-$HOME/.config/qqrememberrc} 
-SWIETA=true COMMAND=cat PARALLEL=true
+SWIETA=true COMMAND=cat PARALLEL=true UNTIL=''
 while true; do
 	case "$1" in
 		-c) 
@@ -514,22 +514,21 @@ done
 	startsec=$(date --date="00:00:00" +%s)
 	debug "stopsec=\"$stopsec\"=\"$( date --date="@$stopsec" )\""
 	debug "startsec=\"$startsec\""
-	lines="$(
-		set -e
-		tmp=$(
-			grep "^|" "${CONFIG}" | sed 's/^|//'; 
-			if $SWIETA; then
-				swietaStale; 
-				swietaRuchome "$startsec" "$stopsec";
-			fi
-		)
+	conf=$(
+		grep "^|" "${CONFIG}" | sed 's/^|//' && \
+		if $SWIETA; then
+			swietaStale;
+			swietaRuchome "$startsec" "$stopsec";
+		fi
+	)
+	lines=$(
 		export -f parseEvent error debug fatal cronDayCalcNext calcEventTimeDesc
 		if $PARALLEL; then
 			xargs -L1 -P10 bash -c 'parseEvent "$@"' -- "$startsec" "$stopsec"
 		else
 			while read line; do parseEvent "$startsec" "$stopsec" "$line"; done
-		fi <<<"$tmp"
-	)"
+		fi <<<"$conf"
+	)
 	lines=$(echo "$lines" | sort)
 	debug "lines=\"$lines\""$'\n'
 }
