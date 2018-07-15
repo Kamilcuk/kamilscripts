@@ -426,7 +426,7 @@ EOF
 }
 
 usage() {
-	cat <<"EOFUSAGE"
+	cat <<EOF
 Usage:
     qqremember [-c <config>] [-S] [-u <UNTIL>]
     qqremember -h
@@ -434,7 +434,7 @@ Usage:
     qqremember selftest
 
 Options:
-    -c <config>      - specify path to config file (default: $HOME/.config/qqrememberrc)
+    -c <config>      - specify path to config file (default: \${HOME:-}/.config/qqrememberrc)
     -h               - show this text and exit
     -u <UNTIL>       - override UNTIL paramter in config file
     -C <COMAMND>     - override COMMAND parameter in config file
@@ -447,7 +447,7 @@ Usage examples:
 
 Author: Kamil Cukrowski <kamilcukrowski_at_gmail_dot_com> (c) 2017 Version 0.1.1
 
-EOFUSAGE
+EOF
 }
 
 parseBool() {
@@ -464,7 +464,7 @@ if ! ARGS=$(getopt -n "qqremember" -o ":c:dhu:C:S:P:E" -- "$@"); then
 	error "parsing arguments.";	exit 1;
 fi
 eval set -- "$ARGS"
-CONFIG=${CONFIG:-$HOME/.config/qqrememberrc} 
+CONFIG=${CONFIG:-${HOME:-}/.config/qqrememberrc} 
 SWIETA=true COMMAND=cat PARALLEL=true UNTIL=''
 while true; do
 	case "$1" in
