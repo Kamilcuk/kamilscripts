@@ -18,8 +18,10 @@ debug_decl() {
 }
 debug_decl
 error() { echo "ERROR:" "$@" >&2; }
-fatal() { echo "ERROR:" "$@" >&2; exit 1; }
-assert() { if ! eval "$1"; then local expr; expr=$1; shift; fatal "assertion failed: ${expr}: " "$@"; fi; }
+fatal() { echo "FATAL:${FUNCNAME[1]}:" "$@" >&2; exit 1; }
+assert() { if ! eval "$1"; then local expr; expr=$1; shift; fatal "assertion '${expr}' failed:" "$@"; fi; }
+
+#################################
 
 # cronDayCalcNext
 # Parameters: MaxEpochTime Day Month WeekDay Year
@@ -37,6 +39,42 @@ assert() { if ! eval "$1"; then local expr; expr=$1; shift; fatal "assertion fai
 # If MaxEpochTime=0 then calculations are not limited
 # If Year is omitted, it is assumed to be '*', so on
 cronDayCalcNext() {
+	local weekdayNameToInt_var=""
+	isWeekdayName() {
+		local name
+		name=$1
+		if [ -z "${weekdayNameToInt_var:-}" ]; then
+			if ! monthNameToInt_var=$(seq 7 | xargs -I{} date --date='1-1-{}' +'%a {}'$'\n''%A {}'); then return 1; fi
+		fi
+		grep -q "^${name} " <<<"$weekdayNameToInt_var"
+	}
+	weekdayNameToInt() {
+		local name tmp
+		name=$1
+		if [ -z "${weekdayNameToInt_var:-}" ]; then
+			if ! weekdayNameToInt_var=$(seq 7 | xargs -I{} date --date='1-1-{}' +'%a {}'$'\n''%A {}'); then return 1; fi
+		fi
+		if ! tmp=$(grep "^${name} " <<<"$weekdayNameToInt_var"); then return 1; fi;
+		cut -d' ' -f2 <<<"$tmp"
+	}
+	local monthNameToInt_var=""
+	isMonthName() {
+		local name
+		name=$1
+		if [ -z "${monthNameToInt_var:-}" ]; then
+			if ! monthNameToInt_var=$(seq 12 | xargs -I{} date --date='1-{}-1' +'%b {}'$'\n''%B {}'); then return 1; fi
+		fi
+		grep -q "^${name} " <<<"$monthNameToInt_var"
+	}
+	monthNameToInt() {
+		local name tmp
+		name=$1
+		if [ -z "${monthNameToInt_var:-}" ]; then
+			if ! monthNameToInt_var=$(seq 12 | xargs -I{} date --date='1-{}-1' +'%b {}'$'\n''%B {}'); then return 1; fi
+		fi
+		if ! tmp=$(grep "^${name} " <<<"$monthNameToInt_var"); then return 1; fi
+		cut -d' ' -f2 <<<"$tmp"
+	}
 	getNextWeekday() { date --date="${next_year}-${next_month}-${next_day}" +%u; }
 	preParseCron() {
 		case "$1" in
@@ -77,8 +115,17 @@ cronDayCalcNext() {
 					i=$((10#$i));
 					echo "$i"
 					;;
+				*[a-zA-Z]*)
+					if isWeekdayName "$i"; then
+						weekdayNameToInt "$i"
+					elif isMonthName "$i"; then
+						monthNameToInt "$i"
+					else
+						fatal "parsing cron value: '$i'"
+					fi
+					;;
 				*)
-					fatal "ERROR parsing cron value: $cron: $i"
+					fatal "parsing cron value: '$i'"
 					;;
 				esac
 			done
@@ -362,8 +409,10 @@ Boże Ciało"
 EOF
 }
 
+#######################################
+
 parseEvent() {
-	local event now untilfrom eventepochtime eventtime description
+	local event now untilfrom eventepochtime eventtime description tmp tmp2
 	now=$1
 	untilfrom=$2
 	shift 2
@@ -378,14 +427,17 @@ parseEvent() {
 	elif (( cnt >= 1 && cnt <= 4 )); then
 		eventepochtimes=$(cronDayCalcNext "$untilfrom" "$eventtime")
 	else
-		fatal "parseEvent cnt=$cnt"
+		fatal "parseEvent eventtime='$eventtime' cnt='$cnt' *=$*"
 	fi
 
 	for eventepochtime in $eventepochtimes; do
 		if (( eventepochtime >= now && eventepochtime < $untilfrom )); then
 			# get description
 			description=$( sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<"$eventdesc" )
-			echo "$(date --date="@$eventepochtime" +%F) | $(calcEventTimeDesc "$(( eventepochtime - now ))"): ${description}"
+			tmp=$(date --date="@$eventepochtime" +%F)
+			tmp2=$(( eventepochtime - now ))
+			tmp2=$(calcEventTimeDesc "$tmp2")
+			echo "$tmp | $tmp2: ${description}"
 		fi
 	done
 }
@@ -409,19 +461,25 @@ SWIETA=true # laduj daty swiat do roku 2100
 # | | +--------- Month of the Year (range: 01-12)
 # | +----------- Day of the Month  (range: 01-31)
 # +------------- Mandatory sign '|' 
-| 15 | Oplata czynsz kazdego 15 miesiaca
-| *  *  $(date +%u) | Zajecia WF co $(date +%A)
-| *  *  $(date --date=day +%u) | Zajecia WF co $(date --date=day +%A)
-| *  *  $(date --date="2 days" +%u) | Zajecia WF co $(date --date="2 days" +%A)
-| *  *  $(date --date="10 days" +%u) | Zajecia WF co $(date --date="10 days" +%A)
-| $(date "+%d %m") | Dzisiaj: $(date)
-| $(( $(date +%s) + 3600*24 )) | Jutro: $(date --date="@$(( $(date +%s) + 3600*24 ))")
-| $(( $(date +%s) + 10*3600*24 )) | Za 10 dni: $(date --date="@$(( $(date +%s) + 10*3600*24 ))")
-| /2 | Co drugi dzien
-| */3 | Co trzeci dzien
-| 5,10,20   | W 5,10,20 dzien miesiaca
-| 1-10,20/5 | W 5,10,20 dzien miesiaca
-| /5 /2 | W dzien podzielny przez 5 każdego podzielnego przez 2 miesiaca
+# | 15 | Oplata czynsz kazdego 15 miesiaca
+# | *  *  $(date +%u) | Zajecia WF co $(date +%A)
+# | *  *  $(date --date=day +%u) | Zajecia WF co $(date --date=day +%A)
+# | *  *  $(date --date="2 days" +%u) | Zajecia WF co $(date --date="2 days" +%A)
+# | *  *  $(date --date="10 days" +%u) | Zajecia WF co $(date --date="10 days" +%A)
+# | $(date "+%d %m") | Dzisiaj: $(date)
+# | $(( $(date +%s) + 3600*24 )) | Jutro: $(date --date="@$(( $(date +%s) + 3600*24 ))")
+# | $(( $(date +%s) + 10*3600*24 )) | Za 10 dni: $(date --date="@$(( $(date +%s) + 10*3600*24 ))")
+# | /2 | Co drugi dzien
+# | */3 | Co trzeci dzien
+# | 5,10,20   | W 5,10,20 dzien miesiaca
+# | 1-10,20/5 | W 5,10,20 dzien miesiaca
+# | /5 /2 | W dzien podzielny przez 5 każdego podzielnego przez 2 miesiaca
+# | * $(date +%b) | '* $(date +%b)'
+# | * $(date +%B) | '* $(date +%B)'
+# | * $(date -d +1days +"%d %b") | '* $(date -d +1days +"%d %b")'
+# | * * $(date +%u) * | '* * * $(date +%u)'
+# | * * $(date +%a) * | '* * * $(date +"%a")'
+| * * $(date +%A) * | '* * * $(date +"%A")'
 EOF
 }
 
@@ -450,6 +508,8 @@ Author: Kamil Cukrowski <kamilcukrowski_at_gmail_dot_com> (c) 2017 Version 0.1.1
 EOFUSAGE
 }
 
+#############################
+
 parseBool() {
 	declare -g "$1"
 	case "$2" in 
@@ -458,53 +518,57 @@ parseBool() {
 	esac
 }
 
+##############################
+
+
 ############################## main #####################################
 
 if ! ARGS=$(getopt -n "qqremember" -o ":c:dhu:C:S:P:E" -- "$@"); then
-	error "parsing arguments.";	exit 1;
+	error "parsing arguments.";
+	exit 1;
 fi
 eval set -- "$ARGS"
 CONFIG=${CONFIG:-$HOME/.config/qqrememberrc} 
 SWIETA=true COMMAND=cat PARALLEL=true
 while true; do
 	case "$1" in
-		-c) 
-			CONFIG=$2; 
-			assert '[ -r "$CONFIG" ]' "Config ${CONFIG} not found or not readable"
-			eval "$(grep -v -e "^|" ${CONFIG})"	
-			shift; 
-			;;
-		-d) DEBUG=true; debug_decl; ;;
-		-h) usage; exit; ;;
-		-u) UNTIL=$2; shift; ;;
-		-C) COMMAND=$2; shift; ;;
-		-S) parseBool SWIETA "$2"; shift; ;;
-		-P) parseBool PARALLEL "$2"; shift; ;;
-		-E) usageExampleConfig; exit; ;;
-		--) shift; break; ;;
-		*) error "getopt internal error"; usage; exit 1; ;;
+	-c) 
+		CONFIG=$2; 
+		assert '[ -r "$CONFIG" ]' "Config ${CONFIG} not found or not readable"
+		shift
+		;;
+	-d) DEBUG=true; debug_decl; ;;
+	-h) usage; exit; ;;
+	-u) UNTIL=$2; shift; ;;
+	-C) COMMAND=$2; shift; ;;
+	-S) parseBool SWIETA "$2"; shift; ;;
+	-P) parseBool PARALLEL "$2"; shift; ;;
+	-E) usageExampleConfig; exit; ;;
+	--) shift; break; ;;
+	*) error "getopt internal error"; usage; exit 1; ;;
 	esac
 	shift;
 done
 
-#
-if [ $# -ne 0 ]; then
-	if [[ $# -eq 1 && $1 == selftest ]]; then
-		tmp=$(mktemp)
-		trap 'echo "selftest: removing tempfile"; rm -f $tmp' EXIT
-		echo "selftest: Example configuration written to $tmp"
-		$0 -E > $tmp
-		echo "selftest: running command"
-		time bash $(if $DEBUG;then echo "-x";fi;) $0 -c $tmp -P false -u '2 years'
+# load configuration
+configcontent=$(grep -v "[[:space:]]*#" "$CONFIG")
+eval "$(grep -v -e "^|" <<<"$configcontent")"
+
+if [ "$#" -ne 0 ]; then
+	if [ "$#" -eq 1 -a "$1" = selftest ]]; then
+		exec time bash $(if $DEBUG;then echo "-x";fi;) $0 -c <($0 -E) -P false -u '2 years'
 		exit
-	else
-		usage; exit 1;
 	fi
+	usage;
+	exit 1;
 fi
 
 ## sanity
-for var in CONFIG SWIETA PARALLEL COMMAND UNTIL; do
+for var in CONFIG SWIETA PARALLEL COMMAND UNTIL configcontent; do
 	readonly "$var"
+	if ! echo "${!var}" >/dev/null; then
+		fatal "Error exanding $var"
+	fi
 	debug "$var=\"${!var}\""
 done
 
@@ -514,22 +578,22 @@ done
 	startsec=$(date --date="00:00:00" +%s)
 	debug "stopsec=\"$stopsec\"=\"$( date --date="@$stopsec" )\""
 	debug "startsec=\"$startsec\""
-	lines="$(
-		set -e
-		tmp=$(
-			grep "^|" "${CONFIG}" | sed 's/^|//'; 
-			if $SWIETA; then
-				swietaStale; 
-				swietaRuchome "$startsec" "$stopsec";
-			fi
-		)
-		export -f parseEvent error debug fatal cronDayCalcNext calcEventTimeDesc
+	events=$(grep "^|" <<<"$configcontent" | sed 's/^|//')
+	if $SWIETA; then
+		events+="$(swietaStale)"
+		events+="$(swietaRuchome "$startsec" "$stopsec")";
+	fi
+	lines=$(
+		set -euo pipefail; export SHELLOPTS
 		if $PARALLEL; then
+			export -f parseEvent error debug fatal cronDayCalcNext calcEventTimeDesc
 			xargs -L1 -P10 bash -c 'parseEvent "$@"' -- "$startsec" "$stopsec"
 		else
-			while read line; do parseEvent "$startsec" "$stopsec" "$line"; done
-		fi <<<"$tmp"
-	)"
+			while read line; do 
+				parseEvent "$startsec" "$stopsec" "$line"; 
+			done
+		fi <<<"$events"
+	)
 	lines=$(echo "$lines" | sort)
 	debug "lines=\"$lines\""$'\n'
 }
