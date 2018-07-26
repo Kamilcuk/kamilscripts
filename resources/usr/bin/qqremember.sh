@@ -44,7 +44,7 @@ cronDayCalcNext() {
 		local name
 		name=$1
 		if [ -z "${weekdayNameToInt_var:-}" ]; then
-			if ! monthNameToInt_var=$(seq 7 | xargs -I{} date --date='1-1-{}' +'%a {}'$'\n''%A {}'); then return 1; fi
+			if ! weekdayNameToInt_var=$(seq 7 | xargs -I{} date --date='1-1-{}' +'%a {}'$'\n''%A {}'); then return 1; fi
 		fi
 		grep -q "^${name} " <<<"$weekdayNameToInt_var"
 	}
@@ -461,24 +461,24 @@ SWIETA=true # laduj daty swiat do roku 2100
 # | | +--------- Month of the Year (range: 01-12)
 # | +----------- Day of the Month  (range: 01-31)
 # +------------- Mandatory sign '|' 
-# | 15 | Oplata czynsz kazdego 15 miesiaca
-# | *  *  $(date +%u) | Zajecia WF co $(date +%A)
-# | *  *  $(date --date=day +%u) | Zajecia WF co $(date --date=day +%A)
-# | *  *  $(date --date="2 days" +%u) | Zajecia WF co $(date --date="2 days" +%A)
-# | *  *  $(date --date="10 days" +%u) | Zajecia WF co $(date --date="10 days" +%A)
-# | $(date "+%d %m") | Dzisiaj: $(date)
-# | $(( $(date +%s) + 3600*24 )) | Jutro: $(date --date="@$(( $(date +%s) + 3600*24 ))")
-# | $(( $(date +%s) + 10*3600*24 )) | Za 10 dni: $(date --date="@$(( $(date +%s) + 10*3600*24 ))")
-# | /2 | Co drugi dzien
-# | */3 | Co trzeci dzien
-# | 5,10,20   | W 5,10,20 dzien miesiaca
-# | 1-10,20/5 | W 5,10,20 dzien miesiaca
-# | /5 /2 | W dzien podzielny przez 5 każdego podzielnego przez 2 miesiaca
-# | * $(date +%b) | '* $(date +%b)'
-# | * $(date +%B) | '* $(date +%B)'
-# | * $(date -d +1days +"%d %b") | '* $(date -d +1days +"%d %b")'
-# | * * $(date +%u) * | '* * * $(date +%u)'
-# | * * $(date +%a) * | '* * * $(date +"%a")'
+| 15 | Oplata czynsz kazdego 15 miesiaca
+| *  *  $(date +%u) | Zajecia WF co $(date +%A)
+| *  *  $(date --date=day +%u) | Zajecia WF co $(date --date=day +%A)
+| *  *  $(date --date="2 days" +%u) | Zajecia WF co $(date --date="2 days" +%A)
+| *  *  $(date --date="10 days" +%u) | Zajecia WF co $(date --date="10 days" +%A)
+| $(date "+%d %m") | Dzisiaj: $(date)
+| $(( $(date +%s) + 3600*24 )) | Jutro: $(date --date="@$(( $(date +%s) + 3600*24 ))")
+| $(( $(date +%s) + 10*3600*24 )) | Za 10 dni: $(date --date="@$(( $(date +%s) + 10*3600*24 ))")
+| /2 | Co drugi dzien
+| */3 | Co trzeci dzien
+| 5,10,20   | W 5,10,20 dzien miesiaca
+| 1-10,20/5 | W 5,10,20 dzien miesiaca
+| /5 /2 | W dzien podzielny przez 5 każdego podzielnego przez 2 miesiaca
+| * $(date +%b) | '* $(date +%b)'
+| * $(date +%B) | '* $(date +%B)'
+| * $(date -d +1days +"%d %b") | '* $(date -d +1days +"%d %b")'
+| * * $(date +%u) * | '* * * $(date +%u)'
+| * * $(date +%a) * | '* * * $(date +"%a")'
 | * * $(date +%A) * | '* * * $(date +"%A")'
 EOF
 }
