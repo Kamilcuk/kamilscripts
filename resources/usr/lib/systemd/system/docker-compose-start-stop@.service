@@ -1,12 +1,12 @@
 [Unit]
-Description=Dockerizer docker-compose-start-stop@%i
+Description=Dockerizer docker-compose-start-stop@%i in /src/docker/%i
 After=docker.service
 BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
 [Service]
 Type=simple
-WorkingDirectory=/srv/docker%i
+WorkingDirectory=/srv/docker/%i
 ExecStart=/usr/bin/docker-compose start
 ExecStop=/usr/bin/docker-compose stop
 

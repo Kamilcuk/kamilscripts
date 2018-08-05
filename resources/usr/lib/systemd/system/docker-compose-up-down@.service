@@ -1,12 +1,12 @@
 [Unit]
-Description=Dockerizer docker-compose-up-down@%i in /srv/docker%i
+Description=Dockerizer docker-compose-up-down@%i in /srv/docker/%i
 After=docker.service
 BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
 [Service]
 Type=simple
-WorkingDirectory=/srv/docker%i
+WorkingDirectory=/srv/docker/%i
 TimeoutStartSec=6000
 ExecStartPre=/usr/bin/docker-compose down
 ExecStartPre=/usr/bin/docker-compose pull
