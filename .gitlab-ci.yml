@@ -13,6 +13,9 @@ build:
   - pacman -Sy --needed --noconfirm base-devel git
   - cd pkg-archlinux
   - chown -R nobody:nobody .
+  - chmod +w /etc/sudoers
+  - printf 'nobody ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+  - chmod -w /etc/sudoers
   - sudo -u nobody makepkg --syncdeps --noconfirm
   - mkdir -p ../output
   - mv -v *.pkg.tar.xz ../output
