@@ -13,7 +13,7 @@ build:
   - pacman -Sy --needed --noconfirm base-devel git
   - cd pkg-archlinux
   - chown -R nobody:nobody .
-  - sudo -u nobody makepkg
+  - sudo -u nobody makepkg --syncdeps --noconfirm
   - mkdir -p ../output
   - mv -v *.pkg.tar.xz ../output
   artifacts:
