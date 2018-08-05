@@ -3,8 +3,9 @@
 #
 set -euo pipefail
 
+LOGLVL=${LOGLVL:-0}
 TEST=${TEST:-false}
-NAME=systemd-failure-monitor.sh
+NAME=$(basename $0)
 
 # functions ###################################
 
@@ -13,8 +14,10 @@ usage() {
 Usage:  $NAME [options] <email address>
 
 Options:
-	-i, --ignore <name> - ignore services that match name
-	-d, --no-duplicate  - don't send email on duplicated fails
+	-c, --config <path>  - source path before executing
+	-i, --ignore <name>  - ignore services that match name
+	-d, --no-duplicate   - don't send email on duplicated fails
+	-h, --help           - print this text and exit
 
 Scirpt monitors journalctl for failed jobs/services.
 In case of a failed job/service, it sends email to designated address.
@@ -27,38 +30,35 @@ Written by Kamil Cukrowski (C) 2017. Under MIT License
 EOF
 }
 
+# overwrite that function in your config file
+
 output() {
 	local MAILTO=$1 UNIT=$2 
-	local status hostname journalctl tmp
-	hostname=$(hostname)
-	status=$(systemctl status $UNIT -l --no-pager || :)
-	journal=$(journalctl -n -0 -u $UNIT -n100 || :)
-	tmp=$(cat <<EOF
+	case "$MAILTO" in
+	*@*.*) sendmail $MAILTO; ;;
+	stdout|-) cat; ;;
+	stderr) cat >&2; ;;
+	quiet) cat >/dev/null; ;;
+	esac <<EOF
 To: $MAILTO
-Subject: $hostname: Unit $UNIT entered failed state.
+Subject: $(hostname): Unit $UNIT entered failed state.
 
-Unit $UNIT entered failed state on machine $hostname
+Unit $UNIT entered failed state on machine $(hostname)
 
 - Additional information ----------------------------------------------------
 - systemctl status $UNIT -l -------------------------------------------------
-$status
+$(systemctl status $UNIT -l --no-pager ||:)
 
 - journalctl -n -0 -u $UNIT -n100 -------------------------------------------
-$journal
+$(journalctl -n -0 -u $UNIT -n100 ||:)
 -----------------------------------------------------------------------------
 
 This email is generated automatically by $0 script.
 Refer to your configuration for knowing the hell is going on.
 
 Have a nice day,
-$0 script.
+$0
 EOF
-	)
-	case "$MAILTO" in
-	*@*.*) sendmail $MAILTO; ;;
-	stdout|-) cat; ;;
-	quiet) cat >/dev/null; ;;
-	esac <<<"$tmp";
 }
 
 do_output() {
@@ -67,14 +67,14 @@ do_output() {
 	if $noduplicate; then
 		if [ -z "${listAlreadyFailed+x}" ]; then listAlreadyFailed=""; fi
 		if grep -x -q "$UNIT" <<<"$listAlreadyFailed"; then
-			log "$UNIT entered failed state again."
+			echo "$UNIT entered failed state again, thus is ignored."
 			return
 		fi
 		listAlreadyFailed+="$UNIT"$'\n'
 	fi
-	echo "$UNIT entered failed state -> output to $MAILTO"
+	echo "$UNIT entered failed stata. Outputing to $MAILTO"
 	if ! output "$MAILTO" "$UNIT"; then
-		echo "Error outputing to $MAILTO about $UNIT"
+		echo "warn: Outputing to $MAILTO about $UNIT exited with error"
 	fi
 }
 
@@ -82,39 +82,42 @@ do_output() {
 
 # Parse Arguments
 if [ $# -lt 1 ]; then usage; exit 1; fi
-if ! ARGS=$(getopt -n "$NAME" -o i:d -l ignore:no-duplicate -- "$@"); then
-	echo "Error parsing options" >&2; exit 1;
+if ! ARGS=$(getopt -n "$NAME" -o c:i:dh -l config:,ignore:,no-duplicate,help -- "$@"); then
+	echo "Error: parsing options" >&2; exit 1;
 fi
 eval set -- "$ARGS"
 
 ignore="" noduplicate=false
 while true; do
 	case "$1" in
-		-i | --ignore ) ignore+="$2"$'\n'; shift; ;;
-		-d | --no-duplicate) noduplicate=true; ;;
-		-- ) shift; break; ;;
-		* ) echo "internal error $1" >&2; exit 1; ;;
+	-c|--config) . "$2"; shift; ;;
+	-i|--ignore) ignore+="$2"$'\n'; shift; ;;
+	-d|--no-duplicate) noduplicate=true; ;;
+	-h|--help) usage; exit 1; ;;
+	--) shift; break; ;;
+	*) echo "Error: internal error $1" >&2; exit 1; ;;
 	esac
 	shift
 done
 
+
+if [ $# -eq 0 ]; then usage; echo "Error: missing arguments" >&2; exit 1; fi;
 MAILTO=$1
 shift
 if [ $# -ne 0 ]; then usage; echo "Additional arguments on the end" >&2; exit 1; fi;
 
 # Check arguments
-ignore=$(sort <<<"$ignore")
+ignore=$(sort -u <<<"$ignore")
 echo "Init. Output is $MAILTO";
 
 set -reuo pipefail
 
-while IFS=':' read -r UNIT _; do 
+journalctl --boot=0 --identifier=systemd --follow --output=cat --no-pager --no-tail \
+| grep --line-buffered "[Ff]ailed with result" \
+| while IFS=':' read -r UNIT _; do 
 	if grep -x -q "$UNIT" <<<"$ignore"; then
 		continue;
 	fi
 	do_output "$MAILTO" "$UNIT" "$noduplicate"	
-done < <( 
-	grep --line-buffered "[Ff]ailed with result" \
-		<(journalctl --boot=0 --identifier=systemd --follow --output=cat --no-pager --no-hostname -n1000000)
-)
+done
 
