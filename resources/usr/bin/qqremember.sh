@@ -449,7 +449,8 @@ usageExampleConfig() {
 COMMAND='cat | head -n10' # parsed until bash
 COMMAND='cat'
 # get dates from now until ( now + \$UNTIL )
-UNTIL='1 month' # ex. '1 week', '2 days'
+# ex. '1 week' '2 days'
+UNTIL='1 month'
 SWIETA=true # laduj daty swiat do roku 2100
 
 # | * * * * | Description
@@ -492,7 +493,7 @@ Usage:
     qqremember selftest
 
 Options:
-    -c <config>      - specify path to config file (default: $HOME/.config/qqrememberrc)
+    -c <config>      - specify path to config file (default: ~/.config/qqrememberrc)
     -h               - show this text and exit
     -u <UNTIL>       - override UNTIL paramter in config file
     -C <COMAMND>     - override COMMAND parameter in config file
@@ -528,7 +529,7 @@ if ! ARGS=$(getopt -n "qqremember" -o ":c:dhu:C:S:P:E" -- "$@"); then
 	exit 1;
 fi
 eval set -- "$ARGS"
-CONFIG=${CONFIG:-$HOME/.config/qqrememberrc} 
+CONFIG=${CONFIG:-~/.config/qqrememberrc} 
 SWIETA=true COMMAND=cat PARALLEL=true
 while true; do
 	case "$1" in
