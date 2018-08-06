@@ -5,7 +5,7 @@ ConditionPathExists=/etc/qqremember.conf
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/qqremember.conf
-ExecStart=/usr/bin/qqremember $args
+ExecStart=/usr/bin/qqremember.sh $args
 
 [Install]
 WantedBy=multi-user.target
