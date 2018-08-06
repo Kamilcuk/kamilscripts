@@ -1,6 +1,6 @@
 [Unit]
-Description=Dockerizer docker-compose-up-down@%i in /srv/docker/%i
-After=docker.service
+Description=Run docker-compose up/down in /srv/docker/%i
+After=docker.service network-online.target
 BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
