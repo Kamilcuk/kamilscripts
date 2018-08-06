@@ -493,7 +493,7 @@ Usage:
     qqremember selftest
 
 Options:
-    -c <config>      - specify path to config file (default: ~/.config/qqrememberrc)
+    -c <config>      - specify path to config file (default: ~/.config/qqremember.conf)
     -h               - show this text and exit
     -u <UNTIL>       - override UNTIL paramter in config file
     -C <COMAMND>     - override COMMAND parameter in config file
@@ -529,7 +529,7 @@ if ! ARGS=$(getopt -n "qqremember" -o ":c:dhu:C:S:P:E" -- "$@"); then
 	exit 1;
 fi
 eval set -- "$ARGS"
-CONFIG=${CONFIG:-~/.config/qqrememberrc} 
+CONFIG=${CONFIG:-~/.config/qqremember.conf} 
 SWIETA=true COMMAND=cat PARALLEL=true
 while true; do
 	case "$1" in
