@@ -1,0 +1,16 @@
+[Unit]
+Description=%i QEMU virtual machine
+
+[Service]
+Environment="type=system-x86_64" "monitorport=5555" "args="
+EnvironmentFile=/etc/conf.d/qemu.d/%i.conf
+PIDFile=/var/run/qemu-%i.pid
+ExecStart=/usr/bin/qemu-$type -name %i -nographic -pidfile /var/run/qemu-%i.pid \
+  -monitor telnet:localhost:$monitorport,server,nowait,nodelay $args
+ExecStop=/bin/sh -c 'echo system_powerdown | nc localhost $monitorport'
+TimeoutStopSec=30
+KillMode=none
+
+[Install]
+WantedBy=multi-user.target
+
