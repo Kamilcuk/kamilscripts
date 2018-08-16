@@ -2,8 +2,11 @@
 Description=%i QEMU virtual machine
 
 [Service]
-Environment="type=system-x86_64" "monitorport=5555" "args="
+Environment=type=system-x86_64
+Environment=monitorport=5555
+Environment=args=
 EnvironmentFile=/etc/conf.d/qemu.d/%i.conf
+
 PIDFile=/var/run/qemu-%i.pid
 ExecStart=/usr/bin/qemu-$type -name %i -nographic -pidfile /var/run/qemu-%i.pid \
   -monitor telnet:localhost:$monitorport,server,nowait,nodelay $args
