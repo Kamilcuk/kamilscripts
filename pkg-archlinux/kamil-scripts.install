@@ -14,7 +14,6 @@ check_changed() {
 		msg "Create file /tmp/.force_kamil_scripts_install to force installing"
 		if [ ! -e /tmp/.force_kamil_scripts_install ]; then
 			msg "killall pacman"
-			killall pacman
 		else
 			msg "File /tmp/.force_kamil_scripts_install exists, continuing...."
 		fi
