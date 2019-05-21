@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -n "$PS1" -a -n "$BASH" -a -z "${POSIXLY_CORRECT+x}" ]; then
+if [ -z "$PS1" -o -z "$BASH" -o -n "${POSIXLY_CORRECT+x}" ]; then
 	return
 fi
 
