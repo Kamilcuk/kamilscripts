@@ -8,7 +8,7 @@ variables:
 
 build:
   stage: build
-  image: base/archlinux
+  image: archlinux/base
   script:
   - pkg/archlinux/docker_build.sh ./output
   artifacts:
