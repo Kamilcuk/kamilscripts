@@ -13,8 +13,9 @@ sudo -u nobody makepkg -f --syncdeps --noconfirm
 ls -l *.pkg.tar.xz
 
 popd
+
 if (($# > 0)); then
 	mkdir -v -p "$1"
-	mv -v *.pkg.tar.xz "$1"/
+	mv -v pkg/archlinux/*.pkg.tar.xz "$1"/
 fi
 
