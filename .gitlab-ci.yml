@@ -6,29 +6,20 @@ stages:
 variables:
   PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
 
-#build:
-#  stage: build
-#  image: base/archlinux
-#  script:
-#  - pacman -Sy --needed --noconfirm base-devel git
-#  - cd pkg-archlinux
-#  - chown -R nobody:nobody .
-#  - chmod +w /etc/sudoers
-#  - printf "nobody ALL=(ALL) NOPASSWD:"" ALL" >> /etc/sudoers
-#  - chmod -w /etc/sudoers
-#  - sudo -u nobody makepkg --syncdeps --noconfirm
-#  - mkdir -p ../output
-#  - mv -v *.pkg.tar.xz ../output
-#  artifacts:
-#    paths:
-#    - output
+build:
+  stage: build
+  image: base/archlinux
+  script:
+  - pkg/archlinux/docker_build.sh ./output
+  artifacts:
+    paths:
+    - ./output
 
-#deploy:
-#  stage: deploy
-#  image: busybox
-#  script:
-#  - wget --post-data='' "https://gitlab.com/api/v4/projects/7024812/trigger/pipeline?token=$archlinux_repo_trigger&ref=master"
-#  only:
-#  - tags
-#  - master
-
+deploy:
+  stage: deploy
+  image: busybox
+  script:
+  - wget --post-data='' "https://gitlab.com/api/v4/projects/7024812/trigger/pipeline?token=$archlinux_repo_trigger&ref=master"
+  only:
+  - tags
+  

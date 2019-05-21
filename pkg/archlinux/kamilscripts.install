@@ -3,7 +3,12 @@ set -euo pipefail
 
 # Private functions ###########################
 
-msg() { echo "kamilscripts:" "$@" >&2; }
+dir=/usr/lib/kamilscripts
+
+msg() {
+	echo "kamilscripts:" "$@" >&2;
+}
+
 archzfs_add() {
 	local key=F75D9D76
 	if ! pacman-key -l 2>/dev/null | grep -q "$key\$"; then
@@ -16,6 +21,24 @@ archzfs_add() {
 	fi
 }
 
+post_install_or_upgrade() {
+	if hash systemctl >/dev/null; then
+		systemctl daemon-reload ||:
+	fi
+
+	archzfs_add
+	
+	httpsrc='https://gitlab.com/Kamcuk/kamilscripts.git'
+	if [ -d "$dir"/.git ]; then
+		msg "git -C $dir pull"
+		timeout 5 git -C "$dir" pull
+	else
+		msg "Initializing git repository in $dir"
+		[ -d "$dir" ] && rmdir -v "$dir"
+		msg "git clone $httpsrc $dir"
+		timeout 30 git clone "$httpsrc" "$dir"
+	fi
+}
 
 # Public functions #############################
 
@@ -26,7 +49,7 @@ pre_install() {
 
 ## arg 1:  the new package version
 post_install() {
-	archzfs_add
+	post_install_or_upgrade
 }
 
 ## arg 1:  the new package version
@@ -38,12 +61,13 @@ pre_upgrade() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 post_upgrade() {
-	archzfs_add
+	post_install_or_upgrade
 }
 
 ## arg 1:  the old package version
 pre_remove() {
-	:
+	msg "Removing everything from $dir directory"
+	rm -vrf "$dir"
 }
 
 ## arg 1:  the old package version

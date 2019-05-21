@@ -38,11 +38,12 @@ assert() {
 create_symlinks() {
 	local srcdir lntgt destdir srcname destname src dest files
 	srcdir="$1"
-	lntgt="$2"
+	lntgtdir="$2"
 	destdir="$3"
 	srcname="$4"
 	destname="$5"
 
+	lntgt=$(readlink -m "$lntgtdir"/"$srcname")
 	src="$srcdir/$srcname"
 	dest="$destdir"/"$destname"
 
@@ -65,7 +66,6 @@ DIR=$(git rev-parse --show-toplevel)
 
 create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /bin       /usr/bin
 create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /systemd   /usr/lib/systemd/system
-create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /vimfiles  /usr/share/vim/vimfiles
 mkdir -v -p "$pkgdir"/usr/lib/kamilscripts
 
 ); }
