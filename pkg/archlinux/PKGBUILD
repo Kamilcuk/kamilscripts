@@ -11,10 +11,10 @@ arch=('any')
 url="https://gitlab.com/Kamcuk/$pkgname"
 license=('MIT' 'custom:Beerware')
 groups=()
-depends=(bash bash-completion git)
+depends=(bash bash-completion git vim)
 makedepends=()
 checkdepends=()
-optdepends=(pacutils python reflector)
+optdepends=(python reflector)
 provides=()
 conflicts=()
 replaces=()
@@ -65,8 +65,12 @@ rm -v PKGBUILD
 DIR=$(git rev-parse --show-toplevel)
 
 create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /bin       /usr/bin
+echo
 create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /systemd   /usr/lib/systemd/system
-mkdir -v -p "$pkgdir"/usr/lib/kamilscripts
+echo
+#cp -v -r "$DIR"/pkg/resources/* "$pkgdir"/
+#echo
+chown root:root -v -R "$pkgdir"/*
 
 ); }
 

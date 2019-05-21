@@ -5,39 +5,64 @@ set -euo pipefail
 
 dir=/usr/lib/kamilscripts
 
-msg() {
-	echo "kamilscripts:" "$@" >&2;
+logpipe() {
+	sed 's/^/kamilscripts: /'
 }
 
 archzfs_add() {
 	local key=F75D9D76
 	if ! pacman-key -l 2>/dev/null | grep -q "$key\$"; then
-		msg "Adding archzfs key to pacman-key"
+		echo "Adding archzfs key to pacman-key"
 		pacman-key -r "$key"
 		pacman-key --lsign-key "$key"
-		msg "archzfs added to pacman keyring"
+		echo "archzfs added to pacman keyring"
 	else
-		msg "archzfs key already added to pacman keyring"
+		echo "archzfs key already added to pacman keyring"
 	fi
 }
 
-post_install_or_upgrade() {
+systemctl_reload() {
 	if hash systemctl >/dev/null; then
-		systemctl daemon-reload ||:
+		systemctl daemon-reload || :
 	fi
+}
 
-	archzfs_add
-	
+git_repo_update() {
 	httpsrc='https://gitlab.com/Kamcuk/kamilscripts.git'
 	if [ -d "$dir"/.git ]; then
-		msg "git -C $dir pull"
+		echo "git -C $dir pull"
 		timeout 5 git -C "$dir" pull
 	else
-		msg "Initializing git repository in $dir"
+		echo "Initializing git repository in $dir"
 		[ -d "$dir" ] && rmdir -v "$dir"
-		msg "git clone $httpsrc $dir"
+		echo "git clone $httpsrc $dir"
 		timeout 30 git clone "$httpsrc" "$dir"
 	fi
+}
+
+provision_cfg_files() {
+	local add mark
+	add=${1:-}
+	mark="# %s kamilscript MANAGED BLOCK"
+	export PATH=$PATH:$dir/bin
+	blockinfile.sh $add -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
+	blockinfile.sh $add -m "$mark" -b "[ -r $dir/etc/bash.bashrc ] && source $dir/etc/bash.bashrc" /etc/bash.bashrc
+	blockinfile.sh $add -m "\"$mark" -b "runtime! $dir/etc/vimrc" /etc/vimrc
+	if [ -e '/etc/ssh/ssh_config' ]; then
+		blockinfile.sh $add -m "$mark" -b "Include $dir/etc/ssh_config" /etc/ssh/ssh_config
+	fi
+}
+
+unprovision_cfg_files() {
+	provision_cfg_files -d
+}
+	
+
+post_install_or_upgrade() {
+	systemctl_reload
+	archzfs_add
+	git_repo_update
+	provision_cfg_files
 }
 
 # Public functions #############################
@@ -49,7 +74,7 @@ pre_install() {
 
 ## arg 1:  the new package version
 post_install() {
-	post_install_or_upgrade
+	post_install_or_upgrade 2>&1 | logpipe
 }
 
 ## arg 1:  the new package version
@@ -61,13 +86,13 @@ pre_upgrade() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 post_upgrade() {
-	post_install_or_upgrade
+	post_install_or_upgrade 2>&1 | logpipe
 }
 
 ## arg 1:  the old package version
 pre_remove() {
-	msg "Removing everything from $dir directory"
-	rm -vrf "$dir"
+	echo "Removing everything from $dir directory" | logpipe
+	rm -rf "$dir"
 }
 
 ## arg 1:  the old package version
