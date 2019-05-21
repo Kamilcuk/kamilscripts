@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 # Private functions ###########################
 
@@ -40,6 +39,11 @@ git_repo_update() {
 	fi
 }
 
+git_repo_remove() {
+	echo "Removing everything from $dir directory"
+	rm -rf "$dir"
+}
+
 provision_cfg_files() {
 	local add mark
 	add=${1:-}
@@ -56,13 +60,19 @@ provision_cfg_files() {
 unprovision_cfg_files() {
 	provision_cfg_files -d
 }
-	
 
 post_install_or_upgrade() {
 	systemctl_reload
 	archzfs_add
 	git_repo_update
 	provision_cfg_files
+}
+
+remove() {
+	export PATH=$PATH:$dir/bin
+	systemctl_reload
+	unprovision_cfg_files
+	git_repo_remove
 }
 
 # Public functions #############################
@@ -91,8 +101,7 @@ post_upgrade() {
 
 ## arg 1:  the old package version
 pre_remove() {
-	echo "Removing everything from $dir directory" | logpipe
-	rm -rf "$dir"
+	remove 2>&1 | logpipe
 }
 
 ## arg 1:  the old package version
