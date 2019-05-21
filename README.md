@@ -2,6 +2,12 @@
 
 My own bash scripts, configurations, etc.  
 
+# Archlinux installation
+
+```
+curl 'https://gitlab.com/Kamcuk/kamilscripts/raw/master/pkg/archlinux/autoinstall.sh?inline=false' | sudo bash
+```
+
 # License & Author
 
 Author: Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`  
