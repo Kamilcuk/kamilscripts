@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-[ "${DEBUG:-false}" = true ] && set -x
+[ "${DEBUG:-false}" = true ] && { set -x; LOGLVL=100; }
 
 # functions #################
 
@@ -15,14 +15,18 @@ The script loosly based on ansible lineinfile module.
 The script has no backreferences, because you can do that yourself with sed '/line/s/li\(.*\)/\1/'.
 
 Options:
-	-d, --delete            - delete the line
-	-l, --line=line         - specify the exact line
-	-r, --regex=regex       - line specified with regex, matched with grep
-	-c, --create            - create the file if it does not exists
-	-V, --validate=command  - run this command after substitution
-	-t, --unittest          - run internal unittests
-	-h, --help              - run this help and exit
-	-s, --silent            - less output
+	-d, --delete            - Delete the line
+	-l, --line=line         - Specify the exact line
+	-r, --regex=regex       - Line specified with regex, matched with grep
+	-c, --create            - Create the file if it does not exists
+	-V, --validate=command  - Run this command after substitution
+	-t, --unittest          - Run internal unittests
+	-h, --help              - Run this help and exit
+	-s, --silent            - Print less output
+
+Examples:
+	lineinfile.sh -l "source /my/ultimate/config.sh" /etc/bash.bashrc
+	lineinfile.sh -d -r "^#" /etc/bash.bashrc
 
 Written by Kamil Cukrowski 2019
 Licensed jointly under MIT License and Beerware License.
@@ -36,7 +40,10 @@ assert() {
 		local expr ret=$?
 		expr="$1"
 		shift
-		echo "Expression '$expr' failed with $ret:" "$@" >&2
+		echo "Expression '$expr' failed with $ret from $(caller 0)" >&2
+		if (($#)); then
+			echo "$@" >&2
+		fi
 		exit 1
 	fi
 }
@@ -108,18 +115,18 @@ EOF
 ARGS=$(getopt -n lineinfile -o dl:r:cV:ths -l delete,line:,regex:,create:,validate:,unittest,help,silent -- "$@")
 eval set -- "$ARGS"
 
-DELETE=false
+delete=false
 line=
 regex=
-CREATE=false
+create=false
 validate=
 LOGLVL=${LOGLVL:-1}
 while (($#)); do
 	case "$1" in
-	-d|--delete) DELETE=true; ;;
+	-d|--delete) delete=true; ;;
 	-l|--line) line=$2; shift; ;;
 	-r|--regex) regex=$2; shift; ;;
-	-c|--create) CREATE=true; ;;
+	-c|--create) create=true; ;;
 	-V|--validate) validate=$2; shift; ;;
 	-t|--unittest) unittest; exit; ;;
 	-h|--help) usage; exit; ;;
@@ -137,9 +144,9 @@ file=$1
 
 # work
 
-if ! "$DELETE"; then
+if ! "$delete"; then
 	assert '[ -n "$line" ]' '--line parameter must be specified when not deleting'
-	if ! "$CREATE"; then
+	if ! "$create"; then
 		assert '[ -e "$file" ]' "File $file does not exists"
 		assert '[ -w "$file" ]' "No write permission to $file are granted"
 	else
@@ -149,20 +156,28 @@ if ! "$DELETE"; then
 		fi
 	fi
 	
-	if match=$(
-		if [ -z "$regex" ]; then
-			grep -n -F -x "$line" "$file"
+	if [ -z "$regex" ]; then
+		if match=$(
+			grep -n -F -x "$line" "$file" |
+			tail -n1 | cut -f1 -d:
+		); then
+			log 1 "Line=$line found on lineno=$match in $file. No action needed"
 		else
-			grep -n "$regex" "$file"
-		fi |
-		tail -n1 |
-		cut -f1 -d:
-	); then
-		log 1 "Replacing lineno=$match of file=$file with line=$line"
-		sed -i -e "$match"' c'"$line" "$file"
+			log 1 "Appending line=$line to file=$file"
+			printf "%s\n" "$line" >> "$file"
+		fi
 	else
-		log 1 "Appending line=$line to file=$file"
-		printf "%s\n" "$line" >> "$file"
+		if matchcontent=$(
+			grep -n "$regex" "$file" |
+			tail -n1
+		); then
+			IFS=: read -r match content <<<"$matchcontent"
+			log 1 "Replacing lineno=$match with content=$content file=$file with line=$line"
+			sed -i -e "$match"' c'"$line" "$file"
+		else
+			log 1 "Appending line=$line to file=$file"
+			printf "%s\n" "$line" >> "$file"
+		fi
 	fi
 	
 else
