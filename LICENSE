@@ -1,6 +1,9 @@
+Project is licensed jointly under MIT License and Beerware License.
+
+----------------------------------------------------------------------------
 MIT License
 
-Copyright (c) 2017 Kamil Cukrowski
+Copyright (c) 2019 Kamil Cukrowski
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
 ----------------------------------------------------------------------------
 "THE BEER-WARE LICENSE" (Revision 42):
 Kamil Cukrowski wrote this software. As long as you retain this notice you
