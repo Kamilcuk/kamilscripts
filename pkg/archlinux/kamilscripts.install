@@ -3,23 +3,7 @@ set -euo pipefail
 
 # Private functions ###########################
 
-msg() { echo "kamil-scripts:" "$@" >&2; }
-check_changed() {
-	if ! hash paccheck; then
-		msg "paccheck utility not found. please install pacutils"
-		return;
-	fi
-	if ! paccheck --md5sum --quiet kamil-scripts ; then
-		msg "Changed files found. Updating this package will overwrite these files."
-		msg "Create file /tmp/.force_kamil_scripts_install to force installing"
-		if [ ! -e /tmp/.force_kamil_scripts_install ]; then
-			msg "killall pacman"
-		else
-			msg "File /tmp/.force_kamil_scripts_install exists, continuing...."
-		fi
-		exit 1
-	fi
-}
+msg() { echo "kamilscripts:" "$@" >&2; }
 archzfs_add() {
 	local key=F75D9D76
 	if ! pacman-key -l 2>/dev/null | grep -q "$key\$"; then
@@ -48,7 +32,7 @@ post_install() {
 ## arg 1:  the new package version
 ## arg 2:  the old package version
 pre_upgrade() {
-	check_changed
+	:
 }
 
 ## arg 1:  the new package version

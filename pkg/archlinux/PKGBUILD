@@ -2,36 +2,71 @@
 # Maintainer: Kamil Cukrowski <kamilcukrowski@gmail.com>
 
 pkgbase=
-pkgname=kamil-scripts
-pkgver=0.3.3.r30.g22f295a
-pkgrel=1
+pkgname=kamilscripts
+pkgver=$(git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
+pkgrel=2
 epoch=
 pkgdesc='These are Kamil Cukrowski private/public scripts. Do not use.'
 arch=('any')
 url="https://gitlab.com/Kamcuk/$pkgname"
 license=('MIT' 'custom:Beerware')
 groups=()
-depends=(bash bash-completion reflector)
+depends=(bash bash-completion git)
 makedepends=()
 checkdepends=()
-optdepends=(pacutils sh python)
+optdepends=(pacutils python reflector)
 provides=()
 conflicts=()
 replaces=()
-backup=(etc/bash_completion.d/kamil-scripts.sh etc/rc-local/01-example-script)
+backup=(etc/bash_completion.d/kamil-scripts.sh)
 options=()
 install="$pkgname.install"
 changelog=
-source=("$pkgname::git+$url.git")
+source=(PKGBUILD)
 noextract=()
 md5sums=('SKIP')
 validpgpkeys=()
 
-pkgver() {
-	cd "$pkgname"
-	git describe --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+assert() {
+	if ! eval "$1"; then
+		shift 1
+		echo "Assertion $1 failed." "$@" >&2
+		exit 2
+	fi
 }
-package() {
-	cp -a "$pkgname"/resources/* "$pkgdir"
-	chown -R root:root "$pkgdir"
+
+create_symlinks() {
+	local srcdir lntgt destdir srcname destname src dest files
+	srcdir="$1"
+	lntgt="$2"
+	destdir="$3"
+	srcname="$4"
+	destname="$5"
+
+	src="$srcdir/$srcname"
+	dest="$destdir"/"$destname"
+
+	IFS=$'\n' files=($(cd "$src" && find . -mindepth 1 -type f -printf '%P\n'))
+	assert '[ "${#files[@]}" -ne 0 ]' "There are no files inside $src"
+
+	mkdir -v -p "$dest"
+	for file in "${files[@]}"; do
+		ln -v -s "$lntgt"/"$file" "$dest"/"$file"
+	done
 }
+
+package() { (
+
+local DIR
+set -euo pipefail -e errtrace
+rm -v PKGBUILD
+
+DIR=$(git rev-parse --show-toplevel)
+
+create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /bin       /usr/bin
+create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /systemd   /usr/lib/systemd/system
+create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /vimfiles  /usr/share/vim/vimfiles
+mkdir -v -p "$pkgdir"/usr/lib/kamilscripts
+
+); }
+
