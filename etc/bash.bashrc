@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# ------------------- GLOBAL ----------------------
-#[ -d /etc/bash_completion.d ] && . /etc/bash_completion.d/*
+if [ -n "$PS1" -a -n "$BASH" -a -z "${POSIXLY_CORRECT+x}" ]; then
+	return
+fi
 
 # colors
 _RED="$(tput setaf 1 2>/dev/null)"
