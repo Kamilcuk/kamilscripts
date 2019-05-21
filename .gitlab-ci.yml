@@ -13,7 +13,7 @@ build:
   - pkg/archlinux/docker_build.sh ./output
   artifacts:
     paths:
-    - ./output/*
+    - output/*
 
 deploy:
   stage: deploy
