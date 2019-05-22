@@ -6,7 +6,7 @@ now=$(date -u -R)
 
 mkdir -p "$dest"
 files=$(cd "$dest" && find . -printf "%P\n" | sort |
-	xargs -n1 -I{} printf '<a href={}>{}</a><br>')
+	xargs -n1 -I{} printf '<a href={}>{}</a><br>\n')
 tee "$dest"/index.html <<EOF
 <!DOCTYPE html>
 <html>
