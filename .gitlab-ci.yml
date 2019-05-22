@@ -1,27 +1,15 @@
 
-stages:
-- build
-- deploy
-
 variables:
   PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
 
-build:
+pages:
   stage: build
   image: archlinux/base
   script:
-  - pkg/archlinux/docker_build.sh ./output
+  - pkg/archlinux/docker_build.sh ./archlinux-output
+  - pkg/archlinux/repo_create.sh ./public/archlinux/kamilrepo ./archlinux-output
+  - pkg/create_index.sh ./public/
   artifacts:
     paths:
-    - output
+      - public
 
-deploy:
-  stage: deploy
-  image: busybox
-  script:
-  - wget --post-data='' "https://gitlab.com/api/v4/projects/7024812/trigger/pipeline?token=$archlinux_repo_trigger&ref=master"
-  only:
-  - tags
-  - master
-  dependencies: []
-  
