@@ -9,7 +9,10 @@ build:
   stage: build
   image: archlinux/base
   script:
-  - pkg/archlinux/docker_build.sh ./output
-  - pkg/create_index.sh ./public/index.html
-  - pkg/archlinux/repo_create.sh ./public/archlinux/kamilscripts
-  
+  - pkg/archlinux/docker_build.sh ./archlinux-output
+  - pkg/archlinux/repo_create.sh ./public/archlinux/kamilscripts ./archlinux-output
+  - pkg/create_index.sh ./public/
+  artifacts:
+    paths:
+      - public
+
