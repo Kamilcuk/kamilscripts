@@ -30,7 +30,7 @@ git_repo_update() {
 	httpsrc='https://gitlab.com/Kamcuk/kamilscripts.git'
 	if [ -d "$dir"/.git ]; then
 		user=$(stat --printf="%U" "$dir"/.git) ||:
-		echo "git -C $dir pull"
+		echo "sudo -u $user git -C $dir pull"
 		timeout 5 sudo -u "$user" git -C "$dir" pull ||:
 	else
 		echo "Initializing git repository in $dir"
