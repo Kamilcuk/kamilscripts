@@ -11,8 +11,8 @@ set swapfile "When this option is not empty a swap file is synced to disk after 
 set nowritebackup "Make a backup before overwriting a file.
 set nobackup  "Turn on backup option
 
-set backspace=indent,eol,start " let backspece delete everything in intsert mode
-set t_kb= 		" fix backspace in xterm and screen
+"set backspace=indent,eol,start " let backspece delete everything in intsert mode
+"set t_kb= 		" fix backspace in xterm and screen
 set history=500          " keep 50 lines of command line history
 set ruler               " show the cursor position all the time
 set showcmd             " display incomplete commands
