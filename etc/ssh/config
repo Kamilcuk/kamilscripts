@@ -1,13 +1,4 @@
-
-Host leo leonidas tunel_leonidas
-	Hostname 192.168.255.32
-	User root
-Host gorgo tunel_gorgo
-	Hostname 192.168.255.33
-	User root
-Host ardalus tunel_ardalus
-	Hostname 192.168.255.37
-	User root
+#!ssh_config
 
 Host dyzio dyzio_root tunel_dyzio tunel_dyzio_root
 	Hostname www.dyzio.pl
@@ -42,3 +33,38 @@ Host chors tunel_chors
 Host tunel_chors
 	Hostname 192.168.255.50
 
+Host leo leonidas tunel_leonidas
+	Hostname 192.168.255.32
+	User root
+Host gorgo tunel_gorgo
+	Hostname 192.168.255.33
+	User root
+Host ardalus tunel_ardalus
+	Hostname 192.168.255.37
+	User root
+
+Host galeranew
+	Hostname galeranew.ii.pw.edu.pl
+	User kcukrows
+Host mion
+	Hostname mion.elka.pw.edu.pl
+	user kcukrows
+
+Host michal
+	Hostname 192.168.20.7
+	User kamil
+Host ustro
+#	Hostname ustropecet.ustronie.ds.pw.edu.pl
+#	Hostname pecet123.ustronie.ds.pw.edu.pl
+	Hostname 10.3.254.208
+	User kamil
+Host ustrotunel
+	Hostname 192.168.255.33
+	User kamil
+	port 4004
+
+Host *
+	Compression yes
+	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
+	ServerAliveInterval 30
+	ServerAliveCountMax 3
