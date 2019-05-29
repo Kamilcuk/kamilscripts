@@ -38,7 +38,7 @@ Host tunel_wujek
 Host chors tunel_chors
 	Hostname 193.33.111.225
 	User root
-	Port 22
+	Port 10022
 Host tunel_chors
 	Hostname 192.168.255.50
 
