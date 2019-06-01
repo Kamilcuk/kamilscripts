@@ -1,12 +1,12 @@
 [Unit]
-Description=Run docker-compose up/down in /srv/docker/%i
+Description=Run docker-compose up/down in %I
 After=docker.service network-online.target
 BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
  
 [Service]
 Type=simple
-WorkingDirectory=/srv/docker/%i
+WorkingDirectory=%I
 TimeoutStartSec=6000
 ExecStartPre=/usr/bin/docker-compose down
 ExecStartPre=/usr/bin/docker-compose pull
