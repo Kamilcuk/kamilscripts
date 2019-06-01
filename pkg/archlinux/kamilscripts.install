@@ -67,6 +67,8 @@ post_install_or_upgrade() {
 	archzfs_add
 	git_repo_update
 	provision_cfg_files
+	echo "Make sure ssh/config has root:root owner"
+	chown root:root "$dir/etc/ssh/config"	
 }
 
 remove() {

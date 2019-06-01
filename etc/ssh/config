@@ -40,7 +40,7 @@ Host gorgo tunel_gorgo
 	Hostname 192.168.255.33
 	User root
 Host ardalus tunel_ardalus
-	Hostname 192.168.255.37
+	Hostname 192.168.255.35
 	User root
 
 Host galeranew
