@@ -15,5 +15,6 @@ if [ "$(pwd)" != /usr/lib/kamilscripts ]; then
 fi
 
 chown kamil:kamil -R .
+chown -v root:root etc/ssh/config
 git remote set-url origin git@gitlab.com:Kamcuk/kamilscripts.git
 
