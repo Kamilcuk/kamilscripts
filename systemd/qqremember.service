@@ -1,11 +1,10 @@
 [Unit]
 Description=Run qqremember
-ConditionPathExists=/etc/qqremember.conf
+ConditionPathExists=/usr/lib/kamilscripts/etc/qqremember.conf
 
 [Service]
 Type=oneshot
-EnvironmentFile=/etc/qqremember.conf
-ExecStart=/usr/bin/qqremember.sh $args
+ExecStart=/usr/bin/qqremember.sh -c /usr/lib/kamilscripts/etc/qqremember.conf
 
 [Install]
 WantedBy=multi-user.target

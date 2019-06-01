@@ -52,7 +52,7 @@ provision_cfg_files() {
 	export PATH=$PATH:$dir/bin
 	blockinfile.sh $add -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
 	blockinfile.sh $add -m "$mark" -b "[ -r $dir/etc/bash.bashrc ] && source $dir/etc/bash.bashrc" /etc/bash.bashrc
-	blockinfile.sh $add -m "\"$mark" -b "runtime! $dir/etc/vimrc" /etc/vimrc
+	blockinfile.sh $add -m "\"$mark" -b "source $dir/etc/vimrc" /etc/vimrc
 	if [ -e '/etc/ssh/ssh_config' ]; then
 		blockinfile.sh $add -m "$mark" -b "Include $dir/etc/ssh/config" /etc/ssh/ssh_config
 	fi
