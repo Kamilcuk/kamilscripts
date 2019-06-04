@@ -1,0 +1,10 @@
+[Unit]
+Description=Run qqremember
+ConditionPathExists=/usr/lib/kamilscripts/etc/qqremember.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/logwatch/scripts/logwatch.pl 
+
+[Install]
+WantedBy=multi-user.target

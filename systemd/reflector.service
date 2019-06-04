@@ -3,6 +3,7 @@ Description=Pacman mirrorlist update
 Requires=network-online.target
 After=network-online.target
 ConditionPathExists=/etc/pacman.d/mirrorlist
+ConditionPathExists=/usr/bin/reflector
 
 [Service]
 Type=oneshot
