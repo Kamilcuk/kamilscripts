@@ -63,8 +63,18 @@ Host ustrotunel
 	User kamil
 	port 4004
 
+Host netemeradocker
+        Hostname production-0.netemera.com
+        Compression Yes
+        User docker
+Host netemera
+	Hostname production-0.netemera.com
+	Compression Yes
+	User kcukro
+
 Host *
 	Compression yes
 	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
 	ServerAliveInterval 30
 	ServerAliveCountMax 3
+
