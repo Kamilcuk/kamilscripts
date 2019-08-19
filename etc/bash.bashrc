@@ -5,6 +5,10 @@ if [ -z "$PS1" -o -z "$BASH" -o -n "${POSIXLY_CORRECT+x}" ]; then
 fi
 
 tputex() {
+	if [ "$#" -eq 0 ]; then
+		echo "Usage: tputex [bold|underline|standout|normal|reset|red|green|yellow|blue|magenta|cyan|white]..."
+		return 0
+	fi
 	for i; do
 		case "$i" in
 		help) 
@@ -40,7 +44,23 @@ else
 fi
 export PS1
 
-export PATH="$PATH:/bin:/sbin"
+# Append our default paths
+appendpath () {
+    case ":$PATH:" in
+        *:"$1":*)
+            ;;
+        *)
+            PATH="${PATH:+$PATH:}$1"
+    esac
+}
+
+appendpath '/bin'
+appendpath '/sbin'
+appendpath '/usr/lib/kamilscripts/bin'
+unset appendpath
+
+export PATH
+
 export EDITOR="/usr/bin/vim"
 export VISUAL="/usr/bin/vim"
 
