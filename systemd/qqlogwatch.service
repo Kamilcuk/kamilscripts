@@ -1,6 +1,5 @@
 [Unit]
-Description=Run qqremember
-ConditionPathExists=/usr/lib/kamilscripts/etc/qqremember.conf
+Description=Run logwatch from systemd kamilscripts
 
 [Service]
 Type=oneshot
