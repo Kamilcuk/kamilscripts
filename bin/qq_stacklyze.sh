@@ -34,6 +34,12 @@ assert() {
 	fi
 }
 
+verbose() {
+	if [ "${verbose:-false}" = "true" ]; then
+		printf "==> %s %s\n" "$(date +%s.%N) $*" >&2
+	fi
+}
+
 #debug stream
 dbgs() {
 	tee >(sed 's/^/'"${1:-dbg}"': /' >&2)
@@ -53,10 +59,13 @@ rtl_files=()
 exclude=()
 dot=false
 include_unknowns=false
-temp_dir=""
+tempdir=""
 references=true
 references_ascend=false
 table=true
+headregex=""
+excluderegex=""
+verbose=false
 
 usage() {
 	local n
@@ -68,11 +77,14 @@ Options:
   -D --dot=BOOL               Output in dot(1) compatible format. Default: $dot
   -U --include-unknowns=BOOL  Include function which are from shared libraries. Default: $include_unknowns
   -e --exclude=STR            Add function to ignore list. Default: empty.
-  -t --temp-dir=STR           Use this directory instead of temporary one. Deftaul: mktemp -d
+  -p --tempdir=STR            Use this directory instead of temporary one. Deftaul: mktemp -d
   -h --help                   Print this text and exit.
   -R --references=BOOL        Include references to functions. Default: $references.
   -A --references-ascend=BOOL Ascend into references when calculating stack usage. Default: $references_ascend
   -T --table=BOOL             Print output in a nice looking table. Default: $table
+  -H --headregex=STR          Heads are only those that conform to this regex. Parsed with grep -E.
+  -E --excluderegex=STR       Exclude all functions that conform to this regex. Parsed with grep -E.
+  -v --verbose                Try to print something
 
 Examples:
   $n -U1 -D1 -e__stack_chk_fail -R0 shell.ltrans0.234r.expand
@@ -83,8 +95,10 @@ EOF
 }
 
 args=$(getopt -n "$(basename "$0")" \
-	-o D:U:e:t:hR:A:T: \
-	-l dot:,include-unknowns:,exclude:,temp-dir:,help,references:,references-ascend:,table: -- "$@")
+	-o D:U:e:p:hR:A:T:H:E:v \
+	-l dot:,include-unknowns:,exclude:,tempdir:,help,references:,references-ascend:,table:,headregex:,excluderegex:,verbose \
+	-- "$@"
+)
 eval set -- "$args"
 
 while (($#)); do
@@ -92,14 +106,17 @@ while (($#)); do
 	-D|--dot) dot=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-U|--include-unknows) include_unknowns=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-R|--references) references=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
-	-t|--temp-dir) temp_dir=$2; shift; ;;
+	-p|--tempdir) tempdir=$2; shift; ;;
 	-e|--exclude) exclude+=("$2"); shift; ;;
 	-h|--help) usage; exit 0; ;;
 	-R|--references) references=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-A|--references-ascend) references_ascend=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-T|--table) table=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
+	-H|--headregex) headregex="$2"; shift; ;;
+	-E|--excluderegex) excluderegex="$2"; shift; ;;
+	-v|--verbose) verbose=true; ;;
 	--) shift; break; ;;
-	*) fatal "Error parsing arguments: $1"; ;;
+	*) fatal "Error parsing arguments: $1 <- $args"; ;;
 	esac
 	shift
 done
@@ -114,17 +131,24 @@ for i in "${!rtl_files[@]}"; do
 	rtl_files[$i]=$(readlink -f "$tmp")
 done
 
-if [ -z "$temp_dir" ]; then
+if [ -z "$tempdir" ]; then
 	tmpd=$(mktemp -d)
 	trap 'cd /; rm -rf "$tmpd"' EXIT
+	verbose "Created temporary directory: $tmpd"
 else
-	tmpd="$temp_dir"
+	verbose "Using user supplied temporary directory: $(readlink -f tmpd)"
+	tmpd="$tempdir"
 fi
 mkdir -p "$tmpd" || fatal 'Could not create the temporary directory "$tmpd"'
+cd "$tmpd"
 
 ## main #######################################################################################
 
-# calls.txt: <function> <call|ref> <other_function>
+for i in "${!rtl_files[@]}"; do
+	verbose "Input file $i: ${rtl_files[$i]}"
+done
+
+verbose "first parsing stage - get everything usefull from rtl files in parsable format"
 sed -nE '
 	# hold function name
 	# ex. ;; Function function_cd (function_cd, funcdef_no=13, decl_uid=4342, cgraph_uid=5, symbol_order=74)
@@ -163,21 +187,44 @@ sed -nE '
 	}
 
 ' "${rtl_files[@]}" |
-if [ "${#exclude[@]}" -eq 0 ]; then
-	cat
-else
-	sort -t$'\t' -k1 | 
-	join -t$'\t' -v1 -11 -21 -o1.1,1.2,1.3 - <(
-		printf "%s\n" "${exclude[@]}" | sort
-	) |
-	sort -t$'\t' -k3 |
-	join -t$'\t' -v1 -13 -21 -o 1.1,1.2,1.3 - <(
-		printf "%s\n" "${exclude[@]}" | sort
-	)
-fi > parsed.txt
+{
 
-# stack.txt: <function> <stack usage>
-awk -v OFS=$'\t' '{ $2 == "Partition" && sum[$1]+=$3; } END { for (key in sum) print key,sum[key]; }' parsed.txt |
+	# buh, I have no better idea
+	buf=$(cat)
+
+	if [ -n "$excluderegex" ]; then
+		tmp=$(<<<"$buf" cut -f1,3 | tr '\t' '\n' | sort -u)
+		IFS=$'\n' tmp=($tmp)
+		exclude+=("${tmp[@]}")
+	fi
+	
+	if [ "${#exclude[@]}" -eq 0 ]; then
+		cat
+	else
+		sort -t$'\t' -k1 | 
+		join -t$'\t' -v1 -11 -21 -o1.1,1.2,1.3 - <(
+			printf "%s\n" "${exclude[@]}" | sort
+		) |
+		sort -t$'\t' -k3 |
+		join -t$'\t' -v1 -13 -21 -o 1.1,1.2,1.3 - <(
+			printf "%s\n" "${exclude[@]}" | sort
+		)
+	fi <<<"$buf"
+
+} > parsed.txt
+dbgt 'function,bla,bla,bla' parsed.txt
+assert '[ -s parsed.txt ]' "Found no function definitions in the input files. Check your input."
+
+verbose "stack.txt: <function> <stack usage>"
+awk -v OFS=$'\t' '
+	{ 
+		$2 == "Function" && sum[$1]=0;
+		$2 == "Partition" && sum[$1]+=$3;
+	}
+	END {
+		for (key in sum)
+			print key,sum[key];
+	}' parsed.txt |
 	sort -t$'\t' -k1 > stack.txt
 dbgt 'function,stack_usage' stack.txt
 
@@ -188,105 +235,113 @@ awk '$2 == "call" || $2 == "ref"' parsed.txt |
 	sed -E 's/^[[:space:]]+([0-9]+) (.*)$/\2\t\1/' > calls.txt
 dbgt 'function,type,calls,count' calls.txt
 
-rm parsed.txt
-
 # remove functions that we don't know the stack usage of
-# joined.txt: <function> <call|ref> <other_function> <count> <stack_usage_of_other_function>
+verbose "joined.txt: <function> <call|ref> <other_function> <count>"
 tmp=()
 if is_true "$include_unknowns"; then
 	tmp=(-e? -a1)
 fi
-join -t$'\t' -13 -21 "${tmp[@]}" -o1.1,1.2,1.3,1.4,2.2 <(sort -t$'\t' -k3 calls.txt) stack.txt > joined.txt
-dbgt 'function,type,calls,count,add_stack' joined.txt
+join -t$'\t' -13 -21 "${tmp[@]}" -o1.1,1.2,1.3,1.4 <(sort -t$'\t' -k3 calls.txt) stack.txt > joined.txt
+dbgt 'function,type,calls,count' joined.txt
+
+verbose "Get the heads of the callgraph"
+{
+	comm -23 <(cut -f1 joined.txt | sort -u) <(cut -f3 joined.txt | sort -u)
+	if is_true "$references"; then
+		awk '$2 == "ref"' joined.txt | cut -f3
+	fi
+} | 
+sort -u |
+if [ -n "$headregex" ]; then
+	grep -E "$headregex"
+else
+	cat
+fi > heads.txt
+dbgt 'function' heads.txt
+assert '[ -s "heads.txt" ]' "We found no heads in the linked graph of files. Check -H option."
+
+
+run_awk() {
+	cat >input.awk <<'AWK_SCRIPT_EOF'
+BEGIN {
+	FS = OFS = "\t"
+}
+FILENAME == "joined.txt" {
+	++edgescnt[$1]
+	type[ $1, edgescnt[$1]] = $2
+	edges[$1, edgescnt[$1]] = $3
+	count[$1, edgescnt[$1]] = $4
+	next
+}
+FILENAME == "stack.txt" {
+	costs[$1] = $2
+	next
+}	
+
+function dot(node, i) {
+	if (!(node in visited)) {
+		visited[node]
+		print "\t" node " [label=\"" node "\\nstack=" costs[node] "\"];"
+	}
+
+	for (i = 1; i <= edgescnt[node]; ++i) {
+		attributes = ""
+
+		if (type[node, i] == "ref") {
+			attributes = attributes " style=dashed"
+		}
+
+		if (count[node, i] > 1) {
+			attributes = attributes " label=\"" count[node, i] "\""
+		}
+
+		if (length(attributes) > 0) {
+			attributes = " [" attributes "]"
+		}
+
+
+		if (!((node, i) in visited)) {
+			visited[node, i]
+			print "\t" node " -> " edges[node, i] attributes ";"
+			dot(edges[node, i])
+		}
+	}
+}
+
+function generate(node, connstr, cost, sum, sep1, sep2, i) {
+	thiscost = node in costs ? costs[node] : 0
+	connstr = connstr sep1 node
+	cost = cost sep2 thiscost
+	sum += thiscost
+
+	if (edgescnt[node] == 0 || node in visited) {
+		print connstr, cost, sum
+	} else {
+		visited[node]
+		for (i = 1; i <= edgescnt[node]; ++i) {
+			sep = type[node, i] == "ref" ? "?" : ">"
+			generate(edges[node, i], connstr, cost, sum, "-" sep, "+")
+		}
+		delete visited[node]
+	}
+}
+AWK_SCRIPT_EOF
+
+	awk -f input.awk -f - joined.txt stack.txt heads.txt
+}
 
 if is_true "$dot"; then
-	echo "digraph G {"
-
-	{
-	while IFS=$'\t' read -r func cost; do
-		printf "%s [label=\"%s\\\\nstack=%s\"]\n" "$func" "$func" "$cost"
-	done < stack.txt
-	while IFS=$'\t' read -r func type calls count add_stack; do
-		attributes=()
-
-		if [ "$type" = "ref" ]; then
-			attributes+=('style=dashed')
-		fi
-
-		if [ "$count" != 1 ]; then
-			attributes+=("label=\"$count\"")
-		fi
-
-		if [ "${#attributes[@]}" -gt 0 ]; then
-			attributes=$(
-				IFS=' '
-				printf " [%s]\n" "${attributes[*]}"
-			)
-		else
-			attributes=""
-		fi
-
-		printf "%s -> %s%s\n" "$func" "$calls" "$attributes"
-
-	done < joined.txt 
-	} |
-	sed 's/^/\t/; s/$/;/'
-
-	echo '}'
-
+	verbose "Generating dot graph"
+	run_awk <<<'BEGIN{ print "digraph G {" } { dot($1) } END{ print "}" }'
+	verbose "dot mode end"
 	exit
 fi
 
-# Get the heads of the callgraph. Can be many.
-comm -23 <(cut -f1 joined.txt | sort -u) <(cut -f3 joined.txt | sort -u) | sort -u > heads.txt
-awk '$2 == "ref"' joined.txt | cut -f3 >> heads.txt
-dbgt 'function' heads.txt
-
-# tail -n+1 heads.txt stack.txt joined.txt
-
-# yea recursive
-f() {
-	if ! grep "^$1"$'\t' joined.txt; then
-		:
-	fi |
-	while IFS=$'\t' read -r func type calls count cost; do
-		if [ "$func" = "$calls" ]; then
-			echo "$func is recursive"
-			continue
-		fi
-		
-		case "$type" in
-		ref)  type="-?"; ;;
-		call) type="->"; ;;
-		*) assert false ''; ;;
-		esac
-
-		callstack="$2$type$calls"
-		cost="$3+$cost"
-
-		if [ "$type" = "->" ]; then
-			f "$calls" "$callstack" "$cost"
-		else
-			if is_true "$references_ascend"; then
-				f "$calls" "$callstack" "$cost"
-			elif is_true "$references"; then
-				printf "%s\t%s\n" "$callstack" "$cost"
-			fi
-		fi
-
-	done
-	if [ -n "$2" ] && ! grep -q "^$1"$'\t' joined.txt; then
-		printf "%s\t%s\n" "$2" "$3"
-	fi
-}
-
-while IFS= read -r head; do 
-	f "$head" "$head" "$(<stack.txt grep "^$head"$'\t' | cut -f2 || echo 0)"
-done < heads.txt |
-while IFS=$'\t' read a b; do
-	printf "%s\t%s\t%s\n" "$a" "$b" "$(<<<$b tr '?' '0' | bc)"
-done |
-sort -t$'\t' -n -k3 |
+verbose "Entering recursive stage"
+run_awk <<<'{ generate($1) }' |
+sort -t$'\t' -n -r -k3,3 |
+sort -t- -u -k1,1 |
+sort -t$'\t' -n -k3,3 |
 if is_false "$table"; then
 	cat
 else 
