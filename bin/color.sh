@@ -89,13 +89,20 @@ usage() {
 	cat <<EOF
 Usage: color.sh [options] mode...
 
+Translated user readable format string in ascii escape seqeunces.
+
 Options:
-    -h --help   Print this help and exit
-    -s --safe   If terminal does not support colors, print nothing.
+    -h --help    Print this help and exit
+    -s --safe    If terminal does not support colors, print nothing.
+    -i --invert  Translate escape sequence into string. TODO, does nothing.
 
 Modes:
-    $(printf "%s" "$config" | cut -f1 | tr '\n' ' ')
-    test is a special mode that prints "test" string to the output. test it out.
+$(printf "%s" "$config" | cut -f1 | sed 's/^/    /' | if hash fmt 2>/dev/null; then fmt; else cut; fi)
+
+    reset resets the current settings.
+    colors set the foreground color
+    b_* are shortcuts for background_* and they set background color
+        test is a special mode that prints "test" string to the output
 
 Examples:
     color.sh red b_green; echo 123; color.sh reset
@@ -117,11 +124,13 @@ bashautocomplete() {
 args=$(getopt -n color.sh -o hs -l help,safe,bashautocomplete -- "$@")
 eval set -- "$args"
 safe=false
+invert=false
 while [ "$#" -ne 0 ]; do
 	case "$1" in
 	-h|--help) usage; exit 0; ;;
 	-s|--safe) safe=true; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
+	-i|--invert) invert=true; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
