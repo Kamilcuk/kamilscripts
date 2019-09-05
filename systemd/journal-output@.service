@@ -1,17 +1,18 @@
-.include /usr/lib/systemd/system/getty@.service
-
+#  SPDX-License-Identifier: GPL-3.0+
 [Unit]
 Description=Systemd journal output on %I
 Documentation=man:journalctl(8)
+ConditionPathExists=/dev/tty0
+After=systemd-journald.service
 
 [Service]
 StandardOutput=tty
-ExecStart=
-ExecStart=/usr/bin/journalctl -af -n1000
-Environment=
+ExecStart=/usr/bin/journalctl --all --follow --lines=1000 --priority=info
+TTYPath=/dev/%I
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
 
 [Install]
-WantedBy=
 WantedBy=multi-user.target
-DefaultInstance=tty12
-
+DefaultInstance=tty11

@@ -1,17 +1,16 @@
-.include /usr/lib/systemd/system/getty@.service
-
 [Unit]
 Description=Dmesg output on %I
 Documentation=man:dmesg(1)
+ConditionPathExists=/dev/tty0
 
 [Service]
 StandardOutput=tty
-ExecStart=
-ExecStart=/usr/bin/dmesg -wH
-Environment=
+ExecStart=/usr/bin/dmesg --follow --human
+TTYPath=/dev/%I
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
 
 [Install]
-WantedBy=
 WantedBy=multi-user.target
-DefaultInstance=tty11
-
+DefaultInstance=tty12
