@@ -66,6 +66,7 @@ table=true
 headregex=""
 excluderegex=""
 verbose=false
+dot_clusters=true
 
 usage() {
 	local n
@@ -85,6 +86,9 @@ Options:
   -H --headregex=STR          Heads are only those that conform to this regex. Parsed with grep -E.
   -E --excluderegex=STR       Exclude all functions that conform to this regex. Parsed with grep -E.
   -v --verbose                Try to print something
+  -C --dot-clusters=BOOL      Group similar functions into clusters in dot output. Default: $dot_clusters
+
+BOOL can be "0", "false", "1" or "true".
 
 Examples:
   $n -U1 -D1 -e__stack_chk_fail -R0 shell.ltrans0.234r.expand
@@ -95,8 +99,8 @@ EOF
 }
 
 args=$(getopt -n "$(basename "$0")" \
-	-o D:U:e:p:hR:A:T:H:E:v \
-	-l dot:,include-unknowns:,exclude:,tempdir:,help,references:,references-ascend:,table:,headregex:,excluderegex:,verbose \
+	-o D:U:e:p:hR:A:T:H:E:vC: \
+	-l dot:,include-unknowns:,exclude:,tempdir:,help,references:,references-ascend:,table:,headregex:,excluderegex:,verbose,dot-clusters: \
 	-- "$@"
 )
 eval set -- "$args"
@@ -115,6 +119,7 @@ while (($#)); do
 	-H|--headregex) headregex="$2"; shift; ;;
 	-E|--excluderegex) excluderegex="$2"; shift; ;;
 	-v|--verbose) verbose=true; ;;
+	-C|--dot-clusters) dot_clusters="$2"; shift; ;;
 	--) shift; break; ;;
 	*) fatal "Error parsing arguments: $1 <- $args"; ;;
 	esac
@@ -281,7 +286,13 @@ FILENAME == "stack.txt" {
 function dot(node, i) {
 	if (!(node in visited)) {
 		visited[node]
-		print "\t" node " [label=\"" node "\\nstack=" costs[node] "\"];"
+		printf "\t" node " [label=\"" node "\\nstack=";
+		if (node in costs) {
+			printf costs[node]
+		} else {
+			printf "?"
+		}
+		printf "\"];\n"
 	}
 
 	for (i = 1; i <= edgescnt[node]; ++i) {
@@ -325,6 +336,16 @@ function generate(node, connstr, cost, sum, sep1, sep2, i) {
 		delete visited[node]
 	}
 }
+
+function generate_visited(node, i) {
+	if (!((node, i) in visited)) {
+		visited[node, i]
+		print node
+		for (i = 1; i <= edgescnt[node]; ++i) {
+			generate_visited(edges[node, i])
+		}
+	}
+}
 AWK_SCRIPT_EOF
 
 	awk -f input.awk -f - joined.txt stack.txt heads.txt
@@ -332,7 +353,39 @@ AWK_SCRIPT_EOF
 
 if is_true "$dot"; then
 	verbose "Generating dot graph"
-	run_awk <<<'BEGIN{ print "digraph G {" } { dot($1) } END{ print "}" }'
+	echo 'digraph G {'
+	printf '\trankdir=LR;\n'
+	if is_true "$dot_clusters"; then
+		run_awk <<<'{ generate_visited($1) }' |
+		# extract the prefic - the part before _
+		sed -nE 's/^([^_]{1,})_.*/\1\t&/p' |
+		# sort them on the prefix and get unique only
+		sort -t$'\t' -u -k2,2 |
+		# print the subgraph cluster_* things
+		awk '{
+			if (last == $1) {
+				printf "\t\t" $2 ";\n";
+			} else {
+				if (length(last) != 0) {
+					printf "\t}\n";
+				}
+				last=$1;
+				printf "\tsubgraph cluster_" $1 " {\n";
+				printf "\t\tlabel = \"" $1 "\";\n"
+				# printf "\t\tcolor = \"blue\";\n"
+				printf "\t\tcolor = \"#%02x%02x%02x\";\n", rand() * 100, rand() * 100, rand() * 100
+				printf "\t\tstyle = \"bold\";\n"
+				printf "\t\t" $2 ";\n";
+			}
+		}
+		END{
+			if (length(last) != 0) {
+				print "\t}";
+			}
+		}'
+	fi
+	run_awk <<<'{ dot($1) }'
+	echo '}'
 	verbose "dot mode end"
 	exit
 fi
