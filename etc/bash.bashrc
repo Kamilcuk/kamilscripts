@@ -4,47 +4,6 @@ if [ -z "$PS1" -o -z "$BASH" -o -n "${POSIXLY_CORRECT+x}" ]; then
 	return
 fi
 
-tputex() {
-	if [ "$#" -eq 0 ]; then
-		echo "Usage: tputex [bold|underline|standout|normal|reset|red|green|yellow|blue|magenta|cyan|white]..."
-		return 0
-	fi
-	for i; do
-		case "$i" in
-		help) 
-			echo "Usage: tputex [bold|underline|standout|normal|reset|red|green|yellow|blue|magenta|cyan|white]..."
-			return 1
-			;;
-		bold)           tput bold; ;;
-		underline)      tput smul; ;;
-		standout)       tput smso; ;;
-		normal|reset)   tput sgr0; ;;
-		black)          tput setaf 0; ;;
-		red)            tput setaf 1; ;;
-		green)          tput setaf 2; ;;
-		yellow)         tput setaf 3; ;;
-		blue)           tput setaf 4; ;;
-		magenta)        tput setaf 5; ;;
-		cyan)           tput setaf 6; ;;
-		white)          tput setaf 7; ;;
-		*) echo "tputex: Error: Unknown option $i" >&2; return 1; ;;
-		esac
-	done
-}
-
-if ! ( test -t 1 && colors=$(tput colors 2>/dev/null) && test -n "$colors" && test "$colors" -ge 8 ); then
-	tputex() { :; }
-fi
-
-PS1="\$(ret=\$?; if test \"\$ret\" -ne 0; then tputex bold yellow; else tputex normal; fi; printf \"\$ret\") "
-if test "$UID" -eq 0; then
-	PS1+="$(tputex bold red  )\u@$(hostname) $(tputex blue)\$(pwd)$(tputex normal)\n\[$(tputex yellow)\]\\\$\[$(tputex reset)\] "
-else
-	PS1+="$(tputex bold green)\u@$(hostname) $(tputex blue)\$(pwd)$(tputex normal)\n\\\$ "
-fi
-export PS1
-
-# Append our default paths
 appendpath () {
     case ":$PATH:" in
         *:"$1":*)
@@ -58,8 +17,17 @@ appendpath '/bin'
 appendpath '/sbin'
 appendpath '/usr/lib/kamilscripts/bin'
 unset appendpath
-
 export PATH
+
+PS1=""
+PS1+="$(color.sh -s reset)"
+PS1+='$(ret=$?; if [ "$ret" -ne 0 ]; then color.sh -s bold yellow; fi; printf "$ret"; if [ "$ret" -ne 0 ]; then color.sh -s reset; fi) '
+if test "$UID" -eq 0; then
+	PS1+="$(color.sh -s bold red  )\u@$(hostname) $(color.sh -s blue)\$(pwd)$(color.sh -s reset)\n\[$(color.sh -s yellow)\]\\\$\[$(color.sh -s reset)\] "
+else
+	PS1+="$(color.sh -s bold green)\u@$(hostname) $(color.sh -s blue)\$(pwd)$(color.sh -s reset)\n\\\$ "
+fi
+export PS1
 
 export EDITOR="/usr/bin/vim"
 export VISUAL="/usr/bin/vim"
