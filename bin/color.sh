@@ -9,6 +9,8 @@ reset \e(B\e[m
 bold     \e[1m
 bright 	 \e[1m
 dim 	 \e[2m
+faint	\e[2m
+standout	\e[3m
 underline 	 \e[4m
 blink 	 \e[5m
 reverse 	 \e[7m
@@ -138,13 +140,13 @@ while [ "$#" -ne 0 ]; do
 done
 
 if ! hash tput >/dev/null 2>/dev/null; then
-	echo "Could not find tput utility" >&2
+	echo "color.sh: ERROR: Could not find tput utility" >&2
 	exit 2
 fi
 
 if ! ( colors=$(tput colors 2>/dev/null) && test -n "$colors" && test "$colors" -ge 8 ); then
         if [ "$safe" = "false" ]; then
-		echo "ERROR: Terminal does not support colors" >&2
+		echo "color.sh: ERROR: Terminal does not support colors" >&2
 		exit 1
 	else
 		exit 0
@@ -159,7 +161,7 @@ fi
 h=""
 for i; do
 	if ! tmp=$(printf "%s" "$config" | grep -i "^$i"$'\t'); then
-		echo "Unknown mode: $i" >&2
+		echo "color.sh: ERROR: Unknown mode: $i" >&2
 		exit 2
 	fi
 	tmp=$(printf "%s" "$tmp" | cut -f2)
