@@ -60,12 +60,27 @@ if [ -e /etc/arch-release ]; then
 			nice ionice pacman "$@"
 		fi
 	}
+	_completion_p() {
+		if hash yay 2>/dev/null; then
+			i=yay
+		else
+			i=pacman
+		fi
+		set -- "$i" "${@:2}"
+		_xfunc $i _$i "$@"
+	}
+	complete -F _completion_p -o default p
+
 	alias pn='p --noconfirm'
+	complete -F _completion_p -o default pn
+
 	if [ "$UID" -ne 0 ]; then
 		alias pacmann='sudo pacman --noconfirm'
 	else
 		alias pacmann='pacman --noconfirm'
 	fi
+	complete -F _pacman -o default pacmann
+
 	pupdate() {
 		if hash yay 2>/dev/null; then
 			nice ionice yay --noconfirm -Suy "$@"
@@ -75,12 +90,33 @@ if [ -e /etc/arch-release ]; then
 			nice ionice pacman --noconfirm -Suy "$@"
 		fi
 	}
+	_completion_pupdate() {
+		_xfunc pacman _pacman_pkg Qq
+	}
+	complete -F _completion_pupdate -o default pupdaate
+	
 fi
 
-alias ls='ls --color -F'
 alias ping='ping -4'
+
+alias ls='ls --color -F'
 alias l='ls -alF --color -h --group-directories-first'
+if declare -f _longopt >/dev/null; then 
+	_complete_l() {
+		set -- ls -alF --color -h --group-directories-first "${@:2}"
+		_longopt "$@"
+	}
+	complete -F _complete_l l
+fi
+
 alias o='less'
+if declare -f _longopt >/dev/null; then
+	_complete_o() {
+		set -- less "${@:2}"
+		_longopt "$@"
+	}
+	complete -F _complete_o o
+fi
 
 hist() { eval "history $(for i; do echo -n "|grep -a \"$i\""; done)"; }
 
