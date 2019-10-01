@@ -48,12 +48,34 @@ export TMP=/tmp
 export TMPDIR=/tmp
 mesg y
 
-if ! test "$UID" -eq 0; then
-  alias pacman='sudo pacman'
+####################################################################
+
+if [ -e /etc/arch-release ]; then
+	p() {
+		if hash yay 2>/dev/null; then
+			nice ionice yay "$@"
+		elif [ "$UID" -ne 0 ]; then
+			nice ionice sudo pacman "$@"
+		else
+			nice ionice pacman "$@"
+		fi
+	}
+	alias pn='p --noconfirm'
+	if [ "$UID" -ne 0 ]; then
+		alias pacmann='sudo pacman --noconfirm'
+	else
+		alias pacmann='pacman --noconfirm'
+	fi
+	pupdate() {
+		if hash yay 2>/dev/null; then
+			nice ionice yay --noconfirm -Suy "$@"
+		elif [ "$UID" -ne 0 ]; then
+			nice ionice sudo pacman --noconfirm -Suy "$@"
+		else
+			nice ionice pacman --noconfirm -Suy "$@"
+		fi
+	}
 fi
-alias pacmann='pacman --noconfirm'
-alias yaourtn='yaourt --noconfirm'
-alias yayn='yay --noconfirm'
 
 alias ls='ls --color -F'
 alias ping='ping -4'
@@ -62,15 +84,12 @@ alias o='less'
 
 hist() { eval "history $(for i; do echo -n "|grep -a \"$i\""; done)"; }
 
-qqnotifycomplete() { 
-  echo "notifycomplete: last command exited with $?"
-  while true; do
-    paplay --volume=65536 /usr/share/sounds/freedesktop/stereo/complete.oga >/dev/null
-    sleep 2 
-  done
-}
+alias pmake='time nice ionice make -j$(nproc) --load-average=$(nproc)'
 
-alias pmake='time nice make -j$(nproc) --load-average=$(nproc)'
-
+# https://wiki.archlinux.org/index.php/Makepkg
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
+
+# https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
+alias pbcopy='xclip -selection clipboard'
+alias pbpaste='xclip -i -selection clipboard -o'
 
