@@ -9,6 +9,8 @@ reset \e(B\e[m
 bold     \e[1m
 bright 	 \e[1m
 dim 	 \e[2m
+faint	\e[2m
+standout	\e[3m
 underline 	 \e[4m
 blink 	 \e[5m
 reverse 	 \e[7m
