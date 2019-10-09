@@ -21,15 +21,23 @@ appendpath '/usr/lib/kamilscripts/bin'
 unset appendpath
 export PATH
 
+if ! hash color.sh >/dev/null 2>/dev/null; then
+	color.sh() { :; }
+fi
+
 # set the PS1
 PS1=""
 PS1+="$(color.sh -s reset)"
 PS1+='$(ret=$?; if [ "$ret" -ne 0 ]; then color.sh -s bold yellow; fi; printf "$ret"; if [ "$ret" -ne 0 ]; then color.sh -s reset; fi) '
-if test "$UID" -eq 0; then
-	PS1+="$(color.sh -s bold red  )\u@$(hostname) $(color.sh -s blue)\$(pwd)$(color.sh -s reset)\n\[$(color.sh -s yellow)\]\\\$\[$(color.sh -s reset)\] "
-else
-	PS1+="$(color.sh -s bold green)\u@$(hostname) $(color.sh -s blue)\$(pwd)$(color.sh -s reset)\n\\\$ "
-fi
+PS1+="$(if [ "$UID" -eq 0 ]; then color.sh -s standout bold red; else color.sh -s bold green; fi)"
+PS1+="\u"
+PS1+="$(if [ "$UID" -eq 0 ]; then color.sh -s nostandout; fi)"
+PS1+="@"
+#PS1+="$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\h "
+PS1+="$(color.sh charrainbow $(hostname | md5sum | cut -c-6) $(hostname | md5sum | cut -c6-12) $(hostname))"
+PS1+=' '
+PS1+="$(color.sh -s blue)\w$(color.sh -s reset)"$'\n'
+PS1+="$([ "$UID" -eq 0 ] && color.sh -s bold red)\\\$$([ "$UID" -eq 0 ] && color.sh -s reset) "
 export PS1
 
 # set some history variables
