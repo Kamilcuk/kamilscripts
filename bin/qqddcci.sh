@@ -98,13 +98,13 @@ _ddcci_write() {
 	local len
 	len=$(echo "$@" | wc -w)
 	i2cset -y $I2CBUS \
-		$(_ddcci_addCrc $ddcci_dest_addr $ddcci_write_src_addr $(printf "0x%02x" $((0x80|len))) "$@") i
+		$(_ddcci_addCrc $ddcci_dest_addr $ddcci_write_src_addr $(printf "0x%02x" $((0x80|len))) "$@") s
 }
 _ddcci_read() {
 	local str len
 	# remove leading line | convert to stream of bytes | upper to lower | remove new lines
 	str=$(
-		i2cdump -y $I2CBUS $ddcci_dest_addr i \
+		i2cdump -y $I2CBUS $ddcci_dest_addr s \
 		| tail -n +2 | cut -d' ' -f2-17 | tr '\n' ' ' \
 		| tr ' ' $'\t' |  tr '[:upper:]' '[:lower:]' \
 		| sed 's/\([[:xdigit:]][[:xdigit:]]\)/0x\1/g'
