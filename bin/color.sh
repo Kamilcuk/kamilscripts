@@ -76,12 +76,13 @@ b_light_blue \e[104m
 b_light_magenta \e[105m
 b_light_cyan \e[106m
 b_white \e[107m
-
-# special
-test	test
 "
 
-config=$(printf "%s" "$config" | sed '/^$/d; /^#/d; s/\([^[:space:]]*\)[[:space:]]*\(.*\)/\1\t\2/')
+config=$(
+	printf "%s\n" "$config" |
+	sed '/^$/d; /^#/d; s/\([^[:space:]]*\)[[:space:]]*\(.*\)/\1\t\2/' |
+	sort -s -k1
+)
 
 #############################################################
 
@@ -92,17 +93,24 @@ Usage: color.sh [options] mode...
 Translated user readable format string in ascii escape seqeunces.
 
 Options:
-    -h --help    Print this help and exit
     -s --safe    If terminal does not support colors, print nothing.
+                 The default is: print an error message and exit with nonzero exit status.
     -i --invert  Translate escape sequence into string. TODO, does nothing.
+    -h --help    Print this help and exit.
 
 Modes:
 $(printf "%s" "$config" | cut -f1 | sed 's/^/    /' | if hash fmt 2>/dev/null; then fmt; else cut; fi)
 
-    reset resets the current settings.
-    colors set the foreground color
-    b_* are shortcuts for background_* and they set background color
-        test is a special mode that prints "test" string to the output
+    reset       - Resets the current settings.
+    b_*         - Are shortcuts to background_*.
+    test        - Print the string 'test' in requested mode.
+    #RRGGBB     - Uses 8-bit or 24-bit colors for foreground.
+    f#RRGGBB    - Uses 8-bit or 24-bit colors for foreground.
+    b#RRGGBB    - Uses 8-bit or 24-bit colors for background.
+    8#RGB       - 8-bit RGB code for foreground. Values must be within 0-5 range
+    b8#RGB      - 8-bit RGB code for background.
+    26#RRGGBB   - 24-bit RGB code for foreground.
+    b26#RRGGBB  - 24-bit RGB code for background.
 
 Examples:
     color.sh red b_green; echo 123; color.sh reset
@@ -114,23 +122,63 @@ EOF
 }
 
 bashautocomplete() {
+	local tmp
 	tmp=$(printf "%s" "$config" | cut -f1 | paste -sd' ')
-	tmp="$tmp -h --help -s --safe"
+	tmp="$tmp -h --help -s --safe test reset # b# 8# b8# 26# b26#"
 	printf "complete -W %q color.sh\n" "$tmp"
+}
+
+error() {
+	local fmt
+	fmt=$1
+	shift
+	printf "color.sh: ERROR: $fmt\n" "$@" >&2
+	exit 2
+}
+
+erroron() {
+	if eval "$1"; then
+		local exp
+		exp=$1
+		shift
+		error "Expr '%s' failed: %s" "$exp" "$*"
+	fi
+}
+
+unittest() {
+	if [ -z "$BASH_VERSION" ]; then
+		echo "testing requires bash"
+	fi
+	$0 $(
+		printf "%s" "$config" |
+		cut -f1 |
+		sed '/#.*/d; /^[[:space:]]$/d;' |
+		sed 's/$/ test/'
+	) 
+	: reset test $(
+		printf "%s test " {,b}8#{0,1,2,3,4,5}{0,1,2,3,4,5}{0,1,2,3,4,5}
+	) reset test $(
+		printf "%s test " {,b}24#{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}
+	) reset test $(
+		printf "%s test " {,b}#{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}{00,11,22,33,44,55,66,77,88,99,aa,bb,cc,dd,ee,ff}
+	)
 }
 
 # main ########################################################
 
-args=$(getopt -n color.sh -o hs -l help,safe,bashautocomplete -- "$@")
+args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test -- "$@")
 eval set -- "$args"
 safe=false
 invert=false
+debug=false
 while [ "$#" -ne 0 ]; do
 	case "$1" in
 	-h|--help) usage; exit 0; ;;
 	-s|--safe) safe=true; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
 	-i|--invert) invert=true; ;;
+	-d|--debug) debug=true; ;;
+	--test) unittest; exit 0; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
@@ -142,9 +190,11 @@ if ! hash tput >/dev/null 2>/dev/null; then
 	exit 2
 fi
 
-if ! ( colors=$(tput colors 2>/dev/null) && test -n "$colors" && test "$colors" -ge 8 ); then
-        if [ "$safe" = "false" ]; then
-		echo "ERROR: Terminal does not support colors" >&2
+if ! colors=$(tput colors 2>/dev/null) || 
+		[ -z "$colors" ] || 
+		[ "$colors" -lt 8 ]; then
+    if [ "$safe" = "false" ]; then
+		echo "ERROR: Terminal does not support colors=$colors" >&2
 		exit 1
 	else
 		exit 0
@@ -156,16 +206,148 @@ if [ "$#" -eq 0 ]; then
 	exit 1
 fi
 
+# main work
+
+calc_8_bit() {
+	local r g b tmp
+	if ! ((
+			r = 6#${1:0:1} ,
+			g = 6#${1:1:1} ,
+			b = 6#${1:2:1} ,
+			tmp = 16 + 36 * r + 6 * g + b ,
+			1
+			)); then
+		error "calc_8_bit: while calculating color expression from $1"
+	fi
+	if ((
+			0 > r || r > 5 ||
+			0 > g || g > 5 ||
+			0 > g || b > 5 ||
+			16 > tmp || tmp > 231
+			)); then
+		erroron '((0 > r))' "Color red $r must be greater or equal 0."
+		erroron '((r > 5))' "Color red $r must be lower or equal 5."
+		erroron '((0 > g))' "Color green $g must be greater or equal 0."
+		erroron '((g > 5))' "Color green $g must be greater or equal 5."
+		erroron '((0 > g))' "Color blue $b must be greater or equal 0."
+		erroron '((b > 5))' "Color blue $b must be greater or equal 5."
+		erroron '((tmp < 16))' "Calculated color=$tmp smaller then 16"
+		erroron '((tmp > 231))' "Calculated color=$tmp greater then 231"
+		erroron 'true' "Other error"
+	fi
+	printf "%s" "$tmp"
+}
+
+calc_24_bit() {
+	local r g b tmp
+	if ! ((
+			r = 16#${1:0:2} ,
+			g = 16#${1:2:2} ,
+			b = 16#${1:4:2} ,
+			1
+			)); then
+		error "calc_24_bit: while calculating color expression from $1"
+	fi
+	if ((
+			0 > r || r > 256 ||
+			0 > g || g > 256 ||
+			0 > b || b > 256
+			)); then
+		erroron '((r < 0))' "Color red $r must be greater or equal 0."
+		erroron '((r > 256))' "Color red $r must be lower or equal 256."
+		erroron '((0 > g))' "Color green $g must be greater or equal 0."
+		erroron '((g > 256))' "Color green $g must be greater or equal 256."
+		erroron '((0 > g))' "Color blue $b must be greater or equal 0."
+		erroron '((b > 256))' "Color blue $b must be greater or equal 256."
+	fi
+	printf "%s;%s;%s" "$r" "$g" "$b"
+}
+
+calc_32_bit_to_8_bit() {
+	local r g b tmp
+	if ! (( 
+		r = 16#${1:1:2} * 5 / 256 ,
+		g = 16#${1:3:2} * 5 / 256 ,
+		b = 16#${1:5:2} * 5 / 256 ,
+		1
+	)); then
+		error "calc_32_bit_to_8_bit: while calculating expression $1"
+	fi
+	tmp=$(printf "%02x%02x%02x" "$r" "$g" "$b")
+	calc_24_bit "$tmp"
+}
+
 h=""
 for i; do
-	if ! tmp=$(printf "%s" "$config" | grep -i "^$i"$'\t'); then
-		echo "Unknown mode: $i" >&2
-		exit 2
-	fi
-	tmp=$(printf "%s" "$tmp" | cut -f2)
-	case "$tmp" in
-	test) printf "%stest\n" "$h"; h=""; ;;
-	*) printf "$tmp"; h+="$i "; ;;
+	h+="$i "
+	case "$i" in
+	'8#'*)
+		erroron '[ "${#i}" -ne 5 ]' "Input $i argument invalid."
+		tmp=$(calc_8_bit "${i:2}") || error "while parsing $i"
+		printf "\e[38;5;%sm" "$tmp"
+		;;
+	'b8#'*)
+		erroron '[ "${#i}" -ne 6 ]' "Input $i argument invalid."
+		tmp=$(calc_8_bit "${i:3}") || error "while parsing $i"
+		printf "\e[48;5;%sm" "$tmp"
+		;;
+	'24#'*)
+		erroron '[ "${#i}" -ne 9 ]' "Input $i argument invalid."
+		tmp=$(calc_24_bit "${i:3}") || error "while parsing $i"
+		printf "\e[38;2;%sm" "$tmp"
+		;;
+	'b24#'*)
+		erroron '[ "${#i}" -ne 10 ]' "Input $i argument invalid."
+		tmp=$(calc_24_bit "${i:5}") || error "while parsing $i"
+		printf "\e[48;2;%sm" "$tmp"
+		;;
+	'#'*)
+		erroron '[ "${#i}" -ne 7 ]' "Input $i argument invalid."
+		if [ "$colors" -ge 256 ]; then
+			tmp=$(calc_24_bit "${i:1}") || error "while parsing $i"
+			printf "\e[38;2;%sm" "$tmp"
+		elif [ "$colors" -ge 8 ]; then
+			tmp=$(calc_32_bit_to_8_bit "${i:1}") || error "while parsing $i"
+			printf "\e[38;5;%sm" "$tmp"	
+		else
+			error "colors=$colors unhandled"
+		fi
+		;;
+	'f#'*)
+		erroron '[ "${#i}" -ne 8 ]' "Input $i argument invalid."
+		if [ "$colors" -ge 256 ]; then
+			tmp=$(calc_24_bit "${i:2}") || error "while parsing $i"
+			printf "\e[38;2;%sm" "$tmp"
+		elif [ "$colors" -ge 8 ]; then
+			tmp=$(calc_32_bit_to_8_bit "${i:2}") || error "while parsing $i"
+			printf "\e[38;5;%sm" "$tmp"	
+		else
+			error "colors=$colors unhandled"
+		fi
+		;;
+	'b#'*)
+		erroron '[ "${#i}" -ne 8 ]' "Input $i argument invalid."
+		if [ "$colors" -ge 256 ]; then
+			tmp=$(calc_24_bit "${i:2}") || error "while parsing $i"
+			printf "\e[48;2;%sm" "$tmp"
+		elif [ "$colors" -ge 8 ]; then
+			tmp=$(calc_32_bit_to_8_bit "${i:2}") || error "while parsing $i"
+			printf "\e[48;5;%sm" "$tmp"	
+		else
+			error "colors=$colors unhandled"
+		fi
+		;;
+	test)
+		printf "%s\e(B\e[m\n" "$h"
+		i=
+		h=
+		;;
+	*)
+		if ! tmp=$(printf "%s\n" "$config" | grep -i -m1 '^'"$i"$'\t'); then
+			error "Unknown mode: $i"
+		fi
+		printf "$tmp" | cut -f2
+		;;
 	esac
 done
 
