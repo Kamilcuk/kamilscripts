@@ -3,7 +3,7 @@ variables:
 
 pages:
   stage: build
-  image: archlinux-docker-makepkg
+  image: aitorpazos/archlinux-docker-makepkg
   # image: archlinux/base
   script:
   - pkg/archlinux/docker_build.sh ./archlinux-output
