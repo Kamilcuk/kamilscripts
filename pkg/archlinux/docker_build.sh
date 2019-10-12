@@ -1,14 +1,19 @@
 #!/bin/bash
 set -xeuo pipefail
 
-pacman -Sy --needed --noconfirm base-devel git sudo
-chown -R nobody:nobody .
+pacman -Sy --needed --noconfirm base base-devel git sudo
+
+useradd builder
+passwd -d builder
+chown -R builder:builder .
 chmod +w /etc/sudoers
-printf "nobody ALL=(ALL) NOPASSWD:"" ALL" >> /etc/sudoers
+echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 chmod -w /etc/sudoers
 
 pushd pkg/archlinux >/dev/null
-sudo -u nobody makepkg -f --syncdeps --noconfirm
+
+sudo -u builder makepkg -f --syncdeps --noconfirm
 
 ls -l *.pkg.tar.xz
 
