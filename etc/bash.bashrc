@@ -70,6 +70,9 @@ mesg y
 ####################################################################
 
 if [ -e /etc/arch-release ]; then
+	if [ "$UID" -ne 0 ]; then
+		alias pacman='sudo pacman'
+	fi
 	p() {
 		if hash yay 2>/dev/null; then
 			nice ionice yay "$@"
