@@ -157,10 +157,14 @@ $(printf "%s" "$config" | cut -f1 | sed 's/^/    /' | if hash fmt 2>/dev/null; t
   echo "text"   - print the text with a newline
   charrainbow RRGGBB RRGGBB "text" 
                 - print each word from text using colors from one color to another
+  charrainbow3 RRGGBB RRGGBB RRGGBB "text"
+                - print each word from text using colors changing from 3 colors
 
 Examples:
     color.sh red b_green; echo 123; color.sh reset
     color.sh green b_red test reset red b_green test
+    color.sh charrainbow ff0000 00ff00 this_is_funny_string
+    color.sh charrainbow3 ff0000 00ff00 00000ff this_is_funny_string
 
 Written by Kamil Cukrowski
 SPDX-License-Identifier: GPL-3.0+
@@ -215,13 +219,14 @@ unittest() {
 		printf "%s test " {f,b}24#{00,55,77,aa,ff}{00,55,77,aa,ff}{00,55,77,aa,ff}
 	) reset test $(
 		printf "%s test " {f#,b#,}{00,55,77,aa,ff}{00,55,77,aa,ff}{00,55,77,aa,ff}
-	) reset test \
-	charrainbow 000000 ff0000 funny_colored_string_that_is_long echo '' \
-	charrainbow 0000ff 00ff00 funny_colored_string_that_is_long echo '' \
-	charrainbow ff0000 0000ff funny_colored_string_that_is_long echo '' \
-	charrainbow ffff00 ff7700 funny_colored_string_that_is_long echo '' \
-	charrainbow 0000ff 00ff00 funny_colored_string_that_is_long_and_it_is_really_really_long_and_cool_looking echo '' \
+	) reset test
+	testit charrainbow 000000 ff0000 funny_colored_string_that_is_long echo ''
+	testit charrainbow 0000ff 00ff00 funny_colored_string_that_is_long echo ''
+	testit charrainbow ff0000 0000ff funny_colored_string_that_is_long echo ''
+	testit charrainbow ffff00 ff7700 funny_colored_string_that_is_long echo ''
+	testit charrainbow 0000ff 00ff00 funny_colored_string_that_is_long_and_it_is_really_really_long_and_cool_looking echo '' \
 	reset print "some string"$'\n'
+	testit charrainbow3 0000ff 00ff00 ff0000 funny_colored_string_that_is_long_and_it_is_really_really_long_and_cool_looking echo ''
 
 	shouldfail echo
 	shouldfail print
@@ -421,6 +426,11 @@ charrainbow() {
 	done
 }
 
+charrainbow3() {
+	charrainbow "$1" "$2" "${4::${#4}/2}"
+	charrainbow "$2" "$3" "${4:${#4}/2}"
+}
+
 h=""
 while (($#)); do
 	i="$1"
@@ -433,6 +443,16 @@ while (($#)); do
 	[fb]'24#'*)  fb24_hash "$i"; ;;
 	[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])  fb_hash f#"$i"; ;;
 	[fb]'#'*)  fb_hash "$i"; ;;
+
+	charrainbow3)
+		charrainbow3 "$1" "$2" "$3" "$4"
+		shift 4
+		;;
+
+	charrainbow)
+		charrainbow "$1" "$2" "$3"
+		shift 3
+		;;
 
 	print)
 		printf "%s" "$1"
@@ -450,10 +470,6 @@ while (($#)); do
 		h=
 		;;
 
-	charrainbow)
-		charrainbow "$1" "$2" "$3"
-		shift 3
-		;;
 
 	*)
 		if ! tmp=$(printf "%s\n" "$config" |

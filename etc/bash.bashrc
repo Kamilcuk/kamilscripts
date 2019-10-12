@@ -34,7 +34,10 @@ PS1+="\u"
 PS1+="$(if [ "$UID" -eq 0 ]; then color.sh -s nostandout; fi)"
 PS1+="@"
 #PS1+="$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\h "
-PS1+="$(color.sh charrainbow $(hostname | md5sum | sed 's/.\{6\}\(.\{6\}\)\(.\{6\}\).*/\1 \2/') $(hostname))"
+if hash md5sum 2>/dev/null & hash color.sh 2>/dev/null; then
+	#PS1+="$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")"
+	PS1+=$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)")
+fi
 PS1+=' '
 PS1+="$(color.sh -s blue)\w$(color.sh -s reset)"$'\n'
 PS1+="$([ "$UID" -eq 0 ] && color.sh -s bold red)\\\$$([ "$UID" -eq 0 ] && color.sh -s reset) "
