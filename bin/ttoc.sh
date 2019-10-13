@@ -1,38 +1,39 @@
 #!/bin/bash
+set -euo pipefail
 
-function showHelp {
-version=0.0.1
-versionDate="2014-07-07"
+usage(){
+cat <<EOF
+Usgae: ttoc.sh [-h|--help] [id]
+Tic/toc timer pair.
+Prints the time passed since the last ttic invocation.
+Temporary timer file is stored at /tmp/.ttic[.ID].txt
 
-echo "$0 - tic/toc timer pair
-Usage: $0 [id]
-       Stores initial time (w/optional id marker)
-Notes:
-       ttic [id] (used for marking initial time)
-       Temporary timer file is stored at /tmp/.ttic.[ID.]time
-Example
+Examples:
        # Global timer (not recommended)
        ttic && (do work) && ttoc
        # Using FooBar as id
        ttic FooBar && (do work) && ttoc FooBar
        # Using a randomly generated id
        id=\$(ttic -u) && (do work) && ttoc \$id
-Mainted at: https://gist.github.com/swarminglogic/87adb0bd0850d76ba09f
-Author:     Roald Fernandez (github@swarminglogic.com)
-Version:    $version ($versionDate)
-License:    CC-zero (public domain)
-"
-    exit $1
+
+Original author:
+       https://gist.github.com/swarminglogic/87adb0bd0850d76ba09f
+       Roald Fernandez (github@swarminglogic.com)
+
+Written by Kamil Cukrowski
+Licensed under GPL-3.0 License
+SPXD-License-Identifier GPL-3.0
+EOF
 }
 
 
-while test $# -gt 0; do
+while (($#)); do
     case "$1" in
         -h|--help)
-            showHelp 0
+            usage
+	    exit 1
             ;;
         *)
-            hasId=yes
             id=$1
             shift
             break
@@ -40,20 +41,21 @@ while test $# -gt 0; do
     esac
 done
 
-if [[ $hasId ]] ; then
-    tmpfile=/tmp/.ttic.${id}.time
-else
-    tmpfile=/tmp/.ttic.time
+if (($#)); then
+	echo "ERROR: Too many arguments: " "$@" >&2
+	exit 1
 fi
 
-if [ ! -e $tmpfile ] ; then
-    echo "Did not find initalized time file. Run ttic with same id before ttoc!"
+# ${var:+1} expands to 1 if var is set
+tmpfile="/tmp/.ttic${id:+."$id"}.txt"
+
+if [ ! -e "$tmpfile" ] ; then
+    echo "ERROR: Did not find initalized time file. Run ttic with same id before ttoc!" >&2
     exit 1
 fi
 
-tic=`cat $tmpfile`
-toc=$(($(date +%s%N)/1000000))
-delta=$(($toc - $tic))
+tic=$(<"$tmpfile")
+toc=$(date +%s%N)
+delta=$((toc - tic))
+printf '%g\n' "$((delta / 1000000000)).$(printf "%09d" "$((delta % 1000000000))")"
 
-LC_NUMERIC=C LC_COLLATE=C
-printf '%g\n'  $(bc <<< "scale=3; ${delta}/1000")

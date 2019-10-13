@@ -1,16 +1,15 @@
 #!/bin/bash
+set -euo pipefail
 
-function showHelp {
-version=0.0.1
-versionDate="2014-07-07"
+usage() {
+	cat <<EOF
+Usage: ttic.sh [-h|--help] [-u|--unique] [id]
+Tic/toc timer pair
+Stores the initial time (w/optional id marker) into temporary file.
+Using optional ID is recommended, as it allows simulatenous usage.
+The ttoc.sh displays delta time since ttic was called.
+Temporary timer file is stored at /tmp/.ttic[.ID.].txt
 
-echo "$0 - tic/toc timer pair
-Usage: $0 [id]              Stores initial time (w/optional id marker)
-       $0 [-u|--unique]     Creates and returns unique id
-       Using optional ID is recommended, as it allows simulatenous usage.
-Notes:
-       ttoc [id]  (displays delta time since ttic was called)
-       Temporary timer file is stored at /tmp/.ttic.[ID.]time
 Example
        # Global timer (not recommended)
        ttic && (do work) && ttoc
@@ -18,28 +17,45 @@ Example
        ttic FooBar && (do work) && ttoc FooBar
        # Using a randomly generated id
        id=\$(ttic -u) && (do work) && ttoc \$id
-Mainted at: https://gist.github.com/swarminglogic/87adb0bd0850d76ba09f
-Author:     Roald Fernandez (github@swarminglogic.com)
-Version:    $version ($versionDate)
-License:    CC-zero (public domain)
-"
-    exit $1
+
+Original script:
+       https://gist.github.com/swarminglogic/87adb0bd0850d76ba09f
+       Roald Fernandez (github@swarminglogic.com)
+
+Written by Kamil Cukrowski
+SPDX-License-Identifier: GPL-3.0
+EOF
 }
 
-
-while test $# -gt 0; do
+while (($#)); do
     case "$1" in
         -h|--help)
-            showHelp 0
+            usage
+	    exit 0
             ;;
         -u|--unique)
-            shift
-            hasId=yes
-            isGenerated=yes
-            id=$(tr -dc "[:alpha:]" < /dev/urandom | head -c 8)
+	    isGenerated=true
+
+	    while :; do
+	       # this command will return nonzero exit status
+	       # as tr will report failure as it can't write no more
+	       # ignore it
+               id=$(tr -dc "[:alnum:]" < /dev/urandom | head -c 16) ||:
+	       # for safety, check if the length of id has 16 bytes
+               if (( ${#id} != 16 )); then
+                   echo "ERROR: Generating random unqiue id failed!" >&2
+		   exit 2
+               fi
+	       # if such file with this id exists, start again
+	       if [ ! -e "/tmp/.ttic.$id.txt" ]; then
+	           break;
+               fi
+	    done
+
+	    shift
+	    break
             ;;
         *)
-            hasId=yes
             id=$1
             shift
             break
@@ -47,13 +63,15 @@ while test $# -gt 0; do
     esac
 done
 
-if [[ $hasId ]] ; then
-    tmpfile=/tmp/.ttic.${id}.time
-    if [[ $isGenerated ]] ; then
-        echo $id
-    fi
-else
-    tmpfile=/tmp/.ttic.time
+if (($#)); then
+	echo "ERROR: Too many arguments: " "$@" >&2
+	exit 1
 fi
 
-echo $(($(date +%s%N)/1000000)) > $tmpfile
+# ${var:+123} expands to 123 if var is set and nonempty
+tmpfile="/tmp/.ttic${id:+.$id}.txt"
+date +%s%N > "$tmpfile"
+if "${isGenerated:-false}"; then
+   printf "%s\n" "$id"
+fi
+
