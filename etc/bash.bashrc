@@ -27,20 +27,25 @@ fi
 
 # set the PS1
 PS1=""
-PS1+="$(color.sh -s reset)"
-PS1+='$(ret=$?; if [ "$ret" -ne 0 ]; then color.sh -s bold yellow; fi; printf "$ret"; if [ "$ret" -ne 0 ]; then color.sh -s reset; fi) '
-PS1+="$(if [ "$UID" -eq 0 ]; then color.sh -s standout bold red; else color.sh -s bold green; fi)"
+PS1+="\[$(color.sh -s reset)\]"
+PS1+='$(ret=$?; if [ "$ret" -ne 0 ]; then printf "\[%s\]%s\[%s\] " '\'"$(color.sh -s bold yellow)"\'' "$ret" '\'"$(color.sh -s reset)"\''; fi)'
+PS1+="\[$(if [ "$UID" -eq 0 ]; then color.sh -s standout bold red; else color.sh -s bold green; fi)\]"
 PS1+="\u"
-PS1+="$(if [ "$UID" -eq 0 ]; then color.sh -s nostandout; fi)"
+PS1+="\[$(if [ "$UID" -eq 0 ]; then color.sh -s nostandout; fi)\]"
 PS1+="@"
-#PS1+="$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\h "
 if hash md5sum 2>/dev/null & hash color.sh 2>/dev/null; then
-	#PS1+="$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")"
-	PS1+=$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)")
+	#PS1+="\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\]\h "
+	#PS1+="\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\]"
+	PS1+="\[$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)")\]"
+else
+	PS1+='\h '
 fi
 PS1+=' '
-PS1+="$(color.sh -s blue)\w$(color.sh -s reset)"$'\n'
-PS1+="$([ "$UID" -eq 0 ] && color.sh -s bold red)\\\$$([ "$UID" -eq 0 ] && color.sh -s reset) "
+PS1+="\[$(color.sh -s blue)\]\w$(color.sh -s reset)"$'\n'
+PS1+="$(if [ "$UID" -eq 0 ]; then printf "\[%s\]" "$(color.sh -s bold red)"; fi)"
+PS1+='\$'
+PS1+="$(if [ "$UID" -eq 0 ]; then printf "\[%s\]" "$(color.sh -s reset)"; fi)"
+PS1+=' '
 export PS1
 
 # set some history variables
