@@ -119,12 +119,6 @@ b_white           \e[107m
 
 "
 
-config=$(
-	printf "%s\n" "$config" |
-	sed '/^$/d; /^#/d; s/\([^[:space:]]*\)[[:space:]]*\(.*\)/\1\t\2/' |
-	sort -s -k1
-)
-
 #############################################################
 
 usage() {
@@ -134,11 +128,11 @@ Usage: color.sh [options] mode...
 Translated user readable format string in ascii escape seqeunces.
 
 Options:
-    -s --safe    If terminal does not support colors, print nothing.
-                 The default is: print an error message and exit with nonzero exit status.
-    -i --invert  Translate escape sequence into string. TODO, does nothing.
-    -h --help    Print this help and exit.
-       --test    Print all possible configurations.
+    -s --safe        If terminal does not support colors, print nothing.
+                     The default is: print an error message and exit with nonzero exit status.
+    -i --invert      Translate escape sequence into string. TODO, WIP, does nothing.
+    -h --help        Print this help and exit.
+       --test[=NUM]  Print all possible configurations. Optionally specify test part number.
 
 Modes:
 $(printf "%s" "$config" | cut -f1 | sed 's/^/    /' | if hash fmt 2>/dev/null; then fmt; else cut; fi)
@@ -196,24 +190,36 @@ erroron() {
 }
 
 unittest() {
+	local part curpart
+	part=${1:--1}
 	if [ -z "$BASH_VERSION" ]; then
 		echo "testing requires bash"
 	fi
+
+	curpart=1
+
 	testit() {
+		local -g part curpart
+		(( part == -1 || part == curpart++ )) || return 0
 		$0 "$@"
 	}
+
 	shouldfail() {
+		local -g part curpart
+		(( part == -1 || part == curpart++ )) || return 0
 		if $0 "$@" 2>/dev/null; then
 			echo "TEST" "$*" failed
 			exit 1
 		fi
 	}
+
 	testit $(
-		printf "%s" "$config" |
-		cut -f1 |
-		sed '/#.*/d; /^[[:space:]]$/d;' |
-		sed 's/$/ test/'
-	) reset test $(
+		<<<"$config" sed \
+		'/#.*/d; /^[[:space:]]*$/d; s/^\([^[:space:]]*\).*$/\1 test/' |
+		sort
+	) reset test
+
+	testit $(
 		printf "%s test " {f,b}8#{0,1,2,3,4,5}{0,1,2,3,4,5}{0,1,2,3,4,5}
 	) reset test $(
 		printf "%s test " {f,b}24#{00,55,77,aa,ff}{00,55,77,aa,ff}{00,55,77,aa,ff}
@@ -240,26 +246,25 @@ unittest() {
 	shouldfail f8#GGG
 	shouldfail b8#GGG
 
-
 	testit echo "test finished ! "
 
 }
 
 # main ########################################################
 
-args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test -- "$@")
+args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test:: -- "$@")
 eval set -- "$args"
 safe=false
 invert=false
 debug=false
-while [ "$#" -ne 0 ]; do
+while (($#)); do
 	case "$1" in
 	-h|--help) usage; exit 0; ;;
 	-s|--safe) safe=true; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
 	-i|--invert) invert=true; ;;
 	-d|--debug) debug=true; ;;
-	--test) unittest; exit 0; ;;
+	--test) unittest "$2"; exit 0; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
@@ -273,7 +278,7 @@ fi
 
 if ! colors=$(tput colors 2>/dev/null) || 
 		[ -z "$colors" ] || 
-		[ "$colors" -lt 8 ]; then
+		(( colors < 8 )); then
     if ! "$safe"; then
 		echo "ERROR: Terminal does not support colors=$colors" >&2
 		exit 1
@@ -282,7 +287,7 @@ if ! colors=$(tput colors 2>/dev/null) ||
 	fi
 fi
 
-if [ "$#" -eq 0 ]; then
+if (($# == 0)); then
 	usage
 	exit 1
 fi
@@ -431,8 +436,23 @@ charrainbow3() {
 	charrainbow "$2" "$3" "${4:${#4}/2}"
 }
 
+config=$(
+	<<<"$config" \
+	sed -n '/^\([^#[:space:]]\+\)[[:space:]]\+\([^#[:space:]]\+\).*$/s//\1\t\2/p' |
+	sort
+)
+
 h=""
 while (($#)); do
+	if tmp=$(
+			<<<"$config" join --nocheck-order -11 -21 -o1.2 - <(printf "%s\n" "$1")) &&
+			[ -n "$tmp" ]; then
+		printf "$tmp"
+		h+="$1 "
+		shift
+		continue
+	fi
+
 	i="$1"
 	shift
 
@@ -472,12 +492,7 @@ while (($#)); do
 
 
 	*)
-		if ! tmp=$(printf "%s\n" "$config" |
-					grep -i -m1 '^'"$i"$'\t' | cut -f 2
-				) || [ -z "$tmp" ]; then
-			error "Unknown mode: $i"
-		fi
-		printf "$tmp"
+		error "Unknown mode: $i"
 		;;
 	esac
 done
