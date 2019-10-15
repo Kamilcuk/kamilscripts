@@ -26,25 +26,27 @@ if ! hash color.sh >/dev/null 2>/dev/null; then
 fi
 
 # set the PS1
-PS1=""
-PS1+="\[$(color.sh -s reset)\]"
-PS1+='$(ret=$?; if [ "$ret" -ne 0 ]; then printf "\[%s\]%s\[%s\] " '\'"$(color.sh -s bold yellow)"\'' "$ret" '\'"$(color.sh -s reset)"\''; fi)'
-PS1+="\[$(if [ "$UID" -eq 0 ]; then color.sh -s standout bold red; else color.sh -s bold green; fi)\]"
+PS1=
+PS1+="\\[$(color.sh -s reset)\\]"
+PS1+='$(ret=$?;if ((ret));then printf '\''\[%s\]%s\[%s\] '\'' '\'"$(color.sh -s bold yellow)"\'' "$ret" '\'"$(color.sh -s reset)"\'';fi)'
+PS1+="\\[$(color.sh -s bold; if ((!UID)); then color.sh -s standout red; else color.sh -s green; fi)\\]"
 PS1+="\u"
-PS1+="\[$(if [ "$UID" -eq 0 ]; then color.sh -s nostandout; fi)\]"
+PS1+="$(if ((!UID)); then printf "\[%s\]" "$(color.sh -s nostandout)"; fi)"
 PS1+="@"
-if hash md5sum 2>/dev/null & hash color.sh 2>/dev/null; then
-	#PS1+="\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\]\h "
-	#PS1+="\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\]"
-	PS1+="\[$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)")\]"
+if hash md5sum 2>/dev/null && hash color.sh 2>/dev/null; then
+	#PS1+="\\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\\]\h "
+	#PS1+="\\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
+	PS1+="$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)" |	sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
 else
-	PS1+='\h '
+	PS1+='\h'
 fi
 PS1+=' '
-PS1+="\[$(color.sh -s blue)\]\w$(color.sh -s reset)"$'\n'
-PS1+="$(if [ "$UID" -eq 0 ]; then printf "\[%s\]" "$(color.sh -s bold red)"; fi)"
+PS1+="\\[$(color.sh -s blue)\\]"
+PS1+='\w'
+PS1+=$'\n'
+PS1+="\\[$(if ((!UID)); then color.sh -s red; else color.sh -s reset; fi)\\]"
 PS1+='\$'
-PS1+="$(if [ "$UID" -eq 0 ]; then printf "\[%s\]" "$(color.sh -s reset)"; fi)"
+PS1+="$(if ((!UID)); then printf '\\['; color.sh -s reset; printf '\\]'; fi)"
 PS1+=' '
 export PS1
 
