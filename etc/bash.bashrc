@@ -177,3 +177,7 @@ export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 alias pbcopy='xclip -selection clipboard'
 alias pbpaste='xclip -i -selection clipboard -o'
 
+# https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
+BC_ENV_ARGS="$(readlink -f "${BASH_SOURCE[0]}")"
+export BC_ENV_ARGS="${BC_ENV_ARGS%/*}/bcrc"
+
