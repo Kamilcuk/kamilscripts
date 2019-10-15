@@ -26,29 +26,48 @@ if ! hash color.sh >/dev/null 2>/dev/null; then
 fi
 
 # set the PS1
-PS1=
-PS1+="\\[$(color.sh -s reset)\\]"
-PS1+='$(ret=$?;if ((ret));then printf '\''\[%s\]%s\[%s\] '\'' '\'"$(color.sh -s bold yellow)"\'' "$ret" '\'"$(color.sh -s reset)"\'';fi)'
-PS1+="\\[$(color.sh -s bold; if ((!UID)); then color.sh -s standout red; else color.sh -s green; fi)\\]"
-PS1+="\u"
-PS1+="$(if ((!UID)); then printf "\[%s\]" "$(color.sh -s nostandout)"; fi)"
-PS1+="@"
-if hash md5sum 2>/dev/null && hash color.sh 2>/dev/null; then
-	#PS1+="\\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\\]\h "
-	#PS1+="\\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
-	PS1+="$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)" |	sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
-else
-	PS1+='\h'
-fi
-PS1+=' '
-PS1+="\\[$(color.sh -s blue)\\]"
-PS1+='\w'
-PS1+=$'\n'
-PS1+="\\[$(if ((!UID)); then color.sh -s red; else color.sh -s reset; fi)\\]"
-PS1+='\$'
-PS1+="$(if ((!UID)); then printf '\\['; color.sh -s reset; printf '\\]'; fi)"
-PS1+=' '
-export PS1
+PS1_setup() {
+	local reset bold yellow standout red blue green nostandout root noroot
+	declare -g PS1
+	IFS=$'\x01' read -r reset bold yellow standout red blue green nostandout < <(
+		color.sh -s --separator=$'\x01' reset bold yellow standout red blue green nostandout
+	) ||:
+
+	# ${var+expr} expands to expr is var is set, but empty
+	if ((UID)); then 
+		noroot=;
+		unset root
+	else
+		unset noroot;
+		root=;
+	fi
+
+	PS1=
+	PS1+="\\[$reset\\]"
+	PS1+='$(ret=$?;if ((ret));then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\'';fi)'
+	PS1+="\\[$bold${root+$standout$red}${noroot+$green}\\]"
+	PS1+="\u"
+	PS1+="${root+\\[$nostandout\\]}"
+	PS1+="@"
+	if hash md5sum 2>/dev/null && hash color.sh 2>/dev/null; then
+		#PS1+="\\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\\]\h "
+		#PS1+="\\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
+		PS1+="$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)" |	sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
+	else
+		PS1+='\h'
+	fi	 
+	PS1+=' '
+	PS1+="\\[$blue\\]"
+	PS1+='\w'
+	PS1+=$'\n'
+	PS1+="\\[${root+$red}${noroot+$reset}\\]"
+	PS1+='\$'
+	PS1+="${root+$reset}"
+	PS1+=' '
+	export PS1
+}
+PS1_setup
+unset -f PS1_setup
 
 # set some history variables
 export HISTSIZE=
