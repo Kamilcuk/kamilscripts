@@ -133,9 +133,12 @@ Options:
     -i --invert      Translate escape sequence into string. TODO, WIP, does nothing.
     -h --help        Print this help and exit.
        --test[=NUM]  Print all possible configurations. Optionally specify test part number.
+       --separator=STR        Output specified separator between each mode.
+       --bashautocompletaion  Output a bash complation invocation that needs to be eval-ed.
+    -d --debug       Basically sets set -x.
 
 Modes:
-$(printf "%s" "$config" | cut -f1 | sed 's/^/    /' | if hash fmt 2>/dev/null; then fmt; else cut; fi)
+$(printf "%s" "$config" | sed 's/[ #].*//' | sed '/^[[:space:]]*$/d' | sort | if hash fmt 2>/dev/null; then fmt; else cut; fi)
 
   b_*         - Are shortcuts to background_*.
   reset       - Resets the current settings.
@@ -252,11 +255,12 @@ unittest() {
 
 # main ########################################################
 
-args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test:: -- "$@")
+args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test::,separator: -- "$@")
 eval set -- "$args"
 safe=false
 invert=false
 debug=false
+separator=
 while (($#)); do
 	case "$1" in
 	-h|--help) usage; exit 0; ;;
@@ -265,6 +269,7 @@ while (($#)); do
 	-i|--invert) invert=true; ;;
 	-d|--debug) debug=true; ;;
 	--test) unittest "$2"; exit 0; ;;
+	--separator) separator="$2"; shift; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
@@ -444,6 +449,12 @@ config=$(
 
 h=""
 while (($#)); do
+	if ((${firstarg:-0})); then
+		printf "%s" "$separator"
+	else
+		firstarg=1
+	fi
+
 	if tmp=$(
 			<<<"$config" join --nocheck-order -11 -21 -o1.2 - <(printf "%s\n" "$1")) &&
 			[ -n "$tmp" ]; then
