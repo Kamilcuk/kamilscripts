@@ -27,11 +27,26 @@ fi
 
 # set the PS1
 PS1_setup() {
-	local reset bold yellow standout red blue green nostandout root noroot
+	local tmp root noroot colors
+	tmp="white reset bold yellow standout red blue green nostandout"
+	local $tmp
 	declare -g PS1
-	IFS=$'\x01' read -r reset bold yellow standout red blue green nostandout < <(
-		color.sh -s --separator=$'\x01' reset bold yellow standout red blue green nostandout
+
+	IFS=$'\x01' read -r $tmp < <(
+		color.sh -s --separator=$'\x01' $tmp
 	) ||:
+
+	colors=0
+	if hash tput colors.sh 2>/dev/null; then
+		if ! colors=$(tput colors 2>/dev/null); then
+			colors=0
+		fi
+	fi
+
+	if [ "$colors" -lt 256 ]; then
+		nostandout=
+		standout=
+	fi
 
 	# ${var+expr} expands to expr is var is set, but empty
 	if ((UID)); then 
@@ -44,12 +59,12 @@ PS1_setup() {
 
 	PS1=
 	PS1+="\\[$reset\\]"
-	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
+	# PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
 	PS1+="\\[$bold${root+$standout$red}${noroot+$green}\\]"
 	PS1+="\u"
 	PS1+="${root+\\[$nostandout\\]}"
 	PS1+="@"
-	if hash md5sum 2>/dev/null && hash color.sh 2>/dev/null; then
+	if hash md5sum color.sh hostname 2>/dev/null && [ "$colors" -ge 256 ]; then
 		#PS1+="\\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\\]\h "
 		#PS1+="\\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
 		PS1+="$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)" |	sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
@@ -58,11 +73,13 @@ PS1_setup() {
 	fi	 
 	PS1+=' '
 	PS1+="\\[$blue\\]"
-	PS1+='\w'
+	#PS1+='\w'
+	PS1+='$(exec printf "%q" "$PWD")'
+	PS1+="\\[$reset\\]"
 	PS1+=$'\n'
-	PS1+="\\[${root+$red}${noroot+$reset}\\]"
+	PS1+="${root+\\[$red\\]}"
 	PS1+='\$'
-	PS1+="${root+$reset}"
+	PS1+="${root+\\[$reset\\]}"
 	PS1+=' '
 	export PS1
 }
@@ -91,6 +108,7 @@ export VISUAL="/bin/vim"
 export TMP=/tmp
 export TEMP=/tmp
 export TMPDIR=/tmp
+export COUNTRY=PL
 mesg y
 
 ####################################################################

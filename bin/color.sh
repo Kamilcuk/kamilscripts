@@ -156,6 +156,7 @@ $(printf "%s" "$config" | sed 's/[ #].*//' | sed '/^[[:space:]]*$/d' | sort | if
                 - print each word from text using colors from one color to another
   charrainbow3 RRGGBB RRGGBB RRGGBB "text"
                 - print each word from text using colors changing from 3 colors
+  colors        - runs tput colors
 
 Examples:
     color.sh red b_green; echo 123; color.sh reset
@@ -510,6 +511,9 @@ while (($#)); do
 		h=
 		;;
 
+	colors)
+		echo "$colors"
+		;;
 
 	*)
 		error "Unknown mode: $i"
