@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -euo pipefail
 
 config="
 #  this is the output of tput sgr0
@@ -199,17 +199,21 @@ unittest() {
 		echo "testing requires bash"
 	fi
 
-	curpart=1
+	curpart=0
 
 	testit() {
 		local -g part curpart
-		(( part == -1 || part == curpart++ )) || return 0
+		if (( part != -1 && part != ++curpart )); then
+			return 0
+		fi
 		$0 "$@"
 	}
 
 	shouldfail() {
 		local -g part curpart
-		(( part == -1 || part == curpart++ )) || return 0
+		if (( part != -1 && part != ++curpart )); then
+			return 0
+		fi
 		if $0 "$@" 2>/dev/null; then
 			echo "TEST" "$*" failed
 			exit 1
@@ -224,11 +228,16 @@ unittest() {
 
 	testit $(
 		printf "%s test " {f,b}8#{0,1,2,3,4,5}{0,1,2,3,4,5}{0,1,2,3,4,5}
-	) reset test $(
+	) reset test
+
+	testit $(
 		printf "%s test " {f,b}24#{00,55,77,aa,ff}{00,55,77,aa,ff}{00,55,77,aa,ff}
-	) reset test $(
+	) reset test 
+
+	testit $(
 		printf "%s test " {f#,b#,}{00,55,77,aa,ff}{00,55,77,aa,ff}{00,55,77,aa,ff}
 	) reset test
+
 	testit charrainbow 000000 ff0000 funny_colored_string_that_is_long echo ''
 	testit charrainbow 0000ff 00ff00 funny_colored_string_that_is_long echo ''
 	testit charrainbow ff0000 0000ff funny_colored_string_that_is_long echo ''
