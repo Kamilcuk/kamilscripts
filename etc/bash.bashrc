@@ -37,7 +37,7 @@ PS1_setup() {
 	) ||:
 
 	colors=0
-	if hash tput colors.sh 2>/dev/null; then
+	if hash tput color.sh 2>/dev/null; then
 		if ! colors=$(tput colors 2>/dev/null); then
 			colors=0
 		fi
@@ -59,7 +59,7 @@ PS1_setup() {
 
 	PS1=
 	PS1+="\\[$reset\\]"
-	# PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
+	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
 	PS1+="\\[$bold${root+$standout$red}${noroot+$green}\\]"
 	PS1+="\u"
 	PS1+="${root+\\[$nostandout\\]}"
