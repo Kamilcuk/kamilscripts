@@ -27,50 +27,67 @@ noextract=()
 md5sums=('SKIP')
 validpgpkeys=()
 
+
 assert() {
 	if ! eval "$1"; then
-		shift 1
-		echo "Assertion $1 failed." "$@" >&2
+		local _assertion="$1"
+		shift
+		echo "Assertion $_assertion failed: " "$@" >&2
 		exit 2
 	fi
 }
 
 create_symlinks() {
-	local srcdir lntgt destdir srcname destname src dest files
+	local srcdir lntgt destdir srcname destname src dest files tmp
 	srcdir="$1"
 	lntgtdir="$2"
 	destdir="$3"
 	srcname="$4"
 	destname="$5"
+	assert '[ -d "$srcdir" ]' ""
+	assert '[ -d "$lntgtdir" ]' ""
+	assert '[ -d "$destdir" ]' ""
 
 	lntgt=$(readlink -m "$lntgtdir"/"$srcname")
-	src="$srcdir/$srcname"
-	dest="$destdir"/"$destname"
+	src=$(readlink -m "$srcdir/$srcname")
+	dest=$(readlink -m "$destdir"/"$destname")
 
-	IFS=$'\n' files=($(cd "$src" && find . -mindepth 1 -type f -printf '%P\n'))
-	assert '[ "${#files[@]}" -ne 0 ]' "There are no files inside $src"
+	assert '[ -d "$src" ]' "Director '$src' not found."
+	assert 'ls -1qA "$src" | grep -q .' "Directory '$src' is empty."
 
+	echo "create_symlinks: $lntgt/* -> $dest"
+
+	# create the root directory
 	mkdir -v -p "$dest"
-	for file in "${files[@]}"; do
-		ln -v -s "$lntgt"/"$file" "$dest"/"$file"
-	done
+
+	# create all directories that needed to be created
+	{ cd "$src" && find . -mindepth 1 -type d -print0; } |
+	cut -z -c3- |
+	xargs -0 -I{} mkdir -p -v "$dest"/{}
+
+	# create all the files symlinks
+	{ cd "$src" && find . -mindepth 1 -type f -print0; } |
+	cut -z -c3- |
+	xargs -0 -I{} ln -v -s "$lntgt"/{} "$dest"/{}
 }
 
 package() { (
 
-local DIR
-set -euo pipefail -e errtrace
-rm -v PKGBUILD
+	local DIR
+	set -euo pipefail -e errtrace
+	rm -v PKGBUILD
+	
+	DIR=$(git rev-parse --show-toplevel)
 
-DIR=$(git rev-parse --show-toplevel)
+	while read -r from to; do
+		create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir" "$from" "$to"
+		echo
+	done <<'EOF'
+		bin		/usr/bin
+		systemd		/usr/lib/systemd
+EOF
 
-create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /bin       /usr/bin
-echo
-create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir"   /systemd   /usr/lib/systemd/system
-echo
-#cp -v -r "$DIR"/pkg/resources/* "$pkgdir"/
-#echo
-chown root:root -v -R "$pkgdir"/*
+	chown root:root -v -R "$pkgdir"/*
 
 ); }
 
