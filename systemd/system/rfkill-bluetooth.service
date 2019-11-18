@@ -1,0 +1,9 @@
+[Unit]
+Description=Kamil Cukrowski block bluetooth on startup
+After=tlp.service
+
+[Service]
+ExecStart=/usr/bin/bash -c 'sleep 30; /usr/bin/rfkill block bluetooth;'
+
+[Install]
+Alias=multi-user.service
