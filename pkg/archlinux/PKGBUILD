@@ -75,6 +75,13 @@ create_symlinks() {
 	cut -z -c3- |
 	xargs -0 -I{} cp -anv "$lntgt"/{} "$dest"/{}
 
+	# check that there are no other file types in the source dir
+	{ cd "$src" && find . -mindepth 1 -not \( -type d -or -type f -or -type l \); } |
+	{
+		if read a; then
+			assert 'false' "There are files in the $src directory that are not handled by the script: '$src/$a'" 
+		fi
+	}
 }
 
 package() { (
