@@ -45,7 +45,6 @@ create_symlinks() {
 	srcname="$4"
 	destname="$5"
 	assert '[ -d "$srcdir" ]' ""
-	assert '[ -d "$lntgtdir" ]' ""
 	assert '[ -d "$destdir" ]' ""
 
 	lntgt=$(readlink -m "$lntgtdir"/"$srcname")
