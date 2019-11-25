@@ -72,7 +72,7 @@ create_symlinks() {
 	# symlinks stay as they are
 	{ cd "$src" && find . -mindepth 1 -type l -print0; } |
 	cut -z -c3- |
-	xargs -0 -I{} cp -anv "$lntgt"/{} "$dest"/{}
+	xargs -0 -I{} cp -n -v -d --preserve=all "$lntgt"/{} "$dest"/{}
 
 	# check that there are no other file types in the source dir
 	{ cd "$src" && find . -mindepth 1 -not \( -type d -or -type f -or -type l \); } |

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 
-pacman -Sy --needed --noconfirm base base-devel git sudo
+yes | pacman -Sy --needed base base-devel git sudo
 
 useradd builder
 passwd -d builder
