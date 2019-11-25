@@ -5,13 +5,16 @@ if [ -z "$PS1" -o -z "$BASH" -o -n "${POSIXLY_CORRECT+x}" ]; then
 	return
 fi
 
-# add some paths to path
+
+#### Path
+
 appendpath () {
     case ":$PATH:" in
         *:"$1":*)
             ;;
         *)
             PATH="${PATH:+$PATH:}$1"
+	    ;;
     esac
 }
 
@@ -21,12 +24,13 @@ appendpath '/usr/lib/kamilscripts/bin'
 unset appendpath
 export PATH
 
-if ! hash color.sh >/dev/null 2>/dev/null; then
-	color.sh() { :; }
-fi
+#### PS1
 
-# set the PS1
 PS1_setup() {
+	if ! hash color.sh >/dev/null 2>/dev/null; then
+		color.sh() { :; }
+	fi
+
 	local tmp root noroot colors
 	tmp="white reset bold yellow standout red blue green nostandout"
 	local $tmp
@@ -86,17 +90,16 @@ PS1_setup() {
 PS1_setup
 unset -f PS1_setup
 
+#### Bash variables
+
 # set some history variables
 export HISTSIZE=
 export HISTFILESIZE=
 export HISTCONTROL="ignorespace:erasedups"
 export HISTIGNORE="123:234:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
+export HISTTIMEFORMAT='%FT%T '
 # For good measure, make all history environment variables read-only.
 readonly HISTSIZE
-readonly HISTFILESIZE
-readonly HISTCONTROL
-readonly HISTIGNORE
-readonly HISTFILE
 readonly HISTFILESIZE
 
 shopt -s histappend # append to history, dont overwrite
@@ -111,91 +114,46 @@ export TMPDIR=/tmp
 export COUNTRY=PL
 mesg y
 
-####################################################################
-
-if [ -e /etc/arch-release ]; then
-	if [ "$UID" -ne 0 ]; then
-		alias pacman='sudo pacman'
-	fi
-	p() {
-		if hash yay 2>/dev/null; then
-			nice ionice yay "$@"
-		elif [ "$UID" -ne 0 ]; then
-			nice ionice sudo pacman "$@"
-		else
-			nice ionice pacman "$@"
-		fi
-	}
-	_completion_p() {
-		if hash yay 2>/dev/null; then
-			i=yay
-		else
-			i=pacman
-		fi
-		set -- "$i" "${@:2}"
-		_xfunc $i _$i "$@"
-	}
-	complete -F _completion_p -o default p
-
-	alias pn='p --noconfirm'
-	complete -F _completion_p -o default pn
-
-	if [ "$UID" -ne 0 ]; then
-		alias pacmann='sudo pacman --noconfirm'
-	else
-		alias pacmann='pacman --noconfirm'
-	fi
-	complete -F _pacman -o default pacmann
-
-	pupdate() {
-		if hash yay 2>/dev/null; then
-			nice ionice yay --noconfirm -Suy "$@"
-		elif [ "$UID" -ne 0 ]; then
-			nice ionice sudo pacman --noconfirm -Suy "$@"
-		else
-			nice ionice pacman --noconfirm -Suy "$@"
-		fi
-	}
-	_completion_pupdate() {
-		_xfunc pacman _pacman_pkg Qq
-	}
-	complete -F _completion_pupdate -o default pupdaate
-	
-fi
-
-alias ping='ping -4'
-
-alias ls='ls --color -F'
-alias l='ls -alF --color -h --group-directories-first'
-if declare -f _longopt >/dev/null; then 
-	_complete_l() {
-		set -- ls -alF --color -h --group-directories-first "${@:2}"
-		_longopt "$@"
-	}
-	complete -F _complete_l l
-fi
-
-alias o='less'
-if declare -f _longopt >/dev/null; then
-	_complete_o() {
-		set -- less "${@:2}"
-		_longopt "$@"
-	}
-	complete -F _complete_o o
-fi
-
-hist() { eval "history $(for i; do echo -n "|grep -a \"$i\""; done)"; }
-
-alias pmake='time nice ionice make -j$(nproc) --load-average=$(nproc)'
+#### Common env variables
 
 # https://wiki.archlinux.org/index.php/Makepkg
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
+
+# https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
+BC_ENV_ARGS="$(readlink -f "${BASH_SOURCE[0]}")"
+export BC_ENV_ARGS="${BC_ENV_ARGS%/*}/bcrc"
+
+# Aliases
+
+alias ping='ping -4'
+alias ls='ls --color -F'
+alias l='ls -alF --color -h --group-directories-first'
+eval "$(alias_complete.sh -s l ls)"
+alias o='less'
+eval "$(alias_complete.sh -s o less)"
 
 # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
 alias pbcopy='xclip -selection clipboard'
 alias pbpaste='xclip -i -selection clipboard -o'
 
-# https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
-BC_ENV_ARGS="$(readlink -f "${BASH_SOURCE[0]}")"
-export BC_ENV_ARGS="${BC_ENV_ARGS%/*}/bcrc"
+hist() { eval "history $(for i; do echo -n " | grep -a $(printf "%q" "$i")"; done)"; }
+
+alias tmake="time nice ionice make -j$(nproc) --load-average=$(nproc)"
+eval "$(alias_complete.sh -s tmake make)"
+
+#### Load my files
+
+_backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
+
+tmp=$(dirname "$BASH_SOURCE")/bash.d
+if [[ -d "$tmp" && -r "$tmp" && -x "$tmp" ]]; then
+	_backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
+	for i in "$tmp"/*; do
+		if [[ -r "$i" && "${i##*/}" != @($_backup_glob|Makefile*) ]]; then
+			. "$i"
+		fi
+	done
+	unset i _backup_glob
+fi
+unset tmp
 
