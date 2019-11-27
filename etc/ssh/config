@@ -30,9 +30,8 @@ Host chors tunel_chors
 	Hostname 193.33.111.225
 	User root
 	Port 10022
-Host tunel_chors
-	Hostname 192.168.255.50
 
+# tunels
 Host leo leonidas tunel_leonidas
 	Hostname 192.168.255.32
 	User root
@@ -41,6 +40,12 @@ Host gorgo tunel_gorgo
 	User root
 Host ardalus tunel_ardalus
 	Hostname 192.168.255.35
+	User root
+Host alpinezfssmb tunel_alpinezfssmb
+    Hostname 192.168.255.36
+    User kamil
+Host tunel_chors
+	Hostname 192.168.255.50
 	User root
 
 Host galeranew
@@ -64,9 +69,9 @@ Host ustrotunel
 	port 4004
 
 Host netemeradocker
-        Hostname production-0.netemera.com
-        Compression Yes
-        User docker
+    Hostname production-0.netemera.com
+    Compression Yes
+    User docker
 Host netemera
 	Hostname production-0.netemera.com
 	Compression Yes
