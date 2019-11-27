@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 
-yes | pacman -Sy --needed base base-devel git sudo
+printf "\n" "" "" "y" "y" | LC_ALL=C pacman -Suy --noconfirm --needed base base-devel git sudo vim bash-completion
 
 useradd builder
 passwd -d builder

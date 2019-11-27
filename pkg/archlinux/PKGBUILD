@@ -62,17 +62,17 @@ create_symlinks() {
 	# create all directories that needed to be created
 	{ cd "$src" && find . -mindepth 1 -type d -print0; } |
 	cut -z -c3- |
-	xargs -0 -I{} mkdir -p -v "$dest"/{}
+	xargs -t -0 -I{} mkdir -p -v "$dest"/{}
 
 	# create all the files symlinks
 	{ cd "$src" && find . -mindepth 1 -type f -print0; } |
 	cut -z -c3- |
-	xargs -0 -I{} ln -v -s "$lntgt"/{} "$dest"/{}
+	xargs -t -0 -I{} ln -v -s "$lntgt"/{} "$dest"/{}
 
 	# symlinks stay as they are
 	{ cd "$src" && find . -mindepth 1 -type l -print0; } |
 	cut -z -c3- |
-	xargs -0 -I{} cp -n -v -d --preserve=all "$lntgt"/{} "$dest"/{}
+	xargs -t -0 -I{} cp -n -v -d "$lntgt"/{} "$dest"/{}
 
 	# check that there are no other file types in the source dir
 	{ cd "$src" && find . -mindepth 1 -not \( -type d -or -type f -or -type l \); } |
