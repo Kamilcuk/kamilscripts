@@ -1,32 +1,50 @@
 #!ssh_config
 
-Host dyzio dyzio_root tunel_dyzio tunel_dyzio_root
+Host dyzio
 	Hostname www.dyzio.pl
 	User kamcuk
 	Port 4004
-Host dyzio_root tunel_dyzio_root
+Host dyzio_root
+	Hostname www.dyzio.pl
 	User root
-Host tunel_dyzio tunel_dyzio_root
+	Port 4004
+Host tunel_dyzio
 	Hostname 192.168.20.1
+	User kamcuk
+	Port 4004
+Host tunel_dyzio_root
+	Hostname 192.168.20.1
+	User root
+	Port 4004
 
-Host biurek biurek_root tunel_biurek tunel_biurek_root
+Host biurek
 	Hostname www.biurek.pl 
 	User kamil
 	Port 4004
 	Compression yes
-Host biurek_root tunel_biurek_root
+Host biurek_root
+	Hostname www.biurek.pl
 	User root
-Host tunel_biurek tunel_biurek_root
+	Port 4004
+Host tunel_biurek
 	Hostname 192.168.21.1
+	User kamil
+	Port 4004
+Host tunel_biurek_root
+	Hostname 192.168.21.1
+	User kamil
+	Port 4004
 
-Host wujek hercules Hercules tunel_wujek
+Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
 	User kamil
 	Port 10022
 Host tunel_wujek
 	Hostname 192.168.1.1
+	User kamil
+	Port 10022
 
-Host chors tunel_chors
+Host chors
 	Hostname 193.33.111.225
 	User root
 	Port 10022
@@ -42,8 +60,8 @@ Host ardalus tunel_ardalus
 	Hostname 192.168.255.35
 	User root
 Host alpinezfssmb tunel_alpinezfssmb
-    Hostname 192.168.255.36
-    User kamil
+	Hostname 192.168.255.36
+	User kamil
 Host tunel_chors
 	Hostname 192.168.255.50
 	User root
@@ -58,24 +76,28 @@ Host mion
 Host michal
 	Hostname 192.168.20.7
 	User kamil
-Host ustro
+
+#Host ustro
 #	Hostname ustropecet.ustronie.ds.pw.edu.pl
 #	Hostname pecet123.ustronie.ds.pw.edu.pl
-	Hostname 10.3.254.208
-	User kamil
+#	Hostname 10.3.254.208
+#	User kamil
 Host ustrotunel
 	Hostname 192.168.255.33
 	User kamil
 	port 4004
 
 Host netemeradocker
-    Hostname production-0.netemera.com
-    Compression Yes
-    User docker
+	Hostname production-0.netemera.com
+	Compression Yes
+	User docker
 Host netemera
 	Hostname production-0.netemera.com
 	Compression Yes
 	User kcukro
+
+Host gitlab.com github.com
+	IdentityFile ~/.ssh/id_rsa.github
 
 Host *
 	Compression yes
