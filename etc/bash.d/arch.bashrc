@@ -8,23 +8,26 @@ if [ "$UID" -ne 0 ]; then
 	alias pacman='sudo pacman'
 fi
 
-tmp=""
-if hash yay 2>/dev/null; then
-	tmp="yay"
-elif [ "$UID" -ne 0 ]; then
-	tmp="sudo pacman"
-else
-	tmp="pacman"
-fi
+_archlinux_pacman() {
+	local tmp
+	if hash yay 2>/dev/null; then
+		tmp="yay"
+	elif [ "$UID" -ne 0 ]; then
+		tmp="sudo pacman"
+	else
+		tmp="pacman"
+	fi
+	nice ionice "$tmp" "$@"
+}
 
-eval "p() { nice ionice $tmp \"\$@\"; }"
-eval "$(alias_complete.sh p $tmp)"
+p() { _archlinux_pacman "$@"; }
+eval "$(alias_complete.sh p pacman)"
 pn() { p --noconfirm "$@"; }
-eval "$(alias_complete.sh pn $tmp)"
+eval "$(alias_complete.sh pn pacman)"
 pupdate() { p --noconfirm -Suy "$@"; }
-eval "$(alias_complete.sh pupdate $tmp)"
-eval "$(alias_complete.sh -a pacmann pacman --noconfirm)"
-eval "$(alias_complete.sh -a yayn yay --noconfirm)"
-
-unset tmp
+eval "$(alias_complete.sh pupdate pacman)"
+pacmann() { pacman --noconfirm "$@"; }
+eval "$(alias_complete.sh pacmann pacman)"
+yayn() { yay --noconfirm "$@"; }
+eval "$(alias_complete.sh yayn yay)"
 
