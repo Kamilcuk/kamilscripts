@@ -17,7 +17,10 @@ _archlinux_pacman() {
 	else
 		tmp="pacman"
 	fi
-	nice ionice "$tmp" "$@"
+	if [ -z "${_ARCHLINUX_PACMAN_QUIET:-}" ]; then
+		echo "+" $tmp "$@"
+	fi
+	nice ionice $tmp "$@"
 }
 
 p() { _archlinux_pacman "$@"; }
