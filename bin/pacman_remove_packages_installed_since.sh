@@ -27,7 +27,7 @@ pacmanlogsFilterDateInstalled() {
 	{
 	for i in year mon day hour min; do
 		while read -r year2 mon2 day2 hour2 min2 pkg; do
-			#$DEBUG && echo -$year-$mon-$day-$hour-$min-$year2-$mon2-$day2-$hour2-$min2- >&2
+			$DEBUG && echo -$year-$mon-$day-$hour-$min-$year2-$mon2-$day2-$hour2-$min2- >&2
 			eval a=\$${i}2
 			eval b=\$$i
 			if   [ "$a" -eq "$b" ]; then
