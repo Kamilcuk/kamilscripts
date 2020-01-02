@@ -59,10 +59,19 @@ error() {                     echo "ERROR: ""$@" >&2; }
 fatal() {                     echo "FATAL: ""$@" >&2; exit 1; }
 
 if hash jq 2>/dev/null; then
-	jq_get() { jq -r ".${2:-}[].$1"; }
+	_jq_get() { jq -r ".${2:-}[].$1"; }
 else
-	jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'$1'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
+	_jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'$1'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
 fi
+jq_get() {
+	local tmp
+	tmp=$(cat)
+	if ! <<<"$tmp" _jq_get "$@"; then
+		echo "$tmp" >&2
+		return 1
+	fi
+}
+
 
 backup_repos_do() {
 	local url=$1 dir=$2
@@ -150,7 +159,27 @@ reposGet_gitlab.com_v3_token() {
 reposAddSupported gitlab.com_v4_token      "<private-token> - backup repos using speicfied private-token from gitlab.com/api/v4"
 reposGet_gitlab.com_v4_token() {
         local private_token=$1
-        curl -s --header "PRIVATE-TOKEN: $private_token" 'https://gitlab.com/api/v4/projects?membership=true' | jq_get ssh_url_to_repo
+	local page=1
+	local out tmp tmp2 tmplines
+	out=
+	while true; do
+		if ! tmp2=$(
+			curl -s --header "PRIVATE-TOKEN: $private_token" \
+			'https://gitlab.com/api/v4/projects?membership=true&simple=true&per_page=100&page='"$page"
+			); then
+			fatal "Error when connecting with curl to gitlab.com"
+		fi
+		if ! tmp=$(<<<"$tmp2" jq_get ssh_url_to_repo); then
+			echo "$tmp2"
+			fatal "parsing response from gitlab.com/api/v4"
+		fi
+		out+="$tmp"$'\n'
+		tmplines=$(<<<"$tmp" wc -l)
+		if (( tmplines < 100 )); then
+			break
+		fi
+	done
+	printf "%s" "$out"
 }
 
 reposAddSupported aur.archlinux.org_aurjson "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
@@ -231,6 +260,7 @@ while IFS=: read -a args; do
 	fi
 	repos+="$add"$'\n'
 
+	add=$(<<<"$add" sort)
 	verbose "$add"
 
 done <<<$(printf "%s\n" "$@")
@@ -238,7 +268,7 @@ done <<<$(printf "%s\n" "$@")
 verbose "Found $(wc -w <<<"$repos") git repos."
 
 # shuffle repos list, to distrubute usage on repos evenly
-repos=$(echo "$repos" | sort -R)
+repos=$(<<<"$repos" sort -R)
 
 if $testRepos; then
 	backup_repos_check() {
