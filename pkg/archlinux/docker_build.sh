@@ -15,12 +15,12 @@ pushd pkg/archlinux >/dev/null
 
 sudo -u builder makepkg -f --syncdeps --noconfirm
 
-ls -l *.pkg.tar.xz
+ls -l *.pkg.tar.*
 
 popd
 
 if (($# > 0)); then
 	mkdir -v -p "$1"
-	mv -v pkg/archlinux/*.pkg.tar.xz "$1"/
+	mv -v pkg/archlinux/*.pkg.tar.* "$1"/
 fi
 
