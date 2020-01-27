@@ -1,0 +1,100 @@
+#!/bin/sh
+
+n=sensorstable
+
+usage() {
+	cat <<EOF
+Usage: $n [Options]
+
+Reads 
+
+Options:
+  -H      Print also header.
+  -s OFS  Set output separator. Default separator is ':'.
+  -h      Print this help and exit.
+
+Written by Kamil Cukrowski 2019
+Licensed jointly under MIT License and Beerware License
+EOF
+}
+
+error() {
+	echo "$n:" "$@" >&2
+	exit 2
+}
+
+ofs=:
+
+while getopts ':hs:h' opt; do
+	case "$opt" in
+	H) header=true; ;;
+	s) ofs=$OPTARG; ;;
+	h) usage; exit; ;;
+	*) error "Invalid argument: $opt"; ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [ "$#" -ne '0' ]; then
+	error "This script takes no arguments"
+fi
+
+if ! hash sensors 2>/dev/null >/dev/null; then
+	error "sensors: command not found"
+fi
+
+if "${header:-false}"; then
+	printf "%s\n" chip adapter label sensor value |
+	sed 'N;N;N;N;N;s/\n/'"$ofs"'/g'
+fi
+
+if ! tmp=$(sensors -u); then
+	error "Running sensors -u failed"
+fi
+
+printf "%s\n" "$tmp" |
+sed -n '
+	# chip
+	h
+	n
+	/^Adapter: /!{
+		s/^/ERROR: Invalid adapter line: /
+		p
+		q 2
+	}
+	s///
+
+	# adapter
+	H
+	
+	: loop ; {
+		n
+	
+		# label?
+		/:$/{
+			s///
+			G
+			s/\([^\n]*\)\n\([^\n]*\n[^\n]*\).*/\2\n\1/
+			h
+			b loop
+		}
+	
+		# value?
+		/^ *\(.*\): \([0-9\.]*\)$/{
+			s//\1\n\2/
+			G
+			s/\([^\n]*\n[^\n]*\)\n\(.*\)/\2\n\1/
+			s/\n/'"${FS:=:}"'/g
+			p
+			b loop
+		}
+	
+		# new chip?
+		/^$/b
+	
+		s/^/ERROR: Unparsable line: /
+		p
+		q 2
+	}
+'
+
