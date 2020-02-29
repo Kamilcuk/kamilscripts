@@ -97,7 +97,11 @@ Host netemera
 	User kcukro
 
 Host gitlab.com github.com
-	IdentityFile ~/.ssh/id_rsa.github
+	IdentityFile ~/.ssh/id_rsa_github
+
+Host aur.archlinux.org
+	IdentityFile ~/.ssh/id_rsa_aur
+	User aur
 
 Host *
 	Compression yes
