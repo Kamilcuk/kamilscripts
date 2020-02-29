@@ -1,9 +1,20 @@
 #!/bin/bash
-set -euo pipefail
 
-if [[ "${ALIAS_COMPLETE_DEBUG:-false}" = "true" ]]; then
-	set -x
+# allow sourcing
+if [[ "${BASH_SOURCE[0]}" != "${0}" && "$_" != "$0" ]]; then
+	if (($# < 2)); then
+		echo "alias_complete: Invalid number of arguments" >&2
+		return 2
+	fi
+	if _alias_complete_tmp=$("${BASH_SOURCE[0]}" "$@"); then
+		eval "$_alias_complete_tmp"
+		unset _alias_complete_tmp
+	fi
+	return $?
 fi
+
+set -euo pipefail
+shopt -s extglob
 
 # Functions ##########################################################
 
@@ -66,7 +77,7 @@ while (($#)); do
 done
 
 if (($# < 1)); then
-	usage
+	usage >&2
 	fatal "No alias name specified"
 fi
 
@@ -107,8 +118,11 @@ if "$shortopt"; then
 		fatal "The --shortopt options uses only alias name"
 	fi
 
-	: <<'EOF'
 _alias_complete::shortopt() {
+        if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
+	     . "/usr/share/bash-completion/bash_completion"
+	fi
+
     local cur prev words cword split
     _init_completion -s || return
 
@@ -150,8 +164,9 @@ _alias_complete::shortopt() {
          command sort -u
     )" -- "$cur") )
 }
-EOF
+
 	cat <<EOF
+shopt -s extglob
 $(declare -f _alias_complete::shortopt)
 complete -F _alias_complete::shortopt "$alias_name"
 EOF
