@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+if [[ "${ALIAS_COMPLETE_DEBUG:-false}" = "true" ]]; then
+	set -x
+fi
+
 # Functions ##########################################################
 
 usage() {
@@ -67,19 +71,9 @@ if (($# < 1)); then
 fi
 
 alias_name="$1"
-
-# This has to be loaded here
-
-f="/usr/share/bash-completion/bash_completion"
-if [ -e "$f" ]; then
-        set +euo pipefail
-        if ! . "$f"; then
-		fatal "Sourcing $f failed"
-	fi
-        set -euo pipefail
+if [[ -z "$alias_name" ]]; then
+	fatal "First argument is empty"
 fi
-
-# Handle longopt separately
 
 if "$longopt" && "$shortopt"; then
 	fatal "The --shortopt and --longopt cannot be used together. --shortopt includes --longopt"
@@ -88,24 +82,33 @@ if ( "$longopt" || "$shortopt" ) && "$withalias"; then
 	fatal "The --with-alias must be used without --shortopt not --longopt. To which command shoud we alias?"
 fi
 
+# handle longopt
 if "$longopt"; then
 	if (($# > 1)); then
 		fatal "The --longopt options uses only alias name."
 	fi
-	if ! declare -F _longopt >/dev/null; then
-		fatal "The function _longopt is missing. Should be defined in /usr/share/bash-completion/bash_completion"
+	cat <<'EOF'
+_alias_complete::longopt() {
+	if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
+		. "/usr/share/bash-completion/bash_completion"
 	fi
+	_longopt "$@"
+}
+EOF
 	cat <<EOF
-complete -F _longopt "$alias_name"
+complete -F _alias_complete_longopt "$alias_name"
 EOF
 	exit
 fi
 
+# handle shortopt
 if "$shortopt"; then
 	if (($# > 1)); then
-		fatal "The --longopt options uses only alias name"
+		fatal "The --shortopt options uses only alias name"
 	fi
-_alias_complete_shortopt() {
+
+	: <<'EOF'
+_alias_complete::shortopt() {
     local cur prev words cword split
     _init_completion -s || return
 
@@ -147,10 +150,10 @@ _alias_complete_shortopt() {
          command sort -u
     )" -- "$cur") )
 }
-
-cat <<EOF
-$(declare -f _alias_complete_shortopt)
-complete -F _alias_complete_shortopt "$alias_name"
+EOF
+	cat <<EOF
+$(declare -f _alias_complete::shortopt)
+complete -F _alias_complete::shortopt "$alias_name"
 EOF
 	exit
 fi
@@ -160,86 +163,121 @@ fi
 if (($# < 2)); then
 	fatal "Command argument exprected"
 fi
-
 cmd="$2"
+if [[ -z "$cmd" ]]; then
+	fatal "Command is empty"
+fi
 shift 2
 cmd_args=("$@")
-
-# Main
 
 if [[ "$cmd" =~ *[[:space:]]* ]]; then
 	fatal "The script does not work with commands with spaces in it."
 fi
 
-f="/usr/share/bash-completion/completions/$cmd"
-if [ -r "$f" ]; then
-	set +euo pipefail
-	if ! . "$f"; then
-		fatal "Sourcing $f failed"
-	fi
-	set -euo pipefail
-fi
+# Do the normal completion
 
-if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
-	fatal "No completion could be found for $cmd"
-fi
-
-tmp=$(<<<"$tmp" tr ' ' '\n' | sed '$d')
-complete_func=$(<<<"$tmp" grep -A1 -- '-F' | tail -n1)
-if ! declare -f "$complete_func" >/dev/null; then
-	fatal "internal error: $complete_func does not exists" 
-fi
-IFS=$'\n' complete_args=($(<<<"$tmp" grep -v -x -- '-F\|'"${complete_func}"))
-cmd_with_args=("$cmd" "${cmd_args[@]}")
-cmd_args_cnt=${#cmd_args[@]}
-cmd_with_args_escaped=$(printf " %q" "$cmd" "${cmd_args[@]}" | cut -c2-)
-complete_args_escaped=$(printf " %q" "${complete_args[@]}" | cut -c2-)
-new_complete_func="_complete_alias_${alias_name}_to_${cmd}"
 output=$(
+
 if "$withalias"; then
+	cmd_with_args_escaped=$(printf " %q" "$cmd" "${cmd_args[@]}" | cut -c2-)
 	echo "alias $alias_name='$cmd_with_args_escaped'"
 fi
-cat <<EOF
-${new_complete_func}() {
-	if ! declare -F "$complete_func" >/dev/null; then
-		if [ -r "/usr/share/bash-completion/completions/$cmd" ]; then
-			. "/usr/share/bash-completion/completions/$cmd"
+
+_complete_alias::do::alias() {
+	if (($# < 2)); then
+		echo "complete_alias::do::alias: ERROR: need more then 2 arguments" >&2
+		return 2
+	fi
+
+	local alias_name cmd cmd_args
+	alias_name=$1
+	cmd=$2
+	shift 2
+	cmd_args=("$@")
+
+	local tmp
+	if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
+		# echo _complete_alias::do::alias sourcing /usr/share/bash-completion/bash_completion
+		if ! . "/usr/share/bash-completion/bash_completion"; then
+			echo "complete_alias: Sourcing /usr/share/bash-completion/bash_completion failed" >&2
+			return 2
 		fi
-		if [ -r "/usr/share/bash-completion/bash_completion" ]; then
-			. "/usr/share/bash-completion/bash_completion"
+	fi
+	if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
+		# echo _complete_alias::do::alias sourcing /usr/share/bash-completion/completions/$cmd
+		if ! . "/usr/share/bash-completion/completions/$cmd"; then
+			echo "complete_alias: Sourcing /usr/share/bash-completion/completions/$cmd failed" >&2
+			return 2
 		fi
-		if ! declare -F "$complete_func" >/dev/null; then
-			echo "bash_complete: ERROR: could not find $complete_func declaration" >&2
-			return -1
+		if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
+			echo "complete_alias: No completion found for $cmd" >&2
+			return 2
 		fi
 	fi
 
-	# echo "$new_complete_func: '\$#' '\$1' '\$2' '\$3' '\$COMP_CWORD' '\${COMP_WORDS[@]}' '\$COMP_LINE' '\$COMP_POINT'"
-	if [ "\$COMP_CWORD" -eq 1 ]; then
-		set -- "$cmd" "\$2" "${cmd_with_args[-1]}"
-	else
-		set -- "$cmd" "\$2" "\$3"
+	# echo "_complete_alias::do::alias complete -p $cmd -> $tmp"
+	local complete_func complete_args cmd_with_args cmd_args_cnt cmd_with_args_escaped 
+	local complete_args_escaped new_complete_func
+	tmp=$(<<<"$tmp" tr ' ' '\n' | sed '$d')
+	complete_func=$(<<<"$tmp" grep -A1 -- '-F' | tail -n1)
+	if ! declare -f "$complete_func" >/dev/null; then
+		echo "complete_alias: internal error: $complete_func does not exists"  >&2
+		return 1
 	fi
-	((COMP_CWORD += $cmd_args_cnt))
-	COMP_WORDS=($cmd_with_args_escaped \${COMP_WORDS[@]:1})
-	COMP_LINE="$cmd_with_args_escaped\${COMP_LINE##"$alias_name"}"
-	((COMP_POINT += ${#cmd_with_args_escaped} - ${#alias_name}))
-	# echo "$new_complete_func: '\$#' '\$1' '\$2' '\$3' '\$COMP_CWORD' '\${COMP_WORDS[@]}' '\$COMP_LINE' '\$COMP_POINT'"
+	complete_args=($(<<<"$tmp" grep -v -x -- '-F\|'"${complete_func}"))
 
-	"$complete_func" "\$@"
+	cmd_with_args=("$cmd" "${cmd_args[@]}")
+	cmd_args_cnt=${#cmd_args[@]}
+	cmd_with_args_escaped=$(printf " %q" "$cmd" "${cmd_args[@]}" | cut -c2-)
+
+	eval "$(cat <<EOF2
+	_complete_alias::$alias_name() {
+		# echo "$new_complete_func: '\$#' '\$1' '\$2' '\$3' '\$COMP_CWORD' '\${COMP_WORDS[@]}' '\$COMP_LINE' '\$COMP_POINT'"
+		if ((COMP_CWORD == 1)); then
+			set -- "$cmd" "\$2" "${cmd_with_args[-1]}"
+		else
+			set -- "$cmd" "\$2" "\$3"
+		fi
+		((COMP_CWORD += $cmd_args_cnt)) ||:
+		COMP_WORDS=($cmd_with_args_escaped \${COMP_WORDS[@]:1})
+		COMP_LINE="$cmd_with_args_escaped\${COMP_LINE#"$alias_name"}"
+		((COMP_POINT += ${#cmd_with_args_escaped} - ${#alias_name})) ||:
+		# echo "$new_complete_func: '\$#' '\$1' '\$2' '\$3' '\$COMP_CWORD' '\${COMP_WORDS[@]}' '\$COMP_LINE' '\$COMP_POINT'"
+	
+		"$complete_func" "\$@"
+	}
+EOF2
+	)"
+	"${complete_args[@]}" -F "_complete_alias::$alias_name" "$alias_name"
 }
-$complete_args_escaped -F "$new_complete_func" "$alias_name"
+
+cat <<EOF
+$(declare -f _complete_alias::do::alias)
+_complete_alias::setup::$alias_name() {
+	local alias_name cmd cmd_args
+	alias_name=$(printf "%q" "$alias_name")
+	cmd=$(printf "%q" "$cmd")
+	cmd_args=($( ((${#cmd_args[@]})) && printf "%q " "${cmd_args[@]}" || :))
 EOF
+cat <<'EOF'
+	_complete_alias::do::alias "$alias_name" "$cmd" "${cmd_args[@]}" &&
+	_complete_alias::$alias_name "$@"
+}
+EOF
+cat <<EOF
+complete -F '_complete_alias::setup::$alias_name' '$alias_name'
+EOF
+
 )
 
 if ! bash >/dev/null <<EOF
 $output
-complete -p "$alias_name" || exit 1
-declare -F "$new_complete_func" || exit 1
+complete -p '$alias_name' || exit 1
+declare -F _complete_alias::do::alias '_complete_alias::setup::$alias_name' || exit 1
 EOF
 then
 	fatal "Internal error: Output from this script is invalid."
 fi
 
-printf "%s\n" "$output"
+cat <<<"$output"
 
