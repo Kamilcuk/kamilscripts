@@ -27,7 +27,21 @@ p() { _archlinux_pacman "$@"; }
 eval "$(alias_complete.sh p pacman)"
 pn() { p --noconfirm "$@"; }
 eval "$(alias_complete.sh pn pacman)"
-pupdate() { p --noconfirm -Suy "$@"; }
+pupdate() { 
+	local tmp
+	tmp=$(pacman -Q | grep '[^ ]*-keyring ' | cut -d' ' -f1)
+	if [[ -n "$tmp" ]]; then
+		echo "+ p --noconfirm -Sy --needed $tmp"
+		p --noconfirm -Sy --needed $tmp;
+	fi
+	echo "+ p --noconfirm -Suy $@"
+	p --noconfirm -Suy "$@"
+	tmp=$(pacman -Qdtq)
+	if [[ -n "$tmp" ]]; then 
+		echo "+ p --noconfirm -R $tmp"
+		p --noconfirm -R $tmp
+	fi
+}
 eval "$(alias_complete.sh pupdate pacman)"
 pacmann() { pacman --noconfirm "$@"; }
 eval "$(alias_complete.sh pacmann pacman)"
