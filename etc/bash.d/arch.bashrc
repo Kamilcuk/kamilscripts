@@ -1,10 +1,10 @@
 #!/bin/bash
 
-if [ ! -e /etc/arch-release ]; then
+if [[ ! -e /etc/arch-release ]]; then
 	return
 fi
 
-if [ "$UID" -ne 0 ]; then
+if ((UID)); then
 	alias pacman='sudo pacman'
 fi
 
@@ -12,7 +12,7 @@ _archlinux_pacman() {
 	local tmp
 	if hash yay 2>/dev/null; then
 		tmp="yay"
-	elif [ "$UID" -ne 0 ]; then
+	elif ((UID)); then
 		tmp="sudo pacman"
 	else
 		tmp="pacman"
@@ -29,16 +29,13 @@ pn() { p --noconfirm "$@"; }
 eval "$(alias_complete.sh pn pacman)"
 pupdate() { 
 	local tmp
-	tmp=$(pacman -Q | grep '[^ ]*-keyring ' | cut -d' ' -f1)
+	tmp=$(pacman -Q | cut -d' ' -f1 | grep '[^ ]*-keyring')
 	if [[ -n "$tmp" ]]; then
-		echo "+ p --noconfirm -Sy --needed $tmp"
 		p --noconfirm -Sy --needed $tmp;
 	fi
-	echo "+ p --noconfirm -Suy $@"
 	p --noconfirm -Suy "$@"
 	tmp=$(pacman -Qdtq)
 	if [[ -n "$tmp" ]]; then 
-		echo "+ p --noconfirm -R $tmp"
 		p --noconfirm -R $tmp
 	fi
 }
