@@ -1,0 +1,575 @@
+#!/bin/sh
+# socktee
+# Forwards stdin to multiple outputs.
+# This version uses sockets.
+# Either binds to a network socket or to socket file.
+# Uses a compilable file to compile.
+# SPDX-License-Identifier: MIT AND Beerware
+# See help() function in C source file below for help.
+
+NAME=socktee
+exe=$(mktemp)
+trap 'rm -rf "$exe"' EXIT
+
+# subshell, so that trap is not inherited
+(
+if [ ! -x "$exe" -o \( -f "$0" -a "$0" -nt "$exe" \) ]; then
+	src=$(mktemp -t tmp.XXXXXXXXXXX.c)
+	echo "$src"
+	trap 'rm -rf "$src"' EXIT
+	cat >"$src" <<EOF
+#define _POSIX_C_SOURCE  2
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/un.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+#include <limits.h>
+#include <time.h>
+
+/* logging --------------------------------- */
+
+static bool verbose = false;
+static const char name[] = "$NAME";
+
+static inline
+void print_name(FILE *f) {
+	fprintf(f, "%s: ", name);
+}
+
+static inline
+void print_errno(FILE *f) {
+	if (errno) {
+		fprintf(f, "(%d)%s", errno, strerror(errno));
+	}
+}
+
+static inline
+void lerrln(const char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	print_name(stderr);
+	vfprintf(stderr, fmt, va);
+	fprintf(stderr, " ");
+	print_errno(stderr);
+	fprintf(stderr, "\n");
+	va_end(va);
+}
+
+static inline
+void llogln(const char *fmt, ...) {
+	if (!verbose) return;
+	va_list va;
+	va_start(va, fmt);
+	print_name(stdout);
+	vfprintf(stdout, fmt, va);
+	fprintf(stdout, "\n");
+	va_end(va);
+}
+
+/* error handling --------------------------- */
+
+static inline
+void _vherr(const char *condstr, const char *fmt, va_list va) {
+	print_name(stderr);
+	fprintf(stderr, "Error: ");
+	if (condstr) {
+		fprintf(stderr, "%s: ", condstr);
+	}
+	vfprintf(stderr, fmt, va);
+	if (errno) {
+		fprintf(stderr, ": ");
+		print_errno(stderr);
+	}
+	fprintf(stderr, "\n");
+}
+
+static inline
+void herrif(bool cond, const char *condstr, const char *fmt, ...) {
+	if (!cond) return;
+	va_list va;
+	va_start(va, fmt);
+	_vherr(condstr, fmt, va);
+	va_end(va);
+	exit(EXIT_FAILURE);
+}
+#define herrif(cond, ...)  herrif(cond, #cond, __VA_ARGS__)
+
+static inline
+void herr(const char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	_vherr(NULL, fmt, va);
+	va_end(va);
+	exit(EXIT_FAILURE);
+}
+
+/* some fd handling ----------------------------------------- */
+
+static inline
+void fd_set_nonblocking(int fd) {
+	const int flags = fcntl(fd, F_GETFL);
+	herrif(flags == -1, "fcntl GETFL failed");
+	herrif(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1, "");
+}
+
+static inline
+void fd_set_blocking(int fd) {
+	const int flags = fcntl(fd, F_GETFL);
+	herrif(flags == -1, "fcntl GETFL failed");
+	herrif(fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1, "");
+}
+
+static inline
+void myclose(int fd) {
+	const int err = close(fd);
+	if (err) {
+		lerrln("close(%d) failed", fd);
+	}
+}
+
+static inline
+void myshutdown(int *socket0) {
+	int socket = *socket0;
+	int err = 0;
+	if (socket == -1) return;
+	switch (socket) {
+	case STDIN_FILENO:
+	case STDOUT_FILENO:
+	case STDERR_FILENO:
+		myclose(socket);
+		break;
+	default:
+		err = shutdown(socket, SHUT_RDWR);
+		if (err) {
+			lerrln("shutdown(%d,2) failed", socket);
+			myclose(socket);
+		}
+	}
+	*socket0 = -1;
+}
+
+static inline
+void myunlink(const char *s) {
+	const int err = unlink(s);
+	if (err) {
+		lerrln("unlink(%s) failed", s);
+	}
+}
+
+/* clients array --------------------------- */
+
+struct clients_s {
+	int *fd;
+	size_t cnt;
+};
+
+static struct clients_s clients = { NULL, 0 };
+
+static inline
+void clients_add(int fd) {
+	struct clients_s *t = &clients;
+	fd_set_blocking(fd);
+	void *pnt = realloc(t->fd, sizeof(*t->fd) * (t->cnt + 1));
+	herrif(pnt == NULL, "realloc clients failed");
+	t->fd = pnt;
+	t->fd[t->cnt] = fd;
+	t->cnt++;
+}
+
+static inline
+void clients_rm_idx(size_t idx) {
+	struct clients_s *t = &clients;
+	assert(t->cnt > 0);
+	assert(idx < t->cnt);
+	memmove(&t->fd[idx], &t->fd[idx + 1], sizeof(*t->fd) * (t->cnt - idx - 1));
+	void *pnt = realloc(t->fd, sizeof(*t->fd) * (t->cnt - 1));
+	herrif(t->cnt != 0 && pnt == NULL, "realloc clients failed and this is strange");
+	t->fd = pnt;
+	t->cnt = 0;
+}
+	
+void clients_close(void) {
+	struct clients_s *t = &clients;
+	for (size_t i = 0; i < t->cnt; ++i) {
+		myclose(t->fd[i]);
+		t->fd[i] = -1;
+	}
+	free(t->fd);
+	t->fd = NULL;
+	t->cnt = 0;
+}
+	
+
+/* pollfd array ----------------------------- */
+
+// array passed to poll
+static struct pollfd fds[3] = {
+	{ STDIN_FILENO, POLLIN, 0 },
+	{ -1, POLLIN, 0 },
+	{ -1, POLLIN, 0 }
+};
+// no cleaner for stdin
+static void (*fds_cleaners[2])(int fd) = { NULL, };
+// the count
+static size_t fdscnt = 1;
+
+static inline
+void fds_add(int fd, void (*cleaner)(int fd)) {
+	assert(fd > 0);
+	assert(fdscnt < sizeof(fds)/sizeof(*fds));		
+	fd_set_nonblocking(fd);
+	fds[fdscnt].fd = fd;
+	fds_cleaners[fdscnt - 1] = cleaner;
+	fdscnt++;
+}
+
+static inline
+void fds_close(void) {
+	for (size_t i = 0; i < fdscnt; ++i) {
+		if (i > 0) {
+			if (fds_cleaners[i - 1]) { 
+				fds_cleaners[i - 1](fds[i].fd);
+			}
+			fds_cleaners[i - 1] = NULL;
+		}
+		
+		myclose(fds[i].fd);
+		fds[i].fd = -1;
+	}
+	fdscnt = 0;
+}
+
+/* GLOBAL VARIABLES !! ---------------------------- */
+
+static const char *sockfile = NULL;
+static int port = 0;
+static unsigned client_timeout_ms = 1000;
+static bool also_stdout = false;
+
+/* cleaning ----------------------------------- */
+
+static inline
+void sig_exit_handler(int signum) {
+	(void)signum;
+	exit(EXIT_FAILURE);
+}
+
+/* alarm handling ------------------------ */
+
+static volatile sig_atomic_t alarm_fired = 0;
+
+static inline
+void alarm_arm(void) {
+	if (client_timeout_ms == 0) return;
+	llogln("Alarm arming for %u milliseconds", client_timeout_ms);
+
+	const int saveerrno = errno;
+	alarm_fired = 0;
+
+	struct itimerval v = {0};
+	v.it_value.tv_sec = client_timeout_ms / 1000;
+	v.it_value.tv_usec = (long)client_timeout_ms % 1000 * 1000000;
+	herrif(setitimer(ITIMER_REAL, &v, NULL) < 0, "setitimer failed");
+
+	errno = saveerrno;
+}
+
+static inline
+void alarm_disarm(void) {
+	const int saveerrno = errno;
+	struct itimerval v = {0};
+	herrif(setitimer(ITIMER_REAL, &v, NULL) < 0, "setitimer failed");
+	errno = saveerrno;
+}
+
+static
+void sig_alarm(int signum) {
+	(void)signum;
+	llogln("alarm");
+	alarm_fired = 1;
+}
+
+/* cleanup handler ---------------------------- */
+
+static inline
+void cleaner(void) {
+	llogln("Exiting...");
+	clients_close();
+	fds_close();
+}
+
+/* parse arguments ---------------------------- */
+
+static inline
+void help(void) {
+	printf(
+		"Usage: forwarder [options]\n"
+		"\n"
+		"Forwards stdin into connections to a socket.\n"
+		"A socket may be internet socket or socket file.\n"
+		"Either -f or -p must be specified.\n"
+		"\n"
+		"Options:\n"
+		"   -f file        - Specify file to bind to.\n"
+		"   -p port        - Specify port to bind to.\n"
+		"   -t timeout_ms  - Write client timeout in milliseconds.\n"
+		"   -s             - Also write output on stdout.\n"
+		"   -v             - Be verbose.\n"
+		"   -h             - Print this text and exit.\n"
+		"\n"
+		"Written by Kamil Cukrowski 2019.\n"
+		"Licensed jointly under MIT License and Beeware License.\n"
+	);
+	exit(0);
+}
+
+static inline
+unsigned mystrtou(const char *str) {
+	char *endptr = NULL;
+	errno = 0;
+	const long res = strtol(str, &endptr, 0);
+	herrif(errno, "'%s': invalid number", str);
+	herrif(res == LONG_MAX, "'%s': number too big", str);
+	herrif(res < 0, "'%s' is negative", str);
+	const size_t convstr = endptr - str;
+	herrif(convstr != strlen(str), "'%s' is not a number", str);
+	return res;
+}
+
+static inline
+void parse_args(int argc, char **argv) {
+	int c;
+	opterr = 0;
+	while (c = getopt(argc, argv, "vf:p:t:svh"), c != -1) {
+		switch (c) {
+		case 'f':
+			sockfile = optarg;
+			llogln("Socketfile set to %s", sockfile);
+			break;
+		case 'p':
+			port = mystrtou(optarg);
+			herrif(port > 32768, "'%u' is too big for a port", port);
+			llogln("Port set to %u", port);
+			break;
+		case 't':
+			client_timeout_ms = mystrtou(optarg);
+			llogln("Client timeout is set to %u", client_timeout_ms);
+			break;
+		case 's':
+			also_stdout = true;
+			break;
+		case 'v':
+			verbose = true;
+			break;
+		case 'h':
+			help();
+			break;
+		case '?':
+			herr("invalid option -- '%s'", argv[optind]);
+			exit(EXIT_FAILURE);
+		default:
+			herr("Unhandled case -- '%c'", c);
+			break;
+		}
+	}
+	
+	herrif(!sockfile && !port, "Option -f or -p is required.");
+	assert(optind <= argc);
+	herrif(optind != argc, "Unhandled argument -- '%s'", argv[optind]);
+}
+
+/* main --------------------------- */
+
+static inline
+void listen_on_port(unsigned port) {
+	struct sockaddr_in sa = {0};
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+			
+	const int sfd = socket(PF_INET, SOCK_STREAM, 0);
+	herrif(sfd == -1, "PF_INET socket failed");
+	fds_add(sfd, NULL);
+	
+	int reuseaddr = 1;
+	herrif(
+		setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr,sizeof(reuseaddr)) == -1,
+		"reusing addr failed");	
+	
+	herrif(bind(sfd, (struct sockaddr*)&sa, sizeof(sa)) < 0, 
+		"PF_INET bind(%d) failed", sfd);
+	herrif(listen(sfd, 0) < 0, "PF_INET listen(%d) failed", sfd);
+	llogln("Listening on port %u", port);
+}
+
+static
+void sockfile_cleaner(int fd) {
+	myunlink(sockfile);
+}
+
+static inline
+void listen_on_sockfile(const char *sockfile) {
+	herrif(access(sockfile, F_OK) != -1, "%s: File already exists", sockfile);
+	
+	struct sockaddr_un namesock = {0};
+	namesock.sun_family = AF_UNIX;
+	herrif(strlen(sockfile) + 1 > sizeof(namesock.sun_path),
+		"socket file name longer then 107 characters");
+	strncpy(namesock.sun_path, sockfile, sizeof(namesock.sun_path));
+	
+	const int ufd = socket(AF_UNIX, SOCK_STREAM, 0);
+	herrif(ufd == -1, "AF_UNIX socket failed");
+	fds_add(ufd, sockfile_cleaner);
+			
+	herrif(bind(ufd, (struct sockaddr *)&namesock, sizeof(namesock)), 
+		"AF_UNIX bind on %d failed", ufd);	
+	herrif(listen(ufd, 0) < 0, "AF_UNIX listen(%d) failed", ufd);
+	llogln("Listening on socket file %s", sockfile);
+}
+
+static inline
+void handle_stdin_pollin(int revents) {
+	const int fd = STDIN_FILENO;
+	
+	if ((revents & POLLHUP) == POLLHUP) {
+		llogln("stdin closed");
+		exit(EXIT_SUCCESS);
+	}
+	llogln("New input on stdin");
+	herrif(revents != POLLIN, "stdin strange return");
+
+	char buff[4096];
+	const ssize_t readed = read(STDIN_FILENO, buff, sizeof(buff));
+	herrif(readed < 0, "read STDIN_FILENO failed");
+	if (readed == 0) {
+		llogln("Stdin closed");
+		exit(EXIT_SUCCESS);
+	}
+
+	for (size_t i = 0; i < clients.cnt; ++i) {
+		llogln("Writting %zu client on %d", i, fd);
+		if (client_timeout_ms) alarm_arm();
+		const ssize_t written = write(clients.fd[i], buff, readed);
+		if (client_timeout_ms) alarm_disarm();
+
+		llogln("Written %zd bytes errno=%d", written, errno);
+		if (written == -1) {
+			bool removeit = false;
+			if (errno == ECONNRESET) {
+				llogln("Connection to client %zu is reset", i);
+				removeit = true;
+			} else if (errno == EPIPE) {
+				llogln("Client %zu disconnected", i);
+				removeit = true;
+			} else if (errno == EINTR && alarm_fired) {
+				alarm_fired = false;
+				llogln("Write to client %zu timeouted", i);
+				removeit = true;
+			}
+			if (removeit) {
+				clients_rm_idx(i);
+				--i;
+				continue;
+			}
+		}
+		herrif(written < 0, "write error");
+		herrif(written != readed, "write strange return");
+	}
+}
+
+static inline
+void handle_socket_pollin(size_t i, int fd) {
+	llogln("New %zu client connection on %d", i, fd);
+				
+	struct sockaddr_in ca;
+	socklen_t size = sizeof(struct sockaddr);
+	const int clientfd = accept(fd, (struct sockaddr*)&ca, &size);
+	herrif(clientfd < 0, "accept failure on %zu client with %d", i, fd);
+	
+	clients_add(clientfd);
+}
+
+int main(int argc, char **argv) {
+	herrif(atexit(cleaner), "");
+
+	const int signals[] = { SIGABRT, SIGSEGV, SIGINT, };
+	for (size_t i = 0; i < sizeof(signals)/sizeof(*signals); ++i) {
+		const struct sigaction sigaction_sig_handler = { sig_exit_handler };
+		herrif(sigaction(signals[i], &sigaction_sig_handler, NULL) < 0, "");
+	}
+	herrif(sigaction(SIGALRM, &(const struct sigaction){ sig_alarm }, NULL) < 0, "");
+	herrif(sigaction(SIGPIPE, &(const struct sigaction){ SIG_IGN }, NULL) < 0, "");
+
+	parse_args(argc, argv);
+
+	if (port) {
+		listen_on_port(port);
+	}
+
+	if (sockfile) {
+		listen_on_sockfile(sockfile);
+	}
+
+	assert(fdscnt > 1);
+
+	if (also_stdout) {
+		clients_add(STDOUT_FILENO);
+	}
+
+	while (7) {
+		errno = 0;
+		const int err = poll(fds, fdscnt, -1);
+		if (err == -1 && errno == EINTR) {
+			continue;
+		}
+		herrif(err < 0, "poll failure");
+		
+		assert(fds[0].fd == STDIN_FILENO);
+		if (fds[0].revents) {
+			handle_stdin_pollin(fds[0].revents);
+		}
+
+		for (size_t i = 1; i < fdscnt; ++i) {
+			const int revents = fds[i].revents;
+			if (revents) {
+				herrif(revents != POLLIN, "socket descriptor strange poll return");
+				handle_socket_pollin(i, fds[i].fd);
+			}	
+		}
+		
+	}
+}
+EOF
+	if ! {
+		if hash gcc 2>/dev/null; then
+			gcc -Os -Wall -std=c99 -Wextra \
+				-Wno-missing-field-initializers \
+				-Wno-unused-parameter \
+				-o"$exe" "$src"
+		else
+			c99 -o"$exe" "$src"
+		fi
+	}; then
+		echo "Compilation failed" >&2
+		exit 1
+	fi
+fi
+)
+	
+"$exe" "$@"
+
