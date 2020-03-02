@@ -1,0 +1,3 @@
+echo 'keyring /etc/pacman.d/gnupg/pubring.gpg' >> ~/.gnupg/.gpg.conf
+
+https://bbs.archlinux.org/viewtopic.php?id=191629
