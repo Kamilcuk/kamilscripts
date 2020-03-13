@@ -68,10 +68,10 @@ PS1_setup() {
 	PS1+="\u"
 	PS1+="${root+\\[$nostandout\\]}"
 	PS1+="@"
-	if hash md5sum color.sh hostname 2>/dev/null && [ "$colors" -ge 256 ]; then
-		#PS1+="\\[$(color.sh -s "f#$(hostname | md5sum | cut -c-6)")\\]\h "
-		#PS1+="\\[$(color.sh -s charrainbow $(hostname | md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
-		PS1+="$(color.sh -s charrainbow3 $(hostname | md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$(hostname)" |	sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
+	if hash md5sum color.sh 2>/dev/null && [ "$colors" -ge 256 ]; then
+		#PS1+="\\[$(color.sh -s "f#$(<<<"$HOSTNAME" md5sum | cut -c-6)")\\]\h "
+		#PS1+="\\[$(color.sh -s charrainbow $(<<<"$HOSTNAME" md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
+		PS1+="$(color.sh -s charrainbow3 $(<<<"$HOSTNAME" md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
 	else
 		PS1+='\h'
 	fi	 
