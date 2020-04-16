@@ -28,13 +28,13 @@ eval "$(alias_complete.sh p pacman)"
 pn() { p --noconfirm "$@"; }
 eval "$(alias_complete.sh pn pacman)"
 pupdate() { 
-	local tmp
-	tmp=$(pacman -Q | cut -d' ' -f1 | grep '[^ ]*-keyring')
+	local tmp &&
+	tmp=$(pacman -Q | cut -d' ' -f1 | grep '[^ ]*-keyring') &&
 	if [[ -n "$tmp" ]]; then
 		p --noconfirm -Sy --needed $tmp;
-	fi
-	p --noconfirm -Suy "$@"
-	tmp=$(pacman -Qdtq)
+	fi &&
+	p --noconfirm -Suy "$@" &&
+	tmp=$(pacman -Qdtq) &&
 	if [[ -n "$tmp" ]]; then 
 		p --noconfirm -R $tmp
 	fi
