@@ -25,11 +25,11 @@ error() {
 
 ofs=:
 
-while getopts ':hs:h' opt; do
+while getopts ':?hs:H' opt; do
 	case "$opt" in
 	H) header=true; ;;
 	s) ofs=$OPTARG; ;;
-	h) usage; exit; ;;
+	h|?) usage; exit; ;;
 	*) error "Invalid argument: $opt"; ;;
 	esac
 done
@@ -80,11 +80,11 @@ sed -n '
 		}
 	
 		# value?
-		/^ *\(.*\): \([0-9\.]*\)$/{
+		/^ *\(.*\): \(-\?[0-9\.]*\)$/{
 			s//\1\n\2/
 			G
 			s/\([^\n]*\n[^\n]*\)\n\(.*\)/\2\n\1/
-			s/\n/'"${FS:=:}"'/g
+			s/\n/'"${ofs:=:}"'/g
 			p
 			b loop
 		}
