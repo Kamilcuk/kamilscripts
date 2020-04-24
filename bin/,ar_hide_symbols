@@ -1,0 +1,176 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT+Beerware
+set -euo pipefail
+export SHELLFLAGS
+NAME=$(basename "$0")
+
+fatal() {
+	echo "$NAME:" "$@" >&2
+	exit 2
+}
+
+usage() {
+	cat <<EOF
+Usage: $NAME [options] interfacesymbols... static.a [object.o...]
+
+If any object files .o are given, then this script creates the static
+library 'static.a' from the object files by hiding the object files
+names.
+All symbols except those listed as arguments are hidden in the 
+static library and their names are hidden using md5sum.
+Optionally a prefix can be specified to the symbols.
+The command line arguments were designed so that you can drop-in
+replace the ar, like instead:
+   ar rcs library.a object1.o object2.o
+you can use this script:
+   $NAME publicsymbol publicsymbol2 library.a object1.o object2.o
+
+Options:
+  -h   Print this text and exit
+  -n   Prepend symbols with this prefix
+  -q   Be quiet
+  -c   Allow overwriting existing files
+  -P   Prefix for utilities, like 'arm-none-eabi-'
+  -S   Suffix for utilities, like '.exe'
+  -t   Trace executed executables with arguments
+
+Example:
+  $NAME -n namespace_ interface_symbol1 interface_symbol2 library.a private.o interface.o
+    Will create the 'library.a' file from 'private.o' and 'interface.o'
+    And hide/transform all symbols inside the library except
+      inerface_symbol1 interface_symbol2
+    All hidden symbols will start with the text 'namespace_'
+
+Written by Kamil Cukrowski
+Licensed jointly under MIT License and Beerware License.
+EOF
+	if (($#)); then
+		fatal "$*"
+	fi
+}
+
+md5() {
+	md5sum | cut -d' ' -f1
+}
+
+log() {
+	if ! ${quiet:-false}; then
+		echo "$NAME:" "$@"
+	fi
+}
+
+trace() {
+	if ${trace:-false}; then
+		echo "$NAME:" "+" "$@"
+	fi
+	"$@"
+}
+
+# Main parse arguments ###############################
+
+args=$(getopt -n "$NAME" -o hn:qcP:S:t -- "$@")
+eval set -- "$args"
+prefix=""
+quiet=false
+clobber=false
+utilprefix=""
+utilsuffix=""
+trace=false
+while (($#)); do
+	case "$1" in
+	-h) usage; exit; ;;
+	-n) prefix="$2"; shift; ;;
+	-q) quiet=true; ;;
+	-c) clobber=true; ;;
+	-P) utilprefix="$2"; shift; ;;
+	-S) utilsuffix="$2"; shift; ;;
+	-t) trace=true; ;;
+	--) shift; break; ;;
+	esac
+	shift
+done
+
+if (($# == 0)); then
+	fatal "Arguments missing. See $NAME -h"
+fi
+
+# first public symbols
+public_symbols=()
+while [[ "$1" != *.a ]]; do
+	public_symbols=("$1")
+	shift
+done
+
+# then static library
+if (($# == 0)) || [[ "$1" != *.a ]]; then
+	fatal "Static library name is missing. See $NAME -h"
+fi
+staticlib="$1"
+shift
+
+# then list of object files
+objfiles=("$@")
+shift $#
+for i in "${objfiles[@]}"; do
+	if [[ "$i" != *.o ]]; then
+		fatal "Object files $i does not end with .o"
+	fi
+done
+
+# Main ###################################################
+
+ld="${utilprefix:-}ld${utilsuffix:-}"
+ar="${utilprefix:-}ar${utilsuffix:-}"
+strip="${utilprefix:-}strip${utilsuffix:-}"
+objcopy="${utilprefix:-}objcopy${utilsuffix:-}"
+
+
+if (( ${#objfiles[@]} > 0 )); then
+	log "Creating $staticlib from: ${objfiles[*]}"
+
+	if ! "${clobber:-false}" && [[ -e "$staticlib" ]]; then
+		fatal "Bailing out! $staticlib will be overwritten"
+	fi
+
+	resultmd5=$(md5 <<<"$staticlib")
+	(
+	tmpd=$(mktemp -d)
+	trap 'trace rm -r "$tmpd"' EXIT
+	trace "$ld" -relocatable "${objfiles[@]}" -o "$tmpd"/"$resultmd5"
+	trace "$ar" rcs "$staticlib" "$tmpd"/"$resultmd5"
+	)
+fi
+
+log "Extracting symbols from $staticlib knowing ${#public_symbols[@]} public symbols: ${public_symbols[*]}"
+tmp=$(nm "$staticlib")
+tmp=$(
+	<<<"$tmp" sed '/^[[:xdigit:]]\+ T /!d; s///' |
+	sort | comm -13 <(printf "%s\n" "${public_symbols[@]}" | sort) -
+)
+private_symbols=()
+if [[ -n "$tmp" ]]; then
+	readarray -t private_symbols <<<"$tmp"
+fi
+
+log "Stripping unneeded symbols in $staticlib except public symbols"
+strip_args=()
+for i in "${public_symbols[@]}"; do
+	strip_args=(-K "$i")
+done
+trace "$strip" --strip-unneeded --strip-debug "${strip_args[@]}" "$staticlib"
+
+log "Hide and rename to it's md5sum all ${#private_symbols[@]} private symbols: ${private_symbols[*]}"
+objcopy_args=()
+for sym in "${private_symbols[@]}"; do
+	new="${prefix}$(md5 <<<"$sym")"
+	objcopy_args+=(
+		# replace the symbol with it's md5sum
+		--redefine-sym "$sym=$new"
+		# make the symbol local
+		-L "$new"
+	)
+done
+trace "$objcopy" "${objcopy_args[@]}" "${staticlib}"
+
+log "Done"
+
