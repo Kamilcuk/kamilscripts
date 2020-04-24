@@ -1,0 +1,402 @@
+#!/bin/bash
+set -euo pipefail
+# https://github.com/toggl/toggl_api_docs
+
+n=$(basename "$0")
+
+fatal() {
+	printf "%s: ERROR: %s\n" "$n" "$*" >&2
+	exit 2
+}
+
+assert() {
+	if ! eval "$1"; then
+		fatal "Assertion $1 failed ${@:2}"
+	fi
+}
+
+cmd_help() {
+	if [[ "${1:-}" = "-h" ]]; then
+		echo "$1#$2"
+		exit
+	fi
+}
+
+to_true() {
+	case "$1" in
+	[T|t][R|r][U|u][E|e]) echo true; ;;
+	[Y|y][E|e][S|s]) echo true; ;;
+	0) echo false; ;;
+	[1-9]*) echo true; ;;
+	[F|f][A|a][L|l][S|s][E|s]) echo false; ;;
+	[N|n][O|o]) echo false; ;;
+	*) fatal "Invalid boolean value $1"; ;;
+	esac
+}
+
+init_pass() {
+	if [[ -n "${TOGGL_KEY}" ]]; then
+		pass="${TOGGL_KEY}:api_token"
+	fi
+}
+init_pass
+
+json_to_table() {
+	# https://stackoverflow.com/questions/39139107/how-to-format-a-json-string-as-a-table-using-jq
+	jq -r '[ .[] | with_entries(.key |= ascii_downcase) ] | (.[0] | keys_unsorted | @tsv) , (.[]|. | map(.) | @tsv)' |
+	sed 's/\t\t/\t-\t/g'
+}
+
+transpose() {
+	awk -vFS='\t' -vOFS='\t' -vIFS='\t' '
+	{ for (i=1; i<=NF; i++) a[NR,i] = $i }
+	NF>p {  p = NF }
+	END {    
+	    for(j = 1; j<=p; j++) {
+        	str = a[1,j]
+        	for(i=2; i<=NR; i++){
+	            str = str OFS a[i,j]
+        	}
+        	print str
+	    }
+	}'
+}
+
+columnize() {
+	column -t -s $'\t'
+}
+
+json_output() {
+	local input
+	input=$(cat)
+
+	if [[ "$input" == "null" ]]; then
+		echo "$input"
+		return
+	fi
+
+	if ! jq <<<"$input" >/dev/null; then
+		fatal "Expected json but received: $input"
+	fi
+
+	declare -g output_json output_transpose output_columnize
+	assert 'case "$output_json" in true|false|"") true; ;; *) false; esac'
+	assert 'case "$output_transpose" in true|false|"") true; ;; *) false; esac'
+	assert 'case "$output_columnize" in true|false|"") true; ;; *) false; esac'
+
+	local count
+	count=$(<<<"$input" sed 's/},/&\n/g' | grep -c '},')
+
+	local json transpose columnize
+	json="${output_json:-false}"
+	transpose="${output_transpose:-false}"
+	columnize="${output_columnize:-false}"
+
+	if ((count > 5)) && [[ -z "$output_json" ]]; then
+		json=true
+	fi
+	if [[ -z "$output_transpose" ]] && ((count > 3)); then 
+		transpose=true
+	fi
+	if [[ -z "$output_columnize" ]] && ((count > 3)); then 
+		columnize=true
+	fi
+
+	# echo "transpose=$transpose columnize=$columnize json=$json"
+
+	if "$json"; then
+		if [[ -z "$json" ]]; then
+			jq -s
+		else
+			cat
+		fi
+	else
+		json_to_table |
+		if [[ -n "${output_filter:-}" ]]; then
+			cut -f"$output_filter"
+		else
+			cat
+		fi |
+		if "$transpose"; then
+			transpose
+		else
+			cat
+		fi |
+		if "$columnize"; then
+			columnize
+		else
+			cat
+		fi
+	fi <<<"$input"
+}
+
+query_raw() {
+	assert "(($# > 1))"
+	assert '[[ -n "$pass" ]]'
+	local mode
+	mode=$1
+	assert "[[ \"$mode\" == GET || \"$mode\" = DELETE || \"$mode\" == POST || \"$mode\" == PUT ]]"
+	local url
+	url=$2
+	shift 2
+	for i; do
+		if [[ "$url" =~ \? ]]; then
+			url+="&"
+		else
+			url+="?"
+		fi
+		url+=$(<<<"$i" sed '
+			s/:/%3A/g
+			s/+/%2B/g
+		')
+	done
+
+	(
+		if "$debug"; then set -x; fi
+		curl -sS -u "$pass" -X "$mode" "https://www.toggl.com/api/$url"
+	)
+}
+
+query() {
+	query_raw "$@" | json_output
+}
+
+cmdhelp() {
+	if [[ "$1" == "short-help" ]]; then
+		shift 1
+		printf "\t$1\t$2\n"
+		exit
+	fi
+}
+
+cmds_gen_help() {
+	for i in $cmds; do
+		( cmd::"$i" short-help ) |
+		sed '1!q;s/^[[:space:]]*//'
+	done |
+	sort |
+	column -t -s $'\t' -o '    ' -W2 |
+	sed 's/^/  /'
+}
+
+sort_header() {
+	local one
+	IFS= read -r one
+	printf "%s\n" "$one"
+	sort "$@"
+}
+
+# Commands #####################################
+
+cmd::clients() {
+	cmdhelp "$@" "clients" "Get clients"
+	query GET v8/clients
+}
+cmd::workspaces() {
+	cmdhelp "$@" "workspaces [id]" "Get workspaces"
+	query GET v8/workspaces
+}
+cmd::time_entries() {
+	cmdhelp "$@" "time_entries [start_date] [end_date]" \
+		"Get time entries in specified time range. Time can be anything that data can parse"
+	assert "((0 <= $# && $# <= 2))"
+	local start_date end_date args=()
+	if (($#)); then 
+		if (($# == 1)); then
+			set -- "$1" now
+		fi
+		start_date=$(date -u --date="$1" --iso-8601=seconds)
+		end_date=$(date -u --date="$2" --iso-8601=seconds)
+		args=(start_date="$start_date" end_date="$end_date")
+	fi
+
+	query_raw GET v8/time_entries "${args[@]}" |
+	# add empty field "stop" to the last array element if its missing
+	jq '
+		def indexof(f): 
+			label $out |
+			foreach .[] as $x (
+				null;
+				.+1;
+				if ($x.key == f) then (.-1, break $out) else empty end
+			)
+		;
+		.[-1] |= 
+			if has("stop") then . else (
+				to_entries |
+				(1 + indexof("start")) as $ix |
+				.[:$ix] + ({stop: ""} | to_entries) + .[$ix:] |
+				from_entries
+			) + 
+			if (.duration < 0) then {duration: -1} else . end
+		end
+	' |
+	if ! "${output_json:-true}"; then
+		jq 'del(.[].tags)'
+	else
+		cat
+	fi |
+	json_output
+}
+
+cmd::report() {
+	cmdhelp "$@" "report [start_date] [end_date]" \
+		"Similar to time_entries with custom output format"
+	output_json=false
+	output_columnize=false
+	output_transpose=false
+	output_fields=6,7,8,9
+	projects_id_name=$(
+		printf "%s\t%s\n" id name
+		output_json=true cmd::projects ls |
+		jq -r '.[] | [ .id, .name ] | @tsv'
+	)
+	cmd::time_entries "$@" |
+	cut -f 4,6,7,8,9 |
+	# add line numbers and sort for join
+	nl -w1 | sort_header -s -k2 |
+	# join it with projects names
+	join -t $'\t' --header -12 \
+		-o 1.1,2.2,1.3,1.4,1.5,1.6 - <(sort_header -s -k1 <<<"$projects_id_name") |
+	# restore original sorting order and remove line numbers
+	sort_header -s -n -k1 | cut -f2- |
+	# short duration in the H:M:S format
+	awk -vFS='\t' -vIFS='\t' -vOFS='\t' '
+		NR == 1 { for (i = 1; i <= NF; ++i) if ($i == "duration") break }
+		NR > 1 && $i > 0 { $i = sprintf("%d:%02d:%02d", $i / 3600, $i % 60 / 60, $i % 60) } 1
+	' |
+	sed -E '
+		# add a date column to the header
+		1{
+			s/([[:space:]])(start([[:space:]]*)stop)/\1date\3\2/;
+		}
+		# extract the date from start/stop columns and put it in front
+		2,${
+			s/([[:space:]])([0-9]{4}-[0-9]{2}-[0-9]{2})T([^+]+)\+00:00([[:space:]])*\2T([^+]+)\+00:00/\1\2\4\3\4\5/;
+			t ok;
+				# handle missing stop date as "-" separately
+				s/([[:space:]])([0-9]{4}-[0-9]{2}-[0-9]{2})T([^+]+)\+00:00([[:space:]])*-/\1\2\4\3\4-/;
+			: ok;
+		}
+	' |
+	column -t -s $'\t' -o $'\t' -R5
+}
+
+cmd::workspaces() {
+	cmdhelp "$@" "workspaces" "List workspaces"
+	query GET v8/workspaces
+}
+
+cmd::projects() {
+	cmdhelp "$@" "projects [options] [command]" \
+		"Manage projects. See projects -h"
+	usage() {
+		cat <<EOF
+Usage: projects [options] [command]
+
+Options:
+  -h   Short this help and exit
+  -w   Use this workspace instead of the first one
+
+Commands:
+  ls   List projects in the workspace (default)
+EOF
+	}
+	args=$(getopt -n "$0 projects" -o 'hw:' -- "$@")
+	eval set -- "$args"
+	ws=   # WorkSpace for short
+	while (($#)); do
+		case "$1" in
+		-h) usage; exit 1; ;;
+		-w) workspace=$2; shift; ;;
+		--) shift; break; ;;
+		esac
+		shift
+	done
+	if [[ -z "${workspace:-}" ]]; then
+		ws=$(
+			( output_json=true cmd::workspaces ) |
+			jq -r '.[0].id'
+		)
+	fi
+	case "${1:-ls}" in
+	ls) query GET v8/workspaces/"$ws"/projects; ;;
+	*) fatal "projects: Unknown or missing command argument: ${1:-}"; ;;
+	esac
+}
+
+cmds=$(declare -f | sed '/^cmd::\([^[:space:]]\{1,\}\)[[:space:]]*()[[:space:]]*$/!d;s//\1/')
+
+# Usage ##########################################
+
+usage() {
+	cat <<EOF
+Usage: $n [options] <command> [args...]
+
+Options:
+  -h                               Print this help and exit
+  -t <token>                       Use API token (preferred)
+  -b <john.doe@gmail.com:secret>   Use http Basic authentication
+  -J <BOOL>                        Output json, not tabelarized output
+  -T <BOOL>                        Transpose table output
+  -C <BOOL>                        Columnize output
+  -F <string>                      Filter fields using cut(1)
+  -d                               Debug
+
+If no '-t' nor '-b' option are used, the environment variable
+TOGGL_KEY is used.
+BOOL can be 1, 0, true, false or similar.
+
+Commands:
+$(cmds_gen_help)
+
+Examples:
+  Print tabelarized view of the time entires from last 2 weeks:
+    $n -F1- time_entries -2weeks 
+
+Written by Kamil Cukrowski 2020
+Licensed jointly under Beerware License and MIT License.
+EOF
+	if (($#)); then
+		fatal "$*"
+	fi
+}
+
+# Main ########################################
+
+args=$(getopt -n "$n" -o '+ht:b:J:T:C:F:d' -- "$@")
+eval set -- "$args"
+debug=false
+output_columnize=
+output_transpose=
+output_json=
+output_filter=
+while (($#)); do
+	case "$1" in
+	-h) usage; exit; ;;
+	-t) ;;
+	-b) ;;
+	-J) output_json=$(to_true "$2"); shift; ;;
+	-T) output_transpose=$(to_true "$2"); if "$output_transpose"; then : ${output_json:=false}; fi; shift; ;;
+	-C) output_columnize=$(to_true "$2"); if "$output_columnize"; then : ${output_json:=false}; fi; shift; ;;
+	-F) output_filter="$2"; if [[ -n "$output_filter" ]]; then : ${output_json:=false} ${output_transpose:=false}; fi; shift; ;;
+	-d) debug=true; ;;
+	--) shift; break; ;;
+	*) fatal "Unhandled option $1"; ;;
+	esac
+	shift
+done
+
+if ((!$#)); then
+	usage;
+	fatal "Missing arguments"
+fi
+
+if ! grep -Fxq "$1" <<<"$cmds"; then
+	fatal "$1: Command not found"
+fi
+
+cmd=cmd::"$1"
+shift
+"$cmd" "$@"
+
