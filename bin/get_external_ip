@@ -1,0 +1,36 @@
+#!/bin/sh
+f1() {
+	if hash host 2>/dev/null >/dev/null; then
+		host -4 o-o.myaddr.l.google.com ns1.google.com |
+		sed -n '/^Address: \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/s//\1/p'
+	fi
+}
+
+f2() {
+	if hash dig 2>/dev/null >/dev/null; then
+		dig -4 TXT o-o.myaddr.l.google.com @ns1.google.com |
+		sed -n '/^o-o.myaddr.l.google.com..*"\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)"$/s//\1/p'
+	fi
+}
+
+f3() {
+	if hash wget 2>/dev/null >/dev/null; then
+		wget -qO- https://ipecho.net/plain &&
+		echo
+	fi
+	if hash curl 2>/dev/null >/dev/null; then
+		curl -sS https://ipecho.net/plain &&
+		echo
+	fi
+}
+
+for i in f1 f2 f3; do
+	ip=$("$i") ||:
+	if grep -xE "([0-9]{1,3}\.){3}[0-9]{1,3}" <<<"$ip"; then
+		exit
+	fi      
+done
+
+printf "%s: error: %s\n" "$(basename "$0")" "Could not get public ip address" >&2
+exit 1
+

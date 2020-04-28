@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+#!USER CONFIGURATION #modify this as you need
+NETHACK_SAVE_DIR=/var/games/nethack/save #where saves are originally
+NETHACK_STATE_DIR="$HOME/.nethack_save" #where you want to save the saves
+#!/USER CONFIGURATION
+
+set -u # error on undefined variable
+set -e # stop execution if one command goes wrong
+
+usage()
+{
+  echo 'USAGE nethack-save-load sl pref
+
+SUMMARY
+
+  Saves or loads nethack save state.
+
+DESCRIPTION
+
+  You must save before in nethack for this to work.
+  
+  You cannot use this script while nethack is running: nethack must be off for saving and loading!!!
+
+  Output save dir is created automatically each time the script is run.
+
+  When saving, save state cannot contain "__"
+
+  When loading, inputing "__" loads the last saved game
+
+INSTALLATION
+
+  Nethack dir, output save dir must and save separtor must be specified by
+  modifying the variables SEP, NETHACK_SAVE_DIR and NETHACK_STATE_DIR at the beginning
+  of the source code of this script.
+
+  If you do this after saving, old saves will be lost.
+
+SAMPLE CALLS
+
+  #first save nethack with S command.
+  #while the game is quit use:
+
+  nethack-save-load s 1; nethack    #saves state 1, and comes back to the game
+  nethack-save-load s "hard part"; nethack   #saves state "hard part"
+  nethack-save-load s "as__df";  # forbidden because name contains magic sequence "__"
+
+  #to load a state, quit with #quit
+  #while the game is quit do:
+
+  nethack-save-load l 1; nethack    # loads state 1, and comes back to the game
+  nethack-save-load l "hard part"; nethack    # loads state "hard part"
+  nethack-save-load l __; nethack    # loads last saved game (magic sequence "__")
+
+  #when you start the game it should be back at last place.
+  #TIP: hit up on the terminal to access terminal history after loading and saving to quickly load and save.
+
+AUTHORS
+
+  Ciro D. Santilli
+' 1>&2
+}
+
+if [ $# -ne 2 ]; then
+  usage
+fi
+
+SL="$1"
+PREF="$2"
+SEP="__" #separator for the new save name. cannot appear on the prefix you give!!
+
+#check no separator SEP in prefix
+if [[ "$PREF" != "$SEP" && "$PREF" == *"$SEP"* ]]; then
+  echo "State name cannot contain \"$SEP\". Use another state name."
+fi
+
+mkdir -p "$NETHACK_STATE_DIR"
+
+if [ "$SL" == s ]; then
+  for F in "$NETHACK_SAVE_DIR"/*; do
+      BNAME="$(basename "$F")"
+      echo "$F"
+      cp -f "$F" "$NETHACK_STATE_DIR/${PREF}${SEP}${BNAME}"
+      cp -f "$F" "$NETHACK_STATE_DIR/${SEP}${SEP}${BNAME}" #also saves to a separator
+      break
+  done
+elif [ "$SL" == l ]; then
+  for F in "$NETHACK_STATE_DIR/$PREF"*; do
+    BNAME="$(basename "$F")"
+    BNAME_OLD="${BNAME##*${SEP}}"
+    cp -f "$F" "$NETHACK_SAVE_DIR/$BNAME_OLD"
+    break
+  done
+fi
+
+exit 0
