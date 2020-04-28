@@ -104,7 +104,9 @@ Host aur.archlinux.org
 	User aur
 
 Host leonidas_borowej_gory
-	Hostname 192.168.0.206
+	Hostname 192.168.0.2
+Host gorgo_borowej_gory
+	Hostname 192.168.0.6
 
 Host *
 	Compression yes
