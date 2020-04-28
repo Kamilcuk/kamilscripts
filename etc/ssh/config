@@ -103,6 +103,9 @@ Host aur.archlinux.org
 	IdentityFile ~/.ssh/id_rsa_aur
 	User aur
 
+Host leonidas_borowej_gory
+	Hostname 192.168.0.206
+
 Host *
 	Compression yes
 	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
