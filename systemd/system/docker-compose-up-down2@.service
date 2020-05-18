@@ -1,5 +1,5 @@
 [Unit]
-Description=Run docker-compose up/down in %I
+Description=Run docker-compose up/down and ignore stdout in %I
 After=docker.service network-online.target
 BindsTo=docker.service
 Conflicts=shutdown.target reboot.target halt.target
@@ -11,7 +11,8 @@ TimeoutStartSec=6000
 ExecStartPre=/usr/bin/docker-compose down
 ExecStartPre=/usr/bin/docker-compose pull
 ExecStart=/usr/bin/docker-compose up --abort-on-container-exit
-ExecStop=/usr/bin/docker-compose down
+ExecStopPre=/usr/bin/docker-compose down
+StandardOutput=null
 
 [Install]
 WantedBy=multi-user.target
