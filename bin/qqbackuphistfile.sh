@@ -32,7 +32,7 @@ histfile_restore() {
 	chmod -v -w "$rest"
 
 	if [ -f "$save" ]; then chmod -v +w "$save"; fi
-	diff --unchanged-group-format='' --changed-group-format="%<" -a "$orig" "$save" >> "$save"
+	diff --unchanged-group-format='' --changed-group-format="%<" -a "$orig" "$save" >> "$save" ||:
 	chmod -v -w "$save"
 
 	cp -va "$save" "$orig"
