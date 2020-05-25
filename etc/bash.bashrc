@@ -25,14 +25,13 @@ unset appendpath
 export PATH
 
 #### PS1
-
 PS1_setup() {
 	if ! hash color.sh >/dev/null 2>/dev/null; then
 		color.sh() { :; }
 	fi
 
 	local tmp root noroot colors
-	tmp="white reset bold yellow standout red blue green nostandout"
+	tmp="white reset bold yellow standout red blue green nostandout cyan"
 	local $tmp
 	declare -g PS1
 
@@ -76,9 +75,13 @@ PS1_setup() {
 		PS1+='\h'
 	fi	 
 	PS1+=' '
-	PS1+="\\[$blue\\]"
-	#PS1+='\w'
-	PS1+='$(exec printf "%q" "$PWD")'
+	# PS1+="\\[$blue\\]"
+	# PS1+='\w'
+	PS1+='$(printf "%q" "$PWD" | awk -F"/"'
+		PS1+=' -vfront="\["'"$(printf "%q" "$cyan")"'"\]"'
+		PS1+=' -vback="\["'"$(printf "%q" "$blue")"'"\]"'
+		PS1+=' '\''{gsub("/", front "/" back)}1'\'
+	PS1+=')'
 	PS1+="\\[$reset\\]"
 	PS1+=$'\n'
 	PS1+="${root+\\[$red\\]}"
@@ -128,9 +131,9 @@ export BC_ENV_ARGS="${BC_ENV_ARGS%/*}/bcrc"
 alias ping='ping -4'
 alias ls='ls --color -F'
 alias l='ls -alF --color -h --group-directories-first'
-eval "$(alias_complete.sh -s l ls)"
+. alias_complete.sh -s l ls
 alias o='less'
-eval "$(alias_complete.sh -s o less)"
+. alias_complete.sh -s o less
 
 # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
 alias pbcopy='xclip -selection clipboard'
@@ -139,7 +142,7 @@ alias pbpaste='xclip -i -selection clipboard -o'
 hist() { eval "history $(for i; do echo -n " | grep -a $(printf "%q" "$i")"; done)"; }
 
 alias tmake="time nice ionice make -j$(nproc) --load-average=$(nproc)"
-eval "$(alias_complete.sh -s tmake make)"
+. alias_complete.sh -s tmake make
 
 #### Load my files
 
