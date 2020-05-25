@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# special input from ,c++run comes as the first argument
+# has first character set to \x01, whihc let's it to set
+# the compiler to g++
+if [ "$#" -ge 1 ] && [ "${1:0:1}" = $'\x01' ]; then
+        cc="${1:1}"
+        shift
+else
+        cc="gcc -xc"
+fi
+
+# compiles and executes stdin
+if [ "$#" -eq 1 ] && [ "$1" = '-h' ]; then
+	cat <<EOF
+Usage: $(basename "$0") [options]  <file
+
+Compiles and executes the program posted to standard input.
+The options are passed to the compiler, except '-h'.
+Use $(basename "$0") --help to get compiler options.
+Compiler: $cc
+
+EOF
+	exit
+fi
+
+tmp=$(mktemp)
+trap 'rm -r "$tmp"' EXIT
+$cc -o"$tmp" "$@" -
+"$tmp"
+
