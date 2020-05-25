@@ -1,0 +1,107 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT AND Beerware
+
+name=$(basename "$0")
+
+usage() {
+	cat <<EOF
+Usage: $name <symbol>...
+
+Options:
+  -d <database>   Specify location of the database.
+  -r              Force reload of the database.
+  -i              Use in compiler line.
+  -q              Be quiet.
+  -h              Print this text and exit.
+
+Finds the symbol in libraries.
+
+Written by Kamil Cukrowski
+Licensed jointly under Beerware License and MIT License.
+EOF
+}
+
+log() {
+	if ! "${quiet:-false}"; then
+		echo "$name:" "$*"
+	fi
+}
+
+args=$(getopt -n "$name" -o d:irqh -- "$@")
+eval set -- "$args"
+database=/tmp/database.txt
+include=false
+reload=false
+quiet=false
+while (($#)); do
+	case "$1" in
+	-d) database=$2; shift; ;;
+	-i) include=true; quiet=true; ;;
+	-r) reload=true; ;;
+	-q) quiet=true; ;;
+	-h) usage; exit; ;;
+	--) shift; break; ;;
+	esac
+	shift
+done
+if ((!$#)); then usage; exit 1; fi;
+
+if [[ -e "$database" ]] && ! "$reload"; then
+	log "Using $database"
+else
+	log "Creating $database"
+
+	# list all ld search paths
+	ld --verbose | grep SEARCH_DIR | tr -s ' ;' '\n' |
+	# In a format something we can eat
+	sed 's/SEARCH_DIR("\(.*\)")/\1/' |
+	# Resolve symlinks, remove duplicates
+	# Remove non-existent directories
+	xargs -d'\n' -n1 sh -c '
+		set -- "$(readlink -f "$1")"
+		if [ -e "$1" ]; then
+			printf "%s\n" "$1"
+		fi
+		:
+	' _ |
+	sort -u |
+	# List all .so and .a files from that dir
+	# Calling `file` would be very slow
+	xargs -d'\n' -I{} find {} -mindepth 1 -maxdepth 1 -type f \
+		'(' -name 'lib*.so.*' -o -name 'lib*.a' ')' |
+	# list filename and symbol in each library
+	(
+		# we list all symbols listed in any elf section
+		list_symbols() {
+			readelf -Ws "$1" |
+			sed '/^ *[^ ]*: *[^ ]* *[^ ]* *[^ ]* *[^ ]* *[^ ]* * [0-9]\{1,\} *\([^ ]\{1,\}\)$/!d; s``\1\t'"$1"'`' ||: |
+			sort -u
+			# log the filename that we are ready
+			log "Indexed: $1" >&3
+		}
+		export quiet
+		export -f log list_symbols
+		# extra stdbuf -oL so that buffering can't touch this
+		# I guess we should be safe till _POSIX_PIPE_BUF
+		stdbuf -oL xargs -P$(nproc) -n1 \
+			stdbuf -oL bash -c 'list_symbols "$@"' _ 
+	) |
+	# sort it
+	sort -t $'\t' -u -o "$database"
+ 
+fi 3>&1
+
+for i in "$@"; do
+	look -t $'\t' "$i" "$database" |
+	grep -F "$i"$'\t'
+done |
+if "$include"; then
+	cut -f2 |
+	xargs -d '\n' -n1 basename |
+	sed 's/^/-l:/' |
+	paste -sd ' '
+else
+	cat
+fi
+
+
