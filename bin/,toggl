@@ -162,16 +162,25 @@ query() {
 }
 
 cmdhelp() {
-	if [[ "$1" == "short-help" ]]; then
+	assert '[[ -n "$cmdname" ]]' 'internal cmdhelp cmds_gen_help error'
+	if [[ "$1" == '0ceb46db-7e64-4048-bf1b-ce87fff1c1f7' ]]; then
 		shift 1
-		printf "\t$1\t$2\n"
+		local s
+		s=$1
+		s=${s##$cmdname}
+		s=${s# }
+		s="${s:+ }$s"
+		printf "\t$cmdname$s\t$2\n"
 		exit
 	fi
 }
 
 cmds_gen_help() {
 	for i in $cmds; do
-		( cmd::"$i" short-help ) |
+		(
+			cmdname=$i; 
+			cmd::"$i" '0ceb46db-7e64-4048-bf1b-ce87fff1c1f7'
+		) |
 		sed '1!q;s/^[[:space:]]*//'
 	done |
 	sort |
@@ -189,15 +198,15 @@ sort_header() {
 # Commands #####################################
 
 cmd::clients() {
-	cmdhelp "$@" "clients" "Get clients"
+	cmdhelp "$@" "" "Get clients"
 	query GET v8/clients
 }
 cmd::workspaces() {
-	cmdhelp "$@" "workspaces [id]" "Get workspaces"
+	cmdhelp "$@" "[id]" "Get workspaces"
 	query GET v8/workspaces
 }
 cmd::time_entries() {
-	cmdhelp "$@" "time_entries [start_date] [end_date]" \
+	cmdhelp "$@" "[start_date] [end_date]" \
 		"Get time entries in specified time range. Time can be anything that data can parse"
 	assert "((0 <= $# && $# <= 2))"
 	local start_date end_date args=()
@@ -240,18 +249,69 @@ cmd::time_entries() {
 }
 
 cmd::report() {
-	cmdhelp "$@" "report [start_date] [end_date]" \
-		"Similar to time_entries with custom output format"
+	cmdhelp "$@" "[opts] [start_date] [end_date]" "Similar to time_entries with custom output format"
+	
+	usage() {
+		cat <<EOF
+Usage: report [opts] [--] [start_date] [end_date]
+
+Usage:
+  -t --this-month      Display report from this month
+  -l --last-month      Display report from last month
+  -w --workspace STR   Use this workspace instead of all
+  -l --language  LANG  Use this language
+  -h --help            Print this help and exit
+
+Allowed LANG values: "pl" or "en".
+
+EOF
+	}
+
+	args=$(getopt -n "$n-report" -o 'tlw:l:h' -l 'this-month,last-mongth,workspace:,language:,help' -- "$@")
+	date=
+	lang=en
+	workspace=
+	while (($#)); do
+		case "$1" in
+		-t|--this-month) date=this_month; ;;
+		-t|--last-month) date=last_month; ;;
+		-w|--workspace) workspace=$2; shift; ;;
+		-l|--language) lang=$2; shift; ;;
+		-h|--help) usage; exit 0; ;;
+		--) shift; break; ;;
+		esac
+		shift
+	done
+	if [[ -n "$date" ]]; then
+		if (($#)); then
+			fatal "raport: Date option specified but arguments also"
+		fi
+		case "$date" in
+		last_month) set -- "@$(date --date="$(date +'%Y-%m-01') - 1 month" +%s)" "@$(date --date="$(date +'%Y-%m-01') - 1 second" +%s)"; ;;
+		this_month) set -- "@$(date --date="$(date +'%Y-%m-01')"           +%s)" "@$(date --date="$(date +'%Y-%m-01') + 1 month - 1 second" +%s)"; ;;
+		*) fatal "Wrong date value"; ;;
+		esac
+	fi
+	case "$lang" in
+	pl|en) ;; *) fatal "Wrong lang value"; ;;
+	esac
+
 	output_json=false
 	output_columnize=false
 	output_transpose=false
 	output_fields=6,7,8,9
+
+	# get list of projects id and names in tab separated form
 	projects_id_name=$(
 		printf "%s\t%s\n" id name
 		output_json=true cmd::projects ls |
 		jq -r '.[] | [ .id, .name ] | @tsv'
 	)
+
+	data=$(
+	# get all relevant time_entries
 	cmd::time_entries "$@" |
+	# lets exacts what we are interested in
 	cut -f 4,6,7,8,9 |
 	# add line numbers and sort for join
 	nl -w1 | sort_header -s -k2 |
@@ -259,37 +319,129 @@ cmd::report() {
 	join -t $'\t' --header -12 \
 		-o 1.1,2.2,1.3,1.4,1.5,1.6 - <(sort_header -s -k1 <<<"$projects_id_name") |
 	# restore original sorting order and remove line numbers
-	sort_header -s -n -k1 | cut -f2- |
-	# short duration in the H:M:S format
-	awk -vFS='\t' -vIFS='\t' -vOFS='\t' '
-		NR == 1 { for (i = 1; i <= NF; ++i) if ($i == "duration") break }
-		NR > 1 && $i > 0 { $i = sprintf("%d:%02d:%02d", $i / 3600, $i % 60 / 60, $i % 60) } 1
-	' |
-	sed -E '
-		# add a date column to the header
-		1{
-			s/([[:space:]])(start([[:space:]]*)stop)/\1date\3\2/;
+	sort_header -s -n -k1 | cut -f2-
+	)
+	
+	# shorten the duration format from seconds into H:M:S format
+	<<<"$data" awk -vFS='\t' -vIFS='\t' -vOFS='\t' '
+		NR == 1 { for (i = 1; i <= NF; ++i) if ($i == "duration") dur=i	}
+		NR > 1 && $dur > 0 { $dur = sprintf("%d:%02d", \
+			$dur / 3600, \
+			$dur % 3600 / 60)
 		}
-		# extract the date from start/stop columns and put it in front
-		2,${
-			s/([[:space:]])([0-9]{4}-[0-9]{2}-[0-9]{2})T([^+]+)\+00:00([[:space:]])*\2T([^+]+)\+00:00/\1\2\4\3\4\5/;
-			t ok;
-				# handle missing stop date as "-" separately
-				s/([[:space:]])([0-9]{4}-[0-9]{2}-[0-9]{2})T([^+]+)\+00:00([[:space:]])*-/\1\2\4\3\4-/;
-			: ok;
+		1
+	' |
+	# parse UTC dates to localtime and add "date" column
+	awk -vFS='\t' -vOFS='\t' '
+		# find column positions
+		NR == 1 {
+			for (i = 1; i <= NF; ++i) {
+				if ($i == "start") start=i
+				if ($i == "stop") stop=i
+			}
+		}
+
+		# move columns one to the right to let space for date column
+		NR == 1 {
+			# increment indexes
+			if (stop > start) stop++
+			date = start
+			start++
+		}
+		{ 
+			# move columns to the right of date
+			for (i = NF; i >= date; --i) {
+				$(i + 1) = $i
+			}
+			# fill date with some temporary value
+			$date = NR == 1 ? "date" : "error"
+			# increment fields number
+			NF++
+		}
+
+		# convert UTC dates to local and extract common date from dates
+		# and put it into date column
+		NR > 1 {
+			startmktime = gensub(/([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})\+00:00/, "\\1 \\2 \\3 \\4 \\5 \\6", "g", $start)
+			startepoch = mktime(startmktime, 1)
+			startdate = strftime("%Y-%m-%d", startepoch)
+			starttime = strftime("%H:%M", startepoch)
+
+			if ($stop != "-") {
+				stopmktime = gensub(/([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})\+00:00/, "\\1 \\2 \\3 \\4 \\5 \\6", "g", $stop)
+				stopepoch = mktime(stopmktime, 1)
+				stopdate = strftime("%Y-%m-%d", stopepoch)
+				stoptime = strftime("%H:%M", stopepoch)
+			} else {
+				stopmktim = "-"
+				stopepoch = "-"
+				stopdate = "-"
+				stoptime = "-"
+			}
+
+
+			if ($stop == "-") {
+				$date  = startdate
+				$start = starttime
+				$stop  = "-"
+			} else if ($stopdate != $startdate) {
+				$date  = "differs"
+				$start = startdate "T" starttime
+				$stop  = stopdate  "T" stoptime
+			} else {
+				$date  = startdate
+				$start = starttime
+				$stop  = stoptime
+			}
+		}			
+		
+		# print the output
+		1
+	' |
+	# name date start stop duration description
+	# change header order and rename header
+	awk -vFS='\t' -vOFS='\t' '
+		NR==1{print "Data", "Start", "Stop", "Czas trwania", "Projekt", "Opis"}
+		NR >1{print $2, $3, $4, $5, $1, $6}
+	' |
+	column -t -s $'\t' -o $'\t' -R4,5
+	
+	echo
+	<<<"$data" cut -f1,4 |
+	awk -vFS='\t' -vOFS='\t' '
+		NR>1{ a[$1]+=$2; sum+=$2; }
+		END{
+			print "_", "Podsumowanie:", "Czas trwania"
+			print "_", "Czas pracy", \
+				sprintf("%02d:%02d", \
+				sum / 3600, \
+				sum % 3600 / 60)
+			print "_", " "
+			for(i in a) {
+				print a[i], i, \
+					sprintf("%02d:%02d", \
+					a[i] / 3600, \
+					a[i] % 3600 / 60)
+			}
 		}
 	' |
-	column -t -s $'\t' -o $'\t' -R5
+	{
+		for i in $(seq 3); do
+			IFS= read -r l; printf "%s\n" "$l"
+		done
+		sort -n -r -s -k1
+	} |
+	cut -f2- |
+	column -t -s $'\t' -o $'\t' -R2
 }
 
 cmd::workspaces() {
-	cmdhelp "$@" "workspaces" "List workspaces"
+	cmdhelp "$@" "" "List workspaces"
 	query GET v8/workspaces
 }
 
 cmd::projects() {
-	cmdhelp "$@" "projects [options] [command]" \
-		"Manage projects. See projects -h"
+	cmdhelp "$@" "[options] [command]" "Manage projects. See projects -h"
 	usage() {
 		cat <<EOF
 Usage: projects [options] [command]
@@ -396,7 +548,7 @@ if ! grep -Fxq "$1" <<<"$cmds"; then
 	fatal "$1: Command not found"
 fi
 
-cmd=cmd::"$1"
+cmdname=$1
 shift
-"$cmd" "$@"
+cmd::"$cmdname" "$@"
 
