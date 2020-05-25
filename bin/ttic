@@ -1,9 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+name=$(basename "$0")
+
 usage() {
 	cat <<EOF
-Usage: ttic.sh [-h|--help] [-u|--unique] [id]
+Usage: $name [-h|--help] [-u|--unique] [id]
 Tic/toc timer pair
 Stores the initial time (w/optional id marker) into temporary file.
 Using optional ID is recommended, as it allows simulatenous usage.
