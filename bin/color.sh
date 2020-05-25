@@ -1,7 +1,103 @@
 #!/bin/bash
 set -euo pipefail
 
-config="
+name=$(basename "$0")
+
+# SEE regenerate_config
+# BEGIN blockinfile.sh MANAGED BLOCK
+declare -- config="b_black	\\e[40m
+b_blue	\\e[44m
+b_cyan	\\e[46m
+b_dark_gray	\\e[100m
+b_green	\\e[42m
+b_light_blue	\\e[104m
+b_light_cyan	\\e[106m
+b_light_gray	\\e[47m
+b_light_green	\\e[102m
+b_light_magenta	\\e[105m
+b_light_red	\\e[101m
+b_light_yellow	\\e[103m
+b_magenta	\\e[45m
+b_red	\\e[41m
+b_white	\\e[107m
+b_yellow	\\e[43m
+background_black	\\e[40m
+background_blue	\\e[44m
+background_cyan	\\e[46m
+background_dark_gray	\\e[100m
+background_default	\\e[49m
+background_green	\\e[42m
+background_light_blue	\\e[104m
+background_light_cyan	\\e[106m
+background_light_gray	\\e[47m
+background_light_green	\\e[102m
+background_light_magenta	\\e[105m
+background_light_red	\\e[101m
+background_light_yellow	\\e[103m
+background_magenta	\\e[45m
+background_red	\\e[41m
+background_white	\\e[107m
+background_yellow	\\e[43m
+black	\\e[30m
+blink	\\e[5m
+blue	\\e[34m
+bold	\\e[1m
+bright	\\e[1m
+conceal	\\e[8m
+crossedout	\\e[9m
+cyan	\\e[36m
+dark_gray	\\e[90m
+default	\\e[39m
+dim	\\e[2m
+double_underline	\\e[21m
+encircled	\\e[52m
+faint	\\e[2m
+font0	\\e10m
+font1	\\e11m
+font2	\\e12m
+font3	\\e13m
+font4	\\e14m
+font5	\\e15m
+font6	\\e16m
+font7	\\e17m
+font8	\\e18m
+font9	\\e19m
+foreground_default	\\e[39m
+fraktur	\\e[20m
+framed	\\e[51m
+green	\\e[32m
+hidden	\\e[8m
+light_blue	\\e[94m
+light_cyan	\\e[96m
+light_gray	\\e[37m
+light_green	\\e[92m
+light_magenta	\\e[95m
+light_red	\\e[91m
+light_yellow	\\e[93m
+magenta	\\e[35m
+noblink	\\e[25m
+nocrossedout	\\e[29m
+nodim	\\e[22m
+noencircled	\\e[54m
+noframed	\\e[54m
+nohidden	\\e[28m
+nooverlined	\\e[55m
+noreverse	\\e[27m
+nostandout	\\e[23m
+nounderline	\\e[24m
+overlined	\\e[53m
+red	\\e[31m
+reset	\\e(B\\e[m
+reveal	\\e[28m
+reverse	\\e[7m
+standout	\\e[3m
+underline	\\e[4m
+white	\\e[97m
+yellow	\\e[33m"
+# END blockinfile.sh MANAGED BLOCK
+
+regenerate_config() {
+	config="
 #  this is the output of tput sgr0
 reset          \e(B\e[m
 
@@ -119,11 +215,20 @@ b_white           \e[107m
 
 "
 
+	config=$(
+	    <<<"$config" \
+	    sed -n 's/^\([^ ]*\)[[:space:]]*\(\\e[^ ]*\)$/\1\t\2/p' |
+	    sort
+	)
+
+	blockinfile.sh -b "$(declare -p config)" "$0"
+}
+
 #############################################################
 
 usage() {
 	cat <<EOF
-Usage: color.sh [options] mode...
+Usage: $name [options] mode...
 
 Translated user readable format string in ascii escape seqeunces.
 
@@ -265,7 +370,7 @@ unittest() {
 
 # main ########################################################
 
-args=$(getopt -n color.sh -o hsdi -l help,safe,debug,invert,bashautocomplete,test::,separator: -- "$@")
+args=$(getopt -n color -o hsdi -l help,safe,debug,invert,bashautocomplete,test::,separator: -- "$@")
 eval set -- "$args"
 safe=false
 invert=false
@@ -292,7 +397,7 @@ if ! hash tput >/dev/null 2>/dev/null; then
 fi
 
 if ! colors=$(tput colors 2>/dev/null) || 
-		[ -z "$colors" ] || 
+		[[ -z "$colors" ]] || 
 		(( colors < 8 )); then
     if ! "$safe"; then
 		echo "ERROR: Terminal does not support colors=$colors" >&2
@@ -451,12 +556,6 @@ charrainbow3() {
 	charrainbow "$2" "$3" "${4:${#4}/2}"
 }
 
-config=$(
-	<<<"$config" \
-	sed -n '/^\([^#[:space:]]\+\)[[:space:]]\+\([^#[:space:]]\+\).*$/s//\1\t\2/p' |
-	sort
-)
-
 h=""
 while (($#)); do
 	if ((${firstarg:-0})); then
@@ -514,7 +613,9 @@ while (($#)); do
 	colors)
 		echo "$colors"
 		;;
-
+	regenerate_config)
+		regenerate_config
+		;;
 	*)
 		error "Unknown mode: $i"
 		;;
