@@ -1,0 +1,171 @@
+#!/bin/bash
+# SPDX-License-Indentifier: Beerware+MIT
+
+name=$(basename "$0")
+
+usage() {
+	cat <<EOF
+Usage: $name [options] args...
+
+Generate permutatinos of arguments.
+
+Options:
+  -F STRING  Separate elements by this string. Empty by default.
+  -R STRING  Separate sets by this string. Newline by default.
+  -c INT     Count of elements in output. Default is count of arguments.
+  -m MODE    Select mode
+  -h         Print this help end exit.
+
+Mode:
+  cw         Combinations without repetitions
+  cr         Combinations with repetitions
+  pw         Permutations without repetitions (default)
+  pr         Permutations with repetitions
+
+Written by Kamil Cukrowski
+Licensed jointly under Beerware Licesne and MIT license.
+EOF
+}
+
+fatal() {
+	echo "$name: Error:" "$*" >&2
+	exit 2
+}
+
+args=$(getopt -n "$name" -o F:R:c:m:h -- "$@")
+eval set -- "$args"
+OFS=''
+ORS=$'\n'
+COUNT=
+MODE=
+while (($#)); do
+	case "$1" in
+	-F) OFS=$2; shift; ;;
+	-R) ORS=$2; shift; ;;
+	-c) COUNT=$2; shift; ;;
+	-m) MODE=$2; shift ;;
+	-h) usage; exit 0; ;;
+	--) shift; break; ;;
+	esac
+	shift;
+done
+
+if (($# == 0)); then
+	usage
+	fatal "No arguments"
+fi
+
+printf "%s\0" "$@" |
+awk -vRS='\0' -vFS= -vIFS= -F= -vOFS="$OFS" -vORS="$ORS" \
+	-vCOUNT="${COUNT:-$#}" -vMODE="${MODE:-pw}" '
+{ arr[NR]=$0 }
+
+# @def swap(arr, i, j)
+# @param arr Array to swap elements in
+# @param i Index of first element to swap
+# @param j Index of second element to swap
+function arrswap(arr, i, j, tmp) {
+	tmp = arr[i];
+	arr[i] = arr[j];
+	arr[j] = tmp;
+}
+
+# @def arrprint(what, len)
+# @param arr Array to print
+# @param len Count of element in the array
+function arrprint(arr, len, i) {
+	for (i = 1; i < len; ++i) {
+		printf "%s%s", arr[i], OFS
+	}
+	printf "%s%s", arr[len], ORS
+}
+
+# @def permute(NR)
+# @param size Pass NR
+# Print permutations of an array
+# Uses global variable arr.
+function permute_old(size, i) {
+	if (size == 1) {
+		arrprint(arr, NR)
+		return
+	}
+	for (i = 1; i <= size; ++i) {
+		permute(size - 1)
+		if (size % 2 == 1) {
+			arrswap(arr, 1, size)
+		} else {
+			arrswap(arr, i, size)
+		}
+	}
+}
+
+# @def combination(r)
+# @param r Count of elements in output set.
+# Prints combinations of an array without repetitions.
+# Uses global variable arr as input.
+# Uses global variable data as state.
+function combination_in(start, end, idx, r, i) {
+	if (idx == r) {
+		arrprint(data, r)
+		return
+	}
+	for (i = start; i <= end && end - i + 1 >= r - idx; ++i) {
+		data[idx] = arr[i]
+		combination_in(i + 1, end, idx + 1, r)
+	}
+}
+function combination(r) {
+	combination_in(1, NR, 1, r + 1)
+}
+
+# @def combinationRepetition(r)
+# @param r Count of elements in output set.
+# Uses global variable arr with NR elements.
+# Uses global variable chosen as temporary array.
+# Print all combinations with repetitions allowed.
+function combinationRepetition_in(idx, r, start, end, i) {
+	if (idx == r) {
+		for (i = 1; i < r; ++i) {
+			printf "%s%s", arr[chosen[i]], OFS
+		}
+		printf "%s%s", arr[chosen[r]], ORS
+		return
+	}
+	for (i = start; i <= end; ++i) {
+		chosen[idx] = i
+		combinationRepetition_in(idx + 1, r, i, end)
+	}
+}
+function combinationRepetition(r) {
+	combinationRepetition_in(1, r + 1, 1, NR)
+}
+
+# @def permute
+function permute_in(l, r, i) {
+	if (l == r) {
+		arrprint(arr, NR)
+		return
+	}
+	for (i = l; i <= r; ++i) {
+		arrswap(arr, l, i)
+		permute_in(l + 1, r)
+		arrswap(arr, l, i)
+	}
+}
+function permute() {
+	permute_in(0, NR)
+}
+
+# END{ permute(NR) }
+# END{ combination(1, NR, 1, 2) }
+END{ 
+	if (MODE == "cw") {
+		combination(COUNT)
+	} else if (MODE == "cr") {
+		combinationRepetition(COUNT) 
+	} else if (MODE == "pw") {
+		permute()
+	}
+}
+'
+
