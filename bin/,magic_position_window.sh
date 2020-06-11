@@ -32,7 +32,20 @@ Options:
 	   --debug        Enable logging messages
 
 Available events:
+    up down right left  
+
+Examples:
+    $name up right
+
+Events actions:
     up down right left
+	     - Move and resize window to the specified half of the screen
+	up+right down+left right+up left+up
+	     - Move and resize window to the specified qourter of the screen
+	left+right
+	     - Move and resize window to fullscreen, use ctrl+F10
+    up+down
+	     - Move and resize window to the middle of the screen
 
 Written by Kamil Cukrowski
 Licensed jointly under Beerware License and MIT License.
@@ -49,14 +62,17 @@ notify() {
 	declare -g notify_msgs name activew
 
 	log "notify: $*"
-	if [[ -n "$notify_msgs" ]]; then
-		notify_msgs+=$'\n'
+	local title
+	title=
+	if (($# == 2)); then
+		title=$1
+		shift
 	fi
-	notify_msgs+="$*"
+	notify_msgs+="$1"$'\n'
 	local n
 	n="$name.${activew:-}"
 	org.freedesktop.Notifications.Notify.sh "$n" 0 "dialog-information" \
-	"$notify_msgs" "$name" "" "" "" /tmp/.notifyval."$n" >/dev/null ||:
+	"$notify_msgs$name" "${title:-$name}" "" "" 500 /tmp/.notifyval."$n" >/dev/null ||:
 }
 
 getPanelHeight() {
@@ -82,7 +98,7 @@ getBorderInfo() {
 
 wmove() {
 	declare -g activewname activew events
-	notify "$activewname"$'\n'"Moving $events ($1,$2,$3,$4)"
+	notify "$activewname" "Moving $events ($1,$2,$3,$4)"
 	local x y width height id
 	id=$activew
 	x=$1 y=$2 width=$3 height=$4
@@ -90,12 +106,22 @@ wmove() {
 	read -r bleft bright btop bbottom <<<"$tmp"
 	# resize and move to specified position
     wmctrl -i -r $id -e 0,$x,$y,$((width-bleft-bright)),$((height-btop-bbottom))
-	# remove "Always on top" property
-    wmctrl -i -r $id -b remove,above
     # unmaximize
-    wmctrl -i -r $id -b remove,maximized_vert,maximized_horz
+    wmctrl -i -r $id -b remove,fullscreen
+	wmctrl -i -r $id -b remove,maximized_vert
+	wmctrl -i -r $id -b remove,maximized_horz
     # double resizing seem to be correcting strange behavior
     wmctrl -i -r $id -e 0,$x,$y,$((width-bleft-bright)),$((height-btop-bbottom))
+}
+
+wtogglefullscreen() {
+	declare -g activew activewname
+	local id
+	id=$activew
+	notify "$activewname" "Toggle maximized"
+	wmctrl -i -r $id -b toggle,maximized_vert
+	wmctrl -i -r $id -b toggle,maximized_horz
+	# wmctrl -i -r $id -b toggle,fullscreen #,maximized_vert,maximized_horz
 }
 
 action() {
@@ -110,18 +136,24 @@ action() {
 	mxh=$(( mx / 2 + !!(mx % 2) ))
 	myh=$(( my / 2 + !!(my % 2) ))
 
+	local activew activewname
 	activew=$(xdotool getactivewindow)
 	activewname=$(xdotool getactivewindow getwindowname)
+
+	local id
+	id=$activew
 
 	case "$events" in
 	up)         wmove 0    0    $mx  $myh; ;;
 	down)       wmove 0    $myh $mx  $myh; ;;
-	left)       wmove 0    0    $mxh $my; ;;
-	right)      wmove $mxh 0    $mxh $my; ;;
+	left)       wmove 0    0    $mxh $my ; ;;
+	right)      wmove $mxh 0    $mxh $my ; ;;
 	right+up)   wmove $mxh 0    $mxh $myh; ;;
 	left+up)    wmove 0    0    $mxh $myh; ;;
-	down+right) wmove $mxh $myh $mx  $myh; ;;
+	down+right) wmove $mxh $myh $mxh $myh; ;;
 	down+left)  wmove 0    $myh $mxh $myh; ;;
+	left+right) wtogglefullscreen; ;;
+	down+up) wmove $((mxh/2)) $((myh/2)) $mxh $myh; ;;
 	*) notify "Unknown events: $events"; ;;
 	esac
 }
