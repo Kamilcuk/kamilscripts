@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# bash completion
+if [ "$#" -eq 1 ] && [ "$1" == "--bash-completion" ]; then
+	. /usr/share/bash-completion/completions/make
+	complete -F _make ,make
+	return
+	exit
+fi
+
+nice=
+if hash nice >/dev/null 2>&1; then
+	nice+=" nice"
+fi
+if hash ionice >/dev/null 2>&1; then
+	nice+=" ionice -c2" 	
+fi
+if ! nproc=$(grep -c processor /proc/cpuinfo) 2>/dev/null; then 
+	nproc=1
+fi
+time $nice make -j"$nproc" --load-average="$nproc" "$@"
+

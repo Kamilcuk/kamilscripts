@@ -141,9 +141,6 @@ alias pbpaste='xclip -i -selection clipboard -o'
 
 hist() { eval "history $(for i; do echo -n " | grep -a $(printf "%q" "$i")"; done)"; }
 
-alias tmake="time nice ionice make -j$(nproc) --load-average=$(nproc)"
-. alias_complete.sh -s tmake make
-
 #### Load my files
 
 _backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
