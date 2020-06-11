@@ -1,0 +1,27 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT+Beerware
+set -euo pipefail
+
+name=$(basename "$0")
+
+usage() {
+	cat <<EOF
+Usage: $name <sourcefile> [options...]
+       $name -h
+
+Runs: ,watchfile "\$1" ,ccrun "\$@"
+See ,watchfile -h
+
+Written by Kamil Cukrowski
+EOF
+}
+
+if [ "$#" -eq 0 ] || [ "${1:-}" = "-h" ]; then
+	usage
+	exit
+fi
+
+ulimit -c 0
+,watchfile "$1" ,ccrun "$@" 
+
+

@@ -1,31 +1,82 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT+Beerware
+
+usage() {	
+	cat <<EOF
+Usage: 
+   $(basename "$0") [-option] [options...] <file
+   $(basename "$0") file [options...]
+   $(basename "$0") -h
+   $(basename "$0") \$'\x01'"compiler options" args...
+
+Compiles and runs a source file in one run.
+
+If there are no arguments or the first argument starts with 
+a leading dash, input source file is expected to be passed 
+on standard input. All arguments are passed to the compiler.
+
+If the first argument doesn't start with a leading dash, 
+the first argumnet is expected to be the source file to compile
+from. All other arguments are passed to the compiler. 
+
+If this script is executed with exactly one argument '-h',
+this script prints this text and exit. 
+Use $(basename "$0") --help to get compiler help.
+
+If the first argument starts with 0x01 byte, then the rest
+of the first argumnet is interpreted as the path 
+to the compiler. Space expansion happens - it is executed
+as via shell.
+
+Current compiler: $cc
+
+Written by Kamil Cukrowski
+Licensed jointly under Beerware License and MIT Lisense
+EOF
+}
+
+fatal() {
+	echo "$(basename "$0"):" "$*" >&2
+	exit 2
+}
+
+######################################################
 
 # special input from ,c++run comes as the first argument
-# has first character set to \x01, whihc let's it to set
+# has first character set to \x01, which let's it to set
 # the compiler to g++
-if [ "$#" -ge 1 ] && [ "${1:0:1}" = $'\x01' ]; then
+if [ "$#" -gt 0 ] && [ "${1:0:1}" = $'\x01' ]; then
         cc="${1:1}"
         shift
 else
         cc="gcc -xc"
 fi
 
-# compiles and executes stdin
 if [ "$#" -eq 1 ] && [ "$1" = '-h' ]; then
-	cat <<EOF
-Usage: $(basename "$0") [options]  <file
-
-Compiles and executes the program posted to standard input.
-The options are passed to the compiler, except '-h'.
-Use $(basename "$0") --help to get compiler options.
-Compiler: $cc
-
-EOF
+	usage
 	exit
 fi
 
+# -c or -o are dissallowed options
+if ! (
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+		-c|-o) fatal "$1 option is not allowed"; ;;
+		esac
+		shift
+	done
+); then 
+	exit 2
+fi
+
+# if we have only dashes options and last option doesn't have dash
+input="-"
+if [ "$#" -gt 0 ] && case "$1" in -*) false; ;; esac; then
+	input="$1"
+	shift
+fi
+		
 tmp=$(mktemp)
-trap 'rm -r "$tmp"' EXIT
-$cc -o"$tmp" "$@" -
-"$tmp"
+trap 'rm -f "$tmp"' EXIT
+$cc -o"$tmp" "$@" "$input" && "$tmp"
 
