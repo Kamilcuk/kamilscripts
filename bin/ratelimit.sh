@@ -2,13 +2,13 @@
 set -euo pipefail
 export SHELLOPTS
 
-NAME=ratelimit.sh
+name=ratelimit.sh
 
 # Functions ###############################################
 
 usage() {
 	cat <<EOF
- $NAME [options]
+ $name [options]
 
 Rate limit lines coming from the input and delimeter them.
 
@@ -24,7 +24,7 @@ Options:
  -h, --help
 
 Examples:
- cat /dev/urandom | $NAME -t 5
+ cat /dev/urandom | $name -t 5
 
 Written by Kamil Cukrowski (C) 2019
 Licensed jointly under MIT and Beerware license
@@ -40,10 +40,17 @@ ns() {
 	date +%s%N;
 }
 
+fatal() {
+	echo "$name: Error" "$@" >&2
+	exit 2
+}
+
 assert() {
 	if ! eval "$1"; then
-		echo "Assertion '$1' failed" "$@" >&2
-		exit 1
+		local assertstr
+		assertstr="$1"
+		shift
+		fatal "assertion '$assertstr' failed"
 	fi
 }
 
@@ -61,7 +68,7 @@ test() {
 # Parse Arguments ##########################
 
 if ! ARGS=$(getopt \
-	--name "$NAME" \
+	--name "$name" \
 	--options t:l:i:o:h \
 	--longoptions timeout:,lines:,input-separator:,output-separator:,print-empty,help \
 	-- "$@"
@@ -89,15 +96,10 @@ while (($#)); do
 		IFS= read -rd '' output_separator < <(printf -- "$2") ||:
 		shift
 		;;
-	--print-empty)
-		print_empty=true
-		;;
-	-h|--help)
-		usage;
-		exit 0
-		;;
+	--print-empty) print_empty=true; ;;
+	-h|--help) usage; exit 0; ;;
 	--) shift; break; ;;
-	*) usage "Wrong argument:" "$1"; ;;
+	*) usage "Wrong argument: $1"; ;;
 	esac
 	shift
 done
@@ -127,7 +129,7 @@ while true; do
 
 	while true; do
 
-		if [ "$maxtimeoutns" != 0 ]; then
+		if (( maxtimeoutns != 0 )); then
 			now=$(ns)
 			if (( now >= stop )); then
 				break
@@ -139,7 +141,7 @@ while true; do
 
 
 		IFS= read -rd "$input_separator" "${timeout_arg[@]}" line && ret=$? || ret=$?
-		assert "(( $ret == 0 || $ret > 128 ))"
+		assert "(( $ret == 0 || $ret > 128 ))" "read(1) failed"
 
 		if (( ret == 0 )); then
 
