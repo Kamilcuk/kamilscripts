@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+export LC_ALL=C
+export LC_COLLATE=C
 
 name=$(basename "$0")
 
