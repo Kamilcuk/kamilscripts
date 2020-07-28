@@ -3,6 +3,11 @@ set -euo pipefail -o errtrace
 export SHELLOPTS
 trap 'kill 0' EXIT
 
+if (($#)) && [[ "$1" = "-h" ]]; then
+	echo "Options: -m"
+	exit
+fi
+
 if (($# == 0)); then
 	stdbuf -oL $0 -m |
 	stdbuf -oL sed -n '/\([^:]*\): \([^:]*\): \([^ ]*\)/{s//\1 \3 \2/;p}' |

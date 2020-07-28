@@ -1,0 +1,63 @@
+#!/bin/bash
+set -euo pipefail
+
+name=notifycomplete.sh
+
+fatal() {
+	echo "$name: ERROR:" "$*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<EOF
+Usage: $name [options] [message]
+
+Create a popup and play completion sound to notify about a job completion.
+
+Options:
+ -h   - print this help and exit
+
+Usage:
+  make ; $name $?
+
+Written by Kamil Cukrowski
+EOF
+}
+
+msg="$name${1:+: }$*"
+
+int_trap() {
+	echo
+	exit
+}
+trap int_trap INT
+
+if hash notify-send >/dev/null && [ -n "$DISPLAY" ]; then
+	notify-send -t 3000 -i face-surprise "$msg" &
+fi
+
+if hash mpv 2>/dev/null; then
+	player() { mpv --quiet --terminal "$@"; }
+elif hash mplayer 2>/dev/null; then
+	player() { mplayer --quiet --terminal "$@"; }
+elif hash vlc 2>/dev/null; then
+	player() { vlc --intf dummy --play-and-exit --no-video --vout none "$@"; }
+elif hash papley 2>/dev/null && killall -0 pulseaudio; then
+	player() { papley --volume=65536 "$@"; }
+else
+	fatal "Could not find media player"
+fi
+
+if [ -e /usr/share/sounds/freedesktop/stereo/complete.oga ]; then
+	music=/usr/share/sounds/freedesktop/stereo/complete.oga
+else
+	fatal "Could not find music file to play"
+fi
+
+unset DISPLAY
+while :; do
+	if ! player "$music" >/dev/null 2>&1; then
+		exit
+	fi
+done
+

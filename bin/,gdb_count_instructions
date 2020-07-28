@@ -1,0 +1,128 @@
+#!/bin/bash
+set -euo pipefail
+
+name=$(basename "$0")
+err() {
+	echo "$name: Unhandled error" >&2
+}
+trap err ERR
+fatal() {
+	echo "$name: error:" "$*" >&2
+	exit 2
+}
+usage() {
+	cat <<EOF
+Usage: $name [options] [--] [gdb_options] executable [args]
+
+Runs gdb and counts each one instruction the process executes.
+
+Options:
+ -f  Fast counting using btrace
+ -h  Print this help and exit
+ -d  Debug. May be specified multiple times.
+
+Written by Kamil Cukrowski 2020
+Licensed jointly under Beerware and MIT License
+EOF
+}
+
+args=$(getopt -n "$name" -o fhd -- "$@")
+eval set -- "$args"
+debug=0
+method=normal
+while (($#)); do
+	case "$1" in
+	-f) method=btrace; ;;
+	-h) usage; exit; ;;
+	-d) ((++debug)); ;;
+	--) shift; break; ;;
+	-*) fatal "Unknown option $1"; ;;
+	*) break; ;;
+	esac
+	shift
+done
+
+if ((!$#)); then
+	usage
+	fatal "No executable specified"
+fi
+
+uuid=a47b6968-75f9-4b94-b095-81707a7f1196
+
+coproc gdb {
+		if ((debug)); then
+			stdbuf -oL tee >(sed -u 's/^/I: /' >&2) |
+			stdbuf -oL gdb -q --args "$@" 2> >(sed -u 's/^/E: /' >&2) |
+			stdbuf -oL tee >(sed -u 's/^/O: /' >&2)
+		else
+			gdb -q --args "$@"
+		fi
+}
+in=${gdb[1]}
+out=${gdb[0]}
+
+cat >&$in <<EOF
+set pagination off
+set confirm off
+set prompt
+set editing off 
+
+# set environment LD_BIND_NOW 1
+
+define quiet_stepi
+	set logging redirect on
+	set logging file /dev/null
+	set logging on
+	si
+	set logging off
+end
+
+define do_count
+	set \$count=0
+	while (\$pc != \$arg0)
+		$(if ((debug < 2)); then echo quiet_; fi)stepi
+		set \$count=\$count+1
+	end
+end
+
+b main
+run
+EOF
+
+if ! a=$(timeout 2 sed -un '/Breakpoint 1,/q' <&$out); then
+	printf "%s\n" "$a"
+	fatal "Setting up gdb failed"
+fi
+
+normal_method() {
+	cat >&$in <<EOF
+do_count &_exit
+printf "$uuid %d\n", \$count
+EOF
+
+	eval "exec $in<&-"
+	sed -u '/'"$uuid "'/{ s//&instruction_count=/; q; }' <&$out
+}
+
+btrace_method() {
+	cat >&$in <<EOF
+record btrace
+info record
+b _exit
+continue
+printf "$uuid\n"
+info record
+EOF
+	sed -un '/^Continuing.$/q' <&$out
+	eval "exec $in<&-"
+	sed -un '/\(Breakpoint .* _exit \|'"$uuid"'\)/{q};p' <&$out
+	sed -un '/^Recorded /{ s/^/'"$uuid"' /; p; }' <&$out
+}
+
+case "$method" in
+normal) normal_method; ;;
+btrace) btrace_method; ;;
+esac
+
+
+

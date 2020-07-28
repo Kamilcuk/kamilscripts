@@ -76,6 +76,11 @@ Host mion
 Host michal
 	Hostname 192.168.20.7
 	User kamil
+	ProxyJump dyzio
+Host lenovo
+	Hostname 192.168.20.11
+	User henryk
+	ProxyJump dyzio
 
 #Host ustro
 #	Hostname ustropecet.ustronie.ds.pw.edu.pl

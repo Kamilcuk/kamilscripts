@@ -134,6 +134,7 @@ alias l='ls -alF --color -h --group-directories-first'
 . alias_complete.sh -s l ls
 alias o='less'
 . alias_complete.sh -s o less
+alias rm='rm --preserve-root=all -I'
 
 # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
 alias pbcopy='xclip -selection clipboard'

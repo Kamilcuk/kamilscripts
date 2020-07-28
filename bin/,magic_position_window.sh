@@ -75,6 +75,8 @@ notify() {
 	"$notify_msgs$name" "${title:-$name}" "" "" 500 /tmp/.notifyval."$n" >/dev/null ||:
 }
 
+source "$(dirname "$(readlink -f "$0")")"/lib/,x_functions.sh
+
 getPanelHeight() {
 	# add more panels if needed
 	local w
@@ -91,9 +93,7 @@ getScreenGeometry() {
 }
 
 getBorderInfo() {
-	# http://unix.stackexchange.com/questions/14159/how-do-i-find-the-window-dimensions-and-position-accurately-including-decoration
-	# returns: left right top bottom
-	xprop _NET_FRAME_EXTENTS -id "$1" | sed 's/.*= \([0-9]*\), \([0-9]*\), \([0-9]*\), \([0-9]*\)/\1 \2 \3 \4/'
+	,x_get_window_border_info "$@"
 }
 
 wmove() {
@@ -128,20 +128,29 @@ action() {
 	local events
 	events=$1
 
+	local activew activewname
+	activew=$(xdotool getactivewindow)
+	activewname=$(xdotool getactivewindow getwindowname)
+
 	local mx my tmp
-	tmp=$(getScreenGeometry)
+	tmp=$(,x_get_window_monitor "$activew" | awk '{print $2,$3}')
 	read -r mx my <<<"$tmp" # Monitor X, Monitor Y
+
+	tmp=$(,x_get_xfce4_panel_info)
+	read -r _ _ _ _ panelheight hiding <<<"$tmp"
+	if ((!hiding)); then
+		my=$((my - panelheight))
+	fi
 
 	local mxh myh  # Monitor X divided by 2, Monitor Y divided by 2
 	mxh=$(( mx / 2 + !!(mx % 2) ))
 	myh=$(( my / 2 + !!(my % 2) ))
 
-	local activew activewname
-	activew=$(xdotool getactivewindow)
-	activewname=$(xdotool getactivewindow getwindowname)
-
-	local id
-	id=$activew
+	# Filter whisker menu from moving
+	case "$activewname" in
+	*"Whisker Menu"*) notify "Not moving whisker menu"; exit; ;;
+	*) ;;
+	esac
 
 	case "$events" in
 	up)         wmove 0    0    $mx  $myh; ;;
