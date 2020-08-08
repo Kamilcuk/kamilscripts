@@ -142,6 +142,7 @@ _cdb_completion() {
 			COMPREPLY=($(compgen -W '-m --mark -u --unmark -l --list -h --help' -- "${COMP_WORDS[COMP_CWORD]}"))
 			;;
 		*)
+			if [[ ! -e "$CDB_DIR" ]]; then return; fi
 			pushd "$CDB_DIR" >/dev/null
 			COMPREPLY=($(compgen -o dirnames -d -- "${COMP_WORDS[COMP_CWORD]}"))
 			popd >/dev/null
