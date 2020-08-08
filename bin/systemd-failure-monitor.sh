@@ -124,7 +124,7 @@ if [ $# -ne 0 ]; then usage; echo "Additional arguments on the end" >&2; exit 1;
 ignore=$(sort -u <<<"$ignore")
 echo "Init. Output is $MAILTO";
 
-set -reuo pipefail
+set -euo pipefail
 
 journalctl --boot=0 --identifier=systemd --follow --output=cat --no-pager --no-tail |
 grep --line-buffered "[Ff]ailed with result" |
