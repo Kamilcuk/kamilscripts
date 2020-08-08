@@ -34,16 +34,19 @@ pupdate() {
 		p --noconfirm -Sy --needed $tmp;
 	fi &&
 	p --noconfirm -Suy "$@" &&
-	tmp=$(pacman -Qdtq) &&
-	if [[ -n "$tmp" ]]; then 
-		p --noconfirm -R $tmp
-	fi
+	pacman_autoremove
 }
 . alias_complete.sh pupdate pacman
 pacmann() { pacman --noconfirm "$@"; }
 . alias_complete.sh pacmann pacman
 yayn() { yay --noconfirm "$@"; }
 . alias_complete.sh yayn yay
+pacman_autoremove() {
+	while tmp=$(pacman --query --deps --unrequired --quiet) && [[ -n "$tmp" ]]; do
+		p --noconfirm --R $tmp
+	done
+}
+
 
 ,pacman_list_packages_by_size() {
 	pacman -Qii | 
