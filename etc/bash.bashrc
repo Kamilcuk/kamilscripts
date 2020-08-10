@@ -21,6 +21,7 @@ appendpath () {
 appendpath '/bin'
 appendpath '/sbin'
 appendpath '/usr/lib/kamilscripts/bin'
+PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 unset appendpath
 export PATH
 
