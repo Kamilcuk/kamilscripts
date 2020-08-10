@@ -34,6 +34,11 @@ Host tunel_biurek_root
 	Hostname 192.168.21.1
 	User kamil
 	Port 4004
+Host kurczak
+	Hostname 192.168.21.21
+	User kamil
+	Port 22
+	ProxyJump biurek
 
 Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
