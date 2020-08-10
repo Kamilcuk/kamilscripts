@@ -17,24 +17,30 @@ Usage: $name [options] [--] [gdb_options] executable [args]
 Runs gdb and counts each one instruction the process executes.
 
 Options:
- -f  Fast counting using btrace
- -h  Print this help and exit
- -d  Debug. May be specified multiple times.
+ -f --fast   Fast counting using btrace
+ -h --help   Print this help and exit
+ -d          Debug. May be specified multiple times.
+ -s --start  Start function to measure from. Default: main
+ -e --end    Stop measuring on this breakpoint. Default: _exit
 
 Written by Kamil Cukrowski 2020
 Licensed jointly under Beerware and MIT License
 EOF
 }
 
-args=$(getopt -n "$name" -o fhd -- "$@")
+args=$(getopt -n "$name" -o fhd -l fast,help,start:,end: -- "$@")
 eval set -- "$args"
 debug=0
 method=normal
+start_func=main
+end_func=_exit
 while (($#)); do
 	case "$1" in
-	-f) method=btrace; ;;
+	-f|--fast) method=btrace; ;;
 	-h) usage; exit; ;;
 	-d) ((++debug)); ;;
+	-s|--start) start_func=$2; shift; ;;
+	-e|--end) end_func=$2; shift; ;;
 	--) shift; break; ;;
 	-*) fatal "Unknown option $1"; ;;
 	*) break; ;;
@@ -85,7 +91,7 @@ define do_count
 	end
 end
 
-b main
+b ${start_func}
 run
 EOF
 
@@ -108,7 +114,7 @@ btrace_method() {
 	cat >&$in <<EOF
 record btrace
 info record
-b _exit
+b ${end_func}
 continue
 printf "$uuid\n"
 info record
