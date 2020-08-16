@@ -1,0 +1,361 @@
+#!/bin/bash
+# See usage() below
+set -euo pipefail
+export SHELLOPTS
+name=$(basename "$0")
+shopt -s extglob
+
+fatal() {
+	echo "$name: ERROR:" "$*" >&2
+	exit 2
+}
+
+hex_to_stream() {
+	local i
+	i=$1
+	if ((${#i}%2!=0)); then
+		i="0$i"
+	fi
+	<<<"$i" sed 's/../&\n/g' | sed '/^$/d'
+}
+
+hex_to_cstr() {
+	hex_to_stream "$*" |
+	while IFS= read -r a; do
+		if [[ ! "$a" =~ ^[0-9a-fA-F][0-9a-fA-F]$ ]]; then
+			fatal "hex_to_cstr: $1: $a: is not a hexdigit"
+		fi
+		printf '\\x%02x' "0x$a"
+		if false; then
+		case "$a" in
+		09) printf '\\t'; ;;
+		0a) printf '\\n'; ;;
+		0b) printf '\\v'; ;;
+		0d) printf '\\r'; ;;
+		*)
+			if <<<"$a" xxd -r -p | grep -q '[[:print:]]'; then
+				printf "%s" "$(<<<"$a" xxd -r -p)"
+			else
+				printf '\\0%03o' "0x$a"
+			fi
+			;;
+		esac
+		fi
+	done
+	echo
+}
+
+hex_to_caret() {
+	hex_to_stream "$*" |
+	xxd -r -p |
+	cat -t |
+	sed -z 's/\n/^J/g'
+	echo
+}
+
+hexoctdec_out() {
+	declare -g strinput
+	local mode num
+	mode=$1
+	num=$2
+	sign=${num%%[^+-]*}
+	# These variables are set in main loop
+	{
+		printf "%s\n" "$mode"
+		printf "%s\n" "$strinput"
+		printf -- "$sign%d\n" "$num"
+		printf -- "$sign%#x\n" "$num"
+		printf -- "$sign%#o\n" "$num"
+		if "$o_binary"; then
+			local tmp
+			if ! tmp=$(bc <<<"obase=2;${num##[-+]}") || [[ -z "$tmp" ]]; then
+				fatal "bc error: $num"
+			fi
+			printf "%s%s\n" "$sign" "$tmp"
+		else
+			printf -- '-\n'
+		fi
+		if "$o_caret"; then
+			hex_to_caret "$(printf "%x" "$num")"
+		else
+			printf -- '-\n'
+		fi
+		if "$o_string"; then
+			hex_to_cstr "$(printf "%x" "$num")"
+		else
+			printf -- '-\n'
+		fi
+	} | paste -s
+}
+hex_out() { hexoctdec_out "hex" "$@"; }
+oct_out() { hexoctdec_out "oct" "$@"; }
+dec_out() { hexoctdec_out "dec" "$@"; }
+bin_out() { hexoctdec_out "bin" "$@"; }
+
+_python_conv_in() {
+	declare -g strinput
+	python -- - "$@" "$strinput" <<EOF
+import sys
+mode = sys.argv[1]
+input = sys.argv[2]
+strinput = sys.argv[3]
+if mode == "fhex":
+	v = float.fromhex(input)
+else:
+	v = float(input)
+print("{}\t{}\t{:${o_float_prec}f}\t{}\t{:${o_float_prec}e}\t-\t-\t-".format(mode, strinput, v, v.hex(), v))
+EOF
+}
+
+hex_to_dec_to_bin() {
+	local input sign num
+	input="$1" # the actual input
+	sign=${input%%[^+-]*}  # sign from the number
+	num=${input##[-+]}    # number without sign
+
+	case "$num" in
+	0[bB]+([01]))
+		num="$((2#${num:2}))"
+		bin_out "$num"
+		;;
+	+([0-9a-fA-F])?(.+([0-9a-fA-F]))[pP]?([-+])+([0-9]))
+		hex_out "$sign$((16#${num//0x/}))"
+		;;
+	# +0x12.345p-80
+	0[xX]+([0-9a-fA-F])?(.+([0-9a-fA-F]))[pP]?([-+])+([0-9]))
+		_python_conv_in "fhex" "$input"
+		;;
+	# [-]d.ddd e(+-)dd
+	[0-9]+(.*([0-9]))[eE]?([-+])+([0-9]))
+		_python_conv_in "fexp" "$input"
+		;;
+	# [-]ddd.ddd -123.345  -12.  -.345
+	+([0-9]).+([0-9])|.+([0-9])|+([0-9]).)
+		_python_conv_in "fdec" "$input"
+		;;
+	0[oO]+([0-7]))
+		oct_out "$sign$((8#${num//0[oO]/}))"
+		;;
+	0+([0-7])|+([0-7]))
+		oct_out "$sign$((8#$num))" &&
+		if ! "$o_bestonly"; then
+			dec_out "$sign$((10#$num))" &&
+			hex_out "$sign$((16#$num))"
+		fi
+		;;
+	+([0-9a-fA-F])+([a-fA-F])?([0-9a-fA-F])|?([0-9a-fA-F])+([a-fA-F])+([0-9a-fA-F]))
+		hex_out "$sign$((16#$num))"
+		;;
+	0[xX]+([0-9a-fA-F]))
+		hex_out "$sign$((16#${num//0x/}))"
+		;;
+	+([0-9]))
+		dec_out "$i" &&
+		if ! "$o_bestonly"; then
+			hex_out "$sign$((16#$num))";
+		fi
+		;;
+	*)
+		;;
+	esac
+}
+
+testsuite() {
+	(
+	run=(
+		"$0" -c1 -s1 -b1 -A1 -- \
+		0x1p-5 1.2 .3 4. 5 0o6 07 8 0x9 a 0xb 1.23e10 \
+		-0x1p-5 -1.2 -.3 -4. -5 -0o6 -07 -8 -0x9 -a -0xb -1.23e10 \
+		+0x1p+5 +1.2 +.3 +4. +5 +0o6 +07 +8 +0x9 +a +0xb +1.23e10
+	)
+	echo "+" "${run[@]}"
+	timeout -v 5 "${run[@]}"
+	) 2>&1
+}
+
+booltoint() {
+	if "$1"; then
+		echo 1
+	else
+		echo 0
+	fi
+}
+
+parseopt() {
+	case "${1^^}" in
+	TRUE|YES) echo true; ;;
+	FALSE|NO) echo false; ;;
+	+([0-9]))
+		if (("$1")); then
+			echo true;
+		else
+			echo false;
+		fi
+		;;
+	"") echo true; ;;
+	*) fatal "Unknown argument $1"; return 1; ;;
+	esac
+	return 0;
+}
+
+# main #####################################################
+
+# A small options library
+opts=(
+	o_header   -H --header   true  "Show the header"
+	o_binary   -b --binary   false "Show binary representation of a number"
+	o_caret    -c --caret    false "Show the caret representation"
+	o_string   -s --string   false "Shows also C string representation"
+	o_column   -C --column   true  "Columnize the output"
+	o_bestonly -B --bestonly false "Shows only the best match"
+	o_all      -A --all      false "Show all possible representations"
+)
+opts_do() {
+	printf "%s\n" "${opts[@]}" | sed 'N;N;N;N;
+	s/\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)'"$*"''
+}
+opts_usage() {
+	opts_do '/  \2 \3[=OPT]\t\5. Default: \4/; s/false$/off/; s/true$/on/;'
+}
+opts_getopt_short() {
+	# C::s::
+	opts_do '/\2/; s/-//; s/$/::/' | paste -sd ''
+}
+opts_getopt_long() {
+	# caret::,string::,etc.
+	opts_do '/\3/; s/--//; s/$/::/' | paste -sd ,
+}
+opts_init() {
+	declare -g $(opts_do '/\1=\4 /')
+}
+opts_parse() {
+	local tmp tmp2
+	tmp=$(opts_do '/ \2 \3 \1/; / '"$1"' /!d; s/.* \([^ ]*\)$/\1/')
+	[[ -n "$tmp" ]] &&
+	tmp2=$(parseopt "$2") &&
+	declare -g "$tmp=$tmp2"
+}
+
+# Finally usage
+usage() {
+	cat <<EOF
+Usage: $name [options] [numbers]
+
+Options:
+$(opts_usage)
+  -P --float-prec 	Set the floating point precision.
+  -h --help 	Print this help and exit
+     --test 	Run test output
+
+OPT is 0 or 1 or TRUE or false or anyhow similar.
+
+Converts a number to other representations of the same number.
+Supports representations:
+- binary with leading 0b/0B - 0b11010100101
+- decimal - 123
+- octal with leading 0 or 0o/0O - 0o765
+- hex a number with a-fA-F or with leading 0x/0X - 0xcafe
+- floating point number with a dot - 123.456
+- hexadecimal floating point with optional 0x/0X and a 'p' exponent - 0x123.456p10
+- exponent floating point with 'e'/'E' exponent - 123.345e10
+floating point
+Examples:
+   $name 123 0x123.456p67
+   $name -H0 -c1 -s1 -- -123
+   $name --test
+
+Written by Kamil Cukrowski 2020
+Licensed jointly under Beerware License and MIT License.
+EOF
+}
+
+# Parse options
+opts_init
+o_float_prec=""
+# If parsing succeeded, only then parse args
+# otherwise the negative number is just passed to the number recignition.
+if args=$(
+		getopt -q -n "$name" \
+		-o "$(opts_getopt_short)P:h" \
+		-l "$(opts_getopt_long),float-prec:,help,test" \
+		-- "$@"
+		); then
+	eval set -- "$args"
+	while (($#)); do
+		case "$1" in
+		-h|--help) usage; exit; ;;
+		   --test) testsuite; exit; ;;
+		-P|--float-prec) o_float_prec=".$2"; shift; ;;
+		--) shift; break ;;
+		-A|--all)
+			tmp=$(parseopt "$2")
+			o_binary=$tmp
+			o_caret=$tmp
+			o_string=$tmp
+			shift
+			;;
+		-*|--*)
+			if ! opts_parse "$1" "${2:-}"; then
+				fatal "Unknown option: $1"
+			fi
+			shift
+			;;
+		*) fatal "Parsing failed with: $1"; ;;
+		esac
+		shift
+	done
+fi
+
+if (($# == 0)); then
+	usage
+	fatal "No arguments"
+fi
+
+# main work
+
+for i in "$@"; do
+	(
+	strinput="$i"
+	readonly strinput
+	if ! hex_to_dec_to_bin "$i"; then
+		fatal "Could not convert: $i"
+	fi
+	)
+done | {
+	if "$o_header"; then
+		printf '%s\n' 'mode' 'input' '%d' '%x' '%o' '%b' '%^' '%s' | paste -s
+	fi
+	sed 's/\t*$//'
+} | {
+	awk -v FS='\t' -v OFS='\t' \
+		-v "o_caret=$(booltoint "$o_caret")" -v "o_string=$(booltoint "$o_string")" \
+		-v "o_binary=$(booltoint "$o_binary")" '
+	NF!=8{
+		print "ERROR from awk on line:", $0
+	}
+	function remove_col(n, i) {
+		# print("Removing col " n)
+		for (i=n; i<NF; ++i) {
+			$i=$(i+1)
+		}
+		NF--
+	}
+	NF==8{
+		if (! o_string) remove_col(8);
+		if (! o_caret) 	remove_col(7);
+		if (! o_binary) remove_col(6);
+	}
+	1'
+} | {
+	if "$o_column" && hash column >/dev/null 2>&1 && { column --version | grep -q util-linux ;} 2>/dev/null; then
+		column -t -s $'\t' -o '  ' -R "2,3,4,5$(if "$o_binary"; then echo ',6'; fi)"
+	else
+		cat
+	fi
+}
+
+
+
+
+
+
