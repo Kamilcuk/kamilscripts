@@ -32,7 +32,7 @@ hex_to_cstr() {
 		0a) printf '\\n'; ;;
 		0b) printf '\\v'; ;;
 		0d) printf '\\r'; ;;
-		*)
+	(*)
 			if <<<"$a" xxd -r -p | grep -q '[[:print:]]'; then
 				printf "%s" "$(<<<"$a" xxd -r -p)"
 			else
@@ -55,10 +55,10 @@ hex_to_caret() {
 
 hexoctdec_out() {
 	declare -g strinput
-	local mode num
+	local mode sign num
 	mode=$1
-	num=$2
-	sign=${num%%[^+-]*}
+	sign=$2
+	num=$3
 	# These variables are set in main loop
 	{
 		printf "%s\n" "$mode"
@@ -68,20 +68,20 @@ hexoctdec_out() {
 		printf -- "$sign%#o\n" "$num"
 		if "$o_binary"; then
 			local tmp
-			if ! tmp=$(bc <<<"obase=2;${num##[-+]}") || [[ -z "$tmp" ]]; then
+			if ! tmp=$(bc <<<"obase=2;${num##[+]}") || [[ -z "$tmp" ]]; then
 				fatal "bc error: $num"
 			fi
-			printf "%s%s\n" "$sign" "$tmp"
+			printf "%s0b%s\n" "$sign" "$tmp"
 		else
 			printf -- '-\n'
 		fi
 		if "$o_caret"; then
-			hex_to_caret "$(printf "%x" "$num")"
+			hex_to_caret "$(printf "%x" "$sign$num")"
 		else
 			printf -- '-\n'
 		fi
 		if "$o_string"; then
-			hex_to_cstr "$(printf "%x" "$num")"
+			hex_to_cstr "$(printf "%x" "$sign$num")"
 		else
 			printf -- '-\n'
 		fi
@@ -92,10 +92,13 @@ oct_out() { hexoctdec_out "oct" "$@"; }
 dec_out() { hexoctdec_out "dec" "$@"; }
 bin_out() { hexoctdec_out "bin" "$@"; }
 
-_python_conv_in() {
+float_out() {
 	declare -g strinput
 	python -- - "$@" "$strinput" <<EOF
 import sys
+import struct
+def binary(num):
+	return ''.join('{:0>8b}'.format(c) for c in struct.pack('!f', num))
 mode = sys.argv[1]
 input = sys.argv[2]
 strinput = sys.argv[3]
@@ -103,7 +106,7 @@ if mode == "fhex":
 	v = float.fromhex(input)
 else:
 	v = float(input)
-print("{}\t{}\t{:${o_float_prec}f}\t{}\t{:${o_float_prec}e}\t-\t-\t-".format(mode, strinput, v, v.hex(), v))
+print("{}\t{}\t{:${o_float_prec}f}\t{}\t{:${o_float_prec}e}\t0b{}\t-\t-".format(mode, strinput, v, v.hex(), v, binary(v)))
 EOF
 }
 
@@ -114,48 +117,61 @@ hex_to_dec_to_bin() {
 	num=${input##[-+]}    # number without sign
 
 	case "$num" in
+	# Binary number with prefix
 	0[bB]+([01]))
-		num="$((2#${num:2}))"
-		bin_out "$num"
+		bin_out "$sign" "$((2#${num:2}))"
 		;;
-	+([0-9a-fA-F])?(.+([0-9a-fA-F]))[pP]?([-+])+([0-9]))
-		hex_out "$sign$((16#${num//0x/}))"
+	# Hexadecimal floating point without prefix 0x
+	+([0-9a-fA-F])?(.*([0-9a-fA-F]))[pP]?([-+])+([0-9]))
+		float_out "fhex" "${sign}0x$num"
 		;;
-	# +0x12.345p-80
-	0[xX]+([0-9a-fA-F])?(.+([0-9a-fA-F]))[pP]?([-+])+([0-9]))
-		_python_conv_in "fhex" "$input"
+	# Hexadecimal floating point: +0x12.345p-80
+	0[xX]+([0-9a-fA-F])?(.*([0-9a-fA-F]))[pP]?([-+])+([0-9]))
+		float_out "fhex" "$input"
 		;;
-	# [-]d.ddd e(+-)dd
-	[0-9]+(.*([0-9]))[eE]?([-+])+([0-9]))
-		_python_conv_in "fexp" "$input"
+	# Exponental floatinf point: [-]d.ddd e(+-)dd
+	[0-9]?(.*([0-9]))[eE]?([-+])+([0-9]))
+		float_out "fexp" "$input"
 		;;
-	# [-]ddd.ddd -123.345  -12.  -.345
-	+([0-9]).+([0-9])|.+([0-9])|+([0-9]).)
-		_python_conv_in "fdec" "$input"
+	# Floating point: [-]ddd.ddd -123.345  -12.  -.345
+	+([0-9]).*([0-9])|.+([0-9]))
+		float_out "fdec" "$input"
 		;;
+	# Octal number with prefix
 	0[oO]+([0-7]))
-		oct_out "$sign$((8#${num//0[oO]/}))"
+		oct_out "$sign" "$((8#${num//0[oO]/}))"
 		;;
-	0+([0-7])|+([0-7]))
-		oct_out "$sign$((8#$num))" &&
+	# Octal number starting with initial 0
+	0+([0-7]))
+		oct_out "$sign" "$((8#$num))" &&
 		if ! "$o_bestonly"; then
-			dec_out "$sign$((10#$num))" &&
-			hex_out "$sign$((16#$num))"
+			dec_out "$sign" "$((10#$num))" &&
+			hex_out "$sign" "$((16#$num))" &&
+			# The numberm ay be in binary
+			case "$num" in 	+([0-1])) bin_out "$sign" "$((2#$num))"; ;; esac
 		fi
 		;;
-	+([0-9a-fA-F])+([a-fA-F])?([0-9a-fA-F])|?([0-9a-fA-F])+([a-fA-F])+([0-9a-fA-F]))
-		hex_out "$sign$((16#$num))"
-		;;
-	0[xX]+([0-9a-fA-F]))
-		hex_out "$sign$((16#${num//0x/}))"
-		;;
+	# Normal decimal number
 	+([0-9]))
-		dec_out "$i" &&
+		dec_out "$sign" "$num" &&
 		if ! "$o_bestonly"; then
-			hex_out "$sign$((16#$num))";
+			hex_out "$sign" "$((16#$num))" &&
+			# If the number may be octal, also print octal
+			case "$num" in +([0-7])) oct_out "$sign" "$((8#$num))"; ;; esac &&
+			# If the number may be in binary, also print binary
+			case "$num" in 	+([0-1])) bin_out "$sign" "$((2#$num))"; ;; esac
 		fi
+		;;
+	# Hex number. Note: this is after normal number.
+	+([0-9a-fA-F]))
+		hex_out "$sign" "$((16#$num))"
+		;;
+	# Hexadecimal number with prefix
+	0[xX]+([0-9a-fA-F]))
+		hex_out "$sign" "$((16#${num//0x/}))"
 		;;
 	*)
+		fatal "Could not parse $i"
 		;;
 	esac
 }
@@ -163,10 +179,11 @@ hex_to_dec_to_bin() {
 testsuite() {
 	(
 	run=(
-		"$0" -c1 -s1 -b1 -A1 -- \
+		"$0" -c1 -s1 -b1 -A1 $@ -- \
 		0x1p-5 1.2 .3 4. 5 0o6 07 8 0x9 a 0xb 1.23e10 \
 		-0x1p-5 -1.2 -.3 -4. -5 -0o6 -07 -8 -0x9 -a -0xb -1.23e10 \
-		+0x1p+5 +1.2 +.3 +4. +5 +0o6 +07 +8 +0x9 +a +0xb +1.23e10
+		+0x1p+5 +1.2 +.3 +4. +5 +0o6 +07 +8 +0x9 +a +0xb +1.23e10 \
+		0b1010101 -0b101001 +0b101010
 	)
 	echo "+" "${run[@]}"
 	timeout -v 5 "${run[@]}"
@@ -206,7 +223,7 @@ opts=(
 	o_binary   -b --binary   false "Show binary representation of a number"
 	o_caret    -c --caret    false "Show the caret representation"
 	o_string   -s --string   false "Shows also C string representation"
-	o_column   -C --column   true  "Columnize the output"
+	o_tabs     -t --tab      false "Separate output by tabs"
 	o_bestonly -B --bestonly false "Shows only the best match"
 	o_all      -A --all      false "Show all possible representations"
 )
@@ -215,7 +232,7 @@ opts_do() {
 	s/\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)\n\([^\n]*\)'"$*"''
 }
 opts_usage() {
-	opts_do '/  \2 \3[=OPT]\t\5. Default: \4/; s/false$/off/; s/true$/on/;'
+	opts_do '/  \2 \3[=OPT]\t\5. Default: \4/; s/false$/no/; s/true$/yes/;'
 }
 opts_getopt_short() {
 	# C::s::
@@ -243,22 +260,47 @@ Usage: $name [options] [numbers]
 
 Options:
 $(opts_usage)
-  -P --float-prec 	Set the floating point precision.
-  -h --help 	Print this help and exit
-     --test 	Run test output
+  -P --float-prec    Set the floating point precision.
+  -h --help          Print this help and exit
+     --test[=OPTS]   Run test output
 
 OPT is 0 or 1 or TRUE or false or anyhow similar.
 
 Converts a number to other representations of the same number.
-Supports representations:
-- binary with leading 0b/0B - 0b11010100101
-- decimal - 123
-- octal with leading 0 or 0o/0O - 0o765
-- hex a number with a-fA-F or with leading 0x/0X - 0xcafe
-- floating point number with a dot - 123.456
-- hexadecimal floating point with optional 0x/0X and a 'p' exponent - 0x123.456p10
-- exponent floating point with 'e'/'E' exponent - 123.345e10
-floating point
+Supported representations of an input/output number:
+  - binary with leading 0b/0B - 0b11010100101
+  - decimal - 123
+  - octal with leading 0 or 0o/0O - 0o765
+  - hex a number with a-fA-F or with leading 0x/0X - 0xcafe
+  - floating point number with a dot - 123.456
+  - hexadecimal floating point with optional 0x/0X and a 'p' exponent - 0x123.456p10
+  - exponent floating point with 'e'/'E' exponent - 123.345e10
+
+Outputs 5 columns by default up to max of 8 columns, that print:
+  - mode - shows the detected input format of the number
+  - input - the input for the mode
+  - %d - integer and float in decimal format
+  - %x - integer in hexadecimal, float in hexadecimal float
+  - %o - integer in octal, float in exponential notation
+  - %b - integer in binary, float in python native binary representation
+  - %^ - hex integer in caret notation
+  - %s - hex integer as a \xXX sequence for C file inclusion
+
+Mode (the first column) shows the format in which the input number was read:
+  - dec - as decimal
+  - hex - as hexadecimal
+  - oct - as octal
+  - fdec - as float in decimal
+  - fhex - as float in hexadecimal
+  - fexp - as float in exponental notation
+
+In case of some inputs it is ambigous in which notation it is, for example
+"-107" might be in hex or octal or in decimal. That's why the program
+"guesses" all possible representation the number might be represented
+with and converts them to all possible combinations according to those
+guesses. Showing only the best matching "guess" may be chosen with
+appriopriate option.
+
 Examples:
    $name 123 0x123.456p67
    $name -H0 -c1 -s1 -- -123
@@ -277,14 +319,14 @@ o_float_prec=""
 if args=$(
 		getopt -q -n "$name" \
 		-o "$(opts_getopt_short)P:h" \
-		-l "$(opts_getopt_long),float-prec:,help,test" \
+		-l "$(opts_getopt_long),float-prec:,help,test::" \
 		-- "$@"
 		); then
 	eval set -- "$args"
 	while (($#)); do
 		case "$1" in
 		-h|--help) usage; exit; ;;
-		   --test) testsuite; exit; ;;
+		   --test) shift; testsuite "$1"; exit; ;;
 		-P|--float-prec) o_float_prec=".$2"; shift; ;;
 		--) shift; break ;;
 		-A|--all)
@@ -300,7 +342,7 @@ if args=$(
 			fi
 			shift
 			;;
-		*) fatal "Parsing failed with: $1"; ;;
+		*) fatal "Options parsing failed with: $1"; ;;
 		esac
 		shift
 	done
@@ -313,15 +355,19 @@ fi
 
 # main work
 
-for i in "$@"; do
-	(
-	strinput="$i"
-	readonly strinput
-	if ! hex_to_dec_to_bin "$i"; then
-		fatal "Could not convert: $i"
-	fi
-	)
-done | {
+{
+	err=0
+	for i in "$@"; do
+		strinput="$i"
+		if ! (
+			readonly strinput
+			hex_to_dec_to_bin "$i"
+		); then
+			err=1
+		fi
+	done
+	exit "$err"
+} | {
 	if "$o_header"; then
 		printf '%s\n' 'mode' 'input' '%d' '%x' '%o' '%b' '%^' '%s' | paste -s
 	fi
@@ -330,9 +376,10 @@ done | {
 	awk -v FS='\t' -v OFS='\t' \
 		-v "o_caret=$(booltoint "$o_caret")" -v "o_string=$(booltoint "$o_string")" \
 		-v "o_binary=$(booltoint "$o_binary")" '
-	NF!=8{
-		print "ERROR from awk on line:", $0
-	}
+	# Each converter has to output 8 columns
+	NF!=8{ print "ERROR from awk on line:", $0; }
+
+	# Remove chosen columns.
 	function remove_col(n, i) {
 		# print("Removing col " n)
 		for (i=n; i<NF; ++i) {
@@ -345,9 +392,15 @@ done | {
 		if (! o_caret) 	remove_col(7);
 		if (! o_binary) remove_col(6);
 	}
-	1'
+
+	# Add quotes around input column
+	NR!=1{ $2="\"" $2 "\"" }
+
+	# Show the output
+	1
+	'
 } | {
-	if "$o_column" && hash column >/dev/null 2>&1 && { column --version | grep -q util-linux ;} 2>/dev/null; then
+	if ! "$o_tabs" && hash column >/dev/null 2>&1 && { column --version | grep -q util-linux ;} 2>/dev/null; then
 		column -t -s $'\t' -o '  ' -R "2,3,4,5$(if "$o_binary"; then echo ',6'; fi)"
 	else
 		cat
