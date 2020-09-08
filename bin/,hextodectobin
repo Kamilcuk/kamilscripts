@@ -1,4 +1,17 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT+Beerware
+
+# Handle bash-completion
+if [[ "$#" = "1" && "${1:-}" = "--bash-completion" ]]; then
+	if [[ "$_" = "$0" ]]; then
+		echo ",hextodectobin: ERROR: --bash-completion but not sourced" >&2
+		set -x
+	fi
+	complete -W "--all --bestonly --binary --caret --float --header --help --string --tab --test" ,hextodectobin "${BASH_SOURCE}"
+	return
+	exit
+fi
+
 # See usage() below
 set -euo pipefail
 export SHELLOPTS

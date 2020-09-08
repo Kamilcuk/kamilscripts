@@ -1,0 +1,3 @@
+#!/bin/bash
+. ,hextodectobin --bash-completion
+
