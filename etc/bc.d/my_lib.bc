@@ -1,0 +1,9 @@
+#!/usr/bin/env bc -l
+
+define log10(x) { return ln(x)/ln(10); }
+
+# https://superuser.com/questions/31445/gnu-bc-modulo-with-scale-other-than-0
+define int(x) { oldscale=scale; scale=0; x=x/1; scale=oldscale; return( x ); }
+define mod(x,y) { oldscale=scale; scale=1000; x = x - y * int(x/y); scale=oldscale; return( x ); }
+
+

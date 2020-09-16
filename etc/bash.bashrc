@@ -124,8 +124,8 @@ mesg y
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 
 # https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
-BC_ENV_ARGS="$(readlink -f "${BASH_SOURCE[0]}")"
-export BC_ENV_ARGS="${BC_ENV_ARGS%/*}/bcrc"
+BC_ENV_ARGS="-q -l $(printf "%q " $(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bc.d/*.bc)"
+export BC_ENV_ARGS
 
 # Aliases
 
