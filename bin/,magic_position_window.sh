@@ -75,7 +75,10 @@ notify() {
 	"$notify_msgs$name" "${title:-$name}" "" "" 500 /tmp/.notifyval."$n" >/dev/null ||:
 }
 
-source "$(dirname "$(readlink -f "$0")")"/lib/,x_functions.sh
+if ! source ,lib_x_functions.sh; then
+	notify "could not souce lib_x_functions"
+	exit 2
+fi
 
 getPanelHeight() {
 	# add more panels if needed
