@@ -1,29 +1,12 @@
 #!/bin/bash
 
+# Load our profile
+. "$(dirname "$(readlink -f "$BASH_SOURCE")")"/profile "$(dirname "$(readlink -f "$BASH_SOURCE")")"/etc
+
 # check if running interactively
 if [ -z "$PS1" -o -z "$BASH" -o -n "${POSIXLY_CORRECT+x}" ]; then
 	return
 fi
-
-
-#### Path
-
-appendpath () {
-    case ":$PATH:" in
-        *:"$1":*)
-            ;;
-        *)
-            PATH="${PATH:+$PATH:}$1"
-	    ;;
-    esac
-}
-
-appendpath '/bin'
-appendpath '/sbin'
-appendpath '/usr/lib/kamilscripts/bin'
-PATH="$HOME/bin:$HOME/.local/bin:$PATH"
-unset appendpath
-export PATH
 
 #### PS1
 PS1_setup() {

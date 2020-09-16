@@ -95,9 +95,10 @@ package() { (
 		create_symlinks "$DIR" /usr/lib/kamilscripts "$pkgdir" "$from" "$to"
 		echo
 	done <<'EOF'
-		bin               /usr/bin
-		systemd           /usr/lib/systemd
-		bash-completions  /usr/share/bash-completion/completions
+		bin                  /usr/bin
+		systemd             /usr/lib/systemd
+		bash-completions    /usr/share/bash-completion/completions
+		pkg/etc/profile.d   /etc/profile.d
 EOF
 
 	chown root:root -v -R "$pkgdir"/*

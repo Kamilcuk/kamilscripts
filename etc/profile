@@ -1,0 +1,17 @@
+# profile
+
+# read from /etc/profile.d/kamilscripts.sh
+# should be passed as first argument the path to etc
+if [ -z "$1" ] || [ ! -d "$1"/profile.d ]; then
+	return
+fi
+
+if test -d "$1"/profile.d/; then
+	for profile in "$1"/profile.d/*.sh; do
+		if test -r "$profile"; then
+			. "$profile"
+		fi
+	done
+	unset profile
+fi
+
