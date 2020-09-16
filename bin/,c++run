@@ -1,3 +1,4 @@
 #!/bin/bash
-. ,ccrun $'\x01'"g++ -xc++" "$@"
+cxx="${CXX:-g++ -xc++}${CXX:+$CXX $CXXFLAGS}"
+. ,ccrun ---cc "$cxx" "$@"
 

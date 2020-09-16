@@ -1,34 +1,36 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: MIT+Beerware
+set -euo pipefail
 
-usage() {	
+name=$(basename "$0")
+
+usage() {
 	cat <<EOF
-Usage: 
-   $(basename "$0") [-option] [options...] <file
-   $(basename "$0") file [options...]
-   $(basename "$0") -h
-   $(basename "$0") \$'\x01'"compiler options" args...
+Usage:
+   $name [---options] [-cc_option] [cc_options...] <file
+   $name [---options] file [cc_options...]
+   $name -h
 
 Compiles and runs a source file in one run.
 
-If there are no arguments or the first argument starts with 
-a leading dash, input source file is expected to be passed 
+If there are no arguments or the first argument starts with
+a leading dash, input source file is expected to be passed
 on standard input. All arguments are passed to the compiler.
 
-If the first argument doesn't start with a leading dash, 
+If the first argument doesn't start with a leading dash,
 the first argumnet is expected to be the source file to compile
-from. All other arguments are passed to the compiler. 
+from. All other arguments are passed to the compiler.
 
 If this script is executed with exactly one argument '-h',
-this script prints this text and exit. 
-Use $(basename "$0") --help to get compiler help.
-
-If the first argument starts with 0x01 byte, then the rest
-of the first argumnet is interpreted as the path 
-to the compiler. Space expansion happens - it is executed
-as via shell.
+this script prints this text and exit.
+Use $name --help to get compiler help.
 
 Current compiler: $cc
+
+Options:
+   ---cc COMPILER  Set the C compiler
+   ---n            Don't include defaults
+   ---h            Print this help and exit
 
 Written by Kamil Cukrowski
 Licensed jointly under Beerware License and MIT Lisense
@@ -36,47 +38,91 @@ EOF
 }
 
 fatal() {
-	echo "$(basename "$0"):" "$*" >&2
+	echo "$name" "$*" >&2
 	exit 2
 }
 
 ######################################################
 
-# special input from ,c++run comes as the first argument
-# has first character set to \x01, which let's it to set
-# the compiler to g++
-if [ "$#" -gt 0 ] && [ "${1:0:1}" = $'\x01' ]; then
-        cc="${1:1}"
-        shift
-else
-        cc="gcc -xc"
-fi
-
-if [ "$#" -eq 1 ] && [ "$1" = '-h' ]; then
-	usage
-	exit
-fi
+cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}"
+includeall=true
+while (($#)); do
+	case "$1" in
+	---cc) shift; cc="$1"; ;;
+	---n) includeall=false; ;;
+	---h|-h) usage; exit; ;;
+	---*) fatal "Invalid command $1"; ;;
+	*) break; ;;
+	esac
+	shift
+done
 
 # -c or -o are dissallowed options
 if ! (
-	while [ "$#" -gt 0 ]; do
+	while (($#)); do
 		case "$1" in
 		-c|-o) fatal "$1 option is not allowed"; ;;
 		esac
 		shift
 	done
-); then 
+); then
 	exit 2
 fi
 
 # if we have only dashes options and last option doesn't have dash
 input="-"
-if [ "$#" -gt 0 ] && case "$1" in -*) false; ;; esac; then
+if (($#)) && case "$1" in -*) false; esac; then
 	input="$1"
 	shift
 fi
-		
+
+includeallfunc() {
+	printf "#define %s\n"  \
+		"_GNU_SOURCE  1" \
+		"_POSIX_C_SOURCE  300000L" \
+		"_POSIX_SOURCE  1" \
+		"_XOPEN_SOURCE  1" \
+		"_DEFAULT_SOURCE  1"
+	printf "#include <%s>\n" \
+		assert.h \
+		complex.h \
+		ctype.h \
+		errno.h \
+		fenv.h \
+		float.h \
+		inttypes.h \
+		iso646.h \
+		limits.h \
+		locale.h \
+		math.h \
+		setjmp.h \
+		signal.h \
+		stdarg.h \
+		stdbool.h \
+		stddef.h \
+		stdint.h \
+		stdio.h \
+		stdlib.h \
+		stdnoreturn.h \
+		string.h \
+		tgmath.h \
+		uchar.h \
+		wchar.h \
+		wctype.h
+	echo
+}
+
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
-$cc -o"$tmp" "$@" "$input" && "$tmp"
+{
+	{
+		if "$includeall"; then
+			includeallfunc
+		fi
+		cat "$input"
+	} |
+	$cc -o "$tmp" "$@" - 
+} && "$tmp"
+
+
 
