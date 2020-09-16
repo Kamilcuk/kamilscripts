@@ -147,15 +147,15 @@ hist() { eval "history $(for i; do echo -n " | grep -a $(printf "%q" "$i")"; don
 
 _backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
 
-tmp=$(dirname "$BASH_SOURCE")/bash.d
-if [[ -d "$tmp" && -r "$tmp" && -x "$tmp" ]]; then
+_tmp=$(dirname "$BASH_SOURCE")/bash.d
+if [[ -d "$_tmp" && -r "$_tmp" && -x "$_tmp" ]]; then
 	_backup_glob='@(#*#|*@(~|.@(bak|orig|rej|swp|dpkg*|rpm@(orig|new|save))))'
-	for i in "$tmp"/*; do
-		if [[ -r "$i" && "${i##*/}" != @($_backup_glob|Makefile*) ]]; then
-			. "$i"
+	for _i in "$_tmp"/*; do
+		if [[ -r "$_i" && "${_i##*/}" != @($_backup_glob|Makefile*) ]]; then
+			. "$_i"
 		fi
 	done
-	unset i _backup_glob
+	unset _i _backup_glob
 fi
-unset tmp
+unset _tmp
 
