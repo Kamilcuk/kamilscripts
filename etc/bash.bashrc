@@ -123,6 +123,8 @@ mesg y
 # https://wiki.archlinux.org/index.php/Makepkg
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 
+# https://unix.stackexchange.com/questions/609618/is-it-possible-to-save-bc-command-line-history/609700#609700
+if hash rlwrap 2>/dev/null; then bc() { rlwrap -a bc "$@"; }; fi
 # https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
 BC_ENV_ARGS="-q -l $(printf "%q " $(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bc.d/*.bc)"
 export BC_ENV_ARGS
