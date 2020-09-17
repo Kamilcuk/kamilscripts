@@ -12,25 +12,32 @@ Usage:
    $name -h
 
 Compiles and runs a source file in one run.
+The script takes it's own arguments with 3 leading dashes.
 
-If there are no arguments or the first argument starts with
-a leading dash, input source file is expected to be passed
-on standard input. All arguments are passed to the compiler.
+If there are no arguments or the first argument starts with a leading dash, then "defaults" are
+passed to the compiler that include all needed header files followed by standard input.
 
-If the first argument doesn't start with a leading dash,
-the first argumnet is expected to be the source file to compile
-from. All other arguments are passed to the compiler.
+If the first argument doesn't start with a leading dash, the first argumnet is expected to be
+a source file to compiler. All following arguments are passed to the compiler. In this mode
+defaults are not passed.
 
-If this script is executed with exactly one argument '-h',
-this script prints this text and exit.
-Use $name --help to get compiler help.
+If this script is executed with exactly one argument '-h', this script prints this text
+and exits. The $name --help would result in compiler help printed.
 
 Current compiler: $cc
 
 Options:
-   ---cc COMPILER  Set the C compiler
-   ---n            Don't include defaults
-   ---h            Print this help and exit
+   ---cc <compiler>     Set the C compiler.
+   ---defaults <func>   Run this function on defaults
+   ---n ---nodefaults   Don't include default headers.
+   ---d ---usedefaults  Force including default headers.
+   ---m                 Add a 'int main(int argc, char *argv[]) {' + '}' to the input.
+   ---h -h ---help      Print this help and exit.
+   ---debug             Debug.
+   ---test              Test
+
+Examples:
+   echo 'int main() { printf("Hello world\n"); }' | $name
 
 Written by Kamil Cukrowski
 Licensed jointly under Beerware License and MIT Lisense
@@ -42,15 +49,41 @@ fatal() {
 	exit 2
 }
 
+testme() {
+	echo "##################### See hello worlds"
+	( set -x
+	$0 -Wall <<<'int main() { printf("Hello world\n"); }'
+	$0 ---n ---debug -Wall <<<$'#include <stdio.h>\n''int main() { printf("Hello world\n"); }'
+	$0 ---d <(echo 'int main() { printf("Hello world\n"); }') -Wall
+	$0 ---d ---m <(echo 'printf("Hello world\n");') -Wall
+	)
+	echo
+	echo "##################### See failure to compile cause implicit declaration"
+	( set -x
+	$0 <(echo 'int main() { printf("Hello world\n"); }') -Wall -Werror ||
+	$0 ---n -Wall -Werror <<<'int main() { printf("Hello world\n"); }'
+	) ||:
+	echo
+	true
+}
+
 ######################################################
 
 cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}"
-includeall=true
+usedefaults=
+addmain=false
+defaultsfunc=
+debug=false
 while (($#)); do
 	case "$1" in
 	---cc) shift; cc="$1"; ;;
-	---n) includeall=false; ;;
-	---h|-h) usage; exit; ;;
+	---defaults) shift; defaultsfunc=$1; ;;
+	---n|---nodefaults) usedefaults=false; ;;
+	---d|---usedefaults) usedefaults=true; ;;
+	---m|---main) addmain=true; ;;
+	---h|-h|---help) usage; exit; ;;
+	---debug) debug=true; ;;
+	---test) testme; exit; ;;
 	---*) fatal "Invalid command $1"; ;;
 	*) break; ;;
 	esac
@@ -73,56 +106,164 @@ fi
 input="-"
 if (($#)) && case "$1" in -*) false; esac; then
 	input="$1"
+	usedefaults=${usedefaults:-false}
 	shift
 fi
 
-includeallfunc() {
-	printf "#define %s\n"  \
-		"_GNU_SOURCE  1" \
-		"_POSIX_C_SOURCE  300000L" \
-		"_POSIX_SOURCE  1" \
-		"_XOPEN_SOURCE  1" \
-		"_DEFAULT_SOURCE  1"
-	printf "#include <%s>\n" \
-		assert.h \
-		complex.h \
-		ctype.h \
-		errno.h \
-		fenv.h \
-		float.h \
-		inttypes.h \
-		iso646.h \
-		limits.h \
-		locale.h \
-		math.h \
-		setjmp.h \
-		signal.h \
-		stdarg.h \
-		stdbool.h \
-		stddef.h \
-		stdint.h \
-		stdio.h \
-		stdlib.h \
-		stdnoreturn.h \
-		string.h \
-		tgmath.h \
-		uchar.h \
-		wchar.h \
-		wctype.h
-	echo
+c_defaults_macros='#define _GNU_SOURCE  1
+#define _POSIX_C_SOURCE  300000L
+#define _POSIX_SOURCE  1
+#define _XOPEN_SOURCE  1
+#define _DEFAULT_SOURCE  1
+'
+
+c_defaults_headers='/* C */
+#include <assert.h>
+#include <complex.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fenv.h>
+#include <float.h>
+#include <inttypes.h>
+#include <iso646.h>
+#include <limits.h>
+#include <locale.h>
+#include <math.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdnoreturn.h>
+#include <string.h>
+#include <tgmath.h>
+#include <uchar.h>
+#include <wchar.h>
+#include <wctype.h>
+'
+
+c_defaults_posix='/* posix */
+#include <aio.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <complex.h>
+#include <cpio.h>
+#include <ctype.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <fenv.h>
+#include <float.h>
+#include <fmtmsg.h>
+#include <fnmatch.h>
+#include <ftw.h>
+#include <glob.h>
+#include <grp.h>
+#include <iconv.h>
+#include <inttypes.h>
+#include <iso646.h>
+#include <langinfo.h>
+#include <libgen.h>
+#include <limits.h>
+#include <locale.h>
+#include <math.h>
+#include <monetary.h>
+#include <mqueue.h>
+#include <ndbm.h>
+#include <net/if.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <nl_types.h>
+#include <poll.h>
+#include <pthread.h>
+#include <pwd.h>
+#include <regex.h>
+#include <sched.h>
+#include <search.h>
+#include <semaphore.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <spawn.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/ipc.h>
+#include <sys/mman.h>
+#include <sys/msg.h>
+#include <sys/resource.h>
+#include <sys/select.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/time.h>
+#include <sys/times.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/un.h>
+#include <sys/utsname.h>
+#include <sys/wait.h>
+#include <syslog.h>
+#include <tar.h>
+#include <termios.h>
+#include <tgmath.h>
+#include <time.h>
+#include <ulimit.h>
+#include <unistd.h>
+#include <utime.h>
+#include <utmpx.h>
+#include <wchar.h>
+#include <wctype.h>
+#include <wordexp.h>
+'
+
+c_defaults() {
+	cat <<EOF
+$c_defaults_macros
+$c_defaults_headers
+$c_defaults_posix
+EOF
 }
 
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 {
-	{
-		if "$includeall"; then
-			includeallfunc
-		fi
-		cat "$input"
-	} |
-	$cc -o "$tmp" "$@" - 
-} && "$tmp"
+	if "${usedefaults:-true}"; then
+		"${defaultsfunc:-c_defaults}"
+	fi
+	if "$addmain"; then
+		echo 'int main(int argc, char *argv[]) {'
+	fi
+	cat "$input"
+	if "$addmain"; then
+		echo '}'
+	fi
+} |
+{
+	if "$debug"; then
+		tee >(sed 's/^/> /' >/dev/stderr)
+	else
+		cat
+	fi
+} |
+{
+	if "$debug"; then
+		set -x
+	fi
+	$cc -o "$tmp" "$@" -
+} &&
+"$tmp"
 
 
 
