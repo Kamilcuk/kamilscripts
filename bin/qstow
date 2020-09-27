@@ -1,0 +1,440 @@
+#!/bin/bash
+# SPDX-License-Identifier: Beerware+MIT
+set -euo pipefail
+
+name=$(basename "$0")
+
+usage() {
+	cat <<EOF
+Usage: $name [OPTION...] [-D|-S|-R|-c CMD] PACKAGE...
+
+Options:
+    -d DIR --dir DIR      Set stow dir to DIR (default is current dir)
+    -t DIR --target DIR   Set target to DIR (see long help)
+
+    -S --stow             Stow the package names that follow this option
+    -D --delete           Unstow the package names that follow this option
+    -R --restow           Restow (like -D followed by -S)
+
+	-c CMD --command CMD  Run command
+    --ignore REGEX        Ignore files ending in this extended regex
+
+    -f --force            WARNING Will just overwrite the files in case of conflict
+
+    -n --no --simulate    Do not actually make any filesystem changes
+    -v --verbose[=N]      Be verbose. May be specified multiple times.
+    -h --help             Show this help and exit.
+       --long-help        Show long help and exit.
+	   --bash-completion  Output string to be eval ed for bash-completion.
+
+Commands:
+    stow                  Like -S
+    delete                Like -D
+    restow                Like -R
+    ls-files              List all files in packages except ignored onces.
+	cat-ignore            Show ignore pattern
+
+A bash sript meant to mimic GNU stow with extended funcionality.
+Finding "owned" packages is different then from GNU stow and works better in my opinion.
+--ignore works different - this stow just regex matches ignore patterns with grep -E.
+This script can only take a single [-D|-S|-R|-c cmd] parameter.
+
+Written by Kamil Cukrowski 2020
+Licensed jointly under Beerware and MIT License
+EOF
+}
+
+_qstow_complete() {
+	local cur prev tmp
+	tmp=()
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+	if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
+		tmp=(-W 
+			"-d -t -S -D -R -c -f -n -v -h --dir --target --stow --delete --restow --command --ignore --force --no --simulate --verbose --help --long-help"
+		)
+	else case "$prev" in
+	-d|--dir|-t|--target) compopt -o filenames; tmp=(-o dirnames); ;;
+	-c|--command) tmp=(-W
+		"stow delete restow ls-files cat-ignore"
+	); ;;
+	*)
+		# find stow
+		local stow i next
+		next=""
+		stow=""
+		for i in "${COMP_WORDS[@]}"; do
+			if "${next:-false}"; then
+				stow=$i
+				next=false
+			else case "$i" in
+			-d|--dir) next=true; ;;
+			esac; fi
+		done
+		stow="${stow:-$PWD}"
+		if [[ -d "$stow" && -r "$stow" ]]; then
+			tmp=(-W "$(cd "$stow" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -printf "%f\n")")
+		fi
+		;;
+	esac; fi
+	if ((${#tmp[@]})); then
+		COMPREPLY+=($(compgen "${tmp[@]}" -- "$cur"))
+	fi
+}
+
+bash_completion() {
+	declare -f -p _qstow_complete
+	echo 'complete -F _qstow_complete qstow'
+	exit 0
+}
+
+longhelp() {
+	cat <<EOF
+NAME
+
+qstow - manage farms of symbolic links
+
+SYNOPSIS
+
+stow [options] [-D|-S|-R|-c cmd] package ...
+
+DESCRIPTION
+
+Qstow is a symlink farm manager that takes software stored in directories and installs them
+into distinct directories. The program is based on GNU stow.
+
+TERMINOLOGY
+
+A "package" is a collection of files and directories inside a directory tree.
+
+A "target directory" is the directory where the package is going to be installed.
+
+A "stow directory" is the directory that contains "packages" - directories with files.
+
+COMMANDS
+
+See $name --help.
+
+INSTALLING PACKAGES
+
+Installing a package means creating symlinks in the target directory that point to the files inside
+package directory. Each symlink in target directory is created relative to the layout of package directory.
+
+Consider a package with two files:
+
+    stow_dir/package/file1
+    stow_dir/package/file2
+
+After installing the package to home directory two symlinks will be created:
+
+    ~/file1 -> ../relative/pat/to/stow_dir/package/file1
+    ~/file2 -> ../relative/pat/to/stow_dir/package/file2
+
+DELETING PACKAGES
+
+Program will get all directories within package tree and search for all symlinks within these directories
+relative to destination directory that point within packag directory. It is assumed those symlinks are "owned"
+and will be going to be removed.
+
+It doesn't matter if the file exists in the package or not, cause it could have been removed. Delete removes all
+symlinks that point within the package directory - it is assumed that all such symlinks are part of the package.
+
+PACKAGE CONFIGURATION
+
+Inside the package in root directory there is one special file is it exists - qstow.conf.sh
+This should be a bash shell script that can set two variables:
+- ignore - A bash array of extended regex patterns of ignored files. The output of find(1) is passed to grep(1) -E
+           to filter the files. The content of this array will be passed to grep(1) -f option as newline separated
+           list.
+- target - The target directory name where by default the package should be installed. The command line option takes
+           precedence.
+
+Stub qstow.conf.sh file looks like this:
+
+#!/bin/bash
+# qstow.conf.sh
+ignore=(
+    "README"          # Ignore anything that has README
+    "README\.[^/]*$"  # Ignore files named: anything + README + dot + extension
+    ".*\.ignore$"     # Ignore files with ignore extension.
+)
+target="\$HOME"       # By default install to users home directory
+
+
+SEE ALSO
+
+See GNU stow.
+
+AUTHOR
+
+Kamil Cukrowski <kamilcukrowski@gmail.com>
+
+COPYRIGHT
+
+Licensed jointly under Beerware License and MIT License.
+
+EOF
+}
+
+logl() {
+	declare -g verbose nolog
+	if "${nolog:-false}"; then
+		return
+	fi
+	if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+		local args
+		args=("$@")
+		fatal "Wrong logl arguments: $(declare -p args)"
+	fi
+	if (("$verbose" > "$1")); then
+		shift
+		printf "%s\n" "$*"
+	fi
+}
+
+log() {
+	logl 0 "$@"
+}	
+
+fatal() {
+	echo "$name: ERROR: $*. See $name -h" >&2
+	exit 1
+}
+
+matches_regexes() {
+	local path
+	path=$1
+	shift
+	for i; do
+		if grep -q -P "$i" <<<"$path"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+check_mode_set() {
+	if [[ -n "$mode" ]]; then
+		fatal "This script supports only one mode at a time"
+	fi
+}
+
+# standard commands with added -v and optionally -f depending on options
+_cmd_verbose() { 
+	if ((verbose >= 2)); then echo -v; fi
+}
+_cmd_force() {
+	if "$force"; then echo -f; fi
+}
+_mkdir() {
+	mkdir $(_cmd_verbose) "$@"
+}
+_ln() {
+	ln $(_cmd_force) $(_cmd_verbose) "$@"
+}
+_rm() {
+	rm $(_cmd_verbose) "$@"
+}
+
+# main ##################################################
+
+unset IFS
+
+args=$(getopt -n "$name" \
+		-o "d:t:SDRc:fnv::h" \
+		-l "dir:,target:stow,delete,restow,command:,ignore:,force,no,simulate,verbose::,help,long-help,bash-completion" \
+		-- "$@")
+eval set -- "$args"
+dryrun=false
+verbose=0
+mode=
+force=false
+ignore=()
+stow="${stow:-$PWD}"
+target=""
+while (($#)); do
+	case "$1" in
+	-d|--dir) stow="$2"; shift; ;;
+	-t|--target) target="$2"; shift; ;;
+	-S|--stow) check_mode_set; mode=stow; ;;
+	-D|--delete) check_mode_set; mode=delete; ;;
+	-R|--restow) check_mode_set; mode=restow; ;;
+	-c|--command) check_mode_set; mode=$2; shift; ;;
+	--ignore) ignore+=("$2"); shift; ;;
+	-f|--force) force=true; ;;
+	-n|--no|--simulate) dryrun=true; ;;
+	-v|--verbose) verbose="${2:-$((verbose+1))}$2"; shift; ;;
+	-h|--help) usage; exit 0; ;;
+	--long-help) longhelp; exit 0; ;;
+	--bash-completion) bash_completion; exit 0; ;;
+	--) shift; break; ;;
+	esac
+	shift
+done
+
+logl 3 "Stow directory is $stow"
+logl 3 "Target directory is $target"
+logl 3 "Mode is $mode"
+
+if [[ -z "$mode" ]]; then fatal "No command specified"; fi
+if [[ ! -e "$stow" ]]; then fatal "Stow dir does not exists"; fi
+if [[ ! -d "$stow" ]]; then fatal "Stow dir is not a directory"; fi
+if (($# == 0)); then fatal "No packages given"; fi
+
+packages=("$@")
+
+err=0
+m_err() {
+	declare -g err
+	err=1
+	echo "$name: ERROR:" "$*" >&2
+}
+
+m_run() {
+	for pack in "${packages[@]}"; do (
+		packdir="$stow/$pack"
+		packconf="$packdir/qstow.conf.sh"
+
+		packign=("${ignores[@]}" "^qstow.conf.sh$")
+		if [[ -e "$packconf" ]]; then
+			if ! tmp=$(
+				export mode target stow
+				export packages="$(declare -p packages)"
+				bash -c '
+				 	. "$1" >&2 &&
+					__ignore__=("${ignore[@]}") &&
+					__target__="$target" &&
+					declare -p __ignore__ __target__
+				' _ "$packconf"
+			)
+			then
+				fatal "Script $packdir/qstow.conf.sh failed"
+			fi
+			__ignore__=()
+			__target__=""
+			eval "$tmp"
+			target=${target:-$__target__}
+			packign+=("${__ignore__[@]}")
+		fi
+		
+		if [[ -z "$target" ]]; then fatal "Target directory for package $pack is not set"; fi
+		if [[ ! -d "$target" ]]; then fatal "Target directory $target for package $pack does not exists"; fi
+		logl 3 "Target directory for package $pack is $target"
+
+		logl 1 "packign: $(declare -p "packign")"
+
+
+		# for each file and directory inside package
+		{ cd "$stow/$pack" && find -P . ;} |
+		sort |
+		# remove "./", note - there is one empty line!
+		cut -c3- |
+		# filter ignores
+		grep -vEf <(printf "%s\n" "${packign[@]}") | {
+		while IFS= read -r path; do
+
+			dst="$target/$path"
+			realsrc="$stow/$pack/$path"
+			case "$1" in
+			ls-files)
+				# only not directories are stowed
+				if [[ -d "$realsrc" ]]; then continue; fi
+				printf "%s %s\n" "$pack" "$path"
+				;;
+			stow)
+				# only not directories are stowed
+				if [[ -d "$realsrc" ]]; then continue; fi
+				# symlink is a destination relative to destination directory
+				src=$(realpath -s --relative-to="$(dirname "$dst")" "$stow/$pack/$path")
+				if ! "$force" && [[ -e "$dst" && ! -L "$dst" ]]; then
+					m_err "conflict: $dst exists and is not a symblik link"
+					continue
+				elif ! "$force" && [[ -L "$dst" ]]; then
+					tmp=$(readlink "$dst")
+					if [[ "$tmp" != "$src" ]]; then
+						m_err "conflict: $dst exists and points to $tmp not to $src"
+						continue
+					fi
+					# symlink already exists
+					logl 1 "EXISTS: $dst => $src"
+				else
+					# create new symlink
+					log "LINK: $dst => $src"
+					if ! "$dryrun"; then
+						_mkdir -p "$(dirname "$dst")"
+						_ln -ns "$src" "$dst"
+					fi
+				fi
+
+				;;
+			delete)
+				# only directories
+				if [[ ! -d "$realsrc" ]]; then continue; fi
+				# fist line is empty, so fix it with a dot
+				path=${path:-.}
+				# for all symlinks in directories from stow directory
+				{
+					cd "$target" &&
+					[[ -d "$path" ]] &&
+					find -P "$path" -mindepth 1 -maxdepth 1 -type l
+				} |
+				sort |
+				while IFS= read -r line; do
+					# get the link destination
+					tmp=$(readlink "$target/$line")
+					# get single canonical destinstaion path
+					# note: it's traversed _once_, not each
+					tmp2=$(cd "$target/$(dirname "$line")" && realpath -s "$tmp")
+					# get as-if destination to package directory
+					tmp3=$(realpath -s --relative-to="$tmp2" "$stow/$pack")
+					# now, if the destination has only ..(/..)+,
+					# that means it's within package directory
+					# so it's our package
+					if [[ "$tmp3" =~ ^\.\.(\/\.\.)*$ ]]; then 
+						# replace "/./" by "/", that happy find
+						dst="$(<<<"$target/$line" sed 's~\/\.\/~\/~g')"
+						src=$(readlink "$dst")
+						log "UNLINK: $dst => $src"
+						if ! "$dryrun"; then
+							_rm "$dst"
+						fi
+					fi
+				done
+
+				;;
+			*) fatal "Internal error"; ;;
+			esac
+		done
+		# if any error occured - see m_err function
+		exit "$err"
+		} ||
+		{
+			return 1
+		}
+	); done
+}
+
+m_run_safe() {
+	# first run with dryrun
+	# nolog is true, so only errors will pop up
+	dryrun=true nolog=true m_run "$@" &&
+	# then reset errors and run for real
+	err=0 && m_run "$@"
+}
+
+m_stow()   { m_run_safe stow; }
+m_delete() { m_run_safe delete; }
+
+case "$mode" in
+stow)         m_stow; ;;
+delete)       m_delete; ;;
+restow)       m_delete; m_stow; ;;
+ls-files)     m_run "$mode"; ;;
+*) fatal "Unknown mode: $mode"; ;;
+esac
+
+if "$dryrun"; then
+	echo "WARNING: In simulation mode so not modifying anything."
+fi
+

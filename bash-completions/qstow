@@ -1,0 +1,4 @@
+#!/bin/bash
+if hash qstow 2>/dev/null; then
+	eval "$(qstow --bash-completion)"
+fi
