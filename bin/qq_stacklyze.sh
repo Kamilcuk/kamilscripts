@@ -90,6 +90,9 @@ Options:
 
 BOOL can be "0", "false", "1" or "true".
 
+Compile your project with '-fdump-rtl-expand -fstack-usage' and then collect all
+*.expand files and pass them as arguments to this script.
+
 Examples:
   $n -U1 -D1 -e__stack_chk_fail -R0 shell.ltrans0.234r.expand
 
@@ -177,7 +180,7 @@ sed -nE '
 	# uses stack
 	# ex. Partition 0: size 8 align 8
 	/^(Partition) [0-9]+: size ([0-9]+).*/b print
-	
+
 	# if we didnt match anything, we start new
 	d
 
@@ -202,11 +205,11 @@ sed -nE '
 		IFS=$'\n' tmp=($tmp)
 		exclude+=("${tmp[@]}")
 	fi
-	
+
 	if [ "${#exclude[@]}" -eq 0 ]; then
 		cat
 	else
-		sort -t$'\t' -k1 | 
+		sort -t$'\t' -k1 |
 		join -t$'\t' -v1 -11 -21 -o1.1,1.2,1.3 - <(
 			printf "%s\n" "${exclude[@]}" | sort
 		) |
@@ -222,7 +225,7 @@ assert '[ -s parsed.txt ]' "Found no function definitions in the input files. Ch
 
 verbose "stack.txt: <function> <stack usage>"
 awk -v OFS=$'\t' '
-	{ 
+	{
 		$2 == "Function" && sum[$1]=0;
 		$2 == "Partition" && sum[$1]+=$3;
 	}
@@ -255,7 +258,7 @@ verbose "Get the heads of the callgraph"
 	if is_true "$references"; then
 		awk '$2 == "ref"' joined.txt | cut -f3
 	fi
-} | 
+} |
 sort -u |
 if [ -n "$headregex" ]; then
 	grep -E "$headregex"
@@ -281,7 +284,7 @@ FILENAME == "joined.txt" {
 FILENAME == "stack.txt" {
 	costs[$1] = $2
 	next
-}	
+}
 
 function dot(node, i) {
 	if (!(node in visited)) {
@@ -351,6 +354,11 @@ AWK_SCRIPT_EOF
 	awk -f input.awk -f - joined.txt stack.txt heads.txt
 }
 
+if is_true "$dot" && is_true "$table"; then
+	fatal "Dot and table mode both enabled. Disable one"
+fi
+
+
 if is_true "$dot"; then
 	verbose "Generating dot graph"
 	echo 'digraph G {'
@@ -387,7 +395,6 @@ if is_true "$dot"; then
 	run_awk <<<'{ dot($1) }'
 	echo '}'
 	verbose "dot mode end"
-	exit
 fi
 
 verbose "Entering recursive stage"
@@ -397,7 +404,7 @@ sort -t- -u -k1,1 |
 sort -t$'\t' -n -k3,3 |
 if is_false "$table"; then
 	cat
-else 
+else
 	column -t -s$'\t' -o' | ' -N "callchain,callcost,sum" |
 	{
 		IFS='|' read -r -a line
