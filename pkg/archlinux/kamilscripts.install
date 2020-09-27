@@ -51,11 +51,6 @@ provision_cfg_files() {
 	mark="# %s kamilscript MANAGED BLOCK"
 	export PATH=$PATH:$dir/bin
 	blockinfile.sh $add -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
-	blockinfile.sh $add -m "$mark" -b "if [[ -r $dir/etc/bash.bashrc ]]; then source $dir/etc/bash.bashrc; fi" /etc/bash.bashrc
-	blockinfile.sh $add -m "\"$mark" -b "source $dir/etc/vimrc" /etc/vimrc
-	if [ -e '/etc/ssh/ssh_config' ]; then
-		blockinfile.sh $add -m "$mark" -b "Include $dir/etc/ssh/config" /etc/ssh/ssh_config
-	fi
 }
 
 unprovision_cfg_files() {
