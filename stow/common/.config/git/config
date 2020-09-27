@@ -1,0 +1,52 @@
+[user]
+	email = kamilcukrowski@gmail.com
+	name = Kamil Cukrowski
+[push]
+	default = simple
+[github]
+	user = Kamilcuk
+[color]
+	ui = true
+[mergetool "meld"]
+	cmd = meld --auto-merge \"$LOCAL\" \"$BASE\" \"$REMOTE\" --output \"$MERGED\" --label \"MERGE (REMOTE BASE MY)\"
+	trustExitCode = false
+[mergetool]
+	# don't ask if we want to skip merge
+	prompt = false
+	# don't create backup *.orig files
+	keepBackup = false
+[merge]
+	tool = meld
+[diff]
+	guitool = meld
+[difftool "meld"]
+	cmd = meld \"$LOCAL\" \"$REMOTE\" --label \"DIFF (ORIGINAL MY)\"
+[sendemail]
+	smtpencryption = tls
+[pull]
+	rebase = true
+	ff = only
+[guitool "git checkout $REVISION -- $FILENAME"]
+	cmd = git checkout "$REVISION" -- "$FILENAME"
+	needsfile = yes
+	noconsole = yes
+	confirm = yes
+[guitool "Remove file"]
+	cmd = rm "$FILENAME"
+	needsfile = yes
+	noconsole = yes
+	confirm = yes
+[guitool "Open in gvim"]
+	cmd = gvim "$FILENAME"
+	needsfile = yes
+	noconsole = yes
+[guitool "Remove trailing blanks"]
+	cmd = sed -i -e 's/[[:blank:]]*$//' "$FILENAME"
+	needsfile = yes
+	confirm = yes
+[guitool "Open in eclipse"]
+	cmd = eclipse "$FILENAME"
+	noconsole = yes
+	needsfile = yes
+[core]
+	pager = less

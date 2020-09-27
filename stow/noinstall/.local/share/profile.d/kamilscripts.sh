@@ -1,0 +1,1 @@
+../../../../../etc/profile.d/kamilscripts.sh

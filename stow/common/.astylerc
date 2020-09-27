@@ -1,0 +1,12 @@
+style=mozilla
+indent=tab=4
+attach-closing-while
+pad-oper
+pad-comma
+pad-header
+unpad-paren
+align-pointer=name
+align-reference=name
+add-braces
+max-code-length=200
+

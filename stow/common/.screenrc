@@ -1,0 +1,45 @@
+# C-a :source .screenrc
+
+#termcapinfo xterm* ti@:te@
+termcapinfo xterm*|rxvt*|kterm*|Eterm* 'hs:ts=\E]0;:fs=\007:ds=\E]0;\007'
+startup_message off
+vbell off
+autodetach on
+altscreen on
+shelltitle ""
+defscrollback 60000
+#defutf8 on
+nonblock on
+shell -bash
+zombie
+
+#defmonitor off 
+#activity "%c activity -> %n%f %t^G"
+
+#bind 'q' quit
+bindkey "^[o" next
+bindkey "^[i" prev
+bindkey "^T" screen 1
+
+bindkey "^[k" eval "copy" "stuff ^b"
+bindkey -m "^[k" stuff ^u
+bindkey -m "^[l" stuff ^d
+
+#bind ^n
+#bind ^p
+#bind p
+#bind n
+
+# Window numbering starts at 1, not 0.
+bind c screen 1
+bind ^c screen 1
+bind 0 select 10
+screen 1 
+
+#hardstatus alwayslastline
+##hardstatus string '%{= kb}%H%{= kw} [%= %{= kw}%?%-Lw%?%{= kW}%n*%f %t%?%?%{= kw}%?%+Lw%?%?%= ][ %{r}%l%{w} ]%{w}[%{r} %d/%m/%y %C %A %{w}]%{w}'
+hardstatus alwayslastline
+hardstatus string '%{= kw}[ %?%-Lw%?%{Ck}%n*%f%{-}%?%+Lw%? %=][%{g}%c%{w}]'
+#caption always "%{Wb} %H %{Bk}| %{Ck}%-w%50>%{Cb} %n %t %{-}%+w%<%{- Wk}%{Bk} | %=%{Wb} %C"
+#hardstatus string '%{Ck}%-Lw%{Cb}%n*%f%t%{-}%+Lw%<%{- Wk}%{Bk} | %=%{Wb} %C'
+
