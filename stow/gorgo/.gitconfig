@@ -1,0 +1,29 @@
+[user]
+	name = Kamil Cukrowski
+	email = kamilcukrowski@gmail.com
+[pull]
+	ff = only
+[guitool "git checkout $FILENAME"]
+	cmd = git checkout $FILENAME
+	noconsole = yes
+	needsfile = yes
+	confirm = yes
+[guitool "Remove trailing whitespaces"]
+	cmd = sed -i -e 's/[[:space:]]*$//' $FILENAME
+	noconsole = yes
+	needsfile = yes
+	confirm = yes
+[diff]
+    tool = meld
+[difftool]
+    prompt = false
+[difftool "meld"]
+    cmd = meld "$LOCAL" "$REMOTE"
+[merge]
+    tool = meld
+[mergetool "meld"]
+    # Choose one of these 2 lines (not both!) explained below.
+    cmd = meld --auto-merge "$LOCAL" "$MERGED" "$REMOTE" --output "$MERGED"
+    cmd = meld --auto-merge "$LOCAL" "$BASE" "$REMOTE" --output "$MERGED"
+
+
