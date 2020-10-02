@@ -4,6 +4,11 @@ set -euo pipefail
 
 name=$(basename "$0")
 
+getopt_args="
+	-o d:t:SDRc:fnv::qh
+	-l dir:,target:stow,delete,restow,command:,ignore:,force,no,simulate,verbose::,quiet,help,long-help,bash-completion
+"
+
 usage() {
 	cat <<EOF
 Usage: $name [OPTION...] [-D|-S|-R|-c CMD] PACKAGE...
@@ -16,23 +21,28 @@ Options:
     -D --delete           Unstow the package names that follow this option
     -R --restow           Restow (like -D followed by -S)
 
-	-c CMD --command CMD  Run command
+    -c CMD --command CMD  Run command, see below.
     --ignore REGEX        Ignore files ending in this extended regex
 
     -f --force            WARNING Will just overwrite the files in case of conflict
 
     -n --no --simulate    Do not actually make any filesystem changes
     -v --verbose[=N]      Be verbose. May be specified multiple times.
+	-q --quiet            Equal to --verbose=0
     -h --help             Show this help and exit.
        --long-help        Show long help and exit.
-	   --bash-completion  Output string to be eval ed for bash-completion.
+       --bash-completion  Output string to be eval ed for bash-completion.
 
 Commands:
-    stow                  Like -S
-    delete                Like -D
-    restow                Like -R
-    ls-files              List all files in packages except ignored onces.
-	cat-ignore            Show ignore pattern
+    stow         Like -S
+    delete       Like -D
+    restow       Like -R
+    ls-files     List files in packages except ignored onces.
+    info         Print usefull information about the package
+    cat-ignore   Show ignore pattern
+    addfile      Takes two arguments. The package name, then the file to add to package.
+                 The file path should be relative to target directory.
+    removefile   Takes two arguments. The package name and the file to be removed.
 
 A bash sript meant to mimic GNU stow with extended funcionality.
 Finding "owned" packages is different then from GNU stow and works better in my opinion.
@@ -44,47 +54,82 @@ Licensed jointly under Beerware and MIT License
 EOF
 }
 
+eval "
+_qstow_complete_getopt_args() {
+	local getopt_args
+	$(declare -p getopt_args)
+	declare -p getopt_args
+}"
 _qstow_complete() {
-	local cur prev tmp
-	tmp=()
+	local cur prev args
+	args=()
 	COMPREPLY=()
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 	if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
-		tmp=(-W 
+		args=(-W
 			"-d -t -S -D -R -c -f -n -v -h --dir --target --stow --delete --restow --command --ignore --force --no --simulate --verbose --help --long-help"
 		)
 	else case "$prev" in
-	-d|--dir|-t|--target) compopt -o filenames; tmp=(-o dirnames); ;;
-	-c|--command) tmp=(-W
-		"stow delete restow ls-files cat-ignore"
+	-d|--dir|-t|--target) compopt -o filenames; args=(-o dirnames); ;;
+	-c|--command) args=(-W
+		"stow delete restow info addfile removefile ls-files cat-ignore"
 	); ;;
 	*)
-		# find stow
-		local stow i next
-		next=""
-		stow=""
-		for i in "${COMP_WORDS[@]}"; do
-			if "${next:-false}"; then
-				stow=$i
-				next=false
-			else case "$i" in
-			-d|--dir) next=true; ;;
-			esac; fi
+		if ! hash getopt 2>/dev/null; then return; fi
+
+		local getopt_args
+		getopt_args=""
+		eval "$(_qstow_complete_getopt_args)"
+		if [[ -z "${getopt_args:-}" ]]; then return; fi
+
+		# parse args
+		local args
+		args=$(getopt -q $getopt_args -- "${COMP_WORDS[@]}")
+		eval set -- "$args"
+
+		local stow cmd
+		stow="${QSTOW_DIR:-$PWD}"
+		cmd=""
+		while (($#)); do
+			case "$1" in
+			-d|--dir) stow="$2"; shift; ;;
+			-c|--command) cmd="$2"; shift; ;;
+			--) shift; break; ;;
+			*) shift; ;;
+			esac
+			shift
 		done
-		stow="${stow:-$PWD}"
-		if [[ -d "$stow" && -r "$stow" ]]; then
-			tmp=(-W "$(cd "$stow" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -printf "%f\n")")
+		shift # the first argument is the command name
+
+		if [[ -z "$stow" && ! -d "$stow" || ! -r "$stow" ]]; then return; fi
+
+		local packages
+		packages=true
+		# if addfile or removefile and second arg then complete with files
+		if [[ "$cmd" = "addfile" || "$cmd" = "removefile" ]]; then
+			if (($# == 2)); then
+				compopt -o default
+				COMPREPLY=()
+				packages=false
+			fi
+			if (($# == 3)); then
+				return
+			fi
+		fi
+		if "$packages"; then
+			args=(-W "$(cd "$stow" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -not -name '.*' -printf "%f\n")")
 		fi
 		;;
 	esac; fi
-	if ((${#tmp[@]})); then
-		COMPREPLY+=($(compgen "${tmp[@]}" -- "$cur"))
+	if ((${#args[@]})); then
+		COMPREPLY+=($(compgen "${args[@]}" -- "$cur"))
 	fi
 }
 
 bash_completion() {
 	declare -f -p _qstow_complete
+	declare -f -p _qstow_complete_getopt_args
 	echo 'complete -F _qstow_complete qstow'
 	exit 0
 }
@@ -195,10 +240,10 @@ logl() {
 
 log() {
 	logl 0 "$@"
-}	
+}
 
 fatal() {
-	echo "$name: ERROR: $*. See $name -h" >&2
+	echo "$name:${FUNCNAME[1]}:${BASH_LINENO[0]}: error: $*" >&2
 	exit 1
 }
 
@@ -221,7 +266,7 @@ check_mode_set() {
 }
 
 # standard commands with added -v and optionally -f depending on options
-_cmd_verbose() { 
+_cmd_verbose() {
 	if ((verbose >= 2)); then echo -v; fi
 }
 _cmd_force() {
@@ -236,22 +281,33 @@ _ln() {
 _rm() {
 	rm $(_cmd_verbose) "$@"
 }
+_mv() {
+	mv $(_cmd_verbose) "$@"
+}
+
+is_dir() {
+	[[ -d "$1" && ! -L "$1" ]]
+}
+file_exists() {
+	[[ -L "$1" || -e "$1" ]]
+}
+
+nicepath() {
+	sed 's~///*~/~g; s~/\./~/~g' <<<"$1"
+}
 
 # main ##################################################
 
 unset IFS
 
-args=$(getopt -n "$name" \
-		-o "d:t:SDRc:fnv::h" \
-		-l "dir:,target:stow,delete,restow,command:,ignore:,force,no,simulate,verbose::,help,long-help,bash-completion" \
-		-- "$@")
+args=$(getopt -n "$name" $getopt_args -- "$@")
 eval set -- "$args"
 dryrun=false
-verbose=0
+verbose=1
 mode=
 force=false
 ignore=()
-stow="${stow:-$PWD}"
+stow="${stow:-${QSTOW_DIR:-$PWD}}"
 target=""
 while (($#)); do
 	case "$1" in
@@ -265,6 +321,7 @@ while (($#)); do
 	-f|--force) force=true; ;;
 	-n|--no|--simulate) dryrun=true; ;;
 	-v|--verbose) verbose="${2:-$((verbose+1))}$2"; shift; ;;
+	-q|--quiet) verbose=0; ;;
 	-h|--help) usage; exit 0; ;;
 	--long-help) longhelp; exit 0; ;;
 	--bash-completion) bash_completion; exit 0; ;;
@@ -282,7 +339,14 @@ if [[ ! -e "$stow" ]]; then fatal "Stow dir does not exists"; fi
 if [[ ! -d "$stow" ]]; then fatal "Stow dir is not a directory"; fi
 if (($# == 0)); then fatal "No packages given"; fi
 
-packages=("$@")
+if tmp=$(echo -n "$@" | tr -cd '\n') && [[ -n "$tmp" ]]; then
+	fatal "Packages with newlines are not supported"
+fi
+packages=()
+if (($#)); then
+	tmp=$(printf "%s\n" "$@" | sort -u)
+	mapfile -t packages < <(printf "%s" "$tmp")
+fi
 
 err=0
 m_err() {
@@ -292,11 +356,16 @@ m_err() {
 }
 
 m_run() {
-	for pack in "${packages[@]}"; do (
+	for pack in "${packages[@]}"; do
+	( # all the below is run in a subshell
 		packdir="$stow/$pack"
-		packconf="$packdir/qstow.conf.sh"
+		if [[ ! -e "$packdir" ]]; then
+			fatal "Package $pack does not exists in $stow"
+		fi
 
 		packign=("${ignores[@]}" "^qstow.conf.sh$")
+
+		packconf="$packdir/qstow.conf.sh"
 		if [[ -e "$packconf" ]]; then
 			if ! tmp=$(
 				export mode target stow
@@ -317,13 +386,67 @@ m_run() {
 			target=${target:-$__target__}
 			packign+=("${__ignore__[@]}")
 		fi
-		
-		if [[ -z "$target" ]]; then fatal "Target directory for package $pack is not set"; fi
-		if [[ ! -d "$target" ]]; then fatal "Target directory $target for package $pack does not exists"; fi
-		logl 3 "Target directory for package $pack is $target"
 
-		logl 1 "packign: $(declare -p "packign")"
 
+		if tmp=$(cd "$stow/$pack" && find -P . -name $'*\n*') && [[ -n "$tmp" ]]; then
+			fatal "filenames with newlines are not supported: $(printf "%q" "$tmp")"
+		fi
+
+		case "$1" in
+		ls-files)
+			;;
+		info)
+			printf "%s - source %s\n" "$pack" "$packdir"
+			printf "%s - target %s\n" "$pack" "$target"
+			printf "%s - config %s %s\n" "$pack" "$packconf" "$(if [[ -e "$packconf" ]]; then echo found; fi)"
+			if [[ -e "$packconf" ]]; then
+				printf "%s - config_target %s\n" "$pack" "$(config_target=${__target__:-}; declare -p config_target)"
+				printf "%s - config_ignore %s\n" "$pack" "$(config_ignore=("${__ignore__[@]}"); declare -p config_ignore)"
+			fi
+			printf "%s - ignore %s\n" "$pack" "$(ignore=("${packign[@]}"); declare -p ignore)"
+			;;
+		addfile)
+			if [[ -z "${m_addfile_file:-}" ]]; then fatal "Mode add internal error"; fi
+			# these varaibles are similar as below, note adding is inverting of stowing
+			path="$m_addfile_file"
+			addsrc="$(nicepath "$target/$path")"
+			adddst="$(nicepath "$stow/$pack/$path")"
+			if ! file_exists "$addsrc"; then fatal "File to add doesn't exists: $addsrc"; fi
+			if file_exists "$adddst"; then fatal "Destination file already exists: $adddst"; fi
+			# note - addsrc is dst and src is addst
+			dst="$addsrc"
+			src=$(realpath -m -s --relative-to="$(dirname "$dst")" "$adddst")
+			log "MOVE: $addsrc => $adddst"
+			log "LINK: $dst => $src"
+			if ! "$dryrun"; then
+				_mkdir -p "$(dirname "$adddst")"
+				_mv -n "$addsrc" "$adddst"
+				_ln -ns "$src" "$dst"
+			fi
+			exit # do not run the loop below
+			;;
+		removefile)
+			if [[ -z "${m_removefile_file:-}" ]]; then fatal "Mode remove internal error"; fi
+			path="$m_removefile_file"
+			removesrc="$(nicepath "$stow/$pack/$path")"
+			if ! file_exists "$removesrc"; then
+				log "MISSING: $removesrc"
+			else
+				log "REMOVE: $removesrc"
+				if ! "$dryrun"; then
+					_rm "$removesrc"
+				fi
+			fi
+			exit # do not run the loop below
+			;;
+		*)
+			if [[ -z "$target" ]]; then fatal "Target directory for package $pack is not set"; fi
+			if [[ ! -d "$target" ]]; then fatal "Target directory $target for package $pack does not exists"; fi
+			logl 3 "Target directory for package $pack is $target"
+
+			logl 1 "packign: $(declare -p "packign")"
+			;;
+		esac
 
 		# for each file and directory inside package
 		{ cd "$stow/$pack" && find -P . ;} |
@@ -338,13 +461,19 @@ m_run() {
 			realsrc="$stow/$pack/$path"
 			case "$1" in
 			ls-files)
-				# only not directories are stowed
-				if [[ -d "$realsrc" ]]; then continue; fi
+				if is_dir "$realsrc"; then continue; fi
+				printf "%s %s\n" "$pack" "$path"
+				;;
+			info)
+				if is_dir "$realsrc"; then
+					printf "%s - dir %s\n" "$pack" "$path"
+					continue;
+				fi
 				printf "%s %s\n" "$pack" "$path"
 				;;
 			stow)
 				# only not directories are stowed
-				if [[ -d "$realsrc" ]]; then continue; fi
+				if is_dir "$realsrc"; then continue; fi
 				# symlink is a destination relative to destination directory
 				src=$(realpath -s --relative-to="$(dirname "$dst")" "$stow/$pack/$path")
 				if ! "$force" && [[ -e "$dst" && ! -L "$dst" ]]; then
@@ -370,13 +499,12 @@ m_run() {
 				;;
 			delete)
 				# only directories
-				if [[ ! -d "$realsrc" ]]; then continue; fi
+				if ! is_dir "$realsrc"; then continue; fi
 				# fist line is empty, so fix it with a dot
 				path=${path:-.}
 				# for all symlinks in directories from stow directory
 				{
-					cd "$target" &&
-					[[ -d "$path" ]] &&
+					cd "$target" && [[ -d "$path" ]] &&
 					find -P "$path" -mindepth 1 -maxdepth 1 -type l
 				} |
 				sort |
@@ -391,7 +519,7 @@ m_run() {
 					# now, if the destination has only ..(/..)+,
 					# that means it's within package directory
 					# so it's our package
-					if [[ "$tmp3" =~ ^\.\.(\/\.\.)*$ ]]; then 
+					if [[ "$tmp3" =~ ^\.\.(\/\.\.)*$ ]]; then
 						# replace "/./" by "/", that happy find
 						dst="$(<<<"$target/$line" sed 's~\/\.\/~\/~g')"
 						src=$(readlink "$dst")
@@ -403,7 +531,7 @@ m_run() {
 				done
 
 				;;
-			*) fatal "Internal error"; ;;
+			*) fatal "Internal error $1"; ;;
 			esac
 		done
 		# if any error occured - see m_err function
@@ -426,11 +554,33 @@ m_run_safe() {
 m_stow()   { m_run_safe stow; }
 m_delete() { m_run_safe delete; }
 
+m_addfile() {
+	if (($# != 2)); then
+		fatal "Mode add takes two arguments: package name and file relative to target dir"
+	fi
+	packages=("$1")
+	m_addfile_file="$2"
+	m_run addfile
+}
+
+m_removefile() {
+	if (($# != 2)); then
+		fatal "Mode remove takes two arguments: package name and file in package to remove"
+	fi
+	packages=("$1")
+	m_removefile_file="$2"
+	m_run removefile
+}
+
+
+
 case "$mode" in
-stow)         m_stow; ;;
-delete)       m_delete; ;;
-restow)       m_delete; m_stow; ;;
-ls-files)     m_run "$mode"; ;;
+stow)    m_stow; ;;
+delete)  m_delete; ;;
+restow)  m_delete; m_stow; ;;
+ls-files|info)  m_run "$mode"; ;;
+addfile)  m_addfile "$@"; ;;
+removefile) m_removefile "$@"; ;;
 *) fatal "Unknown mode: $mode"; ;;
 esac
 
