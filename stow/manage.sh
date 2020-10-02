@@ -62,7 +62,7 @@ s() {
 
 if (($#==0)); then usage; exit 1; fi
 case "$1" in
-i*)    s -S ;;
+i*)    s -R ;;
 u*)    s -D ;;
 *) echo "Unknown mode: $1" >&2; ;;
 esac
