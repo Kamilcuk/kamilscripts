@@ -1,6 +1,6 @@
-#
-# ~/.bash_profile
-#
+# kamilscripts ~/.bash_profile
 
-[[ -f ~/.bashrc ]] && . ~/.bashrc
+if [[ -e ~/.bashrc ]]; then
+	. ~/.bashrc
+fi
 
