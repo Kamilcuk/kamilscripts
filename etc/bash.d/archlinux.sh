@@ -98,24 +98,23 @@ pacman_packages_restore() {
 			echo "File $1 doesn't exists" >&2
 			return 2
 		fi
-		sort "$1" |
-		comm -23 <(pacman -Qq | sort) - |
-		xargs -d '\n' pacman -Rsu
+		pacman -Rsu $(comm -23 <(pacman -Qq | sort) <(sort "$1"))
 	fi
 }
 _pacman_packages_restore_complete() {
 	# https://stackoverflow.com/questions/2805412/bash-completion-for-maven-escapes-colon/12495727#12495727
+	COMPREPLY=()
+	if ((COMP_CWORD != 1)); then return; fi
 	local cur
 	_get_comp_words_by_ref -n : cur
-	COMPREPLY=($(compgen \
-		-W "$(
+	if [[ -d "$HOME"/.cache/pacman_packages ]]; then
+		COMPREPLY=($(compgen -W "$(
 			find "$HOME"/.cache/pacman_packages -maxdepth 1 -mindepth 1 -type f -printf "%f\n"
-		)" \
-		-- "$cur"
-	))
+		)" -- "$cur"))
+	fi
 	__ltrim_colon_completions "$cur"
 }
-complete -F _pacman_packages_restore_complete pacman_packages_restore
+complete -o default -F _pacman_packages_restore_complete pacman_packages_restore
 
 
 
