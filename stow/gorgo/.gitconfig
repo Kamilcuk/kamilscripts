@@ -3,27 +3,39 @@
 	email = kamilcukrowski@gmail.com
 [pull]
 	ff = only
-[guitool "git checkout $FILENAME"]
-	cmd = git checkout $FILENAME
+
+[guitool "Open in eclipse"]
+	cmd = eclipse $FILENAME
 	noconsole = yes
 	needsfile = yes
-	confirm = yes
+[guitool "Open in gvim"]
+	cmd = gvim $FILENAME
+	noconsole = yes
+	needsfile = yes
 [guitool "Remove trailing whitespaces"]
 	cmd = sed -i -e 's/[[:space:]]*$//' $FILENAME
 	noconsole = yes
 	needsfile = yes
 	confirm = yes
+[guitool "Remove file"]
+	cmd = rm $FILENAME
+	needsfile = yes
+	confirm = yes
+[guitool "git checkout $REVISION -- $FILENAME"]
+	cmd = git checkout $REVISION -- $FILENAME
+	needsfile = yes
+	confirm = yes
+
 [diff]
     tool = meld
 [difftool]
     prompt = false
 [difftool "meld"]
     cmd = meld "$LOCAL" "$REMOTE"
+
 [merge]
     tool = meld
 [mergetool "meld"]
-    # Choose one of these 2 lines (not both!) explained below.
     cmd = meld --auto-merge "$LOCAL" "$MERGED" "$REMOTE" --output "$MERGED"
-    cmd = meld --auto-merge "$LOCAL" "$BASE" "$REMOTE" --output "$MERGED"
 
 
