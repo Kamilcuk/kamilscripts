@@ -15,16 +15,16 @@ execute 'set backupskip^='.mojevimbackupdir.'*'
 cmap w!! w !sudo tee > /dev/null %
 
 set swapfile      " When this option is not empty a swap file is synced to disk after writing to it.
-set nowritebackup " Make a backup before overwriting a file.
+set writebackup   " Make a backup before overwriting a file.
 set nobackup      " Turn on backup option
 
-set backspace=indent,eol,start  " let backspece delete everything in intsert mode
+" set backspace=indent,eol,start  " let backspece delete everything in intsert mode
 set history=500                 " keep 50 lines of command line history
-set ruler                       " show the cursor position all the time
-set showcmd                     " display incomplete commands
+" set ruler                       " show the cursor position all the time
+" set showcmd                     " display incomplete commands
 set incsearch                   " do incremental searching
 set pastetoggle=<F2>            " toggle F2 for paste
-set background=dark
+" set background=dark
 
 " https://vim.fandom.com/wiki/Restore_cursor_to_file_position_in_previous_editing_session
 " Tell vim to remember certain things when we exit
@@ -78,24 +78,45 @@ autocmd FileType yaml setlocal tabstop=2 softtabstop=2 shiftwidth=2 expandtab
 
 " https://github.com/thoughtbot/dotfiles/pull/641
 " Set tags for fugitive
-:set tags^=./.git/tags;
+set tags^=./.git/tags;
 
-" Download vim-plug automatically
-if !filereadable(expand('~/.vim/autoload/plug.vim'))
-	execute '!echo Installing vim-plug && ( set -x && curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim ) && echo Installed vim-plug'
-	source ~/.vim/autoload/plug.vim
-endif
+set nocompatible              " be iMproved, required
+filetype off                  " required
 
-call plug#begin('~/.vim/plugged')
-call plug#end()
+" set the runtime path to include Vundle and initialize
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+Plugin 'VundleVim/Vundle.vim'
+Plugin 'airblade/vim-gitgutter'
+Plugin 'frazrepo/vim-rainbow'
+Plugin 'godlygeek/tabular'
+Plugin 'itchyny/lightline.vim'
+Plugin 'tpope/vim-fugitive'
+Plugin 'tpope/vim-surround'
+Plugin 'vim-syntastic/syntastic'
+"Plugin 'ycm-core/YouCompleteMe'
+Plugin 'l3nkz/ycmconf'
+"Plugin 'michaelb/vim-tips'
+call vundle#end()            " required
+filetype plugin indent on    " required
+" :PluginList       - lists configured plugins
+" :PluginInstall    - installs plugins; append `!` to update or just :PluginUpdate
+" :PluginSearch foo - searches for foo; append `!` to refresh local cache
+" :PluginClean      - confirms removal of unused plugins; append `!` to auto-approve removal
 
 
+let g:rainbow_active = 1
 
-
-
-
-
-
+" configure youcompleteme
+if filereadable('/usr/bin/clangd')
+	let g:ycm_clangd_binary_path = '/usr/bin/clangd'
+endif	
+" if !exists('g:ycm_semantic_triggers')
+"     let g:ycm_semantic_triggers = {}
+" endif
+" let g:ycm_semantic_triggers.python = ['re![a-zA-Z_]']let g:ycm_semantic_triggers = { 'c': [ 're!.' ] }
+let g:ycm_autoclose_preview_window_after_completion = 1
+let g:ycm_confirm_extra_conf = 0
 
 
 
