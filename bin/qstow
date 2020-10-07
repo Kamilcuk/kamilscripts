@@ -444,7 +444,7 @@ m_run() {
 			if [[ ! -d "$target" ]]; then fatal "Target directory $target for package $pack does not exists"; fi
 			logl 3 "Target directory for package $pack is $target"
 
-			logl 1 "packign: $(declare -p "packign")"
+			logl 2 "packign: $(declare -p "packign")"
 			;;
 		esac
 
@@ -475,7 +475,7 @@ m_run() {
 				# only not directories are stowed
 				if is_dir "$realsrc"; then continue; fi
 				# symlink is a destination relative to destination directory
-				src=$(realpath -s --relative-to="$(dirname "$dst")" "$stow/$pack/$path")
+				src=$(realpath -m -s --relative-to="$(dirname "$dst")" "$stow/$pack/$path")
 				if ! "$force" && [[ -e "$dst" && ! -L "$dst" ]]; then
 					m_err "conflict: $dst exists and is not a symblik link"
 					continue
