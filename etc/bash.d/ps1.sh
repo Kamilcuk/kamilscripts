@@ -57,7 +57,14 @@ PS1_setup() {
 	PS1+=' '
 	# PS1+="\\[$blue\\]"
 	# PS1+='\w'
-	PS1+='$(/bin/printf "%q" "$PWD" | awk -F"/"'
+	local printf
+	printf="printf"
+	if hash "/usr/bin/printf" 2>/dev/null; then
+		printf="/usr/bin/printf"
+	elif hash "/bin/printf" 2>/dev/null; then
+		printf="/bin/printf"
+	fi
+	PS1+='$('"$printf"' "%q" "$PWD" | awk -F"/"'
 		PS1+=' -vfront="\["'"$(printf "%q" "$cyan")"'"\]"'
 		PS1+=' -vback="\["'"$(printf "%q" "$blue")"'"\]"'
 		PS1+=' '\''{gsub("/", front "/" back)}1'\'
@@ -69,6 +76,8 @@ PS1_setup() {
 	PS1+="${root+\\[$reset\\]}"
 	PS1+=' '
 	export PS1
+
+	unset printf
 }
 PS1_setup
 unset -f PS1_setup
