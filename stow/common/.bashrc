@@ -1,4 +1,5 @@
 #!/bin/bash
+# kamilscripts ~/.bashrc
 
 for i in \
 		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \

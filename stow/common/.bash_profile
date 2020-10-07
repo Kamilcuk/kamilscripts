@@ -1,3 +1,4 @@
+#!/bin/bash
 # kamilscripts ~/.bash_profile
 
 if [[ -e ~/.bashrc ]]; then

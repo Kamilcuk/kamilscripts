@@ -39,6 +39,7 @@ PS1_setup() {
 		root=;
 	fi
 
+	# {user:green/root:red}<username>@{rainbow}<hostname> {lightblue}/{blue}<dir>...\n$
 	PS1=
 	PS1+="\\[$reset\\]"
 	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
@@ -56,7 +57,7 @@ PS1_setup() {
 	PS1+=' '
 	# PS1+="\\[$blue\\]"
 	# PS1+='\w'
-	PS1+='$(printf "%q" "$PWD" | awk -F"/"'
+	PS1+='$(/bin/printf "%q" "$PWD" | awk -F"/"'
 		PS1+=' -vfront="\["'"$(printf "%q" "$cyan")"'"\]"'
 		PS1+=' -vback="\["'"$(printf "%q" "$blue")"'"\]"'
 		PS1+=' '\''{gsub("/", front "/" back)}1'\'
