@@ -7,8 +7,10 @@ name=$(basename "$0")
 usage() {
 	cat <<EOF
 Usage:
-   $name [---options] [-cc_option] [cc_options...] <file
-   $name [---options] file [cc_options...]
+   $name [---options] [-cc_options...] [-- progargs...] <file
+   $name [---options] - [cc_options...] [-- progargs...] <file
+   $name [---options] file [cc_options...] [-- progargs...]
+   $name [---options] string [cc_options...] [-- progargs...]
    $name -h
 
 Compiles and runs a source file in one run.
@@ -66,49 +68,6 @@ testme() {
 	echo
 	true
 }
-
-######################################################
-
-cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}"
-usedefaults=
-addmain=false
-defaultsfunc=
-debug=false
-while (($#)); do
-	case "$1" in
-	---cc) shift; cc="$1"; ;;
-	---defaults) shift; defaultsfunc=$1; ;;
-	---n|---nodefaults) usedefaults=false; ;;
-	---d|---usedefaults) usedefaults=true; ;;
-	---m|---main) addmain=true; ;;
-	---h|-h|---help) usage; exit; ;;
-	---debug) debug=true; ;;
-	---test) testme; exit; ;;
-	---*) fatal "Invalid command $1"; ;;
-	*) break; ;;
-	esac
-	shift
-done
-
-# -c or -o are dissallowed options
-if ! (
-	while (($#)); do
-		case "$1" in
-		-c|-o) fatal "$1 option is not allowed"; ;;
-		esac
-		shift
-	done
-); then
-	exit 2
-fi
-
-# if we have only dashes options and last option doesn't have dash
-input="-"
-if (($#)) && case "$1" in -*) false; esac; then
-	input="$1"
-	usedefaults=${usedefaults:-false}
-	shift
-fi
 
 c_defaults_macros='#define _GNU_SOURCE  1
 #define _POSIX_C_SOURCE  300000L
@@ -236,6 +195,84 @@ $c_defaults_posix
 EOF
 }
 
+######################################################
+
+cc="${CC:-gcc -x c}${CC:+$CC $CFLAGS}"
+usedefaults=
+addmain=false
+defaultsfunc=
+debug=false
+while (($#)); do
+	case "$1" in
+	---cc) shift; cc="$1"; ;;
+	---defaults) shift; defaultsfunc=$1; ;;
+	---n|---nodefaults) usedefaults=false; ;;
+	---d|---usedefaults) usedefaults=true; ;;
+	---m|---main) addmain=true; ;;
+	---h|-h|---help) usage; exit; ;;
+	---debug) debug=true; ;;
+	---test) testme; exit; ;;
+	---*) fatal "Invalid command $1"; ;;
+	*) break; ;;
+	esac
+	shift
+done
+
+# -c or -o are dissallowed options
+if ! (
+	while (($#)); do
+		case "$1" in
+		-c|-o) fatal "$1 option is not allowed"; ;;
+		esac
+		shift
+	done
+); then
+	exit 2
+fi
+
+shopt -s extglob
+
+# if we have only dashes options and last option doesn't have dash
+input="-"
+inputstr=""
+if (($#)); then
+	case "$1" in
+	# is this an option? If so, pass to gcc
+	-*) ;;
+	# anything that looks like main or #include?
+	*main*([ $'\t'])'('*')'*'{'*'}'*) ;&
+	*'#'*([ $'\t'])'include'+([ $'\t'])*)
+		inputstr="$1"
+		shift
+		;;
+	# is there anything that looks like a function call?
+	*[^a-zA-Z_][a-zA-Z_]+([a-zA-Z_0-9])*([ $'\t'])'('*')'*';'*) ;&
+	           [a-zA-Z_]+([a-zA-Z_0-9])*([ $'\t'])'('*')'*';'*)
+		inputstr="$1"
+		addmain=true
+		shift
+		;;
+	# So that must be a filename!
+	*)
+		input="$1"
+		usedefaults=${usedefaults:-false}
+		shift
+		;;
+	esac
+fi
+
+ccargs=()
+while (($#)) && [[ $1 != '--' ]]; do
+	ccargs+=("$1")
+	shift
+done
+
+progargs=()
+if (($#)) && [[ "$1" == '--' ]]; then
+	shift
+	progargs=("$@")
+fi
+
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 {
@@ -245,7 +282,11 @@ trap 'rm -f "$tmp"' EXIT
 	if "$addmain"; then
 		echo 'int main(int argc, char *argv[]) {'
 	fi
-	cat "$input"
+	if [[ -n "$inputstr" ]]; then
+		printf "%s\n" "$inputstr"
+	else
+		cat "$input"
+	fi
 	if "$addmain"; then
 		echo '}'
 	fi
@@ -258,12 +299,13 @@ trap 'rm -f "$tmp"' EXIT
 	fi
 } |
 {
-	if "$debug"; then
-		set -x
-	fi
-	$cc -o "$tmp" "$@" -
+	if "$debug"; then set -x; fi
+	$cc -o "$tmp" "${ccargs[@]}" -
 } &&
-"$tmp"
+{
+	if "$debug"; then set -x; fi
+	"$tmp" "${progargs[@]}"
+}
 
 
 
