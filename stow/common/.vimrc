@@ -2,10 +2,10 @@
 
 source $VIMRUNTIME/defaults.vim
 
-if $LANG == 'en_US.UTF-8'
-	set langmenu=pl_PL
-	let $LANG = 'pl_PL.UTF-8'
+if $LC_CTYPE == 'pl_PL.UTF-8'
 	source $VIMRUNTIME/delmenu.vim
+	set langmenu=pl_PL.UTF-8
+	language pl_PL.UTF-8
 	source $VIMRUNTIME/menu.vim
 endif
 
