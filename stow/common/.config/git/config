@@ -50,3 +50,5 @@
 	needsfile = yes
 [core]
 	pager = less
+[submodule]
+	recurse = true
