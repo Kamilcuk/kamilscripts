@@ -41,8 +41,9 @@ set autoindent    " Copy indent from current line when starting a new line
 set history=500                 " keep 50 lines of command line history
 set pastetoggle=<F2>            " toggle F2 for paste
 filetype plugin indent on
-syntax on
-colorscheme ron
+syntax enable
+" colorscheme ron
+set encoding=utf-8
 
 set tabstop=4 " The width of a hard tabstop measured in spaces -- effectively the (maximum) width of an actual tab character.
 set shiftwidth=4 " The size of an indent. It's also measured in spaces, so if your code base indents with tab characters then you want shiftwidth to equal the number of tab characters times tabstop. This is also used by things like the =, > and < commands.
@@ -54,15 +55,14 @@ set shiftwidth=4 " The size of an indent. It's also measured in spaces, so if yo
 set backspace=indent,eol,start  " let backspece delete everything in intsert mode
 
 " Tell vim to remember certain things when we
-set viminfo=%,'100,/50,:500,<800,@500,h,n~/.cache/vim/viminfo
-"           | |    |   |    |    |    | + viminfo file path
-"           | |    |   |    |    |    + disable 'hlsearch' loading viminfo
-"           | |    |   |    |    + items in the input-line history
-"           | |    |   |    + number of lines for each register
-"           | |    |   + items in the command-line history
-"           | |    + search history saved
-"           | + number of edited files for which marks are remembered
-"           + save/restore buffer list
+set viminfo='100,/50,:500,<800,@500,h,n~/.cache/vim/viminfo
+"           |    |   |    |    |    | + viminfo file path
+"           |    |   |    |    |    + disable 'hlsearch' loading viminfo
+"           |    |   |    |    + items in the input-line history
+"           |    |   |    + number of lines for each register
+"           |    |   + items in the command-line history
+"           |    + search history saved
+"           + number of edited files for which marks are remembered
 
 " $VIMRUNTIME/defaults.vim
 " Put these in an autocmd group, so that you can revert them with:
@@ -113,29 +113,56 @@ augroup end
 
 " I do not like mouse
 set mouse=
-autocmd BufEnter * set mouse=
+autocmd BufEnter ?* set mouse=
 
 " Some yaml specific stuffs.
 au! BufNewFile,BufReadPost *.{yaml,yml} set filetype=yaml
 autocmd FileType yaml setlocal tabstop=2 softtabstop=2 shiftwidth=2 expandtab
 
-"""""""""" Plugins """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Automatically generate tags for custom documentation files
+" https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
+autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
 
-if isdirectory('/usr/lib/kamilscripts/')
-	let kamilscripts = '/usr/lib/kamilscripts/'
-elseif isdirectory($HOME . '/.config/kamilscripts/kamilscripts/')
-	let kamilscripts = $HOME . '/.config/kamilscripts/kamilscripts/'
+" https://vim.fandom.com/wiki/Highlight_current_line
+if 1
+	" color picked from gruvbox color pallete
+	hi CursorLine   cterm=NONE ctermbg=229
+	hi CursorColumn cterm=NONE ctermbg=229
+	augroup CursorLine
+		au!
+		au VimEnter,WinEnter,BufWinEnter * setlocal cursorline
+		au WinLeave * setlocal nocursorline
+	augroup END
 endif
+
+" https://vim.fandom.com/wiki/Cscope
+if has('cscope') && has('quickfix')
+	set cscopetag
+	set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
+endif
+
+"""""""""" Plugins """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 packadd! editexisting
 packadd! termdebug
 
+for i in [
+		\ '/usr/lib/kamilscripts/',
+		\ $HOME . '/.config/kamilscripts/kamilscripts/',
+		\ $HOME . '/.local/kamilscripts/' ]
+	if isdirectory(i) && isdirectory(i. '/vim')
+		let g:kamilscripts = i
+		break
+	endif
+endfor
+unlet i
+
 " set the runtime path to include Vundle and initialize
-if exists("kamilscripts") && filereadable(kamilscripts . 'vim/vim-pathogen/autoload/pathogen.vim')
-	execute 'source ' . kamilscripts . '/vim/vim-pathogen/autoload/pathogen.vim'
-	execute pathogen#infect(kamilscripts . '/vim/{}')
+if exists("g:kamilscripts") && filereadable(g:kamilscripts . 'vim/bundle/vim-pathogen/autoload/pathogen.vim')
+	execute 'source ' . g:kamilscripts . '/vim/bundle/vim-pathogen/autoload/pathogen.vim'
+	execute pathogen#infect(g:kamilscripts . '/vim/bundle/{}')
 else
-	autocmd VimEnter * echom "~/.vimrc: ERROR: No kamilscripts"
+	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
 endif
 
 " https://github.com/thoughtbot/dotfiles/pull/641
@@ -158,23 +185,75 @@ let g:airline#extensions#tabline#enabled = 1
 let g:workspace_create_new_tabs = 0
 let g:workspace_session_directory = $HOME . '/.vim/sessions/'
 let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
-let g:workspace_undodir = $HOME . '/.vim/vim-workspace-undodir/'
+let g:workspace_undodir = $HOME . '/.vim/undodir/'
 let g:workspace_nocompatible = 0
-" let g:workspace_session_disable_on_args = 1
+let g:workspace_session_disable_on_args = 1
 
 " michaelb/vim-tips
 let g:vim_tips_tips_frequency = 0.5
 
 " morhetz/gruvbox
 let g:gruvbox_contrast_dark = 'hard'
+let g:gruvbox_contrast_light = 'hard'
 try
 	colorscheme gruvbox
 catch /^Vim\%((\a\+)\)\=:E185/
 endtry
 
 " https://github.com/derekwyatt/vim-fswitch
-au! BufEnter *.cpp,*.cc,*.c let b:fswitchdst = 'h,hpp'    | let b:fswitchlocs = 'reg:/src/include/,../include,./'
-au! BufEnter *.h,*.hpp      let b:fswitchdst = 'cpp,cc,c' | let b:fswitchlocs = 'reg:/include/src/,../src,./'
+let g:fsnonewfiles = 0
+autocmd FileType c,cpp  let b:fswitchlocs = './,../include,reg:/src/include/'
+autocmd BufEnter *.c    let b:fswitchdst = 'h'
+autocmd BufEnter *.h    let b:fswitchdst = 'c,cpp'
+autocmd BufEnter *.cpp  let b:fswitchdst = 'h,hpp'
+autocmd BufEnter *.hpp  let b:fswitchdst = 'cpp'
+
+" https://github.com/aperezdc/vim-template
+let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
+
+" Add nice versions of background jobs if available
+" The nice versions are within kamilscripts/bin
+if !exists('g:ycm_server_python_interpreter') && executable(',nicepython3')
+	let g:ycm_server_python_interpreter = ',nicepython3'
+endif
+if !exists('g:gutentags_cscope_executable') && executable(',nicecscope')
+	let g:gutentags_cscope_executable = ',nicecscope'
+endif
+if !exists('g:gutentags_ctags_executable') && executable(',nicectags')
+	let g:gutentags_ctags_executable = ',nicectags'
+endif
+if get(g:, 'ycm_clangd_binary_path', '/usr/bin/clangd') == '/usr/bin/clangd' && executable(',niceclangd')
+	let g:ycm_clangd_binary_path = ',niceclangd'
+endif
+
+" https://github.com/FelikZ/ctrlp-py-matcher
+let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
+
+" https://github.com/ggreer/the_silver_searcher
+if executable('ag')
+	let g:ackprg = 'ag --vimgrep'
+endif
+
+" https://vim.fandom.com/wiki/Folding
+setlocal foldmethod=syntax
+setlocal foldnestmax=10
+setlocal nofoldenable
+setlocal foldlevel=2
+
+" https://stackoverflow.com/questions/12652172/is-there-any-way-to-adjust-the-format-of-folded-lines-in-vim
+function! MyFoldText()
+    let line = getline(v:foldstart)
+    let nucolwidth = &fdc + &number * &numberwidth
+    let windowwidth = winwidth(0) - nucolwidth - 3
+    let foldedlinecount = v:foldend - v:foldstart
+    " expand tabs into spaces
+    let onetab = strpart('          ', 0, &tabstop)
+    let line = substitute(line, '\t', onetab, 'g')
+    let line = strpart(line, 0, windowwidth - 2 -len(foldedlinecount))
+    let fillcharcount = windowwidth - len(line) - len(foldedlinecount)
+    return line . '…' . repeat(" ",fillcharcount) . foldedlinecount . '…' . ' '
+endfunction
+set foldtext=MyFoldText()
 
 """""""""" Shortcuts """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -201,3 +280,81 @@ nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
 " https://github.com/derekwyatt/vim-fswitch
 nmap <silent> <Leader>gh :FSHere<cr>
 
+" :h dispatch-maps
+
+command RemoveCurrentFile call delete(expand('%')) | bdelete!
+
+function g:MyCscope(arg)
+	execute 'botright copen ' get(g:, 'dispatch_quickfix_height', '')
+	wincmd p
+	cscope find s:arg <cword>
+endfunction
+nnoremap <leader>fs :call MyCscope("s")<CR>
+nnoremap <leader>fd :call MyCscope("d")<CR>
+nnoremap <leader>fc :call MyCscope("c")<CR>
+nnoremap <leader>ft :call MyCscope("t")<CR>
+nnoremap <leader>fe :call MyCscope("e")<CR>
+nnoremap <leader>ff :call MyCscope("f")<CR>
+nnoremap <leader>fi :call MyCscope("i")<CR>
+nnoremap <leader>fg :call MyCscope("g")<CR>
+
+map <C-n> :NERDTreeToggle<CR>
+
+"""""""""""" Project specific """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" do not load by default
+let g:gutentags_dont_load = 1
+
+let g:gutentags_ctags_exclude = [
+	\ '*.git', '*.svg', '*.hg', '.git', '.github',
+	\ '*/tests/*', '_build', '.build', 'build', '.clangd',
+	\ 'dist', '*sites/*/files/*',
+	\ 'bin', 'node_modules', 'bower_components', 'cache', 'compiled',
+	\ 'docs', 'example', 'bundle', 'vendor', '*.md',
+	\ '*-lock.json', '*.lock', '*bundle*.js', '*build*.js',
+	\ '.*rc*', '*.json', '*.html', '*.min.*', '*.map', '*.bak',
+	\ '*.zip', '*.pyc', '*.class', '*.sln', '*.Master', '*.csproj', '*.tmp',
+	\ '*.csproj.user', '*.cache', '*.pdb', 'tags*', 'cscope.*', '*.css',
+	\ '*.less', '*.scss', '*.exe', '*.dll', '*.mp3', '*.ogg', '*.flac', '*.swp', '*.swo',
+	\ '*.bmp', '*.gif', '*.ico', '*.jpg', '*.png',
+	\ '*.rar', '*.zip', '*.tar', '*.tar.gz', '*.tar.xz', '*.tar.bz2',
+	\ '*.pdf', '*.doc', '*.docx', '*.ppt', '*.pptx',
+	\ '*.map', '*.ld', '*.txt', '.vscode', '*.key',
+	\ '*.json', '*.cproject', '*.project', 	
+	\ ]
+
+let g:ycm_collect_identifiers_from_tags_files = 1
+let g:gutentags_modules = [ 'ctags' ]
+let g:gutentags_generate_on_new = 1
+let g:gutentags_generate_on_missing = 1
+let g:gutentags_generate_on_write = 1
+let g:gutentags_generate_on_empty_buffer = 0
+let g:gutentags_cscope_build_inverted_index = 1
+let g:gutentags_ctags_extra_args = [
+	\ '--tag-relative=yes',
+	\ '-h=.c.h.cpp.hpp.asm.cmake.make',
+	\ '--fields=+ailmnS',
+	\ ]
+
+let g:gutentags_trace = 0
+let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
+
+if getcwd() == "/home/work/beacon"
+	let &errorformat = '../../%f:%l:%c: %m'
+	let g:gutentags_dont_load = 0
+	let g:gutentags_modules += [ 'cscope' ]
+	let g:ycm_global_ycm_extra_conf = g:kamilscripts . 'vim/ycm_extra_conf_beacon.py'
+	let g:gutentags_ctags_exclude += [ 
+		\ '*/Unity/examples',
+		\ '*/Unity/extra',
+		\ '*/Unity/test', 
+		\ '_build_tools/*/examples',
+		\ 
+		\ ]
+	autocmd BufEnter ?* let b:dispatch =  'make debug hw=4.7'
+	command Bdebughw47            Dispatch make debug hw=4.7
+	command Breleasehw47          Dispatch make release hw=4.7 pcb_test=0
+	command Bprogram              Dispatch unbuffer make program
+	command Bdebughw47program     Dispatch make debug hw=4.7 && unbuffer make program
+	command Breleasehw47program   Dispatch make release hw=4.7 pcb_test=0 && unbuffer make program
+endif

@@ -1,0 +1,15 @@
+# .config/git/ignore file
+
+# ignore tags file
+tags
+# ignore cscope files
+cscope.out
+cscope.out.files
+cscope.out.lock
+# ignore clangd database
+.clangd
+# ignore build directoires
+_build
+
+.build
+

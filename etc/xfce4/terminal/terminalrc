@@ -1,9 +1,5 @@
 [Configuration]
-ColorForeground=#ffffffffffff
-ColorBackground=#000000000000
-ColorBackgroundVary=TRUE
-ColorPalette=rgb(0,0,0);rgb(170,0,0);rgb(0,170,0);rgb(170,85,0);rgb(84,70,223);rgb(170,0,170);rgb(0,170,170);rgb(170,170,170);rgb(85,85,85);rgb(255,85,85);rgb(85,255,85);rgb(255,255,85);rgb(112,112,255);rgb(255,85,255);rgb(85,255,255);rgb(255,255,255)
-FontName=DejaVu Sans Mono 11
+FontName=DejaVu Sans Mono 9
 MiscAlwaysShowTabs=TRUE
 MiscBell=FALSE
 MiscBellUrgent=FALSE
@@ -35,4 +31,8 @@ ScrollingLines=60000
 ShortcutsNoHelpkey=TRUE
 ShortcutsNoMenukey=TRUE
 ShortcutsNoMnemonics=TRUE
+ColorForeground=#000000
+ColorBackground=#ffffff
+ColorPalette=#000000;#cd0000;#00cd00;#cdcd00;#0000cd;#cd00cd;#00cdcd;#e5e5e5;#7f7f7f;#ff0000;#00ff00;#ffff00;#5c5cff;#ff00ff;#00ffff;#ffffff
+ColorBoldIsBright=FALSE
 
