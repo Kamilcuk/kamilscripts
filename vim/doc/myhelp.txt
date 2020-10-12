@@ -1,0 +1,73 @@
+myhelp.txt
+
+*myhelp* *my*
+
+Ctrl+w+o          - Window fullscreen
+Ctrl+w+w          - Go to second window
+Ctrl+w+{HJKL}     - Obróć okna
+Ctrl+w+N          - Wyjdź z okna terminala
+
+Ctrl+f            - widok na dół
+Ctrl+b            - widok do góry
+
+u                 - Undo
+Ctrl+R            - Restore
+
+Ctrl+]            - Same as :tag
+:tag <keyword>    - Jump to location of the keyword
+Ctrl+t            - Return From :tag
+
+Ctrl+o            - Go to older cursor position
+Ctrl+i            - Go to newer cursot position
+<Tab>             - same as Ctrl+i
+
+Ctrl+L            - Clear hlsearch (from vim-sensible)
+
+Ctrl+n            - Open NERDTree
+Ctrl+p            - Start CtrlP
+
+K                 - show man page for current word
+%                 - Find the item under cursor
+*                 - Find th eitem under cursor
+
+za                - Toggle fold
+zo                - Open fold
+zc                - Close fold
+
+\gd               - Go to Definition or decalration
+\gr               - Go to References
+\gt               - Go to Include
+\gh               - To to matching header/source
+\fs \fd \fc \ft \fe \ff \fi  - komendy :cscope find
+\w                - Create workspace :ToggleWorkspace
+\s                - Substitute current word
+
+]q                - Następny błąd
+[q                - Poprzedni błąd
+]Q                - Pierwszy błąd
+[Q                - Ostatni błąd
+{[]}{bbBB}        - Następnu/popzredni/pierwszy/ostatni buffor
+
+:bd               - Zamknij bufor
+
+:w!!              - run sudo tee <file> /dev/null
+:ts  <keyword>    - Search the keyword
+:NERDTree         - Otwiera przeglądarkę plików
+:YcmRestartServer
+:YcmDebugInfo
+:YcmDiags         - Diganostyki z youcompleteme
+:GutentagsUpdate  - Update gutentags
+:GutentagsUpdate! - Update gutentags w tle
+:Tabularize
+:Template         - Copy a template into the file
+
+CTRL+R CTRL+W     - Skopiuj wyraz pod cursorem do wiersza poleceń
+
+Mapy:
+map ; :
+noremap ;; ;
+
+===============================================================================
+
+" https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
+" vim: filetype=help foldmethod=marker foldmarker=<<<,>>> modifiable noreadonly

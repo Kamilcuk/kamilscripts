@@ -1,0 +1,454 @@
+" kamilscripts/vim/vimrc
+
+source $VIMRUNTIME/defaults.vim
+
+if $LC_CTYPE == 'pl_PL.UTF-8'
+	source $VIMRUNTIME/delmenu.vim
+	set langmenu=pl_PL.UTF-8
+	language pl_PL.UTF-8
+	source $VIMRUNTIME/menu.vim
+endif
+
+" Load kamilscripts and add runtime paths """""""""""""""""""""""""""""""""""""""""""""""""
+
+for i in [
+		\ '/usr/lib/kamilscripts/',
+		\ $HOME . '/.config/kamilscripts/kamilscripts/',
+		\ $HOME . '/.local/kamilscripts/' ]
+	if isdirectory(i) && isdirectory(i. '/vim')
+		let g:kamilscripts = i
+		break
+	endif
+endfor
+unlet i
+
+" set the runtime path to include Vundle and initialize
+if exists("g:kamilscripts") && filereadable(g:kamilscripts . 'vim/bundle/vim-pathogen/autoload/pathogen.vim')
+	execute 'source ' . g:kamilscripts . '/vim/bundle/vim-pathogen/autoload/pathogen.vim'
+	execute pathogen#infect(
+				\ g:kamilscripts . 'vim',
+				\ g:kamilscripts . 'vim/bundle/{}',
+				\ g:kamilscripts . 'vim/ebundle/{}/{}' )
+else
+	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
+endif
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" HOW-TO make vim not suck Out of the Box
+set nocompatible   " This option has the effect of making Vim either more Vi-compatible, or make Vim behave in a more useful way.
+set ruler          " Show the line and column number of the cursor position, separated by a comma
+set laststatus=2   " The value of this option influences when the last window will have a status line:
+set showcmd        " Show (partial) command in the last line of the screen.
+set showmode       " If in Insert, Replace or Visual mode put a message on the last line.
+set incsearch      " While typing a search command, show where the pattern, as it was typed so far, matches.
+set ignorecase     " Ignore case in search patterns.
+set smartcase      " Override the 'ignorecase' option if the search pattern contains upper case characters.
+set hlsearch       " When there is a previous search pattern, highlight all its matches.
+set number
+set relativenumber
+set autowriteall
+set nohidden
+set swapfile      " When this option is not empty a swap file is synced to disk after writing to it.
+set writebackup   " Make a backup before overwriting a file.
+set nobackup      " Turn on backup option
+set autoindent    " Copy indent from current line when starting a new line
+set history=5000
+set pastetoggle=<F2>
+filetype plugin indent on
+syntax enable
+set encoding=utf-8
+set nofoldenable
+
+set tabstop=4 " The width of a hard tabstop measured in spaces -- effectively the (maximum) width of an actual tab character.
+set shiftwidth=4 " The size of an indent. It's also measured in spaces, so if your code base indents with tab characters then you want shiftwidth to equal the number of tab characters times tabstop. This is also used by things like the =, > and < commands.
+set softtabstop=0 " Setting this to a non-zero value other than tabstop will make the tab key (in insert mode) insert a combination of spaces (and possibly tabs) to simulate tab stops at this width.
+set noexpandtab " Enabling this will make the tab key (in insert mode) insert spaces instead of tab characters. This also affects the behavior of the retab command.
+set nosmarttab " Enabling this will make the tab key (in insert mode) insert spaces or tabs to go to the next indent of the next tabstop when the cursor is at the beginning of a line (i.e. the only preceding characters are whitespace).
+
+" https://vi.stackexchange.com/questions/2162/why-doesnt-the-backspace-key-work-in-insert-mode
+set backspace=indent,eol,start  " let backspece delete everything in intsert mode
+
+" Tell vim to remember certain things when we
+set viminfo='100,/50,:5000,<800,@500,h,n~/.cache/vim/viminfo
+"           |    |   |     |    |    | + viminfo file path
+"           |    |   |     |    |    + disable 'hlsearch' loading viminfo
+"           |    |   |     |    + items in the input-line history
+"           |    |   |     + number of lines for each register
+"           |    |   + items in the command-line history
+"           |    + search history saved
+"           + number of edited files for which marks are remembered
+
+" https://vim.fandom.com/wiki/Folding
+setlocal foldmethod=syntax
+setlocal foldnestmax=10
+setlocal nofoldenable
+setlocal foldlevel=2
+
+if 0
+	" change backupdir to temporary directory
+	" not needed - all caches are now stored in cache
+	let myvimbackupdir = '/tmp/.vimbackupdir-'.$USER.'/'
+	if !isdirectory(myvimbackupdir) | call mkdir(myvimbackupdir) | call setfperm(myvimbackupdir, 'rxwrxwrxw') | endif
+	execute 'set backupdir^='.myvimbackupdir
+	execute 'set directory^='.myvimbackupdir
+	execute 'set backupskip^='.myvimbackupdir.'*'
+	unlet myvimbackupdir
+endif
+
+" $VIMRUNTIME/defaults.vim
+" Put these in an autocmd group, so that you can revert them with:
+augroup vimStartup | au! | augroup END
+" https://vim.fandom.com/wiki/Make_views_automatic
+set viewoptions-=options
+set viewoptions-=curdir
+set viewoptions-=folds
+let g:skipview_files = []
+function! MyViewCheck()
+    if has('quickfix') && &buftype =~ 'nofile'
+        " Buffer is marked as not a file
+        return 0
+    endif
+    if empty(glob(expand('%:p')))
+        " File does not exist on disk
+        return 0
+    endif
+    if len($TEMP) && expand('%:p:h') == $TEMP
+        " We're in a temp dir
+        return 0
+    endif
+    if len($TMP) && expand('%:p:h') == $TMP
+        " Also in temp dir
+        return 0
+    endif
+    if index(g:skipview_files, expand('%')) >= 0
+        " File is in skip list
+        return 0
+    endif
+	if &filetype =~# 'commit'
+		" If it's a commit message
+		return 0
+	endif
+    return 1
+endfunction
+function! MyViewSave()
+	if MyViewCheck()
+		mkview
+	endif
+endfunction
+function! MyViewLoad()
+	if MyViewCheck()
+		silent loadview
+		if line("'\"") >= 1 && line("'\"") <= line("$")
+			call setpos(".", getpos("'\""))
+		endif
+	endif
+endfunction
+augroup vimrcAutoView
+    autocmd!
+    " Autosave & Load Views.
+	autocmd BufWritePost,BufLeave,WinLeave ?* call MyViewSave()
+	" When entering, restore window position __and__ cursor position.
+    autocmd BufWinEnter ?* call MyViewLoad()
+augroup end
+
+" I do not like mouse
+set mouse=
+autocmd BufEnter ?* set mouse=
+
+" Automatically generate tags for custom documentation files
+" https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
+autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
+if exists('g:kamilscripts')
+	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
+endif
+
+" https://vim.fandom.com/wiki/Highlight_current_line
+if 1
+	" color picked from gruvbox color pallete
+	hi CursorLine   cterm=NONE ctermbg=229
+	hi CursorColumn cterm=NONE ctermbg=229
+	augroup CursorLine
+		au!
+		au VimEnter,WinEnter,BufWinEnter * setlocal cursorline
+		au WinLeave * setlocal nocursorline
+	augroup END
+endif
+
+" https://vim.fandom.com/wiki/Cscope
+if has('cscope') && has('quickfix')
+	set cscopetag
+	set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
+endif
+
+"Credit joshdick
+"Use 24-bit (true-color) mode in Vim/Neovim when outside tmux.
+"If you're using tmux version 2.2 or later, you can remove the outermost $TMUX check and use tmux's 24-bit color support
+"(see < http://sunaku.github.io/tmux-24bit-color.html#usage > for more information.)
+if (empty($TMUX))
+	if (has("nvim"))
+		"For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
+		let $NVIM_TUI_ENABLE_TRUE_COLOR=1
+	endif
+	"For Neovim > 0.1.5 and Vim > patch 7.4.1799 < https://github.com/vim/vim/commit/61be73bb0f965a895bfb064ea3e55476ac175162 >
+	"Based on Vim patch 7.4.1770 (`guicolors` option) < https://github.com/vim/vim/commit/8a633e3427b47286869aa4b96f2bfc1fe65b25cd >
+	" < https://github.com/neovim/neovim/wiki/Following-HEAD#20160511 >
+	if (has("termguicolors"))
+		set termguicolors
+	endif
+endif
+
+" colorscheme """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+set background=light
+" colorscheme ron
+if 1 | try
+	" https://github.com/NLKNguyen/papercolor-theme
+	colorscheme PaperColor
+	let g:airline_theme = 'papercolor'
+	let g:PaperColor_Theme_Options = {
+				\   'theme': {
+				\     'default': {
+				\       'transparent_background': 1
+				\     }
+				\   }
+				\ }
+catch | endtry | endif
+if 0
+	let g:airline_theme='one'
+	set background=light
+	let g:one_allow_italics = 1
+	colorscheme one
+endif
+
+"""""""""" Plugins """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+packadd! editexisting
+packadd! termdebug
+
+if exists('g:kamilscripts')
+	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
+endif
+
+" https://github.com/thoughtbot/dotfiles/pull/641
+" Set tags for fugitive
+set tags^=./.git/tags;
+
+" luochen1990/rainbow configuration
+let g:rainbow_active = 1 " be active
+let g:rainbow_conf = {'separately':{'cmake':0}} " turn off for cmake
+
+" youcompleteme
+if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
+	let g:ycm_clangd_binary_path = '/usr/bin/clangd'
+endif
+let g:ycm_autoclose_preview_window_after_completion = 1
+let g:ycm_confirm_extra_conf = 0
+let g:ycm_auto_hover = 0
+
+" airline
+let g:airline#extensions#tabline#enabled = 1
+
+" vim-workspace
+let g:workspace_create_new_tabs = 0
+let g:workspace_session_directory = $HOME . '/.vim/sessions/'
+let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
+let g:workspace_undodir = $HOME . '/.vim/undodir/'
+let g:workspace_nocompatible = 0
+let g:workspace_session_disable_on_args = 1
+
+" michaelb/vim-tips
+let g:vim_tips_tips_frequency = 0.5
+
+" morhetz/gruvbox
+let g:gruvbox_contrast_dark = 'hard'
+let g:gruvbox_contrast_light = 'hard'
+let g:gruvbox_guisp_fallback = "bg"
+
+" https://github.com/derekwyatt/vim-fswitch
+let g:fsnonewfiles = 0
+autocmd FileType c,cpp  let b:fswitchlocs = './,../include,reg:/src/include/'
+autocmd BufEnter *.c    let b:fswitchdst = 'h'
+autocmd BufEnter *.h    let b:fswitchdst = 'c,cpp'
+autocmd BufEnter *.cpp  let b:fswitchdst = 'h,hpp'
+autocmd BufEnter *.hpp  let b:fswitchdst = 'cpp'
+
+" https://github.com/aperezdc/vim-template
+let g:templates_no_autocmd = 1
+if exists('g:kamilscripts')
+	let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
+endif
+
+if 0
+	" Add nice versions of background jobs if available
+	" The nice versions are within kamilscripts/bin
+	if !exists('g:ycm_server_python_interpreter') && executable(',nicepython3')
+		let g:ycm_server_python_interpreter = ',nicepython3'
+	endif
+	if get(g:, 'ycm_clangd_binary_path', '/usr/bin/clangd') == '/usr/bin/clangd' && executable(',niceclangd')
+		let g:ycm_clangd_binary_path = ',niceclangd'
+	endif
+	if !exists('g:gutentags_cscope_executable') && executable(',nicecscope')
+		let g:gutentags_cscope_executable = ',nicecscope'
+	endif
+	if !exists('g:gutentags_ctags_executable') && executable(',nicectags')
+		let g:gutentags_ctags_executable = ',nicectags'
+	endif
+endif
+
+" https://github.com/FelikZ/ctrlp-py-matcher
+let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
+
+" https://github.com/ggreer/the_silver_searcher
+if executable('ag')
+	let g:ackprg = 'ag --vimgrep'
+endif
+
+" https://stackoverflow.com/questions/12652172/is-there-any-way-to-adjust-the-format-of-folded-lines-in-vim
+function! MyFoldText()
+    let line = getline(v:foldstart)
+    let nucolwidth = &fdc + &number * &numberwidth
+    let windowwidth = winwidth(0) - nucolwidth - 3
+    let foldedlinecount = v:foldend - v:foldstart
+    " expand tabs into spaces
+    let onetab = strpart('          ', 0, &tabstop)
+    let line = substitute(line, '\t', onetab, 'g')
+    let line = strpart(line, 0, windowwidth - 2 -len(foldedlinecount))
+    let fillcharcount = windowwidth - len(line) - len(foldedlinecount)
+    return line . '…' . repeat(" ",fillcharcount) . foldedlinecount . '…' . ' '
+endfunction
+set foldtext=MyFoldText()
+
+" gen_tags.vim
+let g:loaded_gentags#ctags = 0
+let g:gen_tags#gtags_auto_gen = 1
+let g:gen_tags#gtags_auto_update = 1
+let g:gen_tags#blacklist = [ $HOME ]
+let g:gen_tags#statusline = 0
+let g:gen_tags#gtags_default_map = 0
+let g:gen_tags#use_cache_dir = 0
+let g:gen_tags#cache_dir = ".cache"
+
+" My own pluting to enable gen_tags statusline on airline
+if &rtp =~ 'airline' " rudimentary check
+	let g:airline#extensions#gen_tags#enabled = 1
+	call airline#add_statusline_func('airline#extensions#gen_tags#enable_on_section_x')
+endif
+
+" goldenratio
+" Don't resize automatically.
+let g:golden_ratio_autocommand = 0
+" Mnemonic: - is next to =, but instead of resizing equally, all windows are
+" resized to focus on the current.
+nmap <C-w>- <Plug>(golden_ratio_resize)
+" Fill screen with current window.
+nnoremap <C-w>+ <C-w><Bar><C-w>_
+
+" youcompleteme
+let g:ycm_global_ycm_extra_conf = g:kamilscripts . 'vim/youcompleteme/ycm_extra_conf.py'
+let g:ycmconf_loglevel = 0
+let g:ycm_extra_conf_vim_data = [ 'g:ycmconf_loglevel' ]
+let g:ycm_collect_identifiers_from_tags_files = 1
+
+" gutentags
+let g:gutentags_dont_load = 1
+let g:gutentags_ctags_exclude = [
+	\ '*.git', '*.svg', '*.hg', '.git', '.github',
+	\ '*/tests/*', '_build', '.build', 'build', '.clangd',
+	\ 'dist', '*sites/*/files/*',
+	\ 'bin', 'node_modules', 'bower_components', 'cache', 'compiled',
+	\ 'docs', 'example', 'bundle', 'vendor', '*.md',
+	\ '*-lock.json', '*.lock', '*bundle*.js', '*build*.js',
+	\ '.*rc*', '*.json', '*.html', '*.min.*', '*.map', '*.bak',
+	\ '*.zip', '*.pyc', '*.class', '*.sln', '*.Master', '*.csproj', '*.tmp',
+	\ '*.csproj.user', '*.cache', '*.pdb', 'tags*', 'cscope.*', '*.css',
+	\ '*.less', '*.scss', '*.exe', '*.dll', '*.mp3', '*.ogg', '*.flac', '*.swp', '*.swo',
+	\ '*.bmp', '*.gif', '*.ico', '*.jpg', '*.png',
+	\ '*.rar', '*.zip', '*.tar', '*.tar.gz', '*.tar.xz', '*.tar.bz2',
+	\ '*.pdf', '*.doc', '*.docx', '*.ppt', '*.pptx',
+	\ '*.map', '*.ld', '*.txt', '.vscode', '*.key',
+	\ '*.json', '*.cproject', '*.project', 	
+	\ ]
+let g:gutentags_modules = ['ctags', 'gtags_cscope']
+let g:gutentags_generate_on_new = 1
+let g:gutentags_generate_on_missing = 1
+let g:gutentags_generate_on_write = 1
+let g:gutentags_generate_on_empty_buffer = 0
+let g:gutentags_cscope_build_inverted_index = 1
+let g:gutentags_ctags_extra_args = [
+	\ '--tag-relative=yes',
+	\ '-h=.c.h.cpp.hpp.asm.cmake.make',
+	\ '--fields=+ailmnS',
+	\ ]
+let g:gutentags_ctags_exclude += [
+	\ '*/Unity/examples',
+	\ '*/Unity/extra',
+	\ '*/Unity/test', 
+	\ '_build_tools/*/examples',
+	\ ]
+let g:gutentags_trace = 0
+let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
+"
+
+"""""""""" Shortcuts """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+" https://vim.fandom.com/wiki/Map_semicolon_to_colon
+map ; :
+noremap ;; ;
+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+nnoremap <leader>w :ToggleWorkspace<CR>
+
+" https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
+nnoremap <leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
+
+nnoremap <leader>d  :YcmShowDetailedDiagnostic<CR>
+nnoremap <leader>D  :YcmDiags<CR>
+" https://gitter.im/Valloric/YouCompleteMe?at=5d3183545ea6e644ecdf5a7a
+nnoremap <leader>gd :YcmCompleter GoToDefinitionElseDeclaration<CR>
+nnoremap <leader>gr :YcmCompleter GoToReferences<CR>
+nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
+nnoremap <leader>gf :YcmCompleter FixIt<CR>
+nnoremap <leader>gK :YcmCompleter GetDoc<CR>
+nnoremap <leader>gr :YcmCompleter RefactorRename<CR>
+nnoremap <leader>gF :YcmCompleter Format<CR>
+
+" https://github.com/derekwyatt/vim-fswitch
+nmap <silent> <Leader>gh :FSHere<cr>
+
+function g:MyCscope(arg)
+	cexpr []
+	execute 'botright copen ' get(g:, 'dispatch_quickfix_height', '')
+	wincmd p
+	cscope find s:arg <cword>
+endfunction
+nnoremap <leader>fa :call MyCscope("a")<CR>
+nnoremap <leader>fs :call MyCscope("s")<CR>
+nnoremap <leader>fd :call MyCscope("d")<CR>
+nnoremap <leader>fc :call MyCscope("c")<CR>
+nnoremap <leader>ft :call MyCscope("t")<CR>
+nnoremap <leader>fe :call MyCscope("e")<CR>
+nnoremap <leader>ff :call MyCscope("f")<CR>
+nnoremap <leader>fi :call MyCscope("i")<CR>
+nnoremap <leader>fg :call MyCscope("g")<CR>
+
+map <C-n> :NERDTreeToggle<CR>
+
+"""""""""""" Project specific """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Seamlessly detect cmake out-of-source build errors in subdirectories
+let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
+
+if getcwd() == "/home/work/beacon"
+	let g:ycmconf_default_compiler_flags = [ "-D__INLINE=inline" ]
+	let g:ycm_extra_conf_vim_data += [ 'g:ycmconf_default_compiler_flags' ]
+	autocmd BufEnter ?* let b:dispatch =  'make debug hw=4.7'
+	command Qdebughw47            Dispatch make debug hw=4.7
+	command Qreleasehw47          Dispatch make release hw=4.7 pcb_test=0
+	command Qprogram              Dispatch unbuffer make program
+	command Qdebughw47program     Dispatch make debug hw=4.7 && unbuffer make program
+	command Qreleasehw47program   Dispatch make release hw=4.7 pcb_test=0 && unbuffer make program
+endif
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""'
+

@@ -1,54 +1,54 @@
-#!/usr/bin/false python3
-import ycm_core
+#!/usr/bin/env python3
+import os
 from os import getcwd
 from os.path import abspath, join, isabs, normpath, exists, splitext, \
         dirname, realpath
 
-####
-# Global lists for the flags and file detection
-####
+ycmconf_compile_command_search_dirs = []
+if os.path.isdir("_build"):
+    ycmconf_compile_command_search_dirs += ["_build"]
+    ycmconf_compile_command_search_dirs += [ f.path for d in ["_build"] for f in os.scandir(d) if f.is_dir() ]
 
-##
-# This is the list of default flags.
-##
-default_flags = [
+# Configuration ###########################################################
+
+ycmconf_loglevel = 0
+# ycmconf_compile_command_search_dirs = ['.']
+
+ycmconf_default_flags = [
     "-Wall",
     "-Wextra",
+    "-Wno-unknown-attributes",
+    # "-Wno-unknown-pragmas",
 ]
 
-##
-# This is a list of always added flags
-##
-compiler_flags = [
-]
+ycmconf_default_compiler_flags = []
 
-##
-# C header extensions
-##
-c_header_extensions = [
-    ".h",
-]
+ycmconf_c_additional_flags = [ "-x","c","-std=gnu11", ]
+ycmconf_cpp_additional_flags = [ "-x","c++","-std=gnu++17", ]
 
-##
-# C source extensions
-##
-c_source_extensions = [
-    ".c",
-]
+def defaults_set(clientdata):
+    for i in [ 'loglevel', 'default_flags', 'compiler_flags', 'c_additional_flags', 'cpp_additional_flags' ]:
+        for pre in ["g:", "b:"]:
+            name = 'ycmconf_' + i
+            idx = pre + name
+            if idx in clientdata:
+                log("defaults_set: " + idx + " = " + repr(clientdata[idx]))
+                exec('global %s\n%s = clientdata[idx]\n' % (name, name))
 
-##
-# C additional flags
-##
-c_additional_flags = [
-    # Tell clang that this is a C file.
-    "-x","c",
-    # Use the latest standard if possible.
-    "-std=gnu11",
-]
+#############################################################################
 
-##
-# CPP header extensions
-##
+c_source_extensions = [ ".c", ]
+c_header_extensions = [ ".h", ]
+
+cpp_source_extensions = [
+    ".cp",
+    ".cpp",
+    ".CPP",
+    ".cc",
+    ".C",
+    ".cxx",
+    ".c++",
+]
 cpp_header_extensions = [
     ".hh",
     ".H",
@@ -59,231 +59,175 @@ cpp_header_extensions = [
     ".h++",
 ]
 
-##
-# CPP source extensions
-##
-cpp_source_extensions = [
-    ".cp",
-    ".cpp",
-    ".CPP",
-    ".cc",
-    ".C",
-    ".cxx",
-    ".c++",
-]
+########################################################################################
 
-##
-# CPP additional flags
-##
-cpp_additional_flags = [
-    # Tell clang that this file is a CPP file.
-    "-x","c++",
-    # Use the latest standard if possible.
-    "-std=gnu++17",
-]
+def logl(level, what):
+    if level < ycmconf_loglevel:
+        open("/tmp/ycmd_dupa", "a").write("AAAAA " + repr(what) + "\n")
 
+def log(what):
+    logl(1, what)
 
-####
-# Helper functions
-####
+def is_exe(fpath):
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-##
-# Methods for file system interaction
-##
+def which(program):
+    # https://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+    import os
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
 
 def find_file_recursively(file_name, start_dir = getcwd(), stop_dir = None):
-    """
-    This method will walk trough the directory tree upwards
-    starting at the given directory searching for a file with
-    the given name.
-
-    :param file_name: The name of the file of interest. Make sure
-                      it does not contain any path information.
-    :type file_name: str
-    :param start_dir: The directory where the search should start.
-                      If it is omitted, the cwd is used.
-    :type start_dir: str
-    :param stop_dir: The directory where the search should stop. If
-                     this is omitted, it will stop at the root directory.
-    :type stop_dir: str
-    :rtype: str
-    :return: The file path where the file was first found.
-    """
     cur_dir = abspath(start_dir) if not isabs(start_dir) else start_dir
-
     while True:
         if exists(join(cur_dir, file_name)):
-            # The file of interest exists in the current directory
-            # so return it.
             return join(cur_dir, file_name)
-
-        # The file was not found yet so try in the parent directory.
         parent_dir = dirname(cur_dir)
-
         if parent_dir == cur_dir or parent_dir == stop_dir:
-            # We are either at the root directory or reached the stop
-            # directory.
             return None
         else:
             cur_dir = parent_dir
 
+def find_file_in_subdirs(filename, roots):
+    for root in roots:
+        if os.path.isdir(root):
+            for root, dirs, files in os.walk(root):
+                for dir in dirs:
+                    f = os.path.join(root, filename)
+                    if os.path.exists(f):
+                        return f
+    return None
 
-def file_exists(file_name, start_dir = getcwd()):
-    """
-    Checks whether a file with the given file name exists in any parent
-    folder of the given directory.
+def find_file_in_dirs(filename, dirs):
+    for dir in dirs:
+        if os.path.isdir(dir):
+            f = os.path.join(dir, filename)
+            if os.path.exists(f):
+                return f
+    return None
 
-    :param file_name: The name of the file of interest.
-    :type file_name: str
-    :param start_dir: The directory where to start searching. If omitted the
-                      cwd is used.
-    :type start_dir: str
-    :rtype: bool
-    :return: True if the file was found or False if not.
-    """
-    return find_file_recursively(file_name, start_dir) is not None
+def getwhile(func, *a, **k):
+    # https://stackoverflow.com/questions/2603956/can-we-have-assignment-in-a-condition
+    while True:
+        x = func(*a, **k)
+        if not x:
+            break
+        yield x
 
-
-def make_path_absolute(path, base_dir=getcwd()):
-    """
-    Make a given path absolute using the given base directory if it is
-    not already absolute.
-
-    :param path: The path of interest.
-    :type path: str
-    :param base_dir: The directory which should be used to make the
-                     path absolute. If it is omitted the cwd is used.
-    :type base_dir: str
-    :rtype: str
-    :return: The absolute path.
-    """
+def make_path_absolute(path, base_dir = getcwd()):
     if isabs(path):
         return path
     else:
         return join(base_dir, path)
 
-
 def script_directory():
-    """
-    Returns the directory where the current script is located.
-
-    :rtype: str
-    :return: The directory where the current script is located.
-    """
     return dirname(__file__)
 
+def check_output(command):
+    # https://stackoverflow.com/questions/5020538/python-get-output-from-a-command-line-which-exits-with-nonzero-exit-code
+    process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    output = process.communicate()
+    retcode = process.poll()
+    if retcode:
+            raise subprocess.CalledProcessError(retcode, command, output=output[0])
+    return output
 
-##
-# Methods to check for the different source file types
-##
+def get_compiler_flags(compiler, flags):
+    import re, subprocess
 
-def is_header(file_path):
-    """
-    Checks if the given file is a header file or not.
+    # extract only meaningfull flags - starting with -f and -m
+    flags = [f for f in flags if f.startswith("-f") or f.startswith("-m")]
 
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a header or False if not.
-    """
+    # Run verbose compiler with no input and get compiler flags.
+    tmp = subprocess.run( [compiler] + flags + ["-dM", "-E", "-v", "-x", "c", "/dev/null"], capture_output = True)
+    if tmp.returncode != 0:
+        return None
+    stdout = tmp.stdout.decode('ascii').splitlines()
+    stderr = tmp.stderr.decode('ascii')
+
+    ret = []
+
+    from os.path import realpath
+
+    # Extract multilib and sysroot
+    a, b = re.subn(r"^.* +-isysroot +([^ ]+).*$", r"\1", stderr, flags = re.MULTILINE + re.DOTALL)
+    if b != 0 and os.path.exists(a):
+        a = realpath(a)
+        ret += [
+                #"-nostdlib",
+                "-nostdlibinc", # sorry - sysroot doesn't work with __include_next :/
+                #"-nostdlib++",
+                "--no-standard-includes",
+                #"--sysroot=" + a,
+                "-isysroot", a,
+                #"--sysroot", a,
+                "-I" + a + "/include",
+        ]
+
+    # extract include paths
+    a, b = re.subn(r".*\n#include <\.\.\.> search starts here:[^\n]*\n(.*)End of search list\..*", r"\1", stderr, flags = re.MULTILINE + re.DOTALL)
+    if b != 0:
+        a, b = re.subn(r"[ ]*", r"", a)
+        if b != 0:
+            a = a.splitlines()
+            for i in a:
+                if os.path.exists(i):
+                    i = realpath(i)
+                    ret += [ "-I" + i ]
+
+    # Doesn't work anyway
+    # a, b = re.subn(r"^.* +-imultilib +([^ ]+).*$", r"\1", stderr, flags = re.MULTILINE + re.DOTALL)
+    # if b != 0:
+    #    ret += ["-imultilib", a]
+
+    for i in stdout:
+        # get all macros, but ignore function macros
+        a, b = re.subn(r"^ *# *define +([^ \(\)]+) +(.+)$", r"-D\1=\2", i)
+        if b != 0:
+            ret += [a]
+        continue
+        # get all macros, for reference
+        # a, b = re.subn(r"^ *# *define +([^ ]+) +(.+)$", r"-D\1=\2", i)
+        #if b != 0:
+        #    ret += [a]
+
+    return ret
+
+def is_c_or_cpp_header(file_path):
     return is_c_header(file_path) or is_cpp_header(file_path)
 
-
 def is_c_header(file_path):
-    """
-    Checks if the given file is a C header file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a C header or False if not.
-    """
     (_, extension) = splitext(file_path)
-
     return extension in c_header_extensions
 
-
 def is_cpp_header(file_path):
-    """
-    Checks if the given file is a CPP header file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a CPP header or False if not.
-    """
     (_, extension) = splitext(file_path)
-
     return extension in cpp_header_extensions
 
-
-def is_source(file_path):
-    """
-    Checks if the given file is a source file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a source file or False if not.
-    """
+def is_c_or_cpp_source(file_path):
     return is_c_source(file_path) or is_cpp_source(file_path)
 
-
 def is_c_source(file_path):
-    """
-    Checks if the given file is a C source file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a C source file or False if not.
-    """
     (_, extension) = splitext(file_path)
-
     return extension in c_source_extensions
 
-
 def is_cpp_source(file_path):
-    """
-    Checks if the given file is a CPP source file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a CPP source file or False if not.
-    """
     (_, extension) = splitext(file_path)
-
     return extension in cpp_source_extensions
 
-
 def is_c_file(file_path):
-    """
-    Checks if the given file is a C file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a C file or False if not.
-    """
     return is_c_source(file_path) or is_c_header(file_path)
 
-
 def is_cpp_file(file_path):
-    """
-    Checks if the given file is a CPP file or not.
-
-    :param file_path: The path to the file of interest.
-    :type file_path: str
-    :rtype: bool
-    :return: True if the file is a CPP file or False if not.
-    """
     return is_cpp_source(file_path) or is_cpp_header(file_path)
-
-
-##
-# Methods to manipulate the compilation flags
-##
 
 def make_absolute_flags(flags, base_dir):
     """
@@ -355,44 +299,32 @@ def make_absolute_flags(flags, base_dir):
 
 
 def strip_flags(flags):
-    """
-    Remove leading and trailing spaces from the list of flags.
-
-    :param flags: The list of flags which should be stripped.
-    :type flags: list[str]
-    :rtype: list[str]
-    :return: The list of flags with leading and trailing spaces removed.
-    """
+    # Remove leading and trailing spaces from the list of flags.
     return [flag.strip() for flag in flags]
 
-
-def make_final_flags(file_name, flags, base_dir = getcwd()):
+def make_final_flags(filename, flags, base_dir = getcwd(), compiler_flags = ycmconf_default_compiler_flags, flags_filename = None):
     """
     Finalize the given flags for the file of interest. This step
     includes stripping the flags, making them absolute to the given
     base directory and adding the corresponding file type infos to them
     if necessary.
-
-    :param file_name: The name of the file of interest.
-    :type file_name: str
-    :param flags: The flags which have been collected so far for the file.
-    :type flags: list[str]
-    :param base_dir: The directory which should be used to make the flags
-                     absolute. If this is omitted the cwd is used.
-    :type base_dir: str
-    :rtype: dict[str,object]
-    :return: The finalized flags for the file in the format wanted by YCM.
-    """
-    stripped = strip_flags(flags)
-    absolute = make_absolute_flags(stripped, base_dir)
-
-    final = absolute
-    if is_c_file(file_name):
-        final = save_add_flags(absolute, c_additional_flags)
-    if is_cpp_file(file_name):
-        final = save_add_flags(absolute, cpp_additional_flags)
-
-    return create_result(final)
+    """ 
+    if flags_filename is None:
+        flags_filename = filename
+    flags = compiler_flags + flags
+    if is_c_file(flags_filename):
+        flags += ycmconf_c_additional_flags
+    elif is_cpp_file(flags_filename):
+        flags += ycmconf_cpp_additional_flags
+    flags = strip_flags(flags)
+    ret = {
+            "flags": flags, 
+            "include_paths_relative_to_dir": base_dir,
+            "filename": filename,
+            "do_cache": True
+    }
+    log(ret)
+    return ret
 
 
 def save_add_flags(old_flags, additional_flags):
@@ -583,36 +515,7 @@ def save_add_flags(old_flags, additional_flags):
 # Methods to create the correct return format wanted by YCM
 ##
 
-def create_result(flags, do_cache = True, **kwargs):
-    """
-    Create the correct return value for YCM.
-
-    :param flags: The flags for the requested file.
-    :type flags: list[str]
-    :param do_cache: If the result should be cached by YCM or not. If this is
-                     omitted True is used.
-    :type do_cache: bool
-    :param kwargs: Additional arguments.
-    :type kwargs: dict[str,object]
-    :rtype: dict[str,object]
-    :return: A dictionary in the format wanted by YCM.
-    """
-    ret = {"flags": flags, "do_cache": do_cache}
-
-    return dict(ret, **kwargs)
-
-
-def merge_lists(l1, l2):
-    tmp = l1
-    for i in l2:
-        tmp.append(i)
-    return tmp
-
-##
-# Methods to parse the different formats supported by this script
-##
-
-def parse_compile_commands(file_name, search_base = getcwd()):
+def parse_compile_commands(filename, config):
     """
     Parse the clang compile database generated by cmake. This database
     is normally saved by cmake in a file called "compile_commands.json".
@@ -620,116 +523,89 @@ def parse_compile_commands(file_name, search_base = getcwd()):
     are used. The flags corresponding to the file of interest are returned.
     If no information for this file could be found in the database, the
     default flags are used.
-
-    :param file_name: The file for which flags should be created.
-    :type file_name: str
-    :param search_base: The directory at which the search for the database
-                        file should start. If it is omitted the cwd is used.
-    :type search_base: str
-    :rtype: dict[str,object]
-    :returns: The flags found in the database in the format wanted by YCM.
     """
-    database_path = dirname(find_file_recursively("compile_commands.json",
-            search_base))
+    import ycm_core
+    database = ycm_core.CompilationDatabase(dirname(config))
 
-    database = ycm_core.CompilationDatabase(database_path)
-
-    # As headers are not in the database, we have to use the corresponding
-    # source file.
-    if is_header(file_name):
-        (name,_) = splitext(file_name)
+    compilation_info = None
+    alternative_name = filename
+    if is_c_or_cpp_header(filename):
+        (name,_) = splitext(filename)
 
         # Try out all C and CPP extensions for the corresponding source file.
         for ext in (c_source_extensions + cpp_source_extensions):
             alternative_name = name + ext
-
             if exists(alternative_name):
-                compilation_info = database.GetCompilationInfoForFile(alternative_name)
+                continue
+            compilation_info = database.GetCompilationInfoForFile(alternative_name)
+            break
+    elif is_c_or_cpp_source(filename):
+        compilation_info = database.GetCompilationInfoForFile(filename)
 
-                # In the database we found flags for the alternative name
-                if (compilation_info.compiler_flags_):
-                    tmp = merge_lists(compilation_info.compiler_flags_, compiler_flags)
-                    return make_final_flags(file_name, tmp,
-                            compilation_info.compiler_working_dir_)
-
-    elif is_source(file_name):
-        compilation_info = database.GetCompilationInfoForFile(file_name)
-
+    if compilation_info is not None and compilation_info.compiler_flags_:
         # We found flags for the file in the database
-        if (compilation_info.compiler_flags_):
-            tmp = merge_lists(compilation_info.compiler_flags_, compiler_flags)
-            return make_final_flags(file_name, tmp,
-                    compilation_info.compiler_working_dir_)
+
+        # Get compiler flags if possible
+        compiler = compilation_info.compiler_flags_[0]
+        flags = list( compilation_info.compiler_flags_ )
+        compiler_flags = None
+        if which(compiler) is not None:
+            compiler_flags = get_compiler_flags(compiler, flags)
+        if compiler_flags is None:
+            compiler_flags = ycmconf_default_compiler_flags
+
+        return make_final_flags(filename, flags, compilation_info.compiler_working_dir_, compiler_flags)
 
     # We either don't have a proper file ending or did not find any information in the
     # database. Therefor use the default flags.
-    return parse_default_flags(file_name)
+    return parse_default_flags(filename)
 
 
-def parse_clang_complete(file_name, search_base = getcwd()):
-    """
-    Parse the configuration file for the clang complete VIM plugin.
-    Therefore it looks for a ".clang_complete" file starting at the
-    given directory.
-
-    :param file_name: The file for which flags should be created.
-    :type file_name: str
-    :param search_base: The directory where to start with the search for
-                        the configuration file. If it is omitted the cwd is
-                        used.
-    :type search_base: str
-    :rtype: dict[str,object]
-    :returns: The flags found in the file in the format wanted by YCM.
-    """
-    config = find_file_recursively(".clang_complete", search_base)
-    config_path = dirname(config)
-
+def parse_clang_complete(filename, config):
     with open(config, "r") as config_file:
         flags = config_file.read().splitlines()
+        return make_final_flags(filename, flags, dirname(config))
 
-        return make_final_flags(file_name, flags, config_path)
 
-
-def parse_default_flags(file_name):
+def parse_default_flags(filename):
     """
     Parse and clean the default flags to use them as result for YCM.
-
-    :param file_name: The file for which flags should be created.
-    :type file_name: str
-    :rtype: dict[str,object]
-    :returns: The default flags in the format wanted by YCM.
     """
-    return make_final_flags(file_name, default_flags, script_directory())
+    return make_final_flags(filename, ycmconf_default_flags, script_directory())
+
+def c_Settings(kwargs):
+    filename = kwargs['filename']
+
+    config = find_file_in_dirs("compile_commands.json", ycmconf_compile_command_search_dirs)
+    if config is not None:
+        log("compile_commands: " + config)
+        return parse_compile_commands(filename, config)
+
+    # config = find_file_recursively(".clang_complete")
+    if config is not None:
+        log("parse_clang_complete: " + config)
+        return parse_clang_complete(filename, config)
+
+    log("parse default flags")
+    return parse_default_flags(filename)
 
 
 ####
 # Entry point for the YouCompleteMe plugin
 ####
+def Settings(**kwargs):
+    if 'client_data' in kwargs:
+        defaults_set(kwargs['client_data'])
+    
+    log("Settings: " + repr(kwargs))
+    log("cwd: " + os.getcwd())
 
-def Settings(filename, **kwargs):
-    """
-    This method is the entry point for the YCM plugin. It is called by the
-    plugin to get the all necessary compiler flags to parse a specific file
-    given as argument.
+    language = kwargs['language']
 
-    :param filename: The path to the file for which YouCompleteMe likes to do
-                      auto completion.
-    :type filename: str
-    :param kwargs: Additional key word arguments.
-    :type kwargs: dict[str,str]
-    :rtype: dict[str,object]
-    :return: The compilation flags for the file in the format wanted by YCM.
-    """
-    # First check for a compile_commands.json file.
-    search_base = dirname(filename)
+    if language == "cfamily":
+        return c_Settings(kwargs)
 
-    if file_exists("compile_commands.json", search_base):
-        # There exists a compile_commands.json file. Try to use this one.
-        return parse_compile_commands(filename, search_base)
-    elif file_exists(".clang_complete", search_base):
-        # There exists a .clang_complete file. Try to use this one.
-        return parse_clang_complete(filename, search_base)
-    else:
-        # No files exists. Use the default flags.
-        return parse_default_flags(filename)
+    return {}
+
+
 

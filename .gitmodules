@@ -1,96 +1,114 @@
 [submodule "vim-gitgutter"]
-	path = vim/bundle/vim-gitgutter
+	path = vim/ebundle/generic/vim-gitgutter
 	url = https://github.com/airblade/vim-gitgutter.git
 [submodule "tabular"]
-	path = vim/bundle/tabular
+	path = vim/ebundle/utils/tabular
 	url = https://github.com/godlygeek/tabular.git
 [submodule "vim-fugitive"]
-	path = vim/bundle/vim-fugitive
+	path = vim/ebundle/utils/vim-fugitive
 	url = https://github.com/tpope/vim-fugitive.git
 [submodule "vim-surround"]
-	path = vim/bundle/vim-surround
+	path = vim/ebundle/utils/vim-surround
 	url = https://github.com/tpope/vim-surround.git
 [submodule "syntastic"]
-	path = vim/bundle/syntastic
+	path = vim/ebundle/lang/syntastic
 	url = https://github.com/vim-syntastic/syntastic.git
-[submodule "vim/bundle/rainbow"]
-	path = vim/bundle/rainbow
-	url = https://github.com/luochen1990/rainbow.git
 [submodule "vim/bundle/ctrlp.vim"]
-	path = vim/bundle/ctrlp.vim
+	path = vim/ebundle/utils/ctrlp.vim
 	url = https://github.com/kien/ctrlp.vim
 [submodule "vim/bundle/nerdtree"]
-	path = vim/bundle/nerdtree
+	path = vim/ebundle/utils/nerdtree
 	url = https://github.com/preservim/nerdtree
 [submodule "vim/bundle/vim-airline"]
-	path = vim/bundle/vim-airline
+	path = vim/ebundle/generic/vim-airline
 	url = https://github.com/vim-airline/vim-airline
 [submodule "vim/bundle/vim-pathogen"]
 	path = vim/bundle/vim-pathogen
 	url = https://github.com/tpope/vim-pathogen
-[submodule "vim/bundle/vim-cmake-completion"]
-	path = vim/bundle/vim-cmake-completion
-	url = https://github.com/richq/vim-cmake-completion
-[submodule "vim/bundle/vim-cmake-syntax"]
-	path = vim/bundle/vim-cmake-syntax
-	url = git://github.com/pboettch/vim-cmake-syntax.git
 [submodule "vim/bundle/vimspector"]
 	path = vim/bundle/vimspector
 	url = https://github.com/puremourning/vimspector
 [submodule "vim/bundle/vim-tips"]
-	path = vim/bundle/vim-tips
+	path = vim/ebundle/utils/vim-tips
 	url = https://github.com/michaelb/vim-tips
-[submodule "vim/bundle/gruvbox"]
-	path = vim/bundle/gruvbox
-	url = https://github.com/morhetz/gruvbox
 [submodule "vim/bundle/vim-dispatch"]
-	path = vim/bundle/vim-dispatch
+	path = vim/ebundle/utils/vim-dispatch
 	url = https://github.com/tpope/vim-dispatch
 [submodule "vim/bundle/vim-repeat"]
-	path = vim/bundle/vim-repeat
+	path = vim/ebundle/utils/vim-repeat
 	url = https://github.com/tpope/vim-repeat
 [submodule "vim/bundle/vim-unimpaired"]
-	path = vim/bundle/vim-unimpaired
+	path = vim/ebundle/utils/vim-unimpaired
 	url = https://github.com/tpope/vim-unimpaired
 [submodule "vim/bundle/vim-fswitch"]
-	path = vim/bundle/vim-fswitch
+	path = vim/ebundle/utils/vim-fswitch
 	url = https://github.com/derekwyatt/vim-fswitch
-[submodule "vim/vim-colors-solarized"]
-	path = vim/bundle/vim-colors-solarized
-	url = git://github.com/altercation/vim-colors-solarized.git
 [submodule "vim/vim-eunuch"]
-	path = vim/bundle/vim-eunuch
+	path = vim/ebundle/utils/vim-eunuch
 	url = https://github.com/tpope/vim-eunuch
-[submodule "vim/bundle/vim-headerguard"]
-	path = vim/bundle/vim-headerguard
-	url = https://github.com/drmikehenry/vim-headerguard
-[submodule "vim/bundle/vim-gutentags"]
-	path = vim/bundle/vim-gutentags
-	url = https://github.com/ludovicchabant/vim-gutentags
 [submodule "vim/bundle/vim-easy-align"]
-	path = vim/bundle/vim-easy-align
+	path = vim/ebundle/utils/vim-easy-align
 	url = https://github.com/junegunn/vim-easy-align
 [submodule "vim/bundle/targets.vim"]
-	path = vim/bundle/targets.vim
+	path = vim/ebundle/generic/targets.vim
 	url = https://github.com/wellle/targets.vim
 [submodule "vim/bundle/vim-table-mode"]
-	path = vim/bundle/vim-table-mode
+	path = vim/ebundle/utils/vim-table-mode
 	url = https://github.com/dhruvasagar/vim-table-mode
 [submodule "vim/bundle/vim-workspace"]
-	path = vim/bundle/vim-workspace
+	path = vim/ebundle/utils/vim-workspace
 	url = https://github.com/thaerkh/vim-workspace
-[submodule "vim/bundle/vim-paste-easy"]
-	path = vim/bundle/vim-paste-easy
-	url = https://github.com/roxma/vim-paste-easy
-[submodule "vim/bundle/cscope.vim"]
-	path = vim/bundle/cscope.vim
-	url = https://github.com/brookhong/cscope.vim
 [submodule "vim/bundle/ctrlp-py-matcher"]
-	path = vim/bundle/ctrlp-py-matcher
+	path = vim/ebundle/utils/ctrlp-py-matcher
 	url = https://github.com/FelikZ/ctrlp-py-matcher
 [submodule "vim/bundle/vim-template"]
-	path = vim/bundle/vim-template
+	path = vim/ebundle/utils/vim-template
 	url = git@github.com:Kamilcuk/vim-template
-[submodule "vim/bundle/split-manpage.vim"]
-	path = vim/bundle/split-manpage.vim
-	url = https://github.com/ludwig/split-manpage.vim
+[submodule "vim/bundle/papercolor-theme"]
+	path = vim/ebundle/view/papercolor-theme
+	url = https://github.com/NLKNguyen/papercolor-theme
+[submodule "vim/bundle/vim-airline-themes"]
+	path = vim/ebundle/view/vim-airline-themes
+	url = https://github.com/vim-airline/vim-airline-themes
+[submodule "vim/bundle/FastFold"]
+	path = vim/ebundle/generic/FastFold
+	url = https://github.com/Konfekt/FastFold
+[submodule "vim/bundle/gen_tags.vim"]
+	path = vim/ebundle/lang/gen_tags.vim
+	url = https://github.com/jsfaint/gen_tags.vim
+[submodule "vim/bundle/vim-sensible"]
+	path = vim/ebundle/generic/vim-sensible
+	url = https://github.com/tpope/vim-sensible
+[submodule "vim/bundle/ack.vim"]
+	path = vim/ebundle/utils/ack.vim
+	url = https://github.com/mileszs/ack.vim
+[submodule "vim/bundle/LargeFile"]
+	path = vim/ebundle/generic/LargeFile
+	url = https://github.com/vim-scripts/LargeFile
+[submodule "vim/bundle/vim-scriptease"]
+	path = vim/ebundle/utils/vim-scriptease
+	url = https://github.com/tpope/vim-scriptease
+[submodule "vim/bundle/golden-ratio"]
+	path = vim/ebundle/utils/golden-ratio
+	url = https://github.com/idbrii/golden-ratio
+[submodule "vim/bundle/vim-one"]
+	path = vim/ebundle/view/vim-one
+	url = https://github.com/rakr/vim-one
+[submodule "vim/bundle/vim-lucius"]
+	path = vim/ebundle/view/vim-lucius
+	url = https://github.com/jonathanfilip/vim-lucius
+[submodule "vim/bundle/Lightning"]
+	path = vim/ebundle/view/Lightning
+	url = https://github.com/wimstefan/Lightning
+[submodule "vim/ebundle/view/Colour-Sampler-Pack"]
+	path = vim/ebundle/view/Colour-Sampler-Pack
+	url = https://github.com/vim-scripts/Colour-Sampler-Pack/
+[submodule "vim/ebundle/view/vim-github-colorscheme"]
+	path = vim/ebundle/view/vim-github-colorscheme
+	url = https://github.com/endel/vim-github-colorscheme
+[submodule "vim/ebundle/view/direwolf"]
+	path = vim/ebundle/view/direwolf
+	url = https://github.com/yankcrime/direwolf
+[submodule "vim/ebundle/view/seoul256.vim"]
+	path = vim/ebundle/view/seoul256.vim
+	url = https://github.com/junegunn/seoul256.vim
