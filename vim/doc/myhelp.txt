@@ -1,11 +1,18 @@
 myhelp.txt
 
-*myhelp* *my*
+My help *myhelp* *my-help* *my*
+
+======================================================================
+
+My help with vim navigation and usage     *my-navigation* *my-vim*
+
+Control sequences                       *my-ctrl*
 
 Ctrl+w+o          - Window fullscreen
 Ctrl+w+w          - Go to second window
 Ctrl+w+{HJKL}     - Obróć okna
 Ctrl+w+N          - Wyjdź z okna terminala
+Ctrl+w+q          - Clsse window
 
 Ctrl+f            - widok na dół
 Ctrl+b            - widok do góry
@@ -26,6 +33,8 @@ Ctrl+L            - Clear hlsearch (from vim-sensible)
 Ctrl+n            - Open NERDTree
 Ctrl+p            - Start CtrlP
 
+Normal mode sequences                     *my-nmap*
+
 K                 - show man page for current word
 %                 - Find the item under cursor
 *                 - Find th eitem under cursor
@@ -33,6 +42,12 @@ K                 - show man page for current word
 za                - Toggle fold
 zo                - Open fold
 zc                - Close fold
+
+]q                - Następny błąd
+[q                - Poprzedni błąd
+]Q                - Pierwszy błąd
+[Q                - Ostatni błąd
+{[]}{bbBB}        - Następnu/popzredni/pierwszy/ostatni buffor
 
 \gd               - Go to Definition or decalration
 \gr               - Go to References
@@ -42,11 +57,11 @@ zc                - Close fold
 \w                - Create workspace :ToggleWorkspace
 \s                - Substitute current word
 
-]q                - Następny błąd
-[q                - Poprzedni błąd
-]Q                - Pierwszy błąd
-[Q                - Ostatni błąd
-{[]}{bbBB}        - Następnu/popzredni/pierwszy/ostatni buffor
+\cc               - nerdcommneter comment
+\cu               - nerdcommenter uncomment
+\ca               - swtich between /* */ and // comment style
+
+Commands                       *my-cmd*
 
 :bd               - Zamknij bufor
 
@@ -66,6 +81,32 @@ CTRL+R CTRL+W     - Skopiuj wyraz pod cursorem do wiersza poleceń
 Mapy:
 map ; :
 noremap ;; ;
+
+==============================================================================
+
+My help with gdb               *mydebug* *mygdb* *my-debugging* *my-debug* *my-gdb*
+
+Initialization commands:                                *my-gdb-init*
+
+target remote localhost:2331
+file <filename>
+load
+monitor reset
+b main
+continue
+
+Navigation commands:                               *my-gdb-navigation*
+
+s or step
+n or next
+si or stepi
+finish
+
+Inspect state commands:                            *my-gdb-state*
+
+where
+bt
+backtrace
 
 ===============================================================================
 

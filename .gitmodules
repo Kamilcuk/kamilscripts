@@ -5,7 +5,7 @@
 	path = vim/ebundle/utils/tabular
 	url = https://github.com/godlygeek/tabular.git
 [submodule "vim-fugitive"]
-	path = vim/ebundle/utils/vim-fugitive
+	path = vim/ebundle/integration/vim-fugitive
 	url = https://github.com/tpope/vim-fugitive.git
 [submodule "vim-surround"]
 	path = vim/ebundle/utils/vim-surround
@@ -25,14 +25,11 @@
 [submodule "vim/bundle/vim-pathogen"]
 	path = vim/bundle/vim-pathogen
 	url = https://github.com/tpope/vim-pathogen
-[submodule "vim/bundle/vimspector"]
-	path = vim/bundle/vimspector
-	url = https://github.com/puremourning/vimspector
 [submodule "vim/bundle/vim-tips"]
 	path = vim/ebundle/utils/vim-tips
 	url = https://github.com/michaelb/vim-tips
 [submodule "vim/bundle/vim-dispatch"]
-	path = vim/ebundle/utils/vim-dispatch
+	path = vim/ebundle/my/vim-dispatch
 	url = https://github.com/tpope/vim-dispatch
 [submodule "vim/bundle/vim-repeat"]
 	path = vim/ebundle/utils/vim-repeat
@@ -41,7 +38,7 @@
 	path = vim/ebundle/utils/vim-unimpaired
 	url = https://github.com/tpope/vim-unimpaired
 [submodule "vim/bundle/vim-fswitch"]
-	path = vim/ebundle/utils/vim-fswitch
+	path = vim/ebundle/lang/vim-fswitch
 	url = https://github.com/derekwyatt/vim-fswitch
 [submodule "vim/vim-eunuch"]
 	path = vim/ebundle/utils/vim-eunuch
@@ -112,3 +109,30 @@
 [submodule "vim/ebundle/view/seoul256.vim"]
 	path = vim/ebundle/view/seoul256.vim
 	url = https://github.com/junegunn/seoul256.vim
+[submodule "vim/ebundle/integration/vim-rhubarb"]
+	path = vim/ebundle/integration/vim-rhubarb
+	url = https://github.com/tpope/vim-rhubarb
+[submodule "vim/ebundle/integration/fugitive-gitlab.vim"]
+	path = vim/ebundle/integration/fugitive-gitlab.vim
+	url = https://github.com/shumphrey/fugitive-gitlab.vim
+[submodule "vim/ebundle/utils/vim-smooth-scroll"]
+	path = vim/ebundle/utils/vim-smooth-scroll
+	url = https://github.com/terryma/vim-smooth-scroll
+[submodule "vim/bundle/NrrwRgn"]
+	path = vim/ebundle/utils/NrrwRgn
+	url = https://github.com/chrisbra/NrrwRgn
+[submodule "vim/bundle/bufexplorer"]
+	path = vim/bundle/bufexplorer
+	url = https://github.com/jlanzarotta/bufexplorer
+[submodule "vim/bundle/hexmode"]
+	path = vim/ebundle/utils/hexmode
+	url = https://github.com/fidian/hexmode
+[submodule "vim/bundle/nerdcommenter"]
+	path = vim/ebundle/utils/nerdcommenter
+	url = https://github.com/preservim/nerdcommenter
+[submodule "vim/bundle/vim-boxdraw"]
+	path = vim/ebundle/utils/vim-boxdraw
+	url = https://github.com/gyim/vim-boxdraw
+[submodule "vim/bundle/vim-mergetool"]
+	path = vim/ebundle/utils/vim-mergetool
+	url = https://github.com/samoshkin/vim-mergetool

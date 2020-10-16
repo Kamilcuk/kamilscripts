@@ -85,6 +85,10 @@ setlocal foldnestmax=10
 setlocal nofoldenable
 setlocal foldlevel=2
 
+set wildignore+=*/node_modules/*,_site,*/__pycache__/,*/venv/*,*/target/*,*/.vim$,\~$,*/.log,*/.aux,*/.cls,*/.aux,*/.bbl,*/.blg,*/.fls,*/.fdb*/,*/.toc,*/.out,*/.glo,*/.log,*/.ist,*/.fdb_latexmk
+set wildignore+=*/tmp/*,*.so,*.swp,*.zip
+set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe
+
 if 0
 	" change backupdir to temporary directory
 	" not needed - all caches are now stored in cache
@@ -198,12 +202,18 @@ if (empty($TMUX))
 	endif
 endif
 
+" https://vi.stackexchange.com/questions/9131/i-cant-switch-to-cursor-in-insert-mode
+let &t_SI = "\<esc>[5 q"
+let &t_SR = "\<esc>[5 q"
+let &t_EI = "\<esc>[2 q"
+au InsertEnter * silent execute "!echo -en \<esc>[5 q"
+au InsertLeave * silent execute "!echo -en \<esc>[2 q"
+
 " colorscheme """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 set background=light
 " colorscheme ron
 if 1 | try
 	" https://github.com/NLKNguyen/papercolor-theme
-	colorscheme PaperColor
 	let g:airline_theme = 'papercolor'
 	let g:PaperColor_Theme_Options = {
 				\   'theme': {
@@ -212,6 +222,7 @@ if 1 | try
 				\     }
 				\   }
 				\ }
+	colorscheme PaperColor
 catch | endtry | endif
 if 0
 	let g:airline_theme='one'
@@ -222,12 +233,16 @@ endif
 
 """""""""" Plugins """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-packadd! editexisting
-packadd! termdebug
-
 if exists('g:kamilscripts')
 	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
 endif
+
+packadd! editexisting
+
+let g:termdebug_use_prompt = 0
+let g:termdebug_wide = 163
+hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
+hi debugBreakpoint term=reverse ctermbg=red guibg=red
 
 " https://github.com/thoughtbot/dotfiles/pull/641
 " Set tags for fugitive
@@ -243,7 +258,8 @@ if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
 endif
 let g:ycm_autoclose_preview_window_after_completion = 1
 let g:ycm_confirm_extra_conf = 0
-let g:ycm_auto_hover = 0
+let g:ycm_auto_hover = ''
+let g:ycm_enable_hover = 1
 
 " airline
 let g:airline#extensions#tabline#enabled = 1
@@ -295,6 +311,12 @@ if 0
 	endif
 endif
 
+" ctrlp
+let g:ctrlp_custom_ignore = {
+  \ 'dir':  '\v[\/]\.(git|hg|svn)$',
+  \ 'file': '\v\.(exe|so|dll)$',
+  \ }
+
 " https://github.com/FelikZ/ctrlp-py-matcher
 let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 
@@ -329,10 +351,10 @@ let g:gen_tags#use_cache_dir = 0
 let g:gen_tags#cache_dir = ".cache"
 
 " My own pluting to enable gen_tags statusline on airline
-if &rtp =~ 'airline' " rudimentary check
-	let g:airline#extensions#gen_tags#enabled = 1
-	call airline#add_statusline_func('airline#extensions#gen_tags#enable_on_section_x')
-endif
+"if &rtp =~ 'airline' " rudimentary check
+"	let g:airline#extensions#gen_tags#enabled = 1
+"	call airline#add_statusline_func('airline#extensions#gen_tags#enable_on_section_x')
+"endif
 
 " goldenratio
 " Don't resize automatically.
@@ -387,7 +409,28 @@ let g:gutentags_ctags_exclude += [
 	\ ]
 let g:gutentags_trace = 0
 let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
-"
+
+" smooth-scroll
+if &rtp =~ "vim-smooth-scroll"
+	noremap <silent> <c-u> :call smooth_scroll#up(&scroll, 5, 2)<CR>
+	noremap <silent> <c-d> :call smooth_scroll#down(&scroll, 5, 2)<CR>
+	noremap <silent> <c-b> :call smooth_scroll#up(&scroll*2, 5, 4)<CR>
+	noremap <silent> <c-f> :call smooth_scroll#down(&scroll*2, 5, 4)<CR>
+endif
+
+" Dispatch colors
+highlight DispatchAbortedMsg   ctermbg=Red
+highlight DispatchFailureMsg   ctermbg=Red
+highlight DispatchSuccessMsg   ctermbg=Green
+highlight DispatchCompleteMsg  ctermbg=Green
+
+" https://github.com/samoshkin/vim-mergetool
+function s:on_mergetool_set_layout(split)
+	set syntax=off
+	set nospell
+endfunction
+let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
+let g:mergetool_layout = 'lmr'
 
 """""""""" Shortcuts """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -397,20 +440,26 @@ map ; :
 noremap ;; ;
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+" https://github.com/mhinz/vim-grepper/issues/117
+"augroup vimrcQfClose
+"    autocmd!
+"    autocmd FileType qf if mapcheck('<esc>', 'n') ==# '' | nnoremap <buffer><silent> <esc> :cclose<bar>lclose<CR> | endif
+"augroup END
+
 nnoremap <leader>w :ToggleWorkspace<CR>
 
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
 nnoremap <leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
 
 nnoremap <leader>d  :YcmShowDetailedDiagnostic<CR>
-nnoremap <leader>D  :YcmDiags<CR>
+nnoremap <leader>Q  :YcmDiags<CR> " matches [q ]q moves from the other thingi
 " https://gitter.im/Valloric/YouCompleteMe?at=5d3183545ea6e644ecdf5a7a
 nnoremap <leader>gd :YcmCompleter GoToDefinitionElseDeclaration<CR>
 nnoremap <leader>gr :YcmCompleter GoToReferences<CR>
 nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
 nnoremap <leader>gf :YcmCompleter FixIt<CR>
 nnoremap <leader>gK :YcmCompleter GetDoc<CR>
-nnoremap <leader>gr :YcmCompleter RefactorRename<CR>
+nnoremap <leader>gR :YcmCompleter RefactorRename<CR>
 nnoremap <leader>gF :YcmCompleter Format<CR>
 
 " https://github.com/derekwyatt/vim-fswitch
@@ -434,20 +483,49 @@ nnoremap <leader>fg :call MyCscope("g")<CR>
 
 map <C-n> :NERDTreeToggle<CR>
 
+nmap <C-w><C-e> :bdelete<CR>
+
+
+if &diff
+	function MLayoutCompletion(ArgLead, CmdLine, CursorPos)
+		return [ "mr", "lmr", "bmr", "LBR" ]
+	endfunction
+	command MLayout -nargs=1 -complete=customlist, :MergetoolToggleLayout <q-args><CR>
+	nmap <leader>mt <plug>(MergetoolToggle)
+	nmap <expr> <C-Left> &diff? '<Plug>(MergetoolDiffExchangeLeft)' : '<C-Left>'
+	nmap <expr> <C-Right> &diff? '<Plug>(MergetoolDiffExchangeRight)' : '<C-Right>'
+	nmap <expr> <C-Down> &diff? '<Plug>(MergetoolDiffExchangeDown)' : '<C-Down>'
+	nmap <expr> <C-Up> &diff? '<Plug>(MergetoolDiffExchangeUp)' : '<C-Up>'
+endif
+
 """""""""""" Project specific """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Seamlessly detect cmake out-of-source build errors in subdirectories
 let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
 
+if hostname() == "leonidas"
+	let &cmdheight = 2
+endif
+
 if getcwd() == "/home/work/beacon"
-	let g:ycmconf_default_compiler_flags = [ "-D__INLINE=inline" ]
-	let g:ycm_extra_conf_vim_data += [ 'g:ycmconf_default_compiler_flags' ]
-	autocmd BufEnter ?* let b:dispatch =  'make debug hw=4.7'
-	command Qdebughw47            Dispatch make debug hw=4.7
-	command Qreleasehw47          Dispatch make release hw=4.7 pcb_test=0
-	command Qprogram              Dispatch unbuffer make program
-	command Qdebughw47program     Dispatch make debug hw=4.7 && unbuffer make program
-	command Qreleasehw47program   Dispatch make release hw=4.7 pcb_test=0 && unbuffer make program
+	" let &errorformat = '../../%f:%l:%c: %m'
+	let g:ycmconf_extra_flags  = [ "-D__INLINE=inline" ]
+	let g:ycm_extra_conf_vim_data += [ 'g:ycmconf_extra_flags' ]
+
+	let g:beacon_hw = "4.7"
+	function! Qfunc(...)
+		execute "Dispatch -compiler=make unbuffer make hw=" . g:beacon_hw . " " . a:1
+	endfunction
+	autocmd BufEnter ?* let b:dispatch = ":Qdebug"
+	command Qdebug            call Qfunc("debug")
+	command Qrelease          call Qfunc("release pcb_test=0")
+	command Qprogram          call Qfunc("program")
+
+	let g:termdebugger = 'arm-none-eabi-gdb'
+	command QDebug            call Dbg_jlink_start({
+				\ "file": "_build/onemeter.elf", 
+				\ "jlink_args": " -device nRF51822_xxAC -if swd -select USB "
+				\ })
 endif
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""'

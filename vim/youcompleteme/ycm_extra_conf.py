@@ -11,9 +11,13 @@ if os.path.isdir("_build"):
 
 # Configuration ###########################################################
 
+# The loglevel of this script
 ycmconf_loglevel = 0
+
+# The search dirs for compile_commands.json file
 # ycmconf_compile_command_search_dirs = ['.']
 
+# Default flags in case compile_commands.json is not found.
 ycmconf_default_flags = [
     "-Wall",
     "-Wextra",
@@ -21,15 +25,29 @@ ycmconf_default_flags = [
     # "-Wno-unknown-pragmas",
 ]
 
+# Compiler flags added if compiler cannot be detected.
 ycmconf_default_compiler_flags = []
 
+# Extra flags added always
+ycmconf_extra_flags = []
+
+# Flags added to a C-ish file
 ycmconf_c_additional_flags = [ "-x","c","-std=gnu11", ]
+
+# Flags added to a C++-ish file
 ycmconf_cpp_additional_flags = [ "-x","c++","-std=gnu++17", ]
 
 def defaults_set(clientdata):
-    for i in [ 'loglevel', 'default_flags', 'compiler_flags', 'c_additional_flags', 'cpp_additional_flags' ]:
+    vars = [
+            'ycmconf_loglevel',
+            'ycmconf_default_flags',
+            'ycmconf_default_compiler_flags',
+            'ycmconf_extra_flags',
+            'ycmconf_c_additional_flags',
+            'ycmconf_cpp_additional_flags'
+    ]
+    for name in vars:
         for pre in ["g:", "b:"]:
-            name = 'ycmconf_' + i
             idx = pre + name
             if idx in clientdata:
                 log("defaults_set: " + idx + " = " + repr(clientdata[idx]))
@@ -316,6 +334,7 @@ def make_final_flags(filename, flags, base_dir = getcwd(), compiler_flags = ycmc
         flags += ycmconf_c_additional_flags
     elif is_cpp_file(flags_filename):
         flags += ycmconf_cpp_additional_flags
+    flags += ycmconf_extra_flags 
     flags = strip_flags(flags)
     ret = {
             "flags": flags, 

@@ -7,8 +7,19 @@
 	user = Kamilcuk
 [color]
 	ui = true
+
 [mergetool "meld"]
 	cmd = meld --auto-merge \"$LOCAL\" \"$BASE\" \"$REMOTE\" --output \"$MERGED\" --label \"MERGE (REMOTE BASE MY)\"
+	trustExitCode = false
+[mergetool "fugitive"]
+	# cmd = # vim -f -c \"Gvdiffsplit!\" \"$MERGED\"
+	cmd = vim -f -d -c \"wincmd l\" -c \"normal gg\" -c \"normal ]n\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
+	trustExitCode = false
+[mergetool "vim_mergetool"]
+	cmd = vim -d -f -c \"MergetoolStart\" \"$MERGED\" \"$BASE\" \"$LOCAL\" \"$REMOTE\"
+	trustExitCode = false
+[mergetool "merge3"]
+	cmd = vim -d -c \"wincmd l\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
 	trustExitCode = false
 [mergetool]
 	# don't ask if we want to skip merge
@@ -16,16 +27,21 @@
 	# don't create backup *.orig files
 	keepBackup = false
 [merge]
-	tool = meld
-[diff]
-	guitool = meld
+	# tool = meld
+	tool = vim_mergetool
+	conflictstyle = diff3
+
 [difftool "meld"]
 	cmd = meld \"$LOCAL\" \"$REMOTE\" --label \"DIFF (ORIGINAL MY)\"
+[diff]
+	guitool = meld
+
 [sendemail]
 	smtpencryption = tls
 [pull]
 	rebase = true
 	ff = only
+
 [guitool "git checkout $REVISION -- $FILENAME"]
 	cmd = git checkout "$REVISION" -- "$FILENAME"
 	needsfile = yes
@@ -48,7 +64,19 @@
 	cmd = eclipse "$FILENAME"
 	noconsole = yes
 	needsfile = yes
+
 [core]
 	pager = less
+
 [submodule]
 	recurse = true
+
+[alias]
+	lo = log --pretty=format:\"%h %ce %cd %s\" --graph
+	co = checkout
+	ci = commit
+	cm = commit -a -m
+	st = status
+	br = branch
+	m3 = mergetool -t merge3
+	mt = mergetool
