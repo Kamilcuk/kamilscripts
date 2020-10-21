@@ -209,6 +209,11 @@ let &t_EI = "\<esc>[2 q"
 au InsertEnter * silent execute "!echo -en \<esc>[5 q"
 au InsertLeave * silent execute "!echo -en \<esc>[2 q"
 
+au BufReadPost .vrapperrc set syntax=vim
+
+let g:netrw_home=$XDG_CACHE_HOME.'/vim'
+let g:netrw_dirhistmax = 0
+
 " colorscheme """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 set background=light
 " colorscheme ron
@@ -459,7 +464,7 @@ nnoremap <leader>gr :YcmCompleter GoToReferences<CR>
 nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
 nnoremap <leader>gf :YcmCompleter FixIt<CR>
 nnoremap <leader>gK :YcmCompleter GetDoc<CR>
-nnoremap <leader>gR :YcmCompleter RefactorRename<CR>
+nnoremap <leader>gR :YcmCompleter RefactorRename<Space>
 nnoremap <leader>gF :YcmCompleter Format<CR>
 
 " https://github.com/derekwyatt/vim-fswitch
@@ -485,7 +490,6 @@ map <C-n> :NERDTreeToggle<CR>
 
 nmap <C-w><C-e> :bdelete<CR>
 
-
 if &diff
 	function MLayoutCompletion(ArgLead, CmdLine, CursorPos)
 		return [ "mr", "lmr", "bmr", "LBR" ]
@@ -496,6 +500,10 @@ if &diff
 	nmap <expr> <C-Right> &diff? '<Plug>(MergetoolDiffExchangeRight)' : '<C-Right>'
 	nmap <expr> <C-Down> &diff? '<Plug>(MergetoolDiffExchangeDown)' : '<C-Down>'
 	nmap <expr> <C-Up> &diff? '<Plug>(MergetoolDiffExchangeUp)' : '<C-Up>'
+endif
+
+if expand('%') =~ ".git/rebase-merge/git-rebase-todo"
+	nmap <leader>o :normal oexec git gui<CR><Esc><Down>
 endif
 
 """""""""""" Project specific """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

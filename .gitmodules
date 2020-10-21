@@ -20,7 +20,7 @@
 	path = vim/ebundle/utils/nerdtree
 	url = https://github.com/preservim/nerdtree
 [submodule "vim/bundle/vim-airline"]
-	path = vim/ebundle/generic/vim-airline
+	path = vim/ebundle/my/vim-airline
 	url = https://github.com/vim-airline/vim-airline
 [submodule "vim/bundle/vim-pathogen"]
 	path = vim/bundle/vim-pathogen
@@ -136,3 +136,9 @@
 [submodule "vim/bundle/vim-mergetool"]
 	path = vim/ebundle/utils/vim-mergetool
 	url = https://github.com/samoshkin/vim-mergetool
+[submodule "vim/bundle/vim-textobj-function"]
+	path = vim/bundle/vim-textobj-function
+	url = https://github.com/kana/vim-textobj-function
+[submodule "vim/bundle/vim-textobj-user"]
+	path = vim/bundle/vim-textobj-user
+	url = https://github.com/kana/vim-textobj-user
