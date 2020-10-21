@@ -20,16 +20,14 @@
 	trustExitCode = false
 [mergetool "merge3"]
 	cmd = vim -d -c \"wincmd l\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
-	trustExitCode = false
 [mergetool]
-	# don't ask if we want to skip merge
 	prompt = false
-	# don't create backup *.orig files
 	keepBackup = false
+	trustExitCode = false
 [merge]
-	# tool = meld
-	tool = vim_mergetool
-	conflictstyle = diff3
+	tool = meld
+	# tool = vim_mergetool
+	# conflictstyle = diff3
 
 [difftool "meld"]
 	cmd = meld \"$LOCAL\" \"$REMOTE\" --label \"DIFF (ORIGINAL MY)\"
