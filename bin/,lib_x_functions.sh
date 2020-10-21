@@ -22,7 +22,7 @@ set -o pipefail
 	x >= xoff && y >= yoff && x < xoff + width && y < yoff + height { found=1 }
 	found
 	found { exit }
-	END { 
+	END {
 		if (!found) {
 			print "Could not find any monitor for the current mouse position" > "/dev/stderr"
 			exit 1
@@ -97,4 +97,30 @@ set -o pipefail
 	tmp2=$(xfconf-query -c xfce4-panel -p /panels/panel-1/autohide-behavior get) &&
 	echo "$tmp $tmp2"
 }
+
+,x_get_monitor_from_mouse() {
+	# Get the window position
+	eval "$(xdotool getmouselocation --shell)"
+
+	# Loop through each screen and compare the offset with the window
+	# coordinates.
+	,x_get_monitors |
+	{
+		while read -r name width height xoff yoff; do
+		    if ((
+					X >= xoff &&
+					Y >= yoff &&
+					X < xoff + width &&
+					Y < yoff + width
+					)); then
+		        printf "%s\n" "$name" "$width" "$height" "$xoff" "$yoff" "$X" "$Y" | paste -sd' '
+				exit 0
+		    fi
+		done
+		echo "Could not find any monitor for the current mouse position." >&2
+		exit 1
+	}
+}
+
+. ,lib_lib "$BASH_SOURCE" ',x_' "$@"
 
