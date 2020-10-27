@@ -1,0 +1,19 @@
+" Eclispe vrapper plugin configuration
+" http://vrapper.sourceforge.net/documentation/?topic=optional_plugins
+
+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+" https://vim.fandom.com/wiki/Map_semicolon_to_colon
+map ; :
+noremap ;; ;
+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+" https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
+nnoremap <leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
+
+" https://github.com/tpope/vim-unimpaired
+nmap [b :bprevious<CR>
+nmap ]b :bnext<CR>
+nmap [B :blast<CR>
+nmap ]B :bfirst<CR>
+
+" vim: ft=vim
