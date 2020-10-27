@@ -1,0 +1,17 @@
+{
+	"diagnostic.signOffset": 2,
+	"diagnostic.errorSign": "×",
+	"diagnostic.warningSign": "»",
+	"diagnostic.infoSign": "ღ",
+	"diagnostic.hintSign": "ஐ",
+	"diagnostic.displayByAle": false,
+	"diagnostic.refreshOnInsertMode": true,
+	"diagnostic.refreshAfterSave": false,
+	"diagnostic.checkCurrentLine": true,
+	"diagnostic.virtualTextPrefix": "                        => ",
+	"diagnostic.virtualText": true,
+	"codeLens.enable": true,
+
+	"clangd.semanticHighlighting":true
+}
+

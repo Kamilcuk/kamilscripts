@@ -70,9 +70,6 @@
 [submodule "vim/bundle/FastFold"]
 	path = vim/ebundle/generic/FastFold
 	url = https://github.com/Konfekt/FastFold
-[submodule "vim/bundle/gen_tags.vim"]
-	path = vim/ebundle/lang/gen_tags.vim
-	url = https://github.com/jsfaint/gen_tags.vim
 [submodule "vim/bundle/vim-sensible"]
 	path = vim/ebundle/generic/vim-sensible
 	url = https://github.com/tpope/vim-sensible
@@ -122,7 +119,7 @@
 	path = vim/ebundle/utils/NrrwRgn
 	url = https://github.com/chrisbra/NrrwRgn
 [submodule "vim/bundle/bufexplorer"]
-	path = vim/bundle/bufexplorer
+	path = vim/ebundle/utils/bufexplorer
 	url = https://github.com/jlanzarotta/bufexplorer
 [submodule "vim/bundle/hexmode"]
 	path = vim/ebundle/utils/hexmode
@@ -136,9 +133,24 @@
 [submodule "vim/bundle/vim-mergetool"]
 	path = vim/ebundle/utils/vim-mergetool
 	url = https://github.com/samoshkin/vim-mergetool
-[submodule "vim/bundle/vim-textobj-function"]
-	path = vim/bundle/vim-textobj-function
-	url = https://github.com/kana/vim-textobj-function
-[submodule "vim/bundle/vim-textobj-user"]
-	path = vim/bundle/vim-textobj-user
-	url = https://github.com/kana/vim-textobj-user
+[submodule "vim/ebundle/coc/coc.nvim"]
+	path = vim/ebundle/lang/coc.nvim
+	url = https://github.com/neoclide/coc.nvim
+[submodule "vim/bundle/vim-lsp-cxx-highlight"]
+	path = vim/ebundle/lang/vim-lsp-cxx-highlight
+	url = https://github.com/jackguo380/vim-lsp-cxx-highlight
+[submodule "vim/bundle/rainbow"]
+	path = vim/ebundle/utils/rainbow
+	url = https://github.com/luochen1990/rainbow
+[submodule "vim/bundle/vim-ctrlp-commandline"]
+	path = vim/ebundle/utils/vim-ctrlp-commandline
+	url = https://github.com/suy/vim-ctrlp-commandline
+[submodule "vim/bundle/showmarks"]
+	path = vim/ebundle/my/showmarks
+	url = https://github.com/xsunsmile/showmarks/
+[submodule "vim/ebundle/my/vim-ctrlp-oldfiles"]
+	path = vim/ebundle/my/vim-ctrlp-oldfiles
+	url = git@github.com:Kamilcuk/vim-ctrlp-oldfiles.git
+[submodule "vim/bundle/open-browser.vim"]
+	path = vim/ebundle/utils/open-browser.vim
+	url = https://github.com/tyru/open-browser.vim

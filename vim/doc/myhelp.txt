@@ -49,10 +49,6 @@ zc                - Close fold
 [Q                - Ostatni błąd
 {[]}{bbBB}        - Następnu/popzredni/pierwszy/ostatni buffor
 
-\gd               - Go to Definition or decalration
-\gr               - Go to References
-\gt               - Go to Include
-\gh               - To to matching header/source
 \fs \fd \fc \ft \fe \ff \fi  - komendy :cscope find
 \w                - Create workspace :ToggleWorkspace
 \s                - Substitute current word
@@ -60,6 +56,9 @@ zc                - Close fold
 \cc               - nerdcommneter comment
 \cu               - nerdcommenter uncomment
 \ca               - swtich between /* */ and // comment style
+\c<space>         - nerdcommenter toggle
+
+==============================================================
 
 Commands                       *my-cmd*
 
