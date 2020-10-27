@@ -33,6 +33,8 @@
 	cmd = meld \"$LOCAL\" \"$REMOTE\" --label \"DIFF (ORIGINAL MY)\"
 [diff]
 	guitool = meld
+	noprefix = false
+	mnemonicprefix = true
 
 [sendemail]
 	smtpencryption = tls
