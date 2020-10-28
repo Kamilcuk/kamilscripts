@@ -32,8 +32,8 @@ let g:PaperColor_Theme_Options = {
 			\       'cursor_bg' : ['#000000', '24'],
 			\       'cursorline' : ['#e4e4e4', '254'],
 			\       'cursorcolumn' : ['#e4e4e4', '254'],
-			\       'cursorlinenr_fg' : ['#eeeeee', '255'],
-			\       'cursorlinenr_bg' : ['#af00af', '127'],
+			\       'cursorlinenr_fg' : ['#af00af', '127'],
+			\       'cursorlinenr_bg' : ['#d0d0d0', '255'],
 			\       'popupmenu_fg' : ['#000000', '16'],
 			\       'popupmenu_bg' : ['#d0d0d0', '252'],
 			\       'search_fg' : ['#000000', '16'],
@@ -112,16 +112,17 @@ if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 
 " Cursor is set above also
 hi clear CursorLine after
+hi CursorLineNr cterm=bold gui=bold
 
 " See kamilscripts/vim/syntax/c.vim
 hi KcStandardCFuncs cterm=bold gui=bold guifg=#642880
 hi link KcDefine cInclude
 hi KcDefineSlash ctermfg=red
 
-hi cInclude cterm=none gui=none ctermfg=27
+hi cInclude cterm=none gui=none ctermfg=27 guifg=#005fff
 hi cDefine cterm=italic gui=italic ctermfg=Black
 hi cRepeat cterm=italic gui=italic
-hi cDefine ctermfg=19 guifg=#0000af
+hi cDefine ctermfg=33 guifg=#0087ff
 " hi cStorageClass cterm=bold gui=bold ctermfg=126 guifg=#7F0087
 
 hi Repeat cterm=italic gui=italic

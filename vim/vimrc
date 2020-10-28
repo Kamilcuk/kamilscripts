@@ -2,9 +2,11 @@
 
 " Init {{{
 
-source $VIMRUNTIME/defaults.vim
+if !has('nvim')
+	source $VIMRUNTIME/defaults.vim
+endif
 
-if $LC_CTYPE == 'pl_PL.UTF-8'
+if 0 && $LC_CTYPE == 'pl_PL.UTF-8'
 	source $VIMRUNTIME/delmenu.vim
 	set langmenu=pl_PL.UTF-8
 	language pl_PL.UTF-8
@@ -76,14 +78,14 @@ set nosmarttab     " Enabling this will make the tab key (in insert mode) insert
 set backspace=indent,eol,start  " let backspece delete everything in intsert mode
 
 " Tell vim to remember certain things when we
-set viminfo='100,/50,:5000,<800,@500,h,n~/.cache/vim/viminfo
-"           |    |   |     |    |    | + viminfo file path
-"           |    |   |     |    |    + disable 'hlsearch' loading viminfo
-"           |    |   |     |    + items in the input-line history
-"           |    |   |     + number of lines for each register
-"           |    |   + items in the command-line history
-"           |    + search history saved
-"           + number of edited files for which marks are remembered
+let &viminfo="'100,/50,:5000,<800,@500,h,n".(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
+"             |    |   |     |    |    | + viminfo file path
+"             |    |   |     |    |    + disable 'hlsearch' loading viminfo
+"             |    |   |     |    + items in the input-line history
+"             |    |   |     + number of lines for each register
+"             |    |   + items in the command-line history
+"             |    + search history saved
+"             + number of edited files for which marks are remembered
 
 " https://vim.fandom.com/wiki/Folding
 setlocal foldmethod=syntax
@@ -122,7 +124,7 @@ set updatetime=20000
 " Don't pass messages to |ins-completion-menu|.
 set shortmess+=c
 
-set signcolumn=yes
+let &signcolumn='yes'.(!has('nvim')?'':':2')
 
 " }}}
 " Some view things {{{
@@ -211,7 +213,9 @@ function KcPluginEnabled(name)
 	return 0
 endfunction
 
-packadd! editexisting
+if !has('nvim')
+	packadd! editexisting
+endif
 
 " Termdebug configuration
 let g:termdebug_use_prompt = 0
@@ -268,6 +272,7 @@ endif
 
 if KcPluginEnabled('vim-tips')
 	let g:vim_tips_tips_frequency = 0.5
+	let g:vim_tips_tips_frequency = 1
 endif
 
 " morhetz/gruvbox
@@ -615,22 +620,26 @@ command! -nargs=? Fold :call     CocAction('fold', <f-args>)
 command! -nargs=0 OR   :call     CocAction('runCommand', 'editor.action.organizeImport')
 
 " Mappings for CoCList
-" Show all diagnostics.
 nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
-" Manage extensions.
-"nnoremap <silent><nowait> <space>e  :<C-u>CocList extensions<cr>
-" Show commands.
+nnoremap <silent><nowait> <space>e  :<C-u>CocList extensions<cr>
 nnoremap <silent><nowait> <space>c  :<C-u>CocList commands<cr>
-" Find symbol of current document.
 nnoremap <silent><nowait> <space>o  :<C-u>CocList outline<cr>
-" Search workspace symbols.
 nnoremap <silent><nowait> <space>s  :<C-u>CocList -I symbols<cr>
-" Do default action for next item.
-nnoremap <silent><nowait> <space>j  :<C-u>CocNext<CR>
-" Do default action for previous item.
-nnoremap <silent><nowait> <space>k  :<C-u>CocPrev<CR>
-" Resume latest coc list.
 nnoremap <silent><nowait> <space>p  :<C-u>CocListResume<CR>
+nnoremap <silent><nowait> <space>b  :<C-u>CocList diagnostics --current-buf<CR>
+nnoremap <silent><nowait> <space>j  :<C-u>CocNext<CR>
+nnoremap <silent><nowait> <space>k  :<C-u>CocPrev<CR>
+
+" Mapping from https://github.com/antoinemadec/coc-fzf
+nnoremap <silent><nowait> <space>a  :<C-u>CocFzfList diagnostics<CR>
+nnoremap <silent><nowait> <space>e  :<C-u>CocFzfList extensions<CR>
+nnoremap <silent><nowait> <space>c  :<C-u>CocFzfList commands<CR>
+nnoremap <silent><nowait> <space>o  :<C-u>CocFzfList outline<CR>
+nnoremap <silent><nowait> <space>l  :<C-u>CocFzfList location<CR>
+nnoremap <silent><nowait> <space>s  :<C-u>CocFzfList symbols<CR>
+nnoremap <silent><nowait> <space>p  :<C-u>CocFzfListResume<CR>
+nnoremap <silent><nowait> <space>b  :<C-u>CocFzfList diagnostics --current-buf<CR>
+
 
 " }}}
 " Project specific {{{
