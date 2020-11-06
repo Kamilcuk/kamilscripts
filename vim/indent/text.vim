@@ -1,0 +1,3 @@
+
+setlocal textwidth=78
+

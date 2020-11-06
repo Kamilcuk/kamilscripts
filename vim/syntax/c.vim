@@ -171,7 +171,3 @@ syn match KcDefine "^\s*\zs\(%:\|#\)\s*\(define\|undef\)\>" containedin=@cDefine
 " Match only the \ continuation within a define
 syn match KcDefineSlash display "\\" containedin=@cDefine
 
-" Add map from coc command in C files
-nmap <silent> <leader>gh :CocCommand clangd.switchSourceHeader<CR>
-
-
