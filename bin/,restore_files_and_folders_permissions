@@ -1,0 +1,16 @@
+#!/bin/sh
+dir=${1:-.}
+cat <<EOF
+This file will execute:
+   find $dir -type d -print0 | xargs -0 chmod 755 
+   find $dir -type f -print0 | xargs -0 chmod 644
+Do you agree? [y/n]
+EOF
+read -r ans
+case "$ans" in
+y*|Y*) ;; *) exit; ;; esac
+set -x
+find "$dir" -type d -print0 | xargs -0 chmod 755
+find "$dir" -type f -print0 | xargs -0 chmod 644
+echo Success!
+

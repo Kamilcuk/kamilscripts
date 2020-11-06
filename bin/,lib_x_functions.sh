@@ -122,5 +122,9 @@ set -o pipefail
 	}
 }
 
+,x_get_panel() {
+	wmctrl -l -G | grep 'panel$'
+}
+
 . ,lib_lib "$BASH_SOURCE" ',x_' "$@"
 
