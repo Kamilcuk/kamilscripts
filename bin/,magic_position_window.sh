@@ -135,6 +135,11 @@ action() {
 	activew=$(xdotool getactivewindow)
 	activewname=$(xdotool getactivewindow getwindowname)
 
+	# ignore moving windows not attached to desktop
+	local activedesktop
+	activedesktop=$(xdotool getactivewindow get_desktop_for_window)
+	if ((activedesktop < 0)); then return; fi
+
 	local mx my tmp
 	tmp=$(,x_get_window_monitor "$activew" | awk '{print $2,$3}')
 	read -r mx my <<<"$tmp" # Monitor X, Monitor Y
