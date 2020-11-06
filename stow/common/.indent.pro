@@ -1,1 +1,1 @@
---linux-style -ut
+--linux-style --use-tabs --braces-on-func-def-line
