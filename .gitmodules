@@ -53,7 +53,7 @@
 	path = vim/ebundle/utils/vim-table-mode
 	url = https://github.com/dhruvasagar/vim-table-mode
 [submodule "vim/bundle/vim-workspace"]
-	path = vim/ebundle/utils/vim-workspace
+	path = vim/ebundle/zzz_utils/vim-workspace
 	url = https://github.com/thaerkh/vim-workspace
 [submodule "vim/bundle/ctrlp-py-matcher"]
 	path = vim/ebundle/utils/ctrlp-py-matcher
@@ -94,9 +94,6 @@
 [submodule "vim/bundle/Lightning"]
 	path = vim/ebundle/view/Lightning
 	url = https://github.com/wimstefan/Lightning
-[submodule "vim/ebundle/view/Colour-Sampler-Pack"]
-	path = vim/ebundle/view/Colour-Sampler-Pack
-	url = https://github.com/vim-scripts/Colour-Sampler-Pack/
 [submodule "vim/ebundle/view/vim-github-colorscheme"]
 	path = vim/ebundle/view/vim-github-colorscheme
 	url = https://github.com/endel/vim-github-colorscheme
@@ -154,3 +151,21 @@
 [submodule "vim/bundle/open-browser.vim"]
 	path = vim/ebundle/utils/open-browser.vim
 	url = https://github.com/tyru/open-browser.vim
+[submodule "vim/bundle/coc-fzf"]
+	path = vim/bundle/coc-fzf
+	url = https://github.com/antoinemadec/coc-fzf
+[submodule "vim/bundle/fzf.vim"]
+	path = vim/bundle/fzf.vim
+	url = https://github.com/junegunn/fzf.vim
+[submodule "vim/bundle/vim-interactive-rebase-reverse"]
+	path = vim/bundle/vim-interactive-rebase-reverse
+	url = https://github.com/salcode/vim-interactive-rebase-reverse
+[submodule "vim/bundle/spelunker.vim"]
+	path = vim/bundle/spelunker.vim
+	url = https://github.com/kamykn/spelunker.vim
+[submodule "vim/bundle/vimspector"]
+	path = vim/bundle/vimspector
+	url = https://github.com/puremourning/vimspector
+[submodule "vim/bundle/vim-hugefile"]
+	path = vim/bundle/vim-hugefile
+	url = https://github.com/mhinz/vim-hugefile
