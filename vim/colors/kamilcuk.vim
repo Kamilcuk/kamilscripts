@@ -129,10 +129,10 @@ hi Repeat cterm=italic gui=italic
 hi Conditional cterm=italic gui=italic
 
 " Dispatch colors for vim-dispatch with my patch
-hi DispatchAbortedMsg   ctermbg=Red
-hi DispatchFailureMsg   ctermbg=Red
-hi DispatchSuccessMsg   ctermbg=Green
-hi DispatchCompleteMsg  ctermbg=Green
+hi DispatchAbortedMsg   ctermbg=Red   guibg=Red
+hi DispatchFailureMsg   ctermbg=Red   guibg=Red
+hi DispatchSuccessMsg   ctermbg=Green guibg=LightGreen
+hi DispatchCompleteMsg  ctermbg=Green guibg=LightGreen
 
 " 3 manually configured in lsp
 hi LspCxxHlGroupNamespace ctermfg=133 guifg=#a635ab
@@ -157,4 +157,60 @@ hi! LspCxxHlSymUnknownNone ctermfg=Red guifg=#FF0000 cterm=bold gui=bold
 
 hi link doxygenBrief Comment
 hi link doxygenStartSpecial Comment
+
+" TermDebug vim plugin configuration
+hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
+hi debugBreakpoint term=reverse ctermbg=red guibg=red
+
+" NERDTree File highlighting
+" https://github.com/preservim/nerdtree/issues/201#issuecomment-197373760
+function! NERDTreeHighlightFile_old(extension, fg, ...) abort
+	"                                          bg, guifg, guibg
+	let bg = a:0 >= 1 ? a:1 : 'none'
+	let guifg = a:0 >= 2 ? a:2 : a:fg
+	let guibg = a:0 >= 3 ? a:3 : bg
+	if a:0 >= 4
+		echoe "NERDTreeHighlightFile: Invalid count of arguments"
+		return
+	endif
+	exec 'autocmd FileType nerdtree highlight nerdtree_' . a:extension . ' ctermfg=' . a:fg . ' ctermbg=' . bg . ' guifg=' . guifg . ' guibg=' . guibg
+	exec 'autocmd FileType nerdtree syn match nerdtree_' . a:extension . ' #^\s\+.*' . a:extension . '$#'
+endfunction
+function! NERDTreeHighlightFileLink(extension, name, ...) abort
+	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
+	exec 'autocmd FileType nerdtree highlight link kc_nerdtree_'. l:name . ' ' . a:name
+	exec 'autocmd FileType nerdtree syn match kc_nerdtree_' . l:name . ' #^\s\+.*' . a:extension . '$#'
+endfunction
+
+" Load all names for xterm256 variables, see autoload
+call kc#xterm256colornames#load()
+
+" to develop use :vsplit autoload/kc/xterm256colornames.vim
+call NERDTreeHighlightFileLink('vim'                 , 'x022_DarkGreen')
+call NERDTreeHighlightFileLink('jade'                , 'x150_DarkSeaGreen3')
+call NERDTreeHighlightFileLink('ini'                 , 'x044_DarkTurquoise')
+call NERDTreeHighlightFileLink('ya?ml'               , 'x052_DarkRed')
+call NERDTreeHighlightFileLink('config'              , 'x036_DarkCyan')
+call NERDTreeHighlightFileLink('conf'                , 'x018_DarkBlue')
+call NERDTreeHighlightFileLink('json'                , 'x021_Blue1')
+call NERDTreeHighlightFileLink('html'                , 'x107_DarkOliveGreen3')
+call NERDTreeHighlightFileLink('styl'                , 'x043_Cyan3')
+call NERDTreeHighlightFileLink('css'                 , 'x050_Cyan2')
+call NERDTreeHighlightFileLink('coffee'              , 'x124_Red3')
+call NERDTreeHighlightFileLink('js'                  , 'x058_Orange4')
+call NERDTreeHighlightFileLink('php'                 , 'x127_Magenta3')
+call NERDTreeHighlightFileLink('ds_store'            , 'x232_Grey3')
+call NERDTreeHighlightFileLink('gitconfig'           , 'x232_Grey1')
+call NERDTreeHighlightFileLink('gitignore'           , 'x232_Grey2')
+call NERDTreeHighlightFileLink('bash\(rc\|profile\)' , 'x108_DarkSeaGreen')
+call NERDTreeHighlightFileLink('[ch]'                , 'x090_DarkMagenta')
+call NERDTreeHighlightFileLink('[ch]pp'              , 'x091_DarkMagenta')
+call NERDTreeHighlightFileLink('\(txt\|rst\|md\)'    , 'x022_DarkGreen')
+call NERDTreeHighlightFileLink('cmake'               , 'x017_NavyBlue')
+call NERDTreeHighlightFileLink('m4'                  , 'x068_SteelBlue3')
+call NERDTreeHighlightFileLink('ld'                  , 'x089_DeepPink4')
+call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x142_Gold3')
+
+delf! NERDTreeHighlightFileLink
+delf! NERDTreeHighlightFile
 

@@ -57,15 +57,15 @@ set number
 set relativenumber
 set autowriteall
 set hidden
-set swapfile      " When this option is not empty a swap file is synced to disk after writing to it.
-set writebackup   " Make a backup before overwriting a file.
-set nobackup      " Turn on backup option
-set autoindent    " Copy indent from current line when starting a new line
+set swapfile
+set writebackup
+set nobackup
+set autoindent
 set history=5000
 set pastetoggle=<F2>
 filetype plugin indent on
 syntax enable
-set encoding=utf-8
+set encoding=UTF-8
 set nofoldenable
 
 set tabstop=4      " The width of a hard tabstop measured in spaces -- effectively the (maximum) width of an actual tab character.
@@ -88,10 +88,10 @@ let &viminfo="'100,/50,:5000,<800,@500,h,n".(!has('nvim') ? '~/.cache/vim/viminf
 "             + number of edited files for which marks are remembered
 
 " https://vim.fandom.com/wiki/Folding
-setlocal foldmethod=syntax
-setlocal foldnestmax=10
-setlocal nofoldenable
-setlocal foldlevel=0
+set foldmethod=syntax
+set foldnestmax=10
+set nofoldenable
+set foldlevel=0
 
 set wildignore+=*/node_modules/*,_site,*/__pycache__/,*/venv/*,*/target/*,*/.vim$,\~$,*/.log,*/.aux,*/.cls,*/.aux,*/.bbl,*/.blg,*/.fls,*/.fdb*/,*/.toc,*/.out,*/.glo,*/.log,*/.ist,*/.fdb_latexmk
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip
@@ -99,19 +99,11 @@ set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe
 
 set cmdheight=2
 
-set shell=bash
-
-
-if 0
-	" change backupdir to temporary directory
-	" not needed - all caches are now stored in cache
-	let myvimbackupdir = '/tmp/.vimbackupdir-'.$USER.'/'
-	if !isdirectory(myvimbackupdir) | call mkdir(myvimbackupdir) | call setfperm(myvimbackupdir, 'rxwrxwrxw') | endif
-	execute 'set backupdir^='.myvimbackupdir
-	execute 'set directory^='.myvimbackupdir
-	execute 'set backupskip^='.myvimbackupdir.'*'
-	unlet myvimbackupdir
+if executable('bash')
+	set shell=bash
 endif
+
+set exrc
 
 " I do not like mouse
 set mouse=
@@ -125,6 +117,11 @@ set updatetime=20000
 set shortmess+=c
 
 let &signcolumn='yes'.(!has('nvim')?'':':2')
+
+set scrolloff=6
+
+" https://github.com/thaerkh/vim-workspace/issues/11
+set sessionoptions-=blank
 
 " }}}
 " Some view things {{{
@@ -197,21 +194,74 @@ let g:netrw_nogx = 0
 " See :help doxygen.vim
 let g:load_doxygen_syntax=1
 
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+augroup vimrc-incsearch-highlight
+	autocmd!
+	if exists('+CmdlineEnter')
+		autocmd CmdlineEnter [/\?] :set hlsearch
+		autocmd CmdlineLeave [/\?] :set nohlsearch
+	endif
+augroup END
+
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+" Disable paste
+augroup Cancel_Paste
+	autocmd!
+	autocmd InsertLeave * if &paste | set nopaste | echo 'nopaste' | endif
+augroup END
+
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+" Reload vim and config automatically
+augroup UpdateVim
+	autocmd!
+	autocmd UpdateVim BufWritePost ~/vimrc source ~/vimrc | redraw | silent doautocmd ColorScheme
+	if has('gui_running')
+		if filereadable($MYGVIMRC)
+			source $MYGVIMRC | echo 'Source .gvimrc'
+		endif
+	endif
+	autocmd FocusLost * :wa
+	autocmd VimResized * redraw!
+	autocmd VimResized * wincmd =
+augroup END
+
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+" Set tmux title
+if exists('$TMUX')
+	augroup TmuxTitle
+		autocmd BufReadPost,FileReadPost,BufNewFile,BufEnter *
+					\ call system("tmux rename-window 'vim | " . expand("%:t") . "'")
+		autocmd VimLeave * call system("tmux setw automatic-rename")
+	augroup END
+endif
+
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+if has('nvim')
+	augroup nvim
+		au!
+		autocmd BufEnter term://* startinsert
+		"Do everything possible to prevent numbers and cursorline in term buffer
+		autocmd BufEnter,BufWinLeave,BufWinEnter,WinEnter,InsertLeave term://* setlocal nonumber norelativenumber nocursorline
+		autocmd TermOpen * setlocal nonumber norelativenumber
+		au BufEnter,WinEnter * if &buftype == 'terminal' | startinsert | set nocursorline | endif
+		" TODO: Tidy this up as there must be a way not to run this for fzf term buffers using an if statement
+		if exists('+winhighlight') "&& &filetype !=? 'fzf'
+			" autocmd TermOpen call s:highlight_myterm()
+			" Clear highlight for fzf buffers because yuck
+			au FileType fzf setl winhighlight=
+		endif
+		autocmd TermOpen * set bufhidden=hide
+		au FileType fzf tnoremap <nowait><buffer> <esc> <c-g> "Close FZF in neovim with esc
+	augroup END
+	au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
+endif
+
 " }}}
 " Plugins {{{
 
 if exists('g:kamilscripts')
 	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
 endif
-
-function KcPluginEnabled(name)
-	for i in pathogen#split(&rtp)
-		if fnamemodify(i, ':t') =~ a:name
-			return 1
-		endif
-	endfor
-	return 0
-endfunction
 
 if !has('nvim')
 	packadd! editexisting
@@ -220,8 +270,6 @@ endif
 " Termdebug configuration
 let g:termdebug_use_prompt = 0
 let g:termdebug_wide = 163
-hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
-hi debugBreakpoint term=reverse ctermbg=red guibg=red
 
 " open-browser.vim plugin
 nmap gx <Plug>(openbrowser-open)
@@ -254,14 +302,14 @@ if exists("g:kamilscripts")
 	let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
 endif
 let g:coc_global_extensions	= [
-			\ 'coc-clangd', 'coc-cmake', 'coc-highlight', 'coc-json', 'coc-vimlsp', 
+			\ 'coc-clangd', 'coc-cmake', 'coc-highlight', 'coc-json', 'coc-vimlsp',
 			\ 'coc-python', 'coc-yaml' ]
 
-if KcPluginEnabled('vim-airline')
+if kc#plugin#enabled('vim-airline')
 	let g:airline#extensions#tabline#enabled = 1
 endif
 
-if KcPluginEnabled('vim-workspace')
+if kc#plugin#enabled('vim-workspace')
 	let g:workspace_create_new_tabs = 0
 	let g:workspace_session_directory = $HOME . '/.vim/sessions/'
 	let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
@@ -270,7 +318,7 @@ if KcPluginEnabled('vim-workspace')
 	let g:workspace_session_disable_on_args = 1
 endif
 
-if KcPluginEnabled('vim-tips')
+if kc#plugin#enabled('vim-tips')
 	let g:vim_tips_tips_frequency = 0.5
 	let g:vim_tips_tips_frequency = 1
 endif
@@ -349,7 +397,7 @@ nmap <C-w>- <Plug>(golden_ratio_resize)
 " Fill screen with current window.
 nnoremap <C-w>+ <C-w><Bar><C-w>_
 
-if 0 " KcPluginEnabled('youcompleteme')
+if 0 " kc#plugin#enabled('youcompleteme')
 	if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
 		let g:ycm_clangd_binary_path = '/usr/bin/clangd'
 	endif
@@ -376,7 +424,7 @@ if 0 " KcPluginEnabled('youcompleteme')
 	let g:ycm_extra_conf_vim_data = [ 'g:ycmconf_loglevel', 'g:ycmconf_extra_flags' ]
 endif
 
-if 0 " KcPluginEnabled('gutentags')
+if 0 " kc#plugin#enabled('gutentags')
 	let g:gutentags_dont_load = 1
 	let g:gutentags_ctags_exclude = [
 		\ '*.git', '*.svg', '*.hg', '.git', '.github',
@@ -393,7 +441,7 @@ if 0 " KcPluginEnabled('gutentags')
 		\ '*.rar', '*.zip', '*.tar', '*.tar.gz', '*.tar.xz', '*.tar.bz2',
 		\ '*.pdf', '*.doc', '*.docx', '*.ppt', '*.pptx',
 		\ '*.map', '*.ld', '*.txt', '.vscode', '*.key',
-		\ '*.json', '*.cproject', '*.project', 
+		\ '*.json', '*.cproject', '*.project',
 		\ ]
 	let g:gutentags_modules = ['ctags', 'gtags_cscope']
 	let g:gutentags_generate_on_new = 1
@@ -433,6 +481,26 @@ let g:mergetool_layout = 'lmr'
 " showmarks
 let g:showmarks_add_maps = 0
 let g:showmarks_ignore_type = 'hpq'
+
+if kc#plugin#enabled('nerdtree')
+	" use // instead of /* */ in C by default
+	let g:NERDAltDelims_c = 1
+endif
+
+if kc#plugin#enabled('spelunker.vim')
+	" Disable by default - use ZT to enable
+	let g:enable_spelunker_vim = 0
+endif
+
+if kc#plugin#enabled('vimspector')
+	let g:vimspector_enable_mappings = 'HUMAN'
+endif
+
+if kc#plugin#enabled('Colorizer')
+	let g:colorizer_auto_color = 1
+	" sets g:colorizer_custom_colors with xterm256 colors
+	call kc#xterm256colornames#colorizer()
+endif
 
 " }}}
 " Color scheme {{{
@@ -476,10 +544,15 @@ if 0
 	nnoremap <leader>fg :call MyCscope("g")<CR>
 endif
 
-if KcPluginEnabled('nerdtree.vim')
+if kc#plugin#enabled('nerdtree')
 	nmap <C-n> :NERDTreeToggle<CR>
 	let NERDTreeAutoDeleteBuffer = 1
 	let NERDTreeMinimalUI = 1
+	augroup NERDTree
+		autocmd!
+		" Close vim if only window is a Nerd Tree
+		autocmd BufEnter * if winnr("$") == 1 && exists("b:NERTree") && b:NERDTree.isTabTree() | q | endif
+	augroup END
 endif
 
 nmap <C-w><C-e> :bdelete<CR>
@@ -500,7 +573,16 @@ if expand('%') =~ ".git/rebase-merge/git-rebase-todo"
 	nmap <leader>o :normal oexec git gui<CR><Esc><Down>
 endif
 
-command VimConfig :edit ~/.vimrc
+command! VimConfig :edit ~/.vimrc
+
+" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+augroup Code Comments
+	au!
+	" Horizontal Rule (78 char long)
+	autocmd FileType vim                           nnoremap <leader>hr 0i""---------------------------------------------------------------------------//<ESC>
+	autocmd FileType javascript,php,c,cpp,css      nnoremap <leader>hr 0i/**-------------------------------------------------------------------------**/<ESC>
+	autocmd FileType python,perl,ruby,sh,zsh,conf  nnoremap <leader>hr 0i##---------------------------------------------------------------------------//<ESC>
+augroup END
 
 " }}}
 " coc.nvim {{{
@@ -650,21 +732,25 @@ let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' .
 if getcwd() == "/home/work/beacon"
 	let g:beacon_hw = "4.7"
 	let g:coc_config_home = g:kamilscripts . "vim/coc-settings/beacon"
-	function! Qfunc(...)
-		execute "Dispatch -compiler=make unbuffer make hw=" . g:beacon_hw . " " . a:1
+	function! Qfunc(pre, ...)
+		execute "Dispatch -compiler=make ". a:pre ." make hw=" . g:beacon_hw . " " . a:1
 	endfunction
-	autocmd BufEnter ?* let b:dispatch = ":Qdebug"
-	command Qdebug    call Qfunc("debug")
-	command Qrelease  call Qfunc("release pcb_test=0")
-	command Qprogram  call Qfunc("program")
+	autocmd BufEnter ?* let b:dispatch = ':Qdebug'
+	command! Qdebug    call Qfunc('', 'debug')
+	command! Qrelease  call Qfunc('', 'release pcb_test=0')
+	command! Qprogram  call Qfunc('unbuffer', 'program')
 
 	let g:termdebugger = 'arm-none-eabi-gdb'
-	command QDebug  call Dbg_jlink_start({
+	command! QDebug  call Dbg_jlink_start({
 				\ "file": "_build/onemeter.elf",
 				\ "jlink_args": " -device nRF51822_xxAC -if swd -select USB "
 				\ })
+
+	nmap <leader>p :Dispatch make hw=4.7 debug program<CR>
+	nmap <leader>u :Make utest<CR>
 endif
 
 " }}}
 
 " vim: filetype=vim:foldmethod=marker
+

@@ -1,6 +1,6 @@
 
 " https://stackoverflow.com/questions/12652172/is-there-any-way-to-adjust-the-format-of-folded-lines-in-vim
-function! kc#foldtext#foldtext()
+function! kc#foldtext#foldtext() abort
     let line = getline(v:foldstart)
     let nucolwidth = &fdc + &number * &numberwidth
     let windowwidth = winwidth(0) - nucolwidth - 3
@@ -13,6 +13,7 @@ function! kc#foldtext#foldtext()
     return line . '…' . repeat(" ",fillcharcount) . foldedlinecount . '…' . ' '
 endfunction
 
-function! kc#foldtext#enable()
+function! kc#foldtext#enable() abort
 	set foldtext=kc#foldtext#foldtext()
 endfunction
+
