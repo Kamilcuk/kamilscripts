@@ -147,7 +147,16 @@ reposPrintSupported() {
 reposAddSupported github.com                "<user_name>    - backup repos for user"
 reposGet_github.com() { 
 	local username=$1
-	curl -s "https://api.github.com/users/${username}/repos" | jq_get ssh_url; 
+	curl -s "https://api.github.com/users/${username}/repos?per_page=100" | jq_get ssh_url; 
+}
+
+reposAddSupported github.com_token         "[users|orgs]/<name>:<token> - backup repos for user using token"
+reposGet_github.com_token() {
+	#example: github.com_token  orgs/onemetercom:token-token
+	local where token
+	where=$1
+	token=$2
+	curl -s -H "Authorization: token $token" "https://api.github.com/$where/repos?per_page=100" | jq_get ssh_url
 }
 
 reposAddSupported gitlab.com_v3_token      "<private-token> - backup repos using speicfied private-token from gitlab.com/api/v3"
