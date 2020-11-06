@@ -24,7 +24,6 @@ elif [ -d /usr/lib/kamilscripts/bin ]; then
 	appendpath /usr/lib/kamilscripts/bin
 	KCDIR=/usr/lib/kamilscripts
 fi
-unset appendpath
 export PATH
 
 # https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
@@ -41,5 +40,10 @@ mesg y
 # https://wiki.archlinux.org/index.php/Makepkg
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 
+# https://wiki.archlinux.org/index.php/Node.js
+appendpath "$HOME/.node_modules/bin"
+export npm_config_prefix="$HOME/.node_modules"
+
+unset -f appendpath
 unset KCDIR
 
