@@ -30,12 +30,11 @@ endfor
 unlet i
 
 " set the runtime path to include Vundle and initialize
-if exists("g:kamilscripts") && filereadable(g:kamilscripts . 'vim/bundle/vim-pathogen/autoload/pathogen.vim')
-	execute 'source ' . g:kamilscripts . '/vim/bundle/vim-pathogen/autoload/pathogen.vim'
+if exists("g:kamilscripts")
+	execute 'source ' . g:kamilscripts . 'vim/ebundle/pathogen/vim-pathogen/autoload/pathogen.vim'
 	execute pathogen#infect(
-				\ g:kamilscripts . 'vim',
-				\ g:kamilscripts . 'vim/bundle/{}',
-				\ g:kamilscripts . 'vim/ebundle/{}/{}' )
+			\ g:kamilscripts . 'vim',
+			\ g:kamilscripts . 'vim/ebundle/{}/{}' )
 else
 	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
 endif
@@ -136,7 +135,7 @@ if 0 | augroup CursorLine
 	au VimEnter,WinEnter,BufWinEnter * setlocal cursorline
 	au WinLeave * setlocal nocursorline
 augroup END | endif
-set cursorline
+set nocursorline
 set nocursorcolumn
 
 " Change cursor to | in insert mode.
@@ -587,6 +586,8 @@ augroup END
 " }}}
 " coc.nvim {{{
 
+if kc#plugin#enabled('coc.nvim')
+
 " https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
 
 " Use tab for trigger completion with characters ahead and navigate.
@@ -749,6 +750,8 @@ if getcwd() == "/home/work/beacon"
 	nmap <leader>p :Dispatch make hw=4.7 debug program<CR>
 	nmap <leader>u :Make utest<CR>
 endif
+
+endif " kc#plugin#enabled('coc.nvim')
 
 " }}}
 
