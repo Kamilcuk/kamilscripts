@@ -1,3 +1,7 @@
+# Plugins
+
+All inside `ebundle/*/` directories.
+
 # Links
 
 https://github.com/idbrii/daveconfig/tree/master/multi/vim
