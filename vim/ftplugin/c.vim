@@ -1,6 +1,6 @@
 
 " Add map from coc command in C files
-nmap <silent> <leader>gh :CocCommand clangd.switchSourceHeader<CR>
+nmap <silent> <buffer> <leader>gh :CocCommand clangd.switchSourceHeader<CR>
 
 if kc#plugin#enabled('vim-dispatch') && !exists('b:dispatch')
 	if &filetype == "c"
