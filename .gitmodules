@@ -28,9 +28,6 @@
 [submodule "vim/bundle/vim-tips"]
 	path = vim/ebundle/utils/vim-tips
 	url = https://github.com/michaelb/vim-tips
-[submodule "vim/bundle/vim-dispatch"]
-	path = vim/ebundle/my/vim-dispatch
-	url = https://github.com/tpope/vim-dispatch
 [submodule "vim/bundle/vim-repeat"]
 	path = vim/ebundle/utils/vim-repeat
 	url = https://github.com/tpope/vim-repeat
@@ -142,9 +139,6 @@
 [submodule "vim/bundle/vim-ctrlp-commandline"]
 	path = vim/ebundle/utils/vim-ctrlp-commandline
 	url = https://github.com/suy/vim-ctrlp-commandline
-[submodule "vim/bundle/showmarks"]
-	path = vim/ebundle/my/showmarks
-	url = https://github.com/xsunsmile/showmarks/
 [submodule "vim/ebundle/my/vim-ctrlp-oldfiles"]
 	path = vim/ebundle/my/vim-ctrlp-oldfiles
 	url = git@github.com:Kamilcuk/vim-ctrlp-oldfiles.git
@@ -169,3 +163,9 @@
 [submodule "vim/bundle/vim-hugefile"]
 	path = vim/ebundle/aaa_staging/vim-hugefile
 	url = https://github.com/mhinz/vim-hugefile
+[submodule "vim/ebundle/my/vim-dispatch"]
+	path = vim/ebundle/my/vim-dispatch
+	url = git@github.com:kamilcuk/vim-dispatch
+[submodule "vim/ebundle/my/vim-showmarks"]
+	path = vim/ebundle/my/vim-showmarks
+	url = git@github.com:kamilcuk/vim-showmarks
