@@ -23,7 +23,7 @@
 	path = vim/ebundle/my/vim-airline
 	url = https://github.com/vim-airline/vim-airline
 [submodule "vim/bundle/vim-pathogen"]
-	path = vim/bundle/vim-pathogen
+	path = vim/ebundle/pathogen/vim-pathogen
 	url = https://github.com/tpope/vim-pathogen
 [submodule "vim/bundle/vim-tips"]
 	path = vim/ebundle/utils/vim-tips
@@ -152,20 +152,20 @@
 	path = vim/ebundle/utils/open-browser.vim
 	url = https://github.com/tyru/open-browser.vim
 [submodule "vim/bundle/coc-fzf"]
-	path = vim/bundle/coc-fzf
+	path = vim/ebundle/aaa_staging/coc-fzf
 	url = https://github.com/antoinemadec/coc-fzf
 [submodule "vim/bundle/fzf.vim"]
-	path = vim/bundle/fzf.vim
+	path = vim/ebundle/aaa_staging/fzf.vim
 	url = https://github.com/junegunn/fzf.vim
 [submodule "vim/bundle/vim-interactive-rebase-reverse"]
-	path = vim/bundle/vim-interactive-rebase-reverse
+	path = vim/ebundle/aaa_staging/vim-interactive-rebase-reverse
 	url = https://github.com/salcode/vim-interactive-rebase-reverse
 [submodule "vim/bundle/spelunker.vim"]
-	path = vim/bundle/spelunker.vim
+	path = vim/ebundle/aaa_staging/spelunker.vim
 	url = https://github.com/kamykn/spelunker.vim
 [submodule "vim/bundle/vimspector"]
-	path = vim/bundle/vimspector
+	path = vim/ebundle/aaa_staging/vimspector
 	url = https://github.com/puremourning/vimspector
 [submodule "vim/bundle/vim-hugefile"]
-	path = vim/bundle/vim-hugefile
+	path = vim/ebundle/aaa_staging/vim-hugefile
 	url = https://github.com/mhinz/vim-hugefile
