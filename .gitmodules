@@ -169,3 +169,6 @@
 [submodule "vim/ebundle/my/vim-showmarks"]
 	path = vim/ebundle/my/vim-showmarks
 	url = git@github.com:kamilcuk/vim-showmarks
+[submodule "vim/ebundle/aaa_staging/fzf"]
+	path = vim/ebundle/aaa_staging/fzf
+	url = https://github.com/junegunn/fzf
