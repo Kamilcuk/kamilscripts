@@ -270,10 +270,6 @@ endif
 let g:termdebug_use_prompt = 0
 let g:termdebug_wide = 163
 
-" open-browser.vim plugin
-nmap gx <Plug>(openbrowser-open)
-vmap gx <Plug>(openbrowser-open)
-
 " Disable syntastic for C and C++, where coc-clangd is used.
 " https://stackoverflow.com/questions/31818109/how-to-selectively-disable-checkers-for-certain-file-types-when-using-syntastic
 let g:syntastic_mode_map = {
@@ -360,9 +356,9 @@ endif
 
 " ctrlp
 let g:ctrlp_custom_ignore = {
-  \ 'dir':  '\v[\/]\.(git|hg|svn)$',
-  \ 'file': '\v\.(exe|so|dll)$',
-  \ }
+			\ 'dir':  '\v[\/]\.(git|hg|svn)$',
+			\ 'file': '\v\.(exe|so|dll)$',
+			\ }
 " https://github.com/FelikZ/ctrlp-py-matcher
 let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 let g:ctrlp_extensions = []
@@ -375,8 +371,7 @@ if executable('ag')
 	let g:ackprg = 'ag --vimgrep'
 endif
 
-if 0
-	" gen_tags.vim
+if 0 || kc#plugin#enabled('gen_tags.vim')
 	let g:loaded_gentags#ctags = 0
 	let g:gen_tags#gtags_auto_gen = 1
 	let g:gen_tags#gtags_auto_update = 1
@@ -520,7 +515,9 @@ noremap ;; ;
 "    autocmd FileType qf if mapcheck('<esc>', 'n') ==# '' | nnoremap <buffer><silent> <esc> :cclose<bar>lclose<CR> | endif
 "augroup END
 
-nnoremap <leader>w :ToggleWorkspace<CR>
+if kc#plugin#enabled('vim-workspace')
+	nnoremap <leader>w :ToggleWorkspace<CR>
+endif
 
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
 nnoremap <leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
@@ -568,10 +565,6 @@ if &diff
 	nmap <expr> <C-Up> &diff? '<Plug>(MergetoolDiffExchangeUp)' : '<C-Up>'
 endif
 
-if expand('%') =~ ".git/rebase-merge/git-rebase-todo"
-	nmap <leader>o :normal oexec git gui<CR><Esc><Down>
-endif
-
 command! VimConfig :edit ~/.vimrc
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
@@ -583,11 +576,17 @@ augroup Code Comments
 	autocmd FileType python,perl,ruby,sh,zsh,conf  nnoremap <leader>hr 0i##---------------------------------------------------------------------------//<ESC>
 augroup END
 
+if kc#plugin#enabled('open-browser.vim')
+	nmap gx <Plug>(openbrowser-open)
+	vmap gx <Plug>(openbrowser-open)
+endif
+
 " }}}
 " coc.nvim {{{
 
 if kc#plugin#enabled('coc.nvim')
 
+" This has been taken from the readme:
 " https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
 
 " Use tab for trigger completion with characters ahead and navigate.
@@ -622,10 +621,13 @@ nmap <silent> [g <Plug>(coc-diagnostic-prev)
 nmap <silent> ]g <Plug>(coc-diagnostic-next)
 
 " GoTo code navigation.
+" DIFFERENCE TO ORIGINAL - gr and gd already mean something in vim,
+" map these with leader in front
 nmap <silent> gd <Plug>(coc-definition)
-nmap <silent> gy <Plug>(coc-type-definition)
-nmap <silent> gi <Plug>(coc-implementation)
-nmap <silent> gr <Plug>(coc-references)
+nmap <silent> <leader>gd <Plug>(coc-definition)
+nmap <silent> <leader>gy <Plug>(coc-type-definition)
+nmap <silent> <leader>gi <Plug>(coc-implementation)
+nmap <silent> <leader>gr <Plug>(coc-references)
 
 " Use K to show documentation in preview window.
 nnoremap <silent> <leader>k :call <SID>show_documentation()<CR>
@@ -688,6 +690,13 @@ nnoremap <nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#scroll(0) : "\<
 inoremap <nowait><expr> <C-f> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(1)\<cr>" : "\<Right>"
 inoremap <nowait><expr> <C-b> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(0)\<cr>" : "\<Left>"
 
+" NeoVim-only mapping for visual mode scroll
+" Useful on signatureHelp after jump placeholder of snippet expansion
+if has('nvim')
+  vnoremap <nowait><expr> <C-f> coc#float#has_scroll() ? coc#float#nvim_scroll(1, 1) : "\<C-f>"
+  vnoremap <nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#nvim_scroll(0, 1) : "\<C-b>"
+endif
+
 " Use CTRL-S for selections ranges.
 " Requires 'textDocument/selectionRange' support of language server.
 nmap <silent> <C-s> <Plug>(coc-range-select)
@@ -713,16 +722,19 @@ nnoremap <silent><nowait> <space>b  :<C-u>CocList diagnostics --current-buf<CR>
 nnoremap <silent><nowait> <space>j  :<C-u>CocNext<CR>
 nnoremap <silent><nowait> <space>k  :<C-u>CocPrev<CR>
 
-" Mapping from https://github.com/antoinemadec/coc-fzf
-nnoremap <silent><nowait> <space>a  :<C-u>CocFzfList diagnostics<CR>
-nnoremap <silent><nowait> <space>e  :<C-u>CocFzfList extensions<CR>
-nnoremap <silent><nowait> <space>c  :<C-u>CocFzfList commands<CR>
-nnoremap <silent><nowait> <space>o  :<C-u>CocFzfList outline<CR>
-nnoremap <silent><nowait> <space>l  :<C-u>CocFzfList location<CR>
-nnoremap <silent><nowait> <space>s  :<C-u>CocFzfList symbols<CR>
-nnoremap <silent><nowait> <space>p  :<C-u>CocFzfListResume<CR>
-nnoremap <silent><nowait> <space>b  :<C-u>CocFzfList diagnostics --current-buf<CR>
+if kc#plugin#enabled('coc-fzf')
+	" Mapping from https://github.com/antoinemadec/coc-fzf
+	nnoremap <silent><nowait> <space>a  :<C-u>CocFzfList diagnostics<CR>
+	nnoremap <silent><nowait> <space>e  :<C-u>CocFzfList extensions<CR>
+	nnoremap <silent><nowait> <space>c  :<C-u>CocFzfList commands<CR>
+	nnoremap <silent><nowait> <space>o  :<C-u>CocFzfList outline<CR>
+	nnoremap <silent><nowait> <space>l  :<C-u>CocFzfList location<CR>
+	nnoremap <silent><nowait> <space>s  :<C-u>CocFzfList symbols<CR>
+	nnoremap <silent><nowait> <space>p  :<C-u>CocFzfListResume<CR>
+	nnoremap <silent><nowait> <space>b  :<C-u>CocFzfList diagnostics --current-buf<CR>
+endif " kc#plugin#enabled('coc-fzf')
 
+endif " kc#plugin#enabled('coc.nvim')
 
 " }}}
 " Project specific {{{
@@ -750,8 +762,6 @@ if getcwd() == "/home/work/beacon"
 	nmap <leader>p :Dispatch make hw=4.7 debug program<CR>
 	nmap <leader>u :Make utest<CR>
 endif
-
-endif " kc#plugin#enabled('coc.nvim')
 
 " }}}
 
