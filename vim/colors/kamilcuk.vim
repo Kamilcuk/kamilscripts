@@ -111,7 +111,7 @@ if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 " http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 
 " Cursor is set above also
-hi clear CursorLine after
+" hi clear CursorLine after
 hi CursorLineNr cterm=bold gui=bold
 
 " See kamilscripts/vim/syntax/c.vim
@@ -162,24 +162,34 @@ hi link doxygenStartSpecial Comment
 hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
 hi debugBreakpoint term=reverse ctermbg=red guibg=red
 
-" NERDTree File highlighting
+" NERDTree File highlighting {{{
+
 " https://github.com/preservim/nerdtree/issues/201#issuecomment-197373760
+function! NERDTreeHighlightFile_syn_match(name, extension) abort
+	" NERTTree inserts BEL character 0x07 ^G before and after the filename,
+	" match it also with a \? to be safe
+	exec 'autocmd FileType nerdtree syn match kc_nerdtree_'.a:name.' #^\s\+\?.*'.a:extension.'\(\?\s\+\[RO\]\)\?$#'
+endfunction
 function! NERDTreeHighlightFile_old(extension, fg, ...) abort
-	"                                          bg, guifg, guibg
-	let bg = a:0 >= 1 ? a:1 : 'none'
-	let guifg = a:0 >= 2 ? a:2 : a:fg
-	let guibg = a:0 >= 3 ? a:3 : bg
+	"                                              bg, guifg, guibg
+	" Optionally takes additional arguments, if `guifg` is not specified, the
+	" same as for fg is used. If `bg` is not specified, "none" is used. If `guibg`
+	" is not specified, the value for `bg` is used.
+	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
+	let l:bg = a:0 >= 1 ? a:1 : 'none'
+	let l:guifg = a:0 >= 2 ? a:2 : a:fg
+	let l:guibg = a:0 >= 3 ? a:3 : l:bg
 	if a:0 >= 4
 		echoe "NERDTreeHighlightFile: Invalid count of arguments"
 		return
 	endif
-	exec 'autocmd FileType nerdtree highlight nerdtree_' . a:extension . ' ctermfg=' . a:fg . ' ctermbg=' . bg . ' guifg=' . guifg . ' guibg=' . guibg
-	exec 'autocmd FileType nerdtree syn match nerdtree_' . a:extension . ' #^\s\+.*' . a:extension . '$#'
+	exec 'autocmd FileType nerdtree highlight nerdtree_'.l:name.' ctermfg='.a:fg.' ctermbg='.l:bg.' guifg='.l:guifg.' guibg='.l:guibg
+	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
 endfunction
 function! NERDTreeHighlightFileLink(extension, name, ...) abort
 	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
-	exec 'autocmd FileType nerdtree highlight link kc_nerdtree_'. l:name . ' ' . a:name
-	exec 'autocmd FileType nerdtree syn match kc_nerdtree_' . l:name . ' #^\s\+.*' . a:extension . '$#'
+	exec 'autocmd FileType nerdtree highlight link kc_nerdtree_'.l:name.' '.a:name
+	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
 endfunction
 
 " Load all names for xterm256 variables, see autoload
@@ -189,7 +199,7 @@ call kc#xterm256colornames#load()
 call NERDTreeHighlightFileLink('vim'                 , 'x022_DarkGreen')
 call NERDTreeHighlightFileLink('jade'                , 'x150_DarkSeaGreen3')
 call NERDTreeHighlightFileLink('ini'                 , 'x044_DarkTurquoise')
-call NERDTreeHighlightFileLink('ya?ml'               , 'x052_DarkRed')
+call NERDTreeHighlightFileLink('ya\?ml'               , 'x052_DarkRed')
 call NERDTreeHighlightFileLink('config'              , 'x036_DarkCyan')
 call NERDTreeHighlightFileLink('conf'                , 'x018_DarkBlue')
 call NERDTreeHighlightFileLink('json'                , 'x021_Blue1')
@@ -212,5 +222,7 @@ call NERDTreeHighlightFileLink('ld'                  , 'x089_DeepPink4')
 call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x142_Gold3')
 
 delf! NERDTreeHighlightFileLink
-delf! NERDTreeHighlightFile
+delf! NERDTreeHighlightFile_old
+delf! NERDTreeHighlightFile_syn_match
 
+" }}}
