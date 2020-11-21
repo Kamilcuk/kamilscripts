@@ -94,3 +94,4 @@
 	br = branch
 	m3 = mergetool -t merge3
 	mt = mergetool
+	dog = log --all --decorate --oneline --graph
