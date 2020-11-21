@@ -24,8 +24,9 @@ cdb() {
 		fi
 		if ((!${#names})); then echo "cdb: Mark does not exists: $2" >&2; return 1; fi
 		for i in "${names[@]}"; do
-			if [[ ! -L "$i" ]]; then echo "cdb: Internal error 1" >&2; return 2; fi
-			if [[ ! "$i" -ef "$cdb_dir/$(basename "$i")" ]]; then echo "cdb: Internal error 1" >&2; return 2; fi
+			if [[ ! -e "$i" && -L "$i" ]]; then echo "cdb: Broken link: $i"; continue; fi
+			if [[ ! -L "$i" ]]; then echo "cdb: Internal error 2 $i" >&2; return 2; fi
+			if [[ ! "$i" -ef "$cdb_dir/$(basename "$i")" ]]; then echo "cdb: Internal error 3 $i" >&2; return 2; fi
 		done
 		;;
 	esac
