@@ -152,16 +152,16 @@
 	path = vim/ebundle/aaa_staging/fzf.vim
 	url = https://github.com/junegunn/fzf.vim
 [submodule "vim/bundle/vim-interactive-rebase-reverse"]
-	path = vim/ebundle/aaa_staging/vim-interactive-rebase-reverse
+	path = vim/ebundle/integration/vim-interactive-rebase-reverse
 	url = https://github.com/salcode/vim-interactive-rebase-reverse
 [submodule "vim/bundle/spelunker.vim"]
 	path = vim/ebundle/aaa_staging/spelunker.vim
 	url = https://github.com/kamykn/spelunker.vim
 [submodule "vim/bundle/vimspector"]
-	path = vim/ebundle/aaa_staging/vimspector
+	path = vim/ebundle/lang/vimspector
 	url = https://github.com/puremourning/vimspector
 [submodule "vim/bundle/vim-hugefile"]
-	path = vim/ebundle/aaa_staging/vim-hugefile
+	path = vim/ebundle/generic/vim-hugefile
 	url = https://github.com/mhinz/vim-hugefile
 [submodule "vim/ebundle/my/vim-dispatch"]
 	path = vim/ebundle/my/vim-dispatch
@@ -172,3 +172,9 @@
 [submodule "vim/ebundle/aaa_staging/fzf"]
 	path = vim/ebundle/aaa_staging/fzf
 	url = https://github.com/junegunn/fzf
+[submodule "vim/ebundle/aaa_staging/vim-abolish"]
+	path = vim/ebundle/utils/vim-abolish
+	url = https://github.com/tpope/vim-abolish
+[submodule "vim/ebundle/aaa_staging/vim-snippets"]
+	path = vim/ebundle/aaa_staging/vim-snippets
+	url = https://github.com/honza/vim-snippets
