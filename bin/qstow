@@ -317,7 +317,7 @@ while (($#)); do
 	-D|--delete) check_mode_set; mode=delete; ;;
 	-R|--restow) check_mode_set; mode=restow; ;;
 	-c|--command) check_mode_set; mode=$2; shift; ;;
-	--ignore) ignore+=("$2"); shift; ;;
+	--ignore) ignores+=("$2"); shift; ;;
 	-f|--force) force=true; ;;
 	-n|--no|--simulate) dryrun=true; ;;
 	-v|--verbose) verbose="${2:-$((verbose+1))}$2"; shift; ;;
@@ -333,6 +333,7 @@ done
 logl 3 "Stow directory is $stow"
 logl 3 "Target directory is $target"
 logl 3 "Mode is $mode"
+readonly force mode ignores
 
 if [[ -z "$mode" ]]; then fatal "No command specified"; fi
 if [[ ! -e "$stow" ]]; then fatal "Stow dir does not exists"; fi
@@ -453,9 +454,13 @@ m_run() {
 		sort |
 		# remove "./", note - there is one empty line!
 		cut -c3- |
-		# filter ignores
-		grep -vEf <(printf "%s\n" "${packign[@]}") | {
+		{
 		while IFS= read -r path; do
+			# filter ignores
+			if grep -qEf <(printf "%s\n" "${packign[@]}") <<<"$path"; then
+				logl 2 "$path ignored"
+				continue
+			fi
 
 			dst="$target/$path"
 			realsrc="$stow/$pack/$path"

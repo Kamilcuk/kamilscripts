@@ -2,7 +2,7 @@
 set -euo pipefail
 
 name=$(basename "$0")
-dir=$(dirname "$0")
+dir="$(readlink -f "$(dirname "$(readlink -f "$0")")"/../stow)"
 
 usage() {
 	cat <<EOF
@@ -42,7 +42,7 @@ if ! hash qstow 2>/dev/null; then
 	echo "ERROR: qstow not found" >&2
 fi
 
-l() {
+run() {
 	echo "+" "$@"
 	"$@"
 }
@@ -57,7 +57,7 @@ s() {
 			break
 		fi
 	done
-	l qstow -v -t "$HOME" -d "$dir" "${flags[@]}"
+	run qstow --ignore '^.*\.gitkeep$' -v -t "$HOME" -d "$dir" "${flags[@]}"
 }
 
 if (($#==0)); then usage; exit 1; fi
