@@ -2,6 +2,11 @@
 
 " Init {{{
 
+if get(g:, 'loaded_kamilscripts_vimrc', 0)
+	finish
+endif
+let g:loaded_kamilscripts_vimrc = 1
+
 if !has('nvim')
 	source $VIMRUNTIME/defaults.vim
 endif
@@ -22,7 +27,7 @@ for i in [
 		\ $HOME . '/.local/kamilscripts/',
 		\ $HOME . '/.config/kamilscripts/',
 		\ ]
-	if isdirectory(i) && isdirectory(i. '/vim')
+	if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
 		let g:kamilscripts = i
 		break
 	endif
@@ -110,7 +115,7 @@ autocmd BufEnter ?* set mouse=
 
 " Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
 " delays and poor user experience.
-set updatetime=20000
+set updatetime=300
 
 " Don't pass messages to |ins-completion-menu|.
 set shortmess+=c
@@ -121,6 +126,19 @@ set scrolloff=6
 
 " https://github.com/thaerkh/vim-workspace/issues/11
 set sessionoptions-=blank
+
+set display+=uhex
+
+
+
+augroup BinaryShit
+  au!
+  au BufReadPre   *.bin let &bin=1
+  au BufReadPost  *.bin if &bin | %!xxd | set ft=xxd | endif
+  au BufWritePre  *.bin if &bin | %!xxd -r | endif
+  au BufWritePost *.bin if &bin | %!xxd | set nomod | endif
+augroup END
+
 
 " }}}
 " Some view things {{{
@@ -254,6 +272,8 @@ if has('nvim')
 	augroup END
 	au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
 endif
+
+autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 
 " }}}
 " Plugins {{{
@@ -473,6 +493,7 @@ let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
 let g:mergetool_layout = 'lmr'
 
 " showmarks
+let g:showmarks_enable = 0
 let g:showmarks_add_maps = 0
 let g:showmarks_ignore_type = 'hpq'
 
@@ -571,9 +592,12 @@ command! VimConfig :edit ~/.vimrc
 augroup Code Comments
 	au!
 	" Horizontal Rule (78 char long)
-	autocmd FileType vim                           nnoremap <leader>hr 0i""---------------------------------------------------------------------------//<ESC>
-	autocmd FileType javascript,php,c,cpp,css      nnoremap <leader>hr 0i/**-------------------------------------------------------------------------**/<ESC>
-	autocmd FileType python,perl,ruby,sh,zsh,conf  nnoremap <leader>hr 0i##---------------------------------------------------------------------------//<ESC>
+	autocmd FileType vim
+				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
+	autocmd FileType javascript,php,c,cpp,css
+				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
+	autocmd FileType python,perl,ruby,sh,zsh,conf,bash
+				\ nnoremap <silent><buffer> <leader>hr 0i# -----------------------------------------------------------------------------<ESC>^1l
 augroup END
 
 if kc#plugin#enabled('open-browser.vim')
@@ -602,6 +626,20 @@ function! s:check_back_space() abort
   let col = col('.') - 1
   return !col || getline('.')[col - 1]  =~# '\s'
 endfunction
+
+" https://github.com/neoclide/coc-snippets
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? coc#_select_confirm() :
+      \ coc#expandableOrJumpable() ? "\<C-r>=coc#rpc#request('doKeymap', ['snippets-expand-jump',''])\<CR>" :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~# '\s'
+endfunction
+
+let g:coc_snippet_next = '<tab>'
 
 " Use <c-space> to trigger completion.
 if has('nvim')
