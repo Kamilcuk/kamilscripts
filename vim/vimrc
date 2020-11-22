@@ -19,32 +19,6 @@ if 0 && $LC_CTYPE == 'pl_PL.UTF-8'
 endif
 
 " }}}
-" Load kamilscripts and add runtime paths {{{
-
-for i in [
-		\ '/usr/lib/kamilscripts/',
-		\ $HOME . '/.config/kamilscripts/kamilscripts/',
-		\ $HOME . '/.local/kamilscripts/',
-		\ $HOME . '/.config/kamilscripts/',
-		\ ]
-	if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
-		let g:kamilscripts = i
-		break
-	endif
-endfor
-unlet i
-
-" set the runtime path to include Vundle and initialize
-if exists("g:kamilscripts")
-	execute 'source ' . g:kamilscripts . 'vim/ebundle/pathogen/vim-pathogen/autoload/pathogen.vim'
-	execute pathogen#infect(
-			\ g:kamilscripts . 'vim',
-			\ g:kamilscripts . 'vim/ebundle/{}/{}' )
-else
-	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
-endif
-
-" }}}
 " Global configuration {{{
 
 " HOW-TO make vim not suck Out of the Box
@@ -129,8 +103,6 @@ set sessionoptions-=blank
 
 set display+=uhex
 
-
-
 augroup BinaryShit
   au!
   au BufReadPre   *.bin let &bin=1
@@ -139,6 +111,109 @@ augroup BinaryShit
   au BufWritePost *.bin if &bin | %!xxd | set nomod | endif
 augroup END
 
+" }}}
+" Load kamilscripts and load plugins {{{
+
+for i in [
+		\ '/usr/lib/kamilscripts/',
+		\ $HOME . '/.config/kamilscripts/kamilscripts/',
+		\ $HOME . '/.local/kamilscripts/',
+		\ $HOME . '/.config/kamilscripts/',
+		\ ]
+	if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
+		let g:kamilscripts = i
+		break
+	endif
+endfor
+unlet i
+
+if !exists('g:kamilscripts')
+	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
+else
+	execute 'set rtp^=' . g:kamilscripts . 'vim'
+endif
+
+if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.vim')
+	filetype off
+	execute 'source ' . g:kamilscripts . 'vim/vim-plug/plug.vim'
+	call plug#begin('~/.vim/plugged')
+
+	" my
+	Plug g:kamilscripts . 'vim/ebundle/my/dbg'
+	Plug g:kamilscripts . 'vim/ebundle/my/vim-ctrlp-oldfiles'
+	Plug g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
+	Plug g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
+	" aaa_staging
+	Plug 'antoinemadec/coc-fzf'
+	Plug 'junegunn/fzf'
+	Plug 'junegunn/fzf.vim'
+	Plug 'kamykn/spelunker.vim'
+	Plug 'honza/vim-snippets'
+	" generic
+	Plug 'Konfekt/FastFold'
+	Plug 'vim-scripts/LargeFile'
+	Plug 'wellle/targets.vim'
+	Plug 'airblade/vim-gitgutter'
+	Plug 'mhinz/vim-hugefile'
+	Plug 'tpope/vim-sensible'
+	" integration
+	Plug 'shumphrey/fugitive-gitlab.vim'
+	Plug 'tpope/vim-fugitive'
+	Plug 'salcode/vim-interactive-rebase-reverse'
+	Plug 'tpope/vim-rhubarb'
+	" lang
+	if executable('node')
+		Plug 'neoclide/coc.nvim'
+	endif
+	Plug 'vim-syntastic/syntastic'
+	Plug 'derekwyatt/vim-fswitch'
+	Plug 'jackguo380/vim-lsp-cxx-highlight'
+	Plug 'puremourning/vimspector'
+	" pathogen
+	Plug 'tpope/vim-pathogen'
+	" utils
+	Plug 'chrisbra/NrrwRgn'
+	Plug 'mileszs/ack.vim'
+	Plug 'jlanzarotta/bufexplorer'
+	Plug 'FelikZ/ctrlp-py-matcher'
+	Plug 'kien/ctrlp.vim'
+	Plug 'idbrii/golden-ratio'
+	Plug 'fidian/hexmode'
+	Plug 'preservim/nerdcommenter'
+	Plug 'preservim/nerdtree'
+	Plug 'tyru/open-browser.vim'
+	Plug 'luochen1990/rainbow'
+	Plug 'godlygeek/tabular'
+	Plug 'tpope/vim-abolish'
+	Plug 'gyim/vim-boxdraw'
+	Plug 'suy/vim-ctrlp-commandline'
+	Plug 'junegunn/vim-easy-align'
+	Plug 'tpope/vim-eunuch'
+	Plug 'samoshkin/vim-mergetool'
+	Plug 'tpope/vim-repeat'
+	Plug 'tpope/vim-scriptease'
+	Plug 'terryma/vim-smooth-scroll'
+	Plug 'tpope/vim-surround'
+	Plug 'dhruvasagar/vim-table-mode'
+	Plug 'git@github.com:Kamilcuk/vim-template'
+	Plug 'michaelb/vim-tips'
+	Plug 'tpope/vim-unimpaired'
+	" view
+	Plug 'wimstefan/Lightning'
+	Plug 'yankcrime/direwolf'
+	Plug 'NLKNguyen/papercolor-theme'
+	Plug 'junegunn/seoul256.vim'
+	Plug 'vim-airline/vim-airline'
+	Plug 'vim-airline/vim-airline-themes'
+	Plug 'endel/vim-github-colorscheme'
+	Plug 'jonathanfilip/vim-lucius'
+	Plug 'rakr/vim-one'
+	" zzz_utils
+	Plug 'thaerkh/vim-workspace'
+
+	call plug#end()
+	filetype on
+endif
 
 " }}}
 " Some view things {{{
