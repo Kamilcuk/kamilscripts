@@ -57,7 +57,7 @@ s() {
 			break
 		fi
 	done
-	run qstow --ignore '^.*\.gitkeep$' -v -t "$HOME" -d "$dir" "${flags[@]}"
+	run qstow -v -t "$HOME" -d "$dir" "${flags[@]}"
 }
 
 if (($#==0)); then usage; exit 1; fi
