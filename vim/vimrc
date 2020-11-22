@@ -131,7 +131,18 @@ if !exists('g:kamilscripts')
 	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
 else
 	execute 'set rtp^=' . g:kamilscripts . 'vim'
+	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
 endif
+
+" Automatically generate tags for custom documentation files
+" https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
+autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
+if exists('g:kamilscripts')
+	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
+endif
+
+" }}}
+" Load plugins with vim-plug {{{
 
 if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.vim')
 	filetype off
@@ -242,16 +253,6 @@ else
 endif
 
 " }}}
-" Automatically generate tags for my documentation files {{{
-
-" Automatically generate tags for custom documentation files
-" https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
-autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
-if exists('g:kamilscripts')
-	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
-endif
-
-" }}}
 " Miscellaneous {{{
 
 " https://vim.fandom.com/wiki/Cscope
@@ -353,10 +354,6 @@ autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 " }}}
 " Plugins {{{
 
-if exists('g:kamilscripts')
-	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
-endif
-
 if !has('nvim')
 	packadd! editexisting
 endif
@@ -367,33 +364,29 @@ let g:termdebug_wide = 163
 
 " Disable syntastic for C and C++, where coc-clangd is used.
 " https://stackoverflow.com/questions/31818109/how-to-selectively-disable-checkers-for-certain-file-types-when-using-syntastic
-let g:syntastic_mode_map = {
-    \ "mode": "active",
-    \ "passive_filetypes": [
-	\ "c",
-	\ "c++",
-	\ "vim",
-	\ ]}
+if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
+	let g:syntastic_mode_map = {
+	    \ "mode": "active",
+	    \ "passive_filetypes": [
+		\ "c",
+		\ "c++",
+		\ "vim",
+		\ ]}
+endif
 
 " https://github.com/thoughtbot/dotfiles/pull/641
 " Set tags for fugitive
 set tags^=./.git/tags;
 
 " luochen1990/rainbow configuration
-let g:rainbow_active = 1 " be active
-let g:rainbow_conf = {'separately':{
-			\ 'cmake': 0,
-			\ 'c': 0,
-			\ 'cpp': 0,
-			\ }}
-
-" coc.nvim
-if exists("g:kamilscripts")
-	let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
+if kc#plugin#enabled('rainbow')
+	let g:rainbow_active = 1 " be active
+	let g:rainbow_conf = {'separately':{
+				\ 'cmake': 0,
+				\ 'c': 0,
+				\ 'cpp': 0,
+				\ }}
 endif
-let g:coc_global_extensions	= [
-			\ 'coc-clangd', 'coc-cmake', 'coc-highlight', 'coc-json', 'coc-vimlsp',
-			\ 'coc-python', 'coc-yaml' ]
 
 if kc#plugin#enabled('vim-airline')
 	let g:airline#extensions#tabline#enabled = 1
@@ -427,8 +420,8 @@ endif
 "autocmd BufEnter *.hpp  let b:fswitchdst = 'cpp'
 
 " https://github.com/aperezdc/vim-template
-let g:templates_no_autocmd = 1
-if exists('g:kamilscripts')
+if kc#plugin#enabled('vim-template')
+	let g:templates_no_autocmd = 1
 	let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
 endif
 
@@ -486,7 +479,7 @@ nmap <C-w>- <Plug>(golden_ratio_resize)
 " Fill screen with current window.
 nnoremap <C-w>+ <C-w><Bar><C-w>_
 
-if 0 " kc#plugin#enabled('youcompleteme')
+if 0 || kc#plugin#enabled('youcompleteme')
 	if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
 		let g:ycm_clangd_binary_path = '/usr/bin/clangd'
 	endif
@@ -513,7 +506,7 @@ if 0 " kc#plugin#enabled('youcompleteme')
 	let g:ycm_extra_conf_vim_data = [ 'g:ycmconf_loglevel', 'g:ycmconf_extra_flags' ]
 endif
 
-if 0 " kc#plugin#enabled('gutentags')
+if 0 || kc#plugin#enabled('gutentags')
 	let g:gutentags_dont_load = 1
 	let g:gutentags_ctags_exclude = [
 		\ '*.git', '*.svg', '*.hg', '.git', '.github',
@@ -553,24 +546,27 @@ if 0 " kc#plugin#enabled('gutentags')
 	let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
 endif
 
-" smooth-scroll
-noremap <silent> <c-u> :call smooth_scroll#up(&scroll, 5, 2)<CR>
-noremap <silent> <c-d> :call smooth_scroll#down(&scroll, 5, 2)<CR>
-noremap <silent> <c-b> :call smooth_scroll#up(&scroll*2, 5, 4)<CR>
-noremap <silent> <c-f> :call smooth_scroll#down(&scroll*2, 5, 4)<CR>
+if kc#plugin#enabled('smooth-scroll')
+	noremap <silent> <c-u> :call smooth_scroll#up(&scroll, 5, 2)<CR>
+	noremap <silent> <c-d> :call smooth_scroll#down(&scroll, 5, 2)<CR>
+	noremap <silent> <c-b> :call smooth_scroll#up(&scroll*2, 5, 4)<CR>
+	noremap <silent> <c-f> :call smooth_scroll#down(&scroll*2, 5, 4)<CR>
+endif
 
-" https://github.com/samoshkin/vim-mergetool
-function s:on_mergetool_set_layout(split)
-	set syntax=off
-	set nospell
-endfunction
-let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
-let g:mergetool_layout = 'lmr'
+if kc#plugin#enabled('vim-mergetool')
+	function s:on_mergetool_set_layout(split)
+		set syntax=off
+		set nospell
+	endfunction
+	let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
+	let g:mergetool_layout = 'lmr'
+endif
 
-" showmarks
-let g:showmarks_enable = 0
-let g:showmarks_add_maps = 0
-let g:showmarks_ignore_type = 'hpq'
+if kc#plugin#enabled('showmarks')
+	let g:showmarks_enable = 0
+	let g:showmarks_add_maps = 0
+	let g:showmarks_ignore_type = 'hpq'
+endif
 
 if kc#plugin#enabled('nerdtree')
 	" use // instead of /* */ in C by default
@@ -592,9 +588,6 @@ if kc#plugin#enabled('Colorizer')
 	call kc#xterm256colornames#colorizer()
 endif
 
-" }}}
-" Color scheme {{{
-colorscheme kamilcuk
 " }}}
 " Shortcuts {{{
 
@@ -684,6 +677,12 @@ endif
 " coc.nvim {{{
 
 if kc#plugin#enabled('coc.nvim')
+"
+
+let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
+let g:coc_global_extensions	= [
+			\ 'coc-clangd', 'coc-cmake', 'coc-highlight', 'coc-json', 'coc-vimlsp',
+			\ 'coc-python', 'coc-yaml' ]
 
 " This has been taken from the readme:
 " https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
@@ -876,6 +875,9 @@ if getcwd() == "/home/work/beacon"
 	nmap <leader>u :Make utest<CR>
 endif
 
+" }}}
+" Color scheme {{{
+colorscheme kamilcuk
 " }}}
 
 " vim: filetype=vim:foldmethod=marker
