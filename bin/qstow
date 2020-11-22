@@ -14,24 +14,26 @@ usage() {
 Usage: $name [OPTION...] [-D|-S|-R|-c CMD] PACKAGE...
 
 Options:
-    -d DIR --dir DIR      Set stow dir to DIR (default is current dir)
-    -t DIR --target DIR   Set target to DIR (see long help)
+    -d DIR --dir DIR       Set stow dir to DIR (default is current dir)
+    -t DIR --target DIR    Set target to DIR (see long help)
 
-    -S --stow             Stow the package names that follow this option
-    -D --delete           Unstow the package names that follow this option
-    -R --restow           Restow (like -D followed by -S)
+    -S --stow              Stow the package names that follow this option
+    -D --delete            Unstow the package names that follow this option
+    -R --restow            Restow (like -D followed by -S)
 
-    -c CMD --command CMD  Run command, see below.
-    --ignore REGEX        Ignore files ending in this extended regex
+    -c CMD --command CMD   Run command, see below.
+    --ignore REGEX         Ignore files ending in this extended regex
 
-    -f --force            WARNING Will just overwrite the files in case of conflict
+    -f --force             WARNING Will just overwrite the files in case of conflict
 
-    -n --no --simulate    Do not actually make any filesystem changes
-    -v --verbose[=N]      Be verbose. May be specified multiple times.
-	-q --quiet            Equal to --verbose=0
-    -h --help             Show this help and exit.
-       --long-help        Show long help and exit.
-       --bash-completion  Output string to be eval ed for bash-completion.
+    -n --no --simulate     Do not actually make any filesystem changes
+    --dry-run              Same as --simulate
+	--print-sample-config  Print example qstow.conf.sh configuration
+    -v --verbose[=N]       Be verbose. May be specified multiple times.
+	-q --quiet             Equal to --verbose=0
+    -h --help              Show this help and exit.
+       --long-help         Show long help and exit.
+       --bash-completion   Output string to be eval ed for bash-completion.
 
 Commands:
     stow         Like -S
@@ -68,7 +70,7 @@ _qstow_complete() {
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 	if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
 		args=(-W
-			"-d -t -S -D -R -c -f -n -v -h --dir --target --stow --delete --restow --command --ignore --force --no --simulate --verbose --help --long-help"
+			"-d -t -S -D -R -c -f -n -v -h --dir --target --stow --delete --restow --command --ignore --force --no --simulate --dry-run --no-default-ignore --print-sample-config --verbose --help --long-help"
 		)
 	else case "$prev" in
 	-d|--dir|-t|--target) compopt -o filenames; args=(-o dirnames); ;;
@@ -296,6 +298,37 @@ nicepath() {
 	sed 's~///*~/~g; s~/\./~/~g' <<<"$1"
 }
 
+default_ignores=(
+	"\.com$"
+	"\.class$"
+	"\.dll$"
+	"\.exe$"
+	"\.o$"
+	"\.so$"
+	"^\.DS_Store$"
+	"^\.DS_Store.$"
+	"^\._.*$"
+	"^\.Spotlight-V100$"
+	"^\.Trashes$"
+	"^ehthumbs\.db$"
+	"^Thumbs\.db$"
+	"~$"
+	"\.bak$"
+	"\.swp$"
+	"^\.gitkeep$"
+	"^\.gitignore$"
+)
+
+sample_config() {
+	cat <<'EOF'
+# this is sample qstow.conf.sh configuration file
+target="$HOME"
+ignore=(
+	"\.ignore$"
+)
+EOF
+}
+
 # main ##################################################
 
 unset IFS
@@ -318,8 +351,10 @@ while (($#)); do
 	-R|--restow) check_mode_set; mode=restow; ;;
 	-c|--command) check_mode_set; mode=$2; shift; ;;
 	--ignore) ignores+=("$2"); shift; ;;
+	--no-default-ignores) default_ignores=(); ;;
+	--print-sample-config) sample_config; exit; ;;
 	-f|--force) force=true; ;;
-	-n|--no|--simulate) dryrun=true; ;;
+	-n|--no|--simulate|--dry-run) dryrun=true; ;;
 	-v|--verbose) verbose="${2:-$((verbose+1))}$2"; shift; ;;
 	-q|--quiet) verbose=0; ;;
 	-h|--help) usage; exit 0; ;;
@@ -364,7 +399,7 @@ m_run() {
 			fatal "Package $pack does not exists in $stow"
 		fi
 
-		packign=("${ignores[@]}" "^qstow.conf.sh$")
+		packign=("${ignores[@]}" "${default_ignores[@]}" "^qstow.conf.sh$")
 
 		packconf="$packdir/qstow.conf.sh"
 		if [[ -e "$packconf" ]]; then
@@ -387,7 +422,6 @@ m_run() {
 			target=${target:-$__target__}
 			packign+=("${__ignore__[@]}")
 		fi
-
 
 		if tmp=$(cd "$stow/$pack" && find -P . -name $'*\n*') && [[ -n "$tmp" ]]; then
 			fatal "filenames with newlines are not supported: $(printf "%q" "$tmp")"
