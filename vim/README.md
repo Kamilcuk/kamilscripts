@@ -1,4 +1,4 @@
-# Plugins
+# plugins
 
 All inside `ebundle/*/` directories.
 
