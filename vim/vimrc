@@ -261,15 +261,11 @@ set nocursorcolumn
 
 " Change cursor to | in insert mode.
 " https://vi.stackexchange.com/questions/9131/i-cant-switch-to-cursor-in-insert-mode
-if has('nvim')
-	let &NVIM_TUI_ENABLE_CURSOR_SHAPE = 1
-else
-	let &t_SI = "\<esc>[5 q"
-	if v:version > 800
-		let &t_SR = "\<esc>[5 q"
-	endif
-	let &t_EI = "\<esc>[2 q"
+let &t_SI = "\<esc>[5 q"
+if has('nvim') || v:version >= 800
+	let &t_SR = "\<esc>[5 q"
 endif
+let &t_EI = "\<esc>[2 q"
 
 " }}}
 " Miscellaneous {{{
