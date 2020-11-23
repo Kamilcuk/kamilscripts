@@ -17,13 +17,20 @@ if [ -d "$HOME" ]; then
 	appendpath "$HOME"/bin
 	appendpath "$HOME"/.config/bin
 fi
-if [ -d "$HOME" ] && [ -e "$HOME"/.config/kamilscripts/kamilscripts ]; then
-	appendpath "$HOME"/.config/kamilscripts/kamilscripts/bin
-	KCDIR="$HOME"/.config/kamilscripts/kamilscripts
-elif [ -d /usr/lib/kamilscripts/bin ]; then
-	appendpath /usr/lib/kamilscripts/bin
-	KCDIR=/usr/lib/kamilscripts
-fi
+for i in \
+		/usr/lib/kamilscripts \
+		"$HOME"/.kamilscripts \
+		"$HOME"/.config/kamilscripts/kamilscripts \
+		"$HOME"/.config/kamilscripts \
+; do
+	if [ -e "$i" ] && [ -e "$i"/.git ] && [ -e "$i"/bin ]; then
+		i=$(readlink -f "$i")
+		KCDIR="$i"
+		appendpath "$KCDIR"/bin
+		break
+	fi
+done
+unset i
 export PATH
 
 # https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
