@@ -61,59 +61,6 @@
 ;; (remove-all-keys)
 ;; (debug)
 
-(define host (cond
-	((string=? (gethostname) "leonidas") 'leonidas)
-	((string=? (gethostname) "ardalus")  'ardalus)
-	(else 'unknown)
-))
-
-(xbindkey '(Mod4 F1) "qqoknonainnypulpit.sh 0")
-(xbindkey '(Mod4 F2) "qqoknonainnypulpit.sh 1")
-(xbindkey '(Mod4 F3) "qqoknonainnypulpit.sh 2")
-(xbindkey '(Mod4 F4) "qqoknonainnypulpit.sh 3")
-(xbindkey '(Mod4 F5) "qqoknonainnypulpit.sh 4")
-(xbindkey '(Mod4 F6) "qqoknonainnypulpit.sh 5")
-(xbindkey '(Mod4 F7) "qqoknonainnypulpit.sh 6")
-(xbindkey '(Mod4 F8) "qqoknonainnypulpit.sh 7")
-(xbindkey '(Mod4 F12) "qqoknonainnyscreen")
-
-(xbindkey '(Mod4 a) "geany")
-(xbindkey '(Mod4 s) "subl")
-(xbindkey '(Mod4 f) "soffice --calc")
-(xbindkey '(Mod4 c) 
-	(string-append "xfce4-terminal "
-		(case host 
-			((leonidas) "--geometry 140x35")
-			((ardalus)  "--geometry 126x34")
-			(else "")
-		)
-	)
-)
-
-(case host ((leonidas)
-	(xbindkey '(Mod4 equal) "soffice --calc /home/moje/zestawienie.ods")
-	(xbindkey '(Mod4 "3") "/home/users/kamil/bin/leonidas_toggle_hdmi_mute.sh")
-	(xbindkey '(Mod4 "4") "/home/users/kamil/bin/qq_setbrigthness.sh --dec")
-	(xbindkey '(Mod4 "5") "/home/users/kamil/bin/qq_setbrigthness.sh --inc")
-))
-
-(xbindkey '(Mod4 grave) "pactl set-sink-mute @DEFAULT_SINK@ toggle")
-(xbindkey '(Mod4 "1") "pactl set-sink-volume @DEFAULT_SINK@ -2%")
-(xbindkey '(Mod4 "2") "pactl set-sink-volume @DEFAULT_SINK@ +2%")
-
-(xbindkey '(Mod4 Right) ",magic_position_window.sh right")
-(xbindkey '(Mod4 Up) ",magic_position_window.sh up")
-(xbindkey '(Mod4 Down) ",magic_position_window.sh down")
-(xbindkey '(Mod4 Left) ",magic_position_window.sh left")
-
-(xbindkey '(XF86Search) "xfce4-appfinder")
-(xbindkey '(XF86HomePage) "firefox")
-(xbindkey '(Mod4 b)       "firefox")
-(xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
-(xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
-
-(xbindkey '(Mod4 d) "/home/users/kamil/bin/,slack_toggle.sh")
-
 ;; Examples of commands:
 
 ;; (xbindkey '(control shift q) "xbindkeys_show")
@@ -212,6 +159,74 @@
 ;; ;; (the same program is started in both case)
 ;; (define-chord-keys '(alt "b:1") '(alt "b:3")
 ;;   "gv" "xpdf" "xterm" "xterm")
+
+(define host (cond
+	((string=? (gethostname) "leonidas") 'leonidas)
+	((string=? (gethostname) "ardalus")  'ardalus)
+	((string=? (gethostname) "gorgo")  'gorgo)
+	(else 'unknown)
+))
+
+(xbindkey '(Mod4 F1) "qqoknonainnypulpit.sh 0")
+(xbindkey '(Mod4 F2) "qqoknonainnypulpit.sh 1")
+(xbindkey '(Mod4 F3) "qqoknonainnypulpit.sh 2")
+(xbindkey '(Mod4 F4) "qqoknonainnypulpit.sh 3")
+(xbindkey '(Mod4 F5) "qqoknonainnypulpit.sh 4")
+(xbindkey '(Mod4 F6) "qqoknonainnypulpit.sh 5")
+(xbindkey '(Mod4 F7) "qqoknonainnypulpit.sh 6")
+(xbindkey '(Mod4 F8) "qqoknonainnypulpit.sh 7")
+(xbindkey '(Mod4 F12) "qqoknonainnyscreen")
+
+(xbindkey '(Mod4 a) "geany")
+(xbindkey '(Mod4 s) "subl")
+(xbindkey '(Mod4 f) "soffice --calc")
+(xbindkey '(Mod4 c) 
+	(string-append "xfce4-terminal "
+		(case host 
+			((leonidas) "--geometry 140x35")
+			((ardalus)  "--geometry 126x34")
+			((gorgo)    "--geometry 94x22")
+			(else "")
+		)
+	)
+)
+
+(case host (
+	(leonidas)
+		(xbindkey '(Mod4 equal) "soffice --calc /home/moje/zestawienie.ods")
+		(xbindkey '(Mod4 "3") "/home/users/kamil/bin/leonidas_toggle_hdmi_mute.sh")
+		(xbindkey '(Mod4 "4") "/home/users/kamil/bin/qq_setbrigthness.sh --dec")
+		(xbindkey '(Mod4 "5") "/home/users/kamil/bin/qq_setbrigthness.sh --inc")
+	)
+  	(else
+		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
+		(xbindkey '(Mod4 "5") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessUp   keydown Super_L")
+	)
+)
+
+(xbindkey '(Mod4 grave) "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
+(xbindkey '(Mod4 "1")   "pactl set-sink-volume @DEFAULT_SINK@ -2%")
+(xbindkey '(Mod4 "2")   "pactl set-sink-volume @DEFAULT_SINK@ +2%")
+
+(xbindkey '(Mod4 Right) ",magic_position_window.sh right")
+(xbindkey '(Mod4 Up)    ",magic_position_window.sh up")
+(xbindkey '(Mod4 Down)  ",magic_position_window.sh down")
+(xbindkey '(Mod4 Left)  ",magic_position_window.sh left")
+
+(xbindkey '(XF86Search) "xfce4-appfinder")
+(xbindkey '(XF86HomePage) "notify-send -t500 browser ; firefox")
+(xbindkey '(Mod4 n)       "notify-send -t500 browser ; firefox")
+(xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
+(xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
+
+(xbindkey '(Mod4 d) "/home/users/kamil/bin/,slack_toggle.sh")
+
+(xbindkey '(Alt F3) "xfce4-appfinder")
+(xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
+
+(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "notify-send -t1000 suspend ; systemctl suspend")
+
+(xbindkey '(Control Escape) "xfce4-popup-whiskermenu")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of xbindkeys guile configuration ;;
