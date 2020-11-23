@@ -42,13 +42,24 @@ if [[ ! -e ".git/modules" ]]; then
 	fatal ".git/modules does not exists"
 fi
 
-git submodule |	awk '{print $2}' | (
+out=$(git submodule |	awk '{print $2}')
+
+(
 	cd .git/modules;
 	while IFS= read -r line; do
-		run mkdir -p "$tmp"/"$(dirname "$line")"
+		printf "%s\n" "$tmp"/"$(dirname "$line")"
+	done <<<"$out" |
+	sort -u | {
+		readarray -t lines
+		run mkdir -p -v "${lines[@]}"
+	}
+)
+(
+	cd .git/modules;
+	while IFS= read -r line; do
 		run mv "$line" "$tmp"/"$line"
-	done
-);
+	done <<<"$out"
+)
 run rm -rf .git/modules/*
 run mv "$tmp"/* .git/modules/
 
