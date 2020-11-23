@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if declare -f hist 2>/dev/null >/dev/null; then
+	# already sourced - just ignore
+	# hist function is defined below
+	return
+fi
+
 # re-load profile
 for _i in "$(dirname "$(readlink -f "$BASH_SOURCE")")"/profile.d/*.sh; do
 	if [[ -e "$_i" ]]; then
