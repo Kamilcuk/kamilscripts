@@ -159,8 +159,14 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	execute 'source ' . g:kamilscripts . 'vim/vim-plug/plug.vim'
 	call plug#begin('~/.vim/plugged')
 
+	if has('nvim') || v:version >= 800
+		command -nargs=+ KcPlug2 execute "Plug <args>"
+	else
+		command -nargs=+ KcPlug2
+	endif
+
 	" my
-	Plug g:kamilscripts . 'vim/ebundle/my/dbg'
+	KcPlug2 g:kamilscripts . 'vim/ebundle/my/dbg'
 	Plug g:kamilscripts . 'vim/ebundle/my/vim-ctrlp-oldfiles'
 	Plug g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
 	Plug g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
@@ -168,7 +174,7 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'antoinemadec/coc-fzf'
 	Plug 'junegunn/fzf'
 	Plug 'junegunn/fzf.vim'
-	Plug 'kamykn/spelunker.vim'
+	KcPlug2 'kamykn/spelunker.vim'
 	Plug 'honza/vim-snippets'
 	" generic
 	Plug 'Konfekt/FastFold'
@@ -184,18 +190,18 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'tpope/vim-rhubarb'
 	" lang
 	if executable('node')
-		Plug 'neoclide/coc.nvim'
+		KcPlug2 'neoclide/coc.nvim'
 	endif
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
-	Plug 'jackguo380/vim-lsp-cxx-highlight'
-	Plug 'puremourning/vimspector'
+	KcPlug2 'jackguo380/vim-lsp-cxx-highlight'
+	KcPlug2 'puremourning/vimspector'
 	" pathogen
 	Plug 'tpope/vim-pathogen'
 	" utils
 	Plug 'chrisbra/NrrwRgn'
 	Plug 'mileszs/ack.vim'
-	Plug 'jlanzarotta/bufexplorer'
+	KcPlug2 'jlanzarotta/bufexplorer'
 	Plug 'FelikZ/ctrlp-py-matcher'
 	Plug 'kien/ctrlp.vim'
 	Plug 'idbrii/golden-ratio'
@@ -224,13 +230,14 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'yankcrime/direwolf'
 	Plug 'NLKNguyen/papercolor-theme'
 	Plug 'junegunn/seoul256.vim'
-	Plug 'vim-airline/vim-airline'
-	Plug 'vim-airline/vim-airline-themes'
+	KcPlug2 'vim-airline/vim-airline'
+	KcPlug2 'vim-airline/vim-airline-themes'
 	Plug 'endel/vim-github-colorscheme'
 	Plug 'jonathanfilip/vim-lucius'
 	Plug 'rakr/vim-one'
 	" zzz_utils
-	Plug 'thaerkh/vim-workspace'
+	"Plug 'thaerkh/vim-workspace'
+	Plug 'kamilcuk/vim-workspace'
 
 	call plug#end()
 	filetype on
