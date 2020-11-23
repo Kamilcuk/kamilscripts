@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+case "$BASH_VERSION" in 4.*) ;; *)
+set -euo pipefail ;;
+esac
 
 name=$(basename "$0")
 dir="$(readlink -f "$(dirname "$(readlink -f "$0")")"/../stow)"
@@ -62,7 +64,7 @@ s() {
 
 if (($#==0)); then usage; exit 1; fi
 case "$1" in
-i*)    s -R; if "$ok"; then ( set -x && cd "$dir" && git submodule update --recursive --init; ); fi; ;;
+i*)    s -R; if "$ok"; then ( set -x && cd "$dir" && cd "$(git rev-parse --show-toplevel)" && git submodule update --recursive --init; ); fi; ;;
 u*)    s -D ;;
 *) echo "Unknown mode: $1" >&2; ;;
 esac

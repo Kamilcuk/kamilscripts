@@ -14,8 +14,8 @@ PS1_setup() {
 	local $tmp
 	declare -g PS1
 
-	IFS=$'\x01' read -r $tmp < <(
-		color.sh -s --separator=$'\x01' $tmp
+	IFS=' ' read -r $tmp < <(
+		color.sh -s --separator=' ' $tmp
 	) ||:
 
 	colors=0
@@ -59,14 +59,21 @@ PS1_setup() {
 	# PS1+='\w'
 	local printf
 	printf="printf"
-	if hash "/usr/bin/printf" 2>/dev/null; then
+	if hash "/usr/bin/printf" 2>/dev/null && /usr/bin/printf "%q" 2>/dev/null >&1; then
 		printf="/usr/bin/printf"
-	elif hash "/bin/printf" 2>/dev/null; then
+	elif hash "/bin/printf" 2>/dev/null && /bin/printf "%q" 2>/dev/null >&1; then
 		printf="/bin/printf"
 	fi
-	PS1+='$('"$printf"' "%q" "$PWD" | awk -F"/"'
-		PS1+=' -vfront="\["'"$(printf "%q" "$cyan")"'"\]"'
-		PS1+=' -vback="\["'"$(printf "%q" "$blue")"'"\]"'
+	PS1+='$('
+	if "$printf" "%q" something 2>/dev/null >&2; then
+	# check if %q is supported with printf
+		PS1+="$printf"' "%q" "$PWD" | '
+	else
+		PS1+='<<<"$PWD" '
+	fi
+	PS1+='awk -F"/"'
+		PS1+=' -vfront="\["'"$cyan"'"\]"'
+		PS1+=' -vback="\["'"$blue"'"\]"'
 		PS1+=' '\''{gsub("/", front "/" back)}1'\'
 	PS1+=')'
 	PS1+="\\[$reset\\]"

@@ -1,6 +1,8 @@
 #!/bin/bash
 # SPDX-License-Identifier: Beerware+MIT
+case "$BASH_VERSION" in 4.*) ;; *)
 set -euo pipefail
+esac
 
 name=$(basename "$0")
 

@@ -7,7 +7,7 @@ if get(g:, 'loaded_kamilscripts_vimrc', 0)
 endif
 let g:loaded_kamilscripts_vimrc = 1
 
-if !has('nvim')
+if !has('nvim') && filereadable(expand('$VIMRUNTIME/defaults.vim'))
 	source $VIMRUNTIME/defaults.vim
 endif
 
@@ -56,7 +56,11 @@ set nosmarttab     " Enabling this will make the tab key (in insert mode) insert
 set backspace=indent,eol,start  " let backspece delete everything in intsert mode
 
 " Tell vim to remember certain things when we
-let &viminfo="'100,/50,:5000,<800,@500,h,n".(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
+let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
+if !isdirectory(fnamemodify(tmp, ':h'))
+	call mkdir(fnamemodify(tmp, ':h'), 'p')
+endif
+let &viminfo="'100,/50,:5000,<800,@500,h,n" . tmp
 "             |    |   |     |    |    | + viminfo file path
 "             |    |   |     |    |    + disable 'hlsearch' loading viminfo
 "             |    |   |     |    + items in the input-line history
@@ -64,6 +68,7 @@ let &viminfo="'100,/50,:5000,<800,@500,h,n".(!has('nvim') ? '~/.cache/vim/viminf
 "             |    |   + items in the command-line history
 "             |    + search history saved
 "             + number of edited files for which marks are remembered
+unlet tmp
 
 " https://vim.fandom.com/wiki/Folding
 set foldmethod=syntax
@@ -71,7 +76,8 @@ set foldnestmax=10
 set nofoldenable
 set foldlevel=0
 
-set wildignore+=*/node_modules/*,_site,*/__pycache__/,*/venv/*,*/target/*,*/.vim$,\~$,*/.log,*/.aux,*/.cls,*/.aux,*/.bbl,*/.blg,*/.fls,*/.fdb*/,*/.toc,*/.out,*/.glo,*/.log,*/.ist,*/.fdb_latexmk
+set wildignore+=*/node_modules/*,_site,*/__pycache__/,*/venv/*,*/target/*,*/.vim$,\~$,*/.log,*/.aux,*/.cls
+set wildignore+=*/.aux,*/.bbl,*/.blg,*/.fls,*/.fdb*/,*/.toc,*/.out,*/.glo,*/.log,*/.ist,*/.fdb_latexmk
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip
 set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe
 
@@ -92,9 +98,13 @@ autocmd BufEnter ?* set mouse=
 set updatetime=300
 
 " Don't pass messages to |ins-completion-menu|.
-set shortmess+=c
+if has('nvim') || v:version >= 800
+	set shortmess+=c
+endif
 
-let &signcolumn='yes'.(!has('nvim')?'':':2')
+if has('nvim') || v:version >= 800
+	let &signcolumn='yes'.(!has('nvim')?'':':2')
+endif
 
 set scrolloff=6
 
@@ -244,11 +254,13 @@ set nocursorcolumn
 
 " Change cursor to | in insert mode.
 " https://vi.stackexchange.com/questions/9131/i-cant-switch-to-cursor-in-insert-mode
-if has('vim')
+if has('nvim')
 	let &NVIM_TUI_ENABLE_CURSOR_SHAPE = 1
 else
 	let &t_SI = "\<esc>[5 q"
-	let &t_SR = "\<esc>[5 q"
+	if v:version > 800
+		let &t_SR = "\<esc>[5 q"
+	endif
 	let &t_EI = "\<esc>[2 q"
 endif
 
@@ -258,7 +270,9 @@ endif
 " https://vim.fandom.com/wiki/Cscope
 if has('cscope') && has('quickfix')
 	set cscopetag
-	set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
+	if has('nvim') || v:version >= 800
+		set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
+	endif
 endif
 
 "Credit joshdick
@@ -354,7 +368,7 @@ autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 " }}}
 " Plugins {{{
 
-if !has('nvim')
+if !has('nvim') && v:version >= 800
 	packadd! editexisting
 endif
 
@@ -877,6 +891,7 @@ endif
 
 " }}}
 " Color scheme {{{
+set background=light
 colorscheme kamilcuk
 " }}}
 

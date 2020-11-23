@@ -38,11 +38,11 @@ alias ping='ping -4'
 alias ls='ls --color -F'
 alias l='ls -alF --color -h --group-directories-first'
 alias o='less'
-alias rm='rm --preserve-root=all -I'
+alias rm='rm --preserve-root -I'
 
 # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
 alias pbcopy='xclip -selection clipboard'
 alias pbpaste='xclip -i -selection clipboard -o'
 
-hist() { eval "history $(for i; do echo -n " | grep -a $(printf "%q" "$i")"; done)"; }
+hist() { local args; for i; do args+=(-e "$i"); done; history | grep -a "${args[@]}"; }
 

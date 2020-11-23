@@ -221,8 +221,8 @@ call NERDTreeHighlightFileLink('m4'                  , 'x068_SteelBlue3')
 call NERDTreeHighlightFileLink('ld'                  , 'x089_DeepPink4')
 call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x142_Gold3')
 
-delf! NERDTreeHighlightFileLink
-delf! NERDTreeHighlightFile_old
-delf! NERDTreeHighlightFile_syn_match
+delf NERDTreeHighlightFileLink
+delf NERDTreeHighlightFile_old
+delf NERDTreeHighlightFile_syn_match
 
 " }}}

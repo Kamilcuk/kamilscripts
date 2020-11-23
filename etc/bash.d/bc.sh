@@ -8,7 +8,7 @@ fi
 # https://stackoverflow.com/questions/22621488/is-there-an-rc-file-for-the-command-line-calculator-bc
 BC_ENV_ARGS=" -q -l $(
 	cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"/.. &&
-	find "$PWD"/bc.d/ -name '*.bc' -exec printf "%q " {} +
+	find "$PWD"/bc.d/ -name '*.bc' -exec /bin/bash -c 'printf "%q " "$1"' _ {} \;
 )"
 export BC_ENV_ARGS
 
