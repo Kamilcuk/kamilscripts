@@ -65,25 +65,25 @@
 	noconsole = yes
 	needsfile = yes
 [guitool "Rebase onto..."]
-    cmd = git rebase $REVISION
-    revprompt = yes
+	cmd = git rebase $REVISION
+	revprompt = yes
 [guitool "Rebase/Continue"]
-    cmd = git rebase --continue
+	cmd = git rebase --continue
 [guitool "Rebase/Skip"]
-    cmd = git rebase --skip
+	cmd = git rebase --skip
 [guitool "Rebase/Abort"]
-    cmd = git rebase --abort
+	cmd = git rebase --abort
 [guitool "Pull with Rebase"]
 	cmd = git pull --rebase
 
 [blame]
-    date = human
+	date = human
 
 [core]
 	pager = less
 
 [submodule]
-	recurse = true
+	recurse = false
 
 [alias]
 	lo = log --pretty=format:\"%h %ce %cd %s\" --graph
@@ -94,4 +94,3 @@
 	br = branch
 	m3 = mergetool -t merge3
 	mt = mergetool
-	dog = log --all --decorate --oneline --graph
