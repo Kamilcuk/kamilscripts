@@ -1,7 +1,5 @@
 " Kamil Cukrowski color scheme
 
-set background=light
-
 let g:PaperColor_Theme_Options = {
 			\   'theme': {
 			\     'default': {
@@ -108,6 +106,12 @@ let i=1 | while i <= 15 | execute 'if exists("g:terminal_color_'.i.'") | unlet g
 unlet i
 if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 
+" Dispatch colors for vim-dispatch with my patch
+hi DispatchAbortedMsg   ctermbg=Red   guibg=Red
+hi DispatchFailureMsg   ctermbg=Red   guibg=Red
+hi DispatchSuccessMsg   ctermbg=Green guibg=LightGreen
+hi DispatchCompleteMsg  ctermbg=Green guibg=LightGreen
+
 " http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 
 " Cursor is set above also
@@ -128,11 +132,6 @@ hi cDefine ctermfg=33 guifg=#0087ff
 hi Repeat cterm=italic gui=italic
 hi Conditional cterm=italic gui=italic
 
-" Dispatch colors for vim-dispatch with my patch
-hi DispatchAbortedMsg   ctermbg=Red   guibg=Red
-hi DispatchFailureMsg   ctermbg=Red   guibg=Red
-hi DispatchSuccessMsg   ctermbg=Green guibg=LightGreen
-hi DispatchCompleteMsg  ctermbg=Green guibg=LightGreen
 
 " 3 manually configured in lsp
 hi LspCxxHlGroupNamespace ctermfg=133 guifg=#a635ab
@@ -153,7 +152,6 @@ hi! LspCxxHlSymFunctionVariable ctermfg=Green guifg=#00FF00 cterm=none gui=none
 hi! LspCxxHlSymUnknownStatic ctermfg=Red guifg=#FF0000 cterm=none gui=none
 " Highlight globals Red with Bold text
 hi! LspCxxHlSymUnknownNone ctermfg=Red guifg=#FF0000 cterm=bold gui=bold
-
 
 hi link doxygenBrief Comment
 hi link doxygenStartSpecial Comment
@@ -199,7 +197,7 @@ call kc#xterm256colornames#load()
 call NERDTreeHighlightFileLink('vim'                 , 'x022_DarkGreen')
 call NERDTreeHighlightFileLink('jade'                , 'x150_DarkSeaGreen3')
 call NERDTreeHighlightFileLink('ini'                 , 'x044_DarkTurquoise')
-call NERDTreeHighlightFileLink('ya\?ml'               , 'x052_DarkRed')
+call NERDTreeHighlightFileLink('ya\?ml'              , 'x052_DarkRed')
 call NERDTreeHighlightFileLink('config'              , 'x036_DarkCyan')
 call NERDTreeHighlightFileLink('conf'                , 'x018_DarkBlue')
 call NERDTreeHighlightFileLink('json'                , 'x021_Blue1')

@@ -1,7 +1,7 @@
 
 " TODO: integrate youcopmleteme
 
-function! ExpandCMacro()
+function! kc#expandcmacro()
   "get current info
   let l:macro_file_name = "__macroexpand__" . tabpagenr()
   let l:file_row = line(".")
@@ -46,5 +46,5 @@ function! ExpandCMacro()
 endfunction
 
 " autocmd FileType cpp nnoremap <leader>m :call ExpandCMacro()<CR>
-command ExpandCMacro call ExpandCMacro
+" command ExpandCMacro call ExpandCMacro
 
