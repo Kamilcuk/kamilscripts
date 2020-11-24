@@ -160,21 +160,16 @@
 ;; (define-chord-keys '(alt "b:1") '(alt "b:3")
 ;;   "gv" "xpdf" "xterm" "xterm")
 
-(define host (cond
-	((string=? (gethostname) "leonidas") 'leonidas)
-	((string=? (gethostname) "ardalus")  'ardalus)
-	((string=? (gethostname) "gorgo")  'gorgo)
-	(else 'unknown)
-))
+(define host (string->symbol (gethostname)))
 
-(xbindkey '(Mod4 F1) "qqoknonainnypulpit.sh 0")
-(xbindkey '(Mod4 F2) "qqoknonainnypulpit.sh 1")
-(xbindkey '(Mod4 F3) "qqoknonainnypulpit.sh 2")
-(xbindkey '(Mod4 F4) "qqoknonainnypulpit.sh 3")
-(xbindkey '(Mod4 F5) "qqoknonainnypulpit.sh 4")
-(xbindkey '(Mod4 F6) "qqoknonainnypulpit.sh 5")
-(xbindkey '(Mod4 F7) "qqoknonainnypulpit.sh 6")
-(xbindkey '(Mod4 F8) "qqoknonainnypulpit.sh 7")
+(xbindkey '(Mod4 F1)  "qqoknonainnypulpit.sh 0")
+(xbindkey '(Mod4 F2)  "qqoknonainnypulpit.sh 1")
+(xbindkey '(Mod4 F3)  "qqoknonainnypulpit.sh 2")
+(xbindkey '(Mod4 F4)  "qqoknonainnypulpit.sh 3")
+(xbindkey '(Mod4 F5)  "qqoknonainnypulpit.sh 4")
+(xbindkey '(Mod4 F6)  "qqoknonainnypulpit.sh 5")
+(xbindkey '(Mod4 F7)  "qqoknonainnypulpit.sh 6")
+(xbindkey '(Mod4 F8)  "qqoknonainnypulpit.sh 7")
 (xbindkey '(Mod4 F12) "qqoknonainnyscreen")
 
 (xbindkey '(Mod4 a) "geany")
@@ -214,8 +209,8 @@
 (xbindkey '(Mod4 Left)  ",magic_position_window.sh left")
 
 (xbindkey '(XF86Search) "xfce4-appfinder")
-(xbindkey '(XF86HomePage) "notify-send -t500 browser ; firefox")
-(xbindkey '(Mod4 n)       "notify-send -t500 browser ; firefox")
+(xbindkey '(XF86HomePage) "notify-send -t 500 browser ; firefox")
+(xbindkey '(Mod4 n)       "notify-send -t 500 browser ; firefox")
 (xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 (xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 
@@ -224,7 +219,7 @@
 (xbindkey '(Alt F3) "xfce4-appfinder")
 (xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
 
-(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "notify-send -t1000 suspend ; systemctl suspend")
+(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "notify-send -t 1000 suspend ; systemctl suspend")
 
 (xbindkey '(Control Escape) "xfce4-popup-whiskermenu")
 
