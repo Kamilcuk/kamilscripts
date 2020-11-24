@@ -31,7 +31,4 @@ ScrollingLines=60000
 ShortcutsNoHelpkey=TRUE
 ShortcutsNoMenukey=TRUE
 ShortcutsNoMnemonics=TRUE
-ColorForeground=#000000
-ColorBackground=#ffffff
-ColorBoldIsBright=FALSE
 

@@ -894,7 +894,7 @@ endif
 
 " }}}
 " Color scheme {{{
-set background=light
+set background=dark
 colorscheme kamilcuk
 " }}}
 
