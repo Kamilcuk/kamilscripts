@@ -94,7 +94,12 @@ set -o pipefail
 			}
 		}'
 	) &&
-	tmp2=$(xfconf-query -c xfce4-panel -p /panels/panel-1/autohide-behavior get) &&
+	{
+		tmp2=$(
+			xfconf-query -c xfce4-panel -p /panels/panel-1/autohide-behavior get 2>/dev/null
+		) ||
+		tmp2=0
+	} &&
 	echo "$tmp $tmp2"
 }
 
