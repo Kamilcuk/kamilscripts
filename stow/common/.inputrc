@@ -1,0 +1,25 @@
+# ~/.inputrc kamilscripts
+
+# https://www.topbug.net/blog/2017/07/31/inputrc-for-humans/
+$include /etc/inputrc
+"\C-p":history-search-backward
+"\C-n":history-search-forward
+set colored-stats On
+set completion-ignore-case On
+set completion-prefix-display-length 3
+set mark-symlinked-directories On
+set show-all-if-ambiguous On
+set show-all-if-unmodified On
+set visible-stats On
+
+# https://stackoverflow.com/questions/43102223/set-completion-ignore-case-on-ignored-in-inputrc
+# Enable case-insensitive tab-complete
+set completion-ignore-case on
+# Press up or down arrow to search through shell history on what you've already typed
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# https://tldp.org/HOWTO/Visual-Bell-8.html
+set bell-style visible
+set prefer-visible-bell
+
