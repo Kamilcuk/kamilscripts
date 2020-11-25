@@ -22,6 +22,9 @@ ssh() {
 			} > "$HOME/.ssh/config.d/kamilscripts.conf"
 			touch --reference="$HOME/.ssh/config.d/kamilscripts" "$HOME/.ssh/config.d/kamilscripts.conf"
 		fi
+		if [[ ! -e "$HOME"/.ssh/config && -r "$HOME"/.ssh/config.d/config_template_kamilscripts ]]; then
+			cp "$HOME"/.ssh/config.d/config_template_kamilscripts "$HOME"/.ssh/config
+		fi
 	fi
 	command ssh "$@"
 }
