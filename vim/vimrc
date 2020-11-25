@@ -121,6 +121,9 @@ augroup BinaryShit
   au BufWritePost *.bin if &bin | %!xxd | set nomod | endif
 augroup END
 
+" https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
+set visualbell
+
 " }}}
 " Load kamilscripts and load plugins {{{
 
@@ -195,7 +198,7 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
 	KcPlug2 'jackguo380/vim-lsp-cxx-highlight'
-	KcPlug2 'puremourning/vimspector'
+	"KcPlug2 'puremourning/vimspector'
 	" pathogen
 	Plug 'tpope/vim-pathogen'
 	" utils
@@ -585,9 +588,10 @@ if kc#plugin#enabled('showmarks')
 	let g:showmarks_ignore_type = 'hpq'
 endif
 
-if kc#plugin#enabled('nerdtree')
+if kc#plugin#enabled('nerdcommenter')
 	" use // instead of /* */ in C by default
 	let g:NERDAltDelims_c = 1
+	let g:NERDAltDelims_java = 1
 endif
 
 if kc#plugin#enabled('spelunker.vim')
@@ -648,8 +652,9 @@ endif
 
 if kc#plugin#enabled('nerdtree')
 	nmap <C-n> :NERDTreeToggle<CR>
+	let NERDTreeBookmarksFile = expand('~/.vim/NERDTreeBookmarks')
 	let NERDTreeAutoDeleteBuffer = 1
-	let NERDTreeMinimalUI = 1
+	let NERDTreeMinimalUI = 0
 	augroup NERDTree
 		autocmd!
 		" Close vim if only window is a Nerd Tree
