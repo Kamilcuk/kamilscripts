@@ -1,5 +1,13 @@
 " Kamil Cukrowski color scheme
 
+" Init {{{1
+let s:dark = &background == "dark"
+
+" Load all names for xterm256 variables, see autoload
+call kc#xterm256colornames#load()
+
+" Load Papercolor {{{1
+
 let g:PaperColor_Theme_Options = {
 			\   'theme': {
 			\     'default': {
@@ -106,22 +114,13 @@ let i=1 | while i <= 15 | execute 'if exists("g:terminal_color_'.i.'") | unlet g
 unlet i
 if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 
-" Dispatch colors for vim-dispatch with my patch
-hi DispatchAbortedMsg   ctermbg=Red   guibg=Red
-hi DispatchFailureMsg   ctermbg=Red   guibg=Red
-hi DispatchSuccessMsg   ctermbg=Green guibg=LightGreen
-hi DispatchCompleteMsg  ctermbg=Green guibg=LightGreen
+" Standard colors {{{1
 
 " http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 
 " Cursor is set above also
 " hi clear CursorLine after
 hi CursorLineNr cterm=bold gui=bold
-
-" See kamilscripts/vim/syntax/c.vim
-hi KcStandardCFuncs cterm=bold gui=bold guifg=#642880
-hi link KcDefine cInclude
-hi KcDefineSlash ctermfg=red
 
 hi cInclude cterm=none gui=none ctermfg=27 guifg=#005fff
 hi cDefine cterm=italic gui=italic ctermfg=Black
@@ -132,6 +131,27 @@ hi cDefine ctermfg=33 guifg=#0087ff
 hi Repeat cterm=italic gui=italic
 hi Conditional cterm=italic gui=italic
 
+hi link doxygenBrief Comment
+hi link doxygenStartSpecial Comment
+
+" kamilscripts/vim/syntax/c.vim {{{1
+hi KcStandardCFuncs cterm=bold gui=bold guifg=#642880
+hi link KcDefine cInclude
+hi KcDefineSlash ctermfg=red
+
+" TermDebug vim plugin configuration {{{1
+hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
+hi debugBreakpoint term=reverse ctermbg=red guibg=red
+
+" vim-dispatch {{{1
+
+" Dispatch colors for vim-dispatch with my patch
+hi DispatchAbortedMsg   ctermbg=red   ctermfg=black guibg=red        guifg=black
+hi DispatchFailureMsg   ctermbg=red   ctermfg=black guibg=red        guifg=black
+hi DispatchSuccessMsg   ctermbg=green ctermfg=black guibg=lightgreen guifg=black
+hi DispatchCompleteMsg  ctermbg=green ctermfg=black guibg=lightgreen guifg=black
+
+" LspCxx stuff {{{1
 
 " 3 manually configured in lsp
 hi LspCxxHlGroupNamespace ctermfg=133 guifg=#a635ab
@@ -153,21 +173,53 @@ hi! LspCxxHlSymUnknownStatic ctermfg=Red guifg=#FF0000 cterm=none gui=none
 " Highlight globals Red with Bold text
 hi! LspCxxHlSymUnknownNone ctermfg=Red guifg=#FF0000 cterm=bold gui=bold
 
-hi link doxygenBrief Comment
-hi link doxygenStartSpecial Comment
-
-" TermDebug vim plugin configuration
-hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
-hi debugBreakpoint term=reverse ctermbg=red guibg=red
-
-" NERDTree File highlighting {{{
+" NERDTree File highlighting {{{1
 
 " https://github.com/preservim/nerdtree/issues/201#issuecomment-197373760
 function! NERDTreeHighlightFile_syn_match(name, extension) abort
 	" NERTTree inserts BEL character 0x07 ^G before and after the filename,
 	" match it also with a \? to be safe
-	exec 'autocmd FileType nerdtree syn match kc_nerdtree_'.a:name.' #^\s\+\?.*'.a:extension.'\(\?\s\+\[RO\]\)\?$#'
+	exec 'autocmd FileType nerdtree syn match kc_nerdtree_'.a:name.' #^\s\+\?.*\.'.a:extension.'\(\?\s\+\[RO\]\)\?$#'
 endfunction
+function! NERDTreeHighlightFileLink(extension, name, ...) abort
+	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
+	exec 'autocmd FileType nerdtree highlight link kc_nerdtree_'.l:name.' '.a:name
+	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
+endfunction
+
+" to develop use :vsplit autoload/kc/xterm256colornames.vim
+" :colorscheme kamilcuk | :NERDTreeClose | :NERDTree 
+call NERDTreeHighlightFileLink('vim'                 , s:dark ? 'x037_LightSeaGreen' : 'x022_DarkGreen')
+call NERDTreeHighlightFileLink('jade'                , 'x150_DarkSeaGreen3')
+call NERDTreeHighlightFileLink('ini'                 , 'x044_DarkTurquoise')
+call NERDTreeHighlightFileLink('\(yaml\|yml\)'       , s:dark ? 'x204_IndianRed1' : 'x052_DarkRed')
+call NERDTreeHighlightFileLink('config'              , 'x036_DarkCyan')
+call NERDTreeHighlightFileLink('conf'                , s:dark ? 'x033_DodgerBlue1' : 'x018_DarkBlue')
+call NERDTreeHighlightFileLink('json'                , s:dark ? 'x153_LightSkyBlue1' : 'x021_Blue1')
+call NERDTreeHighlightFileLink('html'                , 'x107_DarkOliveGreen3')
+call NERDTreeHighlightFileLink('styl'                , 'x043_Cyan3')
+call NERDTreeHighlightFileLink('css'                 , 'x050_Cyan2')
+call NERDTreeHighlightFileLink('coffee'              , 'x124_Red3')
+call NERDTreeHighlightFileLink('js'                  , s:dark ? 'x210_LightCoral' : 'x058_Orange4')
+call NERDTreeHighlightFileLink('php'                 , 'x127_Magenta3')
+call NERDTreeHighlightFileLink('ds_store'            , s:dark ? 'x178_Gold3' : 'x232_Grey3')
+call NERDTreeHighlightFileLink('gitconfig'           , 'x232_Grey1')
+call NERDTreeHighlightFileLink('gitignore'           , 'x232_Grey2')
+call NERDTreeHighlightFileLink('bash\(rc\|profile\)' , s:dark ? 'x085_SeaGreen1' : 'x108_DarkSeaGreen')
+call NERDTreeHighlightFileLink('[ch]'                , s:dark ? 'x213_Orchid1' : 'x090_DarkMagenta')
+call NERDTreeHighlightFileLink('[ch]pp'              , s:dark ? 'x212_Orchid2' : 'x091_DarkMagenta')
+call NERDTreeHighlightFileLink('\(txt\|rst\|md\)'    , s:dark ? 'x046_Green1' : 'x022_DarkGreen')
+call NERDTreeHighlightFileLink('cmake'               , s:dark ? 'x147_LightSteelBlue' : 'x017_NavyBlue')
+call NERDTreeHighlightFileLink('m4'                  , 'x068_SteelBlue3')
+call NERDTreeHighlightFileLink('ld'                  , s:dark ? 'x218_Pink1' : 'x089_DeepPink4')
+call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x142_Gold3')
+
+delf NERDTreeHighlightFileLink
+delf NERDTreeHighlightFile_syn_match
+
+" }}}
+" Unused {{{1
+
 function! NERDTreeHighlightFile_old(extension, fg, ...) abort
 	"                                              bg, guifg, guibg
 	" Optionally takes additional arguments, if `guifg` is not specified, the
@@ -184,43 +236,8 @@ function! NERDTreeHighlightFile_old(extension, fg, ...) abort
 	exec 'autocmd FileType nerdtree highlight nerdtree_'.l:name.' ctermfg='.a:fg.' ctermbg='.l:bg.' guifg='.l:guifg.' guibg='.l:guibg
 	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
 endfunction
-function! NERDTreeHighlightFileLink(extension, name, ...) abort
-	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
-	exec 'autocmd FileType nerdtree highlight link kc_nerdtree_'.l:name.' '.a:name
-	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
-endfunction
-
-" Load all names for xterm256 variables, see autoload
-call kc#xterm256colornames#load()
-
-" to develop use :vsplit autoload/kc/xterm256colornames.vim
-call NERDTreeHighlightFileLink('vim'                 , 'x022_DarkGreen')
-call NERDTreeHighlightFileLink('jade'                , 'x150_DarkSeaGreen3')
-call NERDTreeHighlightFileLink('ini'                 , 'x044_DarkTurquoise')
-call NERDTreeHighlightFileLink('ya\?ml'              , 'x052_DarkRed')
-call NERDTreeHighlightFileLink('config'              , 'x036_DarkCyan')
-call NERDTreeHighlightFileLink('conf'                , 'x018_DarkBlue')
-call NERDTreeHighlightFileLink('json'                , 'x021_Blue1')
-call NERDTreeHighlightFileLink('html'                , 'x107_DarkOliveGreen3')
-call NERDTreeHighlightFileLink('styl'                , 'x043_Cyan3')
-call NERDTreeHighlightFileLink('css'                 , 'x050_Cyan2')
-call NERDTreeHighlightFileLink('coffee'              , 'x124_Red3')
-call NERDTreeHighlightFileLink('js'                  , 'x058_Orange4')
-call NERDTreeHighlightFileLink('php'                 , 'x127_Magenta3')
-call NERDTreeHighlightFileLink('ds_store'            , 'x232_Grey3')
-call NERDTreeHighlightFileLink('gitconfig'           , 'x232_Grey1')
-call NERDTreeHighlightFileLink('gitignore'           , 'x232_Grey2')
-call NERDTreeHighlightFileLink('bash\(rc\|profile\)' , 'x108_DarkSeaGreen')
-call NERDTreeHighlightFileLink('[ch]'                , 'x090_DarkMagenta')
-call NERDTreeHighlightFileLink('[ch]pp'              , 'x091_DarkMagenta')
-call NERDTreeHighlightFileLink('\(txt\|rst\|md\)'    , 'x022_DarkGreen')
-call NERDTreeHighlightFileLink('cmake'               , 'x017_NavyBlue')
-call NERDTreeHighlightFileLink('m4'                  , 'x068_SteelBlue3')
-call NERDTreeHighlightFileLink('ld'                  , 'x089_DeepPink4')
-call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x142_Gold3')
-
-delf NERDTreeHighlightFileLink
 delf NERDTreeHighlightFile_old
-delf NERDTreeHighlightFile_syn_match
 
 " }}}
+" vim: foldmethod=marker
+
