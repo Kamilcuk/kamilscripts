@@ -1,8 +1,8 @@
 [Configuration]
-FontName=Liberation Mono 9
+FontName=Liberation Mono 10
 MiscAlwaysShowTabs=TRUE
 MiscBell=FALSE
-MiscBellUrgent=FALSE
+MiscBellUrgent=TRUE
 MiscBordersDefault=TRUE
 MiscCursorBlinks=FALSE
 MiscCursorShape=TERMINAL_CURSOR_SHAPE_BLOCK
