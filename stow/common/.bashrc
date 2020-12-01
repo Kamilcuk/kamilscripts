@@ -1,6 +1,8 @@
 #!/bin/bash
 # kamilscripts ~/.bashrc
 
+# . ,bash_qprofile.sh 1start
+
 for i in \
 		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
 		~/.bashrc_*
@@ -10,4 +12,6 @@ do
 	fi
 done
 unset i
+
+# . ,bash_qprofile.sh 1stop_auto
 
