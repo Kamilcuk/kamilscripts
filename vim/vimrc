@@ -383,8 +383,15 @@ if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
 	    \ "mode": "active",
 	    \ "passive_filetypes": [
 		\ "c",
-		\ "c++",
+		\ "cpp",
+		\ "python",
+		\ "json",
 		\ "vim",
+		\ "bin",
+		\ "cmake",
+		\ "ruby",
+		\ "java",
+		\ "html",
 		\ ]}
 endif
 
@@ -903,4 +910,3 @@ endif
 " }}}
 
 " vim: filetype=vim:foldmethod=marker
-
