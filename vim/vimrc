@@ -692,6 +692,9 @@ if kc#plugin#enabled('open-browser.vim')
 	vmap gx <Plug>(openbrowser-open)
 endif
 
+" https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
+nnoremap <leader>s i<CR><Esc>
+
 " coc.nvim {{{1
 
 if kc#plugin#enabled('coc.nvim')
