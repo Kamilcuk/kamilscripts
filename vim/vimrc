@@ -665,6 +665,10 @@ endif
 nmap <C-w><C-e> :bdelete<CR>
 
 if &diff
+	augroup DiffGoToFirstDiff
+		autocmd!
+		autocmd VimEnter *? norm ]c[c
+	augroup END
 	function MLayoutCompletion(ArgLead, CmdLine, CursorPos)
 		return [ "mr", "lmr", "bmr", "LBR" ]
 	endfunction
