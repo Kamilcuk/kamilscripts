@@ -1,6 +1,6 @@
 " kamilscripts/vim/vimrc
 
-" Init {{{
+" Init {{{1
 
 if get(g:, 'loaded_kamilscripts_vimrc', 0)
 	finish
@@ -18,8 +18,7 @@ if 0 && $LC_CTYPE == 'pl_PL.UTF-8'
 	source $VIMRUNTIME/menu.vim
 endif
 
-" }}}
-" Global configuration {{{
+" Global configuration {{{1
 
 " HOW-TO make vim not suck Out of the Box
 set nocompatible   " This option has the effect of making Vim either more Vi-compatible, or make Vim behave in a more useful way.
@@ -124,8 +123,7 @@ augroup END
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
 
-" }}}
-" Load kamilscripts and load plugins {{{
+" Load kamilscripts and load plugins {{{1
 
 for i in [
 		\ '/usr/lib/kamilscripts/',
@@ -154,8 +152,7 @@ if exists('g:kamilscripts')
 	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
 endif
 
-" }}}
-" Load plugins with vim-plug {{{
+" Load plugins with vim-plug {{{1
 
 if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.vim')
 	filetype off
@@ -246,8 +243,7 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	filetype on
 endif
 
-" }}}
-" Some view things {{{
+" Some view things {{{1
 
 " See kamilscript/autoload/viewrestore.vim
 " call viewrestore#enable()
@@ -270,8 +266,7 @@ if has('nvim') || v:version >= 800
 endif
 let &t_EI = "\<esc>[2 q"
 
-" }}}
-" Miscellaneous {{{
+" Miscellaneous {{{1
 
 " https://vim.fandom.com/wiki/Cscope
 if has('cscope') && has('quickfix')
@@ -371,8 +366,7 @@ endif
 
 autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 
-" }}}
-" Plugins {{{
+" Plugins {{{1
 
 if !has('nvim') && v:version >= 800
 	packadd! editexisting
@@ -609,8 +603,7 @@ if kc#plugin#enabled('Colorizer')
 	call kc#xterm256colornames#colorizer()
 endif
 
-" }}}
-" Shortcuts {{{
+" Shortcuts {{{1
 
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 " https://vim.fandom.com/wiki/Map_semicolon_to_colon
@@ -699,8 +692,7 @@ if kc#plugin#enabled('open-browser.vim')
 	vmap gx <Plug>(openbrowser-open)
 endif
 
-" }}}
-" coc.nvim {{{
+" coc.nvim {{{1
 
 if kc#plugin#enabled('coc.nvim')
 "
@@ -874,8 +866,12 @@ endif " kc#plugin#enabled('coc-fzf')
 
 endif " kc#plugin#enabled('coc.nvim')
 
-" }}}
-" Project specific {{{
+" Color scheme {{{1
+
+set background=dark
+colorscheme kamilcuk
+
+" Project specific {{{1
 
 " Seamlessly detect cmake out-of-source build errors in subdirectories
 let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
@@ -901,10 +897,6 @@ if getcwd() == "/home/work/beacon"
 	nmap <leader>u :Make utest<CR>
 endif
 
-" }}}
-" Color scheme {{{
-set background=dark
-colorscheme kamilcuk
 " }}}
 
 " vim: filetype=vim:foldmethod=marker
