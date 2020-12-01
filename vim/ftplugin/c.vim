@@ -3,15 +3,7 @@
 nmap <silent> <buffer> <leader>gh :CocCommand clangd.switchSourceHeader<CR>
 
 if kc#plugin#enabled('vim-dispatch') && !exists('b:dispatch')
-	if &filetype == "c"
-		let cc = ",ccrun"
-	elseif &filetype == "cpp"
-		let cc = ",c++run"
-	endif
-	if exists('cc')
-		let b:dispatch = cc . ' % -Wall -Wextra -ggdb3 -fsanitize=address -fsanitize=undefined -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize-address-use-after-scope'
-		unlet cc
-	endif
+	let b:dispatch = g:kamilscripts.'/vim/bin/,vim_autorun.sh '.&filetype.' %'
 endif
 
 
