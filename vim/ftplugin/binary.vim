@@ -1,3 +1,4 @@
+
 augroup Binary
   au!
   au BufReadPre  *.bin let &bin=1

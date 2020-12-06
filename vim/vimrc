@@ -97,11 +97,11 @@ autocmd BufEnter ?* set mouse=
 set updatetime=300
 
 " Don't pass messages to |ins-completion-menu|.
-if has('nvim') || v:version >= 800
+if v:version >= 800
 	set shortmess+=c
 endif
 
-if has('nvim') || v:version >= 800
+if v:version >= 800
 	let &signcolumn='yes'.(!has('nvim')?'':':2')
 endif
 
@@ -111,14 +111,6 @@ set scrolloff=6
 set sessionoptions-=blank
 
 set display+=uhex
-
-augroup BinaryShit
-  au!
-  au BufReadPre   *.bin let &bin=1
-  au BufReadPost  *.bin if &bin | %!xxd | set ft=xxd | endif
-  au BufWritePre  *.bin if &bin | %!xxd -r | endif
-  au BufWritePost *.bin if &bin | %!xxd | set nomod | endif
-augroup END
 
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
@@ -159,10 +151,10 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	execute 'source ' . g:kamilscripts . 'vim/vim-plug/plug.vim'
 	call plug#begin('~/.vim/plugged')
 
-	if has('nvim') || v:version >= 800
+	if v:version >= 800
 		command -nargs=+ KcPlug2 execute "Plug <args>"
 	else
-		command -nargs=+ KcPlug2
+		command -nargs=+ KcPlug2 " empty
 	endif
 
 	" my
@@ -262,17 +254,17 @@ set nocursorcolumn
 " Change cursor to | in insert mode.
 " https://vi.stackexchange.com/questions/9131/i-cant-switch-to-cursor-in-insert-mode
 let &t_SI = "\<esc>[5 q"
-if has('nvim') || v:version >= 800
+if v:version >= 800
 	let &t_SR = "\<esc>[5 q"
 endif
 let &t_EI = "\<esc>[2 q"
 
-" Miscellaneous {{{1
+" Miscellaneous configuration {{{1
 
 " https://vim.fandom.com/wiki/Cscope
 if has('cscope') && has('quickfix')
 	set cscopetag
-	if has('nvim') || v:version >= 800
+	if v:version >= 800
 		set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
 	endif
 endif
@@ -281,15 +273,15 @@ endif
 "Use 24-bit (true-color) mode in Vim/Neovim when outside tmux.
 "If you're using tmux version 2.2 or later, you can remove the outermost $TMUX check and use tmux's 24-bit color support
 "(see < http://sunaku.github.io/tmux-24bit-color.html#usage > for more information.)
-if (empty($TMUX))
-	if (has("nvim"))
+if empty($TMUX)
+	if has("nvim")
 		"For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
 		let $NVIM_TUI_ENABLE_TRUE_COLOR=1
 	endif
 	"For Neovim > 0.1.5 and Vim > patch 7.4.1799 < https://github.com/vim/vim/commit/61be73bb0f965a895bfb064ea3e55476ac175162 >
 	"Based on Vim patch 7.4.1770 (`guicolors` option) < https://github.com/vim/vim/commit/8a633e3427b47286869aa4b96f2bfc1fe65b25cd >
 	" < https://github.com/neovim/neovim/wiki/Following-HEAD#20160511 >
-	if (has("termguicolors"))
+	if has("termguicolors")
 		set termguicolors
 	endif
 endif
@@ -347,12 +339,12 @@ endif
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 if has('nvim')
 	augroup nvim
-		au!
+		autocmd!
 		autocmd BufEnter term://* startinsert
 		"Do everything possible to prevent numbers and cursorline in term buffer
 		autocmd BufEnter,BufWinLeave,BufWinEnter,WinEnter,InsertLeave term://* setlocal nonumber norelativenumber nocursorline
 		autocmd TermOpen * setlocal nonumber norelativenumber
-		au BufEnter,WinEnter * if &buftype == 'terminal' | startinsert | set nocursorline | endif
+		autocmd BufEnter,WinEnter * if &buftype == 'terminal' | startinsert | set nocursorline | endif
 		" TODO: Tidy this up as there must be a way not to run this for fzf term buffers using an if statement
 		if exists('+winhighlight') "&& &filetype !=? 'fzf'
 			" autocmd TermOpen call s:highlight_myterm()
@@ -360,14 +352,14 @@ if has('nvim')
 			au FileType fzf setl winhighlight=
 		endif
 		autocmd TermOpen * set bufhidden=hide
-		au FileType fzf tnoremap <nowait><buffer> <esc> <c-g> "Close FZF in neovim with esc
+		autocmd FileType fzf tnoremap <nowait><buffer> <esc> <c-g> "Close FZF in neovim with esc
 	augroup END
 	au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
 endif
 
 autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 
-" Plugins {{{1
+" Plugins configuration {{{1
 
 if !has('nvim') && v:version >= 800
 	packadd! editexisting
@@ -412,6 +404,7 @@ endif
 
 if kc#plugin#enabled('vim-airline')
 	let g:airline#extensions#tabline#enabled = 1
+	let g:airline#extensions#tabline#buffer_nr_show = 1
 endif
 
 if kc#plugin#enabled('vim-workspace')
