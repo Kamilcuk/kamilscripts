@@ -46,9 +46,5 @@ alias l='ls -alF --color -h --group-directories-first'
 alias o='less'
 alias rm='rm --preserve-root -I'
 
-# https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
-alias pbcopy='xclip -selection clipboard'
-alias pbpaste='xclip -i -selection clipboard -o'
-
 hist() { local args; for i; do args+=(-e "$i"); done; history | grep -a "${args[@]}"; }
 

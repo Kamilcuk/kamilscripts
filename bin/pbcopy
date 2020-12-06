@@ -1,3 +1,4 @@
 #!/bin/sh
-xclip -selection clipboard "$@"
+# https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
+exec xclip -selection clipboard "$@"
 
