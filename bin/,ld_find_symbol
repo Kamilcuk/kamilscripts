@@ -21,6 +21,51 @@ Licensed jointly under Beerware License and MIT License.
 EOF
 }
 
+_unused() {
+	python3 <<'EOF'
+import subprocess
+import re
+import os
+
+ldout = subprocess.run(["ld", "--verbose"], capture_output=True)
+
+dirs = re.findall('SEARCH_DIR\("([^"]*)"\);', ldout.stdout.decode(), re.MULTILINE + re.DOTALL)
+
+libs = []
+for dir in dirs:
+	if not os.path.exists(dir):
+		continue
+	for file in os.listdir(dir):
+		if not re.match('^lib.*\.(a|so)(\.*)?$', file):
+			continue
+		file = os.path.join(dir, file)
+		if not os.path.isfile(file):
+			continue
+		if os.path.islink(file):
+			continue
+			file = os.readlink(file)
+		libs += [file] 
+
+proc = subprocess.Popen(["nm", "--defined-only", "--extern-only", "-f", "posix", "--"] + libs, stdout=subprocess.PIPE)
+while True:
+	line = proc.stdout.readline()
+	if not line:
+		break
+	line = line.decode()
+	tmp = re.search('^([^ ]+)\[[^ ]+\]:$', line)
+	if tmp:
+		section = tmp.group(1)
+		continue
+	a = line.split()
+	if len(a) < 2:
+		continue
+	if a[1] == "T":
+		print(section, a[0])
+	
+
+EOF
+}
+
 log() {
 	if ! "${quiet:-false}"; then
 		echo "$name:" "$*"
@@ -46,54 +91,57 @@ while (($#)); do
 done
 if ((!$#)); then usage; exit 1; fi;
 
+exec 3>&1
+
 if [[ -e "$database" ]] && ! "$reload"; then
 	log "Using $database"
 else
 	log "Creating $database"
 
 	# list all ld search paths
-	ld --verbose | grep SEARCH_DIR | tr -s ' ;' '\n' |
+	ld --verbose |
 	# In a format something we can eat
-	sed 's/SEARCH_DIR("\(.*\)")/\1/' |
-	# Resolve symlinks, remove duplicates
-	# Remove non-existent directories
-	xargs -d'\n' -n1 sh -c '
-		set -- "$(readlink -f "$1")"
-		if [ -e "$1" ]; then
-			printf "%s\n" "$1"
-		fi
-		:
-	' _ |
-	sort -u |
+	awk '/SEARCH_DIR/{
+		split($0, a, " ");
+		for (i in a) sub(/^SEARCH_DIR\("/, "", a[i]) + sub(/");$/, "", a[i]);
+		for (i in a) print a[i]
+	}' |
 	# List all .so and .a files from that dir
 	# Calling `file` would be very slow
-	xargs -d'\n' -I{} find {} -mindepth 1 -maxdepth 1 -type f \
-		'(' -name 'lib*.so.*' -o -name 'lib*.a' ')' |
+	xargs -d'\n' bash -c '
+		for i; do
+			if [[ -e "$i" ]]; then
+				find "$i" -mindepth 1 -maxdepth 1 -type f \
+				"(" -name "lib*.so" -o -name "lib*.so.*" -o -name "lib*.a" -o -name "lib*.a.*" ")"
+			fi
+		done
+	' _ |
+	sort -u |
 	# list filename and symbol in each library
-	(
-		# we list all symbols listed in any elf section
-		list_symbols() {
-			readelf -Ws "$1" |
-			sed '/^ *[^ ]*: *[^ ]* *[^ ]* *[^ ]* *[^ ]* *[^ ]* * [0-9]\{1,\} *\([^ ]\{1,\}\)$/!d; s``\1\t'"$1"'`' ||: |
-			sort -u
-			# log the filename that we are ready
-			log "Indexed: $1" >&3
-		}
-		export quiet
-		export -f log list_symbols
-		# extra stdbuf -oL so that buffering can't touch this
-		# I guess we should be safe till _POSIX_PIPE_BUF
-		stdbuf -oL xargs -P$(nproc) -n1 \
-			stdbuf -oL bash -c 'list_symbols "$@"' _ 
-	) |
-	# sort it
+	{ nproc=$(nproc);
+	xargs -d '\n' -P "$nproc" -n "$((1000 / nproc))" bash -c '
+		nm -a --defined-only -g -f posix -- "$@" 2>/dev/null |
+		awk '\''
+			BEGIN{ OFS="\t" }
+			/^[^ ]+(\[[^ ]+\])?:$/{
+				section = gensub(/^([^]: []+)(\[[^ ]+\])?:/, "\\1", "1", $0)
+				if (!(section in sections)) {
+					print "Indexing: " section " " $0 > "/dev/fd/3"
+					sections[section] = 1
+				}
+			}
+			/^[^ ]+ [T] /{
+				print $1, section
+				fflush()
+			}
+		'\''' _ 
+	} |
 	sort -t $'\t' -u -o "$database"
  
 fi 3>&1
 
 for i in "$@"; do
-	look -t $'\t' "$i" "$database" |
-	grep -F "$i"$'\t'
+	look -t $'\t' "$i" "$database"
 done |
 if "$include"; then
 	cut -f2 |
