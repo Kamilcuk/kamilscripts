@@ -1,15 +1,40 @@
 #!/bin/bash
 
 ,pulseaudio_list_1() {
-	# tableoutput is a comma separated list of lowercase fields
-	# jsonuotput is a bool if we should output json
+	,pulseaudio_list_2 "_what,_num,_name,_description"
+}
+
+,pulseaudio_list_2() {
+	if (($# != 1)); then
+		cat <<-EOF
+	Usage:  ,pulseaudio_list_2 <fields> [jsonoutput]
+
+	Fields is a comma separated list of lowercase fields.
+	A special value "ALL" makes printing all possible fields.
+	A special value "JSON" makes printing all possible fields in json format.
+	Fields:
+	  _what         Section name.
+	  _num          Number of that thing.
+	  _name         Smart name, from name or from application.name
+	  _description  Smart description, description or module.description 
+	                or device.description.
+	All other fields that are outputted by pactl list.
+
+	Examples:
+	  ,pulseaudio_list_2 ALL
+	  ,pulseaudio_list_2 JSON
+	  ,pulseaudio_list_2 _what,_num,_name,_description,mute
+
+	EOF
+		return
+	fi
 	pactl list | awk \
-		-v tableoutput=_what,_num,_name,_description \
-		-v jsonoutput=0 \
+		-v outputmode="$1" \
 	'
 		# props array stores all output globally with comma separated values
 
-		function cur_clear() {
+		function cur_clear( \
+				i) {
 			# stores all output
 			for (i in cur) {
 				delete cur[i]
@@ -23,31 +48,37 @@
 			val=""
 		}
 
-		function strappend(str, str2) {
-			return str (length(str)?", ": "") str2
-		}
-
-		function jsonesc(str) {
+		function jsonesc(input, \
+				str) {
+			str = input
 			str = gensub(/([\\"])/, "\\\\\\1", "g", str) 
+			return str
+		}
+		function remove_quotes(input, \
+				str) {\
+			str = input
+			# Tab is the output separator - its not allowed.
 			str = gensub(/\t/, "\\\\t", "g", str)
+			# If there are quotes exactly in front and after it, remove them.
+			if (str ~ "^\"[^\"]*\"$") {
+				str = gensub(/"/, "", "g", str)
+			}
 			return str
 		}
 
-		BEGIN{
+
+		BEGIN {
 			OFS="\t"
-			if (tableoutput) {
-				print gensub(",", "\t", "g", tableoutput)
-			}
 		}
 
 		# read the lines "something #<number>"
-		/^[^ ]*.* #[0-9]*$/{
+		/^[^ ]*.* #[0-9]*$/ {
 			cur["_what"] = what = gensub(" *#.*", "", "1", $0);
 			cur["_num"]  = num  = gensub(".*#",   "", "1", $0);
 		}
 
 		# all other lines start with a leading tab
-		length(what) && /^\t[^\t]/{
+		length(what) && /^\t[^\t]/ {
 			# balance is special.. :(
 			if (/^\t *balance/) {
 				section = $1
@@ -61,6 +92,7 @@
 			if (length(val) == 0) {
 				subsection = section
 			} else {
+				val = remove_quotes(val)
 				subsection = ""
 				props[what, num, section] = val
 				cur[section] = val
@@ -72,6 +104,7 @@
 			section = gensub(/^[\t ]*([^ ]*).*$/, "\\1", "g", $0)
 			section = subsection "." section
 			val = gensub(/^[^=]*= /, "", "g", $0)
+			val = remove_quotes(val)
 			props[what, num, section] = val
 			cur[section] = val
 		}
@@ -86,17 +119,34 @@
 			}
 		}
 		
-		function output() {
-			if (jsonoutput) {
-				print "{ \"what\": \""what"\", \"num\": \""num"\""
+		function output( \
+				c, i, val, once, scur) {
+			if (outputmode == "JSON") {
+				printf "{"
+				once = 0
 				for (i in cur) {
-					print ", \""jsonesc(i)"\": \""jsonesc(cur[i])"\""
+					printf "%s\"%s\": \"%s\"", once++?",":"", jsonesc(i), jsonesc(cur[i])
 				}
-				print "}"
-			} else if (tableoutput) {
-				split(tableoutput, c, ",")
-				for (i=1;i<=length(c);++i) {
-					printf "%s%s", cur[c[i]], i==length(c)?"":OFS
+				printf "}\n"
+			} else if (outputmode == "ALL") {
+				if (!_output_header) {
+					_output_header = 1
+					printf "%s\t%s\t%s\t%s\n", "what", "num", "field", "value"
+				}
+				asorti(cur, scur)
+				i = length(scur)
+				for (i = 1; i <= length(scur); ++i) {
+					printf "%s\t%s\t%s\t%s\n", what, num, scur[i], cur[scur[i]]
+				}
+			} else if (outputmode) {
+				if (!_output_header) {
+					_output_header = 1
+					print gensub(",", "\t", "g", outputmode)
+				}
+				split(outputmode, c, ",")
+				for (i = 1; i <= length(c); ++i) {
+					val = cur[c[i]]
+					printf "%s%s", length(val) ? val : "-", i==length(c)?"":OFS
 				}
 				printf "\n"
 			}
@@ -128,7 +178,7 @@ Example:
 ,lib_pulseaudio.sh ,pulseaudio_filter_1 'Sink' '' '' 'Built-in Audio Analog Stereo'
 
 EOF
-		exit 1
+		return
 	fi
 	,pulseaudio_list_1 |
 	while IFS=$'\t' read -r a b c d; do
