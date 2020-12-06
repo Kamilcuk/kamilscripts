@@ -18,11 +18,16 @@ if (($# == 0)); then
 	usage
 	exit 1
 fi
-if ! l=$(whereis -b "$1"); then
-	echo "$name: ERROR: No executable found";
+if ! l=$(which "$1"); then
+	echo "$name: ERROR: No executable found $l";
 	exit 1
 fi
-l=$(<<<"$l" awk '{print $2}')
+for i in $(cut -d: -f2- <<<"$l"); do
+	if [[ ! -x "$i" ]]; then
+		l=$i;
+		break
+	fi
+done
 if [[ -z "$l" ]]; then
 	echo "$name: ERROR: No executable found 2";
 	exit 1
