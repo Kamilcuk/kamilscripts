@@ -1,0 +1,2 @@
+#!/bin/sh
+exec ls -alF --color -h --group-directories-first "$@"

@@ -42,7 +42,6 @@ shopt -s cmdhist # multiple commands in one line
 
 alias ping='ping -4'
 alias ls='ls --color -F'
-alias l='ls -alF --color -h --group-directories-first'
 alias o='less'
 alias rm='rm --preserve-root -I'
 
