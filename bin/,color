@@ -1,0 +1,928 @@
+#!/bin/bash
+set -euo pipefail
+
+NAME=$(basename "$0")
+
+# Bash functions ################################################################################
+
+usage() {
+	cat <<EOF
+Usage: $NAME [options] mode...
+
+Translated user readable format string in ascii escape seqeunces.
+
+Options:
+    -s --safe        If terminal does not support colors, print nothing.
+                     The default is: print an error message and exit with nonzero exit status.
+    -h --help        Print this help and exit.
+       --separator=STR  Output colors separated by this.
+       --bashautocompletaion  Output a bash complation invocation that needs to be eval-ed.
+       --test[=NUM]  Print all possible configurations. Optionally specify test part number.
+
+Modes:
+$($0 listconfig | sort | if hash fmt 2>/dev/null; then fmt; else cut; fi | sed 's/^/  /')
+
+  b_*           - Are shortcuts to background_*.
+  reset         - Resets the current settings.
+  test          - Print the string 'test' in requested mode.
+  f8#RGB        - 8-bit RGB code for foreground. Values must be within 0-5 range
+  b8#RGB        - 8-bit RGB code for background.
+  f26#RRGGBB    - 24-bit RGB code for foreground.
+  b26#RRGGBB    - 24-bit RGB code for background.
+  RRGGBB        - Same as f#RRGGBB.
+  f#RRGGBB      - Uses 8-bit or 24-bit colors for foreground.
+  b#RRGGBB      - Uses 8-bit or 24-bit colors for background.
+  print "text"  - print the text
+  echo "text"   - print the text with a newline
+  charrainbow RRGGBB RRGGBB "text" 
+                - print each word from text using colors from one color to another
+  charrainbow3 RRGGBB RRGGBB RRGGBB "text"
+                - print each word from text using colors changing from 3 colors
+  colors        - runs tput colors
+
+Examples:
+    $NAME red b_green; echo 123; $NAME reset
+    $NAME green b_red test reset red b_green test
+    $NAME charrainbow ff0000 00ff00 this_is_funny_string
+    $NAME charrainbow3 ff0000 00ff00 00000ff this_is_funny_string
+
+Written by Kamil Cukrowski
+SPDX-License-Identifier: GPL-3.0+
+EOF
+}
+
+bashautocomplete() {
+	local tmp
+	tmp="$($0 listconfig) -h --help -s --safe --separator= # b# 8# b8# 26# b26#"
+	printf "complete -W %q %s\n" "$tmp" "$NAME"
+}
+
+# Main ################################################################################################
+
+args=$(getopt -n "$NAME" -o hsdi -l help,safe,separator:,bashautocomplete,test:: -- "$@")
+eval set -- "$args"
+safe=0
+separator=""
+while (($#)); do
+	case "$1" in
+	-h|--help) usage; exit; ;;
+	-s|--safe) safe=1; ;;
+	--separator) separator="$2"; shift; ;;
+	--bashautocomplete) bashautocomplete; exit; ;;
+	--test) unittest "$2"; exit; ;;
+	--) shift; break; ;;
+	*) echo "Internal error" >&2; exit 2;
+	esac
+	shift
+done
+
+if ! hash tput >/dev/null 2>&1; then
+	echo "Could not find tput utility" >&2
+	exit 2
+fi
+
+if ! {
+		tmp=$(tput -S <<<$'colors\ncols\nlines') &&
+		{ read -r colors && read -r cols && read -r lines ;} <<<"$tmp" &&
+		[[ -n "$colors" ]] &&
+		(( colors >= 8 ))
+} ;then
+	if ((!safe)); then
+		echo "ERROR: Terminal does not support colors=$colors" >&2
+		exit 1
+	else
+		exit 0
+	fi
+fi
+
+if (($# == 0)); then
+	usage
+	exit 1
+fi
+
+#################################################################################################
+
+awk \
+	-v colors="$colors" \
+	-v NAME="$NAME" \
+	-v safe="$safe" \
+	-v separator="$separator" \
+	-v COLS=$cols \
+	-v LINES=$lines \
+"$(seq -f "# %f" 0 "$LINENO")"'
+
+# MD5 ###########################################################################################
+
+# https://kaworu.ch/blog/2017/05/23/implementing-md5-in-AWK/
+# https://github.com/kAworu/md5.awk
+#
+# BSD 2-Clause License
+# 
+# Copyright (c) 2017, Alexandre Perrin
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+# 
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# I changed here
+function _md5_auto_init() {
+	if (_md5_initialized) {
+		md5_initialized = 1
+		_ord_init();
+		_bitwise_init();
+		_md5_init();
+	}
+}
+
+# our md5 implementation
+function md5(input,    nbytes, chars, i, bytes, hi, lo, words, nwords, state,
+	     a, b, c, d, j, x, digest, ret) {
+	 _md5_auto_init() # I changed here
+
+	# convert the input into an array of bytes using ord() on each
+	# character.
+	nbytes = split(input, chars, "");
+	for (i = 1; i <= nbytes; i++)
+		bytes[i] = ord(chars[i]);
+
+	# convert the array of bytes into an array of 32-bits words.
+	# NOTE: words is 0-indexed.
+	for (i = 1; i <= nbytes; i += 4) {
+		hi = bw_lshift(bytes[i + 3], 8) + bytes[i + 2];
+		lo = bw_lshift(bytes[i + 1], 8) + bytes[i + 0];
+		words[nwords++] = bw_lshift(hi, 16) + lo;
+	}
+
+	# Step 1. Append Padding Bits
+	if (nbytes % 4 == 0) {
+		# the input size is congruent modulo 32, we need a new word to
+		# store the first '1' padding bit.
+		words[nwords++] = 128; # 0x80
+	} else {
+		# append a '1' bit in the byte just after the last input byte.
+		words[nwords - 1] = words[nwords - 1] + bw_lshift(128, (nbytes % 4) * 8); # 0x80
+	}
+	# "fill" the remaining bytes with 0 until were just shy two words of
+	# having 16-Word Blocks.
+	while ((nwords % 16) != 14)
+		nwords++;
+
+	# Step 2. Append Length
+	hi = bw_rshift(nbytes * 8, 32);
+	lo = (nbytes * 8) - bw_lshift(hi, 32);
+	words[nwords++] = lo;
+	words[nwords++] = hi % (2 ^ 32); # truncate to 32 bits
+
+	# Step 3. Initialize MD Buffer
+	state[0] = 1732584193; # 0x67452301
+	state[1] = 4023233417; # 0xefcdab89
+	state[2] = 2562383102; # 0x98badcfe
+	state[3] =  271733878; # 0x10325476
+
+	# Step 4. Process Message in 16-Word Blocks
+	# Process each 16-word block.
+	for (i = 0; i < nwords; i += 16) {
+		# Copy block i into x.
+		for (j = 0; j < 16; j++)
+			x[j] = words[i + j];
+		a = state[0]; b = state[1]; c = state[2]; d = state[3];
+
+		# Round 1
+		a = FF(a, b, c, d, x[ 0], S11, 3614090360); # 0xd76aa478
+		d = FF(d, a, b, c, x[ 1], S12, 3905402710); # 0xe8c7b756
+		c = FF(c, d, a, b, x[ 2], S13,  606105819); # 0x242070db
+		b = FF(b, c, d, a, x[ 3], S14, 3250441966); # 0xc1bdceee
+		a = FF(a, b, c, d, x[ 4], S11, 4118548399); # 0xf57c0faf
+		d = FF(d, a, b, c, x[ 5], S12, 1200080426); # 0x4787c62a
+		c = FF(c, d, a, b, x[ 6], S13, 2821735955); # 0xa8304613
+		b = FF(b, c, d, a, x[ 7], S14, 4249261313); # 0xfd469501
+		a = FF(a, b, c, d, x[ 8], S11, 1770035416); # 0x698098d8
+		d = FF(d, a, b, c, x[ 9], S12, 2336552879); # 0x8b44f7af
+		c = FF(c, d, a, b, x[10], S13, 4294925233); # 0xffff5bb1
+		b = FF(b, c, d, a, x[11], S14, 2304563134); # 0x895cd7be
+		a = FF(a, b, c, d, x[12], S11, 1804603682); # 0x6b901122
+		d = FF(d, a, b, c, x[13], S12, 4254626195); # 0xfd987193
+		c = FF(c, d, a, b, x[14], S13, 2792965006); # 0xa679438e
+		b = FF(b, c, d, a, x[15], S14, 1236535329); # 0x49b40821
+
+		# Round 2
+		a = GG(a, b, c, d, x[ 1], S21, 4129170786); # 0xf61e2562
+		d = GG(d, a, b, c, x[ 6], S22, 3225465664); # 0xc040b340
+		c = GG(c, d, a, b, x[11], S23,  643717713); # 0x265e5a51
+		b = GG(b, c, d, a, x[ 0], S24, 3921069994); # 0xe9b6c7aa
+		a = GG(a, b, c, d, x[ 5], S21, 3593408605); # 0xd62f105d
+		d = GG(d, a, b, c, x[10], S22,   38016083); # 0x2441453
+		c = GG(c, d, a, b, x[15], S23, 3634488961); # 0xd8a1e681
+		b = GG(b, c, d, a, x[ 4], S24, 3889429448); # 0xe7d3fbc8
+		a = GG(a, b, c, d, x[ 9], S21,  568446438); # 0x21e1cde6
+		d = GG(d, a, b, c, x[14], S22, 3275163606); # 0xc33707d6
+		c = GG(c, d, a, b, x[ 3], S23, 4107603335); # 0xf4d50d87
+		b = GG(b, c, d, a, x[ 8], S24, 1163531501); # 0x455a14ed
+		a = GG(a, b, c, d, x[13], S21, 2850285829); # 0xa9e3e905
+		d = GG(d, a, b, c, x[ 2], S22, 4243563512); # 0xfcefa3f8
+		c = GG(c, d, a, b, x[ 7], S23, 1735328473); # 0x676f02d9
+		b = GG(b, c, d, a, x[12], S24, 2368359562); # 0x8d2a4c8a
+
+		# Round 3
+		a = HH(a, b, c, d, x[ 5], S31, 4294588738); # 0xfffa3942
+		d = HH(d, a, b, c, x[ 8], S32, 2272392833); # 0x8771f681
+		c = HH(c, d, a, b, x[11], S33, 1839030562); # 0x6d9d6122
+		b = HH(b, c, d, a, x[14], S34, 4259657740); # 0xfde5380c
+		a = HH(a, b, c, d, x[ 1], S31, 2763975236); # 0xa4beea44
+		d = HH(d, a, b, c, x[ 4], S32, 1272893353); # 0x4bdecfa9
+		c = HH(c, d, a, b, x[ 7], S33, 4139469664); # 0xf6bb4b60
+		b = HH(b, c, d, a, x[10], S34, 3200236656); # 0xbebfbc70
+		a = HH(a, b, c, d, x[13], S31,  681279174); # 0x289b7ec6
+		d = HH(d, a, b, c, x[ 0], S32, 3936430074); # 0xeaa127fa
+		c = HH(c, d, a, b, x[ 3], S33, 3572445317); # 0xd4ef3085
+		b = HH(b, c, d, a, x[ 6], S34,   76029189); # 0x4881d05
+		a = HH(a, b, c, d, x[ 9], S31, 3654602809); # 0xd9d4d039
+		d = HH(d, a, b, c, x[12], S32, 3873151461); # 0xe6db99e5
+		c = HH(c, d, a, b, x[15], S33,  530742520); # 0x1fa27cf8
+		b = HH(b, c, d, a, x[ 2], S34, 3299628645); # 0xc4ac5665
+
+		# Round 4
+		a = II(a, b, c, d, x[ 0], S41, 4096336452); # 0xf4292244
+		d = II(d, a, b, c, x[ 7], S42, 1126891415); # 0x432aff97
+		c = II(c, d, a, b, x[14], S43, 2878612391); # 0xab9423a7
+		b = II(b, c, d, a, x[ 5], S44, 4237533241); # 0xfc93a039
+		a = II(a, b, c, d, x[12], S41, 1700485571); # 0x655b59c3
+		d = II(d, a, b, c, x[ 3], S42, 2399980690); # 0x8f0ccc92
+		c = II(c, d, a, b, x[10], S43, 4293915773); # 0xffeff47d
+		b = II(b, c, d, a, x[ 1], S44, 2240044497); # 0x85845dd1
+		a = II(a, b, c, d, x[ 8], S41, 1873313359); # 0x6fa87e4f
+		d = II(d, a, b, c, x[15], S42, 4264355552); # 0xfe2ce6e0
+		c = II(c, d, a, b, x[ 6], S43, 2734768916); # 0xa3014314
+		b = II(b, c, d, a, x[13], S44, 1309151649); # 0x4e0811a1
+		a = II(a, b, c, d, x[ 4], S41, 4149444226); # 0xf7537e82
+		d = II(d, a, b, c, x[11], S42, 3174756917); # 0xbd3af235
+		c = II(c, d, a, b, x[ 2], S43,  718787259); # 0x2ad7d2bb
+		b = II(b, c, d, a, x[ 9], S44, 3951481745); # 0xeb86d391
+
+		state[0] = (state[0] + a) % (2 ^ 32);
+		state[1] = (state[1] + b) % (2 ^ 32);
+		state[2] = (state[2] + c) % (2 ^ 32);
+		state[3] = (state[3] + d) % (2 ^ 32);
+	}
+
+	for (i = j = 0; j < 16; j += 4) {
+		digest[j + 0] = state[i] % (2 ^ 8);
+		digest[j + 1] = bw_rshift(state[i],    8) % (2 ^ 8);
+		digest[j + 2] = bw_rshift(state[i],   16) % (2 ^ 8);
+		digest[j + 3] = bw_rshift(state[i++], 24) % (2 ^ 8);
+	}
+	for (i = 0; i < 16; i++)
+		ret = sprintf("%s%02x", ret, digest[i]);
+	return ret;
+}
+
+function F(x, y, z) {
+	return bw_or(bw_and(x, y), bw_and(bw_not(x), z));
+}
+
+function G(x, y, z) {
+	return bw_or(bw_and(x, z), bw_and(y, bw_not(z)));
+}
+
+function H(x, y, z) {
+	return bw_xor(x, bw_xor(y, z));
+}
+
+function I(x, y, z) {
+	return bw_xor(y, bw_or(x, bw_not(z)));
+}
+
+function FF(a, b, c, d, x, s, ac) {
+	a = (a + F(b, c, d) + x + ac) % (2 ^ 32);
+	a = ROTATE_LEFT(a, s);
+	a = (a + b) % (2 ^ 32);
+	return a;
+}
+
+function GG(a, b, c, d, x, s, ac) {
+	a = (a + G(b, c, d) + x + ac) % (2 ^ 32);
+	a = ROTATE_LEFT(a, s);
+	a = (a + b) % (2 ^ 32);
+	return a;
+}
+
+function HH(a, b, c, d, x, s, ac) {
+	a = (a + H(b, c, d) + x + ac) % (2 ^ 32);
+	a = ROTATE_LEFT(a, s);
+	a = (a + b) % (2 ^ 32);
+	return a;
+}
+
+function II(a, b, c, d, x, s, ac) {
+	a = (a + I(b, c, d) + x + ac) % (2 ^ 32);
+	a = ROTATE_LEFT(a, s);
+	a = (a + b) % (2 ^ 32);
+	return a;
+}
+
+function ROTATE_LEFT(x, n,    l, r) {
+	l = bw_lshift(x, n) % (2 ^ 32);
+	r = bw_rshift(x, 32 - n);
+	return (r + l);
+}
+
+function bw_not(x) {
+	return bw_xor(x, 4294967295); # 0xffffffff
+}
+
+function bw_lshift(x, n) {
+	return x * (2 ^ n);
+}
+
+function bw_rshift(x, n) {
+	return int(x / (2 ^ n));
+}
+
+function bw_and(x, y,    i, r) {
+	for (i = 0; i < 32; i += 4) {
+		r = r / (2 ^ 4) + bw_lookup["and", x % 16, y % 16] * (2 ^ 28);
+		x = int(x / (2 ^ 4));
+		y = int(y / (2 ^ 4));
+	}
+	return r;
+}
+
+function bw_or(x, y,    i, r) {
+	for (i = 0; i < 32; i += 4) {
+		r = r / (2 ^ 4) + bw_lookup["or", x % 16, y % 16] * (2 ^ 28);
+		x = int(x / (2 ^ 4));
+		y = int(y / (2 ^ 4));
+	}
+	return r;
+}
+
+function bw_xor(x, y) {
+	return (x + y - 2 * bw_and(x, y));
+}
+
+# from https://www.gnu.org/software/gawk/manual/html_node/Ordinal-Functions.html
+function _ord_init(    i)
+{
+	for (i = 0; i < 256; i++)
+		_ord_[sprintf("%c", i)] = i;
+}
+
+function ord(s)
+{
+	# only first character is of interest
+	return _ord_[substr(s, 1, 1)];
+}
+
+function _bitwise_init(    a, b, x, y, i) {
+	# generate the bw_lookup table used by bw_and() and bw_or().
+	for (a = 0; a < 16; a++) {
+		for (b = 0; b < 16; b++) {
+			x = a;
+			y = b;
+			for (i = 0; i < 4; i++) {
+				bw_lookup["and", a, b] += ((x % 2) && (y % 2)) * (2 ^ i);
+				bw_lookup["or",  a, b] += ((x % 2) || (y % 2)) * (2 ^ i);
+				x = int(x / 2);
+				y = int(y / 2);
+			}
+		}
+	}
+}
+
+function _md5_init() {
+	# MD5 shift constants setup.
+	S11 =  7; S12 = 12; S13 = 17; S14 = 22;
+	S21 =  5; S22 =  9; S23 = 14; S24 = 20;
+	S31 =  4; S32 = 11; S33 = 16; S34 = 23;
+	S41 =  6; S42 = 10; S43 = 15; S44 = 21;
+}
+
+# End of md5 ####################################################################################
+# sha1 ##########################################################################################
+
+function sha1(str, \
+		tmp, cmd) {
+	tmp = str
+	gsub("\047", "\047\\\047\047", tmp)
+	cmd = sprintf("printf '%%s' '%s' | sha1sum", tmp)
+	cmd | getline tmp
+	return tmp
+}
+
+# End of sha1 ###################################################################################
+# Global functions ##############################################################################
+
+function load_config() {
+	#  this is the output of tput sgr0
+	config["reset"] = "\033(B\033[m"
+
+	# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+
+	# specials
+	config["bold"] = "\033[1m"
+	config["bright"] = "\033[1m"
+	config["dim"] = "\033[2m"
+	config["faint"] = "\033[2m"
+	config["standout"] = "\033[3m"
+	config["underline"] = "\033[4m"
+	config["blink"] = "\033[5m"
+	config["reverse"] = "\033[7m"
+	config["hidden"] = "\033[8m"
+	config["conceal"] = "\033[8m"
+	config["crossedout"] = "\033[9m"
+
+	# fonts
+	config["font0"] = "\03310m"
+	config["font1"] = "\03311m"
+	config["font2"] = "\03312m"
+	config["font3"] = "\03313m"
+	config["font4"] = "\03314m"
+	config["font5"] = "\03315m"
+	config["font6"] = "\03316m"
+	config["font7"] = "\03317m"
+	config["font8"] = "\03318m"
+	config["font9"] = "\03319m"
+
+	config["fraktur"] = "\033[20m"
+	# ECMA-48
+	config["double_underline"] = "\033[21m"
+	# nobold          \033[21m
+	# nobright        \033[21m
+	config["nodim"] = "\033[22m"
+	config["nostandout"] = "\033[23m"
+	config["nounderline"] = "\033[24m"
+	config["noblink"] = "\033[25m"
+	config["noreverse"] = "\033[27m"
+	config["nohidden"] = "\033[28m"
+	config["reveal"] = "\033[28m"
+	config["nocrossedout"] = "\033[29m"
+
+	# foreground colors
+	config["black"] = "\033[30m"
+	config["red"] = "\033[31m"
+	config["green"] = "\033[32m"
+	config["yellow"] = "\033[33m"
+	config["blue"] = "\033[34m"
+	config["magenta"] = "\033[35m"
+	config["cyan"] = "\033[36m"
+	config["light_gray"] = "\033[37m"
+
+	config["foreground_default"] = "\033[39m"
+	config["default"] = "\033[39m"
+
+	# background colors
+
+	config["background_green"] = "\033[42m"
+	config["background_yellow"] = "\033[43m"
+	config["background_blue"] = "\033[44m"
+	config["background_magenta"] = "\033[45m"
+	config["background_cyan"] = "\033[46m"
+	config["background_light_gray"] = "\033[47m"
+	config["background_default"] = "\033[49m"
+
+	# others
+	config["framed"] = "\033[51m"
+	config["encircled"] = "\033[52m"
+	config["overlined"] = "\033[53m"
+	config["noframed"] = "\033[54m"
+	config["noencircled"] = "\033[54m"
+	config["nooverlined"] = "\033[55m"
+
+	# set bright foreground color
+	config["dark_gray"] = "\033[90m"
+	config["light_red"] = "\033[91m"
+	config["light_green"] = "\033[92m"
+	config["light_yellow"] = "\033[93m"
+	config["light_blue"] = "\033[94m"
+	config["light_magenta"] = "\033[95m"
+	config["light_cyan"] = "\033[96m"
+	config["white"] = "\033[97m"
+
+	# set bright background color
+	config["background_dark_gray"] = "\033[100m"
+	config["background_light_red"] = "\033[101m"
+	config["background_light_green"] = "\033[102m"
+	config["background_light_yellow"] = "\033[103m"
+	config["background_light_blue"] = "\033[104m"
+	config["background_light_magenta"] = "\033[105m"
+	config["background_light_cyan"] = "\033[106m"
+	config["background_white"] = "\033[107m"
+
+	# shortcuts to background colors, because typing background is long
+	config["b_black"] = "\033[40m"
+	config["b_red"] = "\033[41m"
+	config["b_green"] = "\033[42m"
+	config["b_yellow"] = "\033[43m"
+	config["b_blue"] = "\033[44m"
+	config["b_magenta"] = "\033[45m"
+	config["b_cyan"] = "\033[46m"
+	config["b_light_gray"] = "\033[47m"
+
+	config["b_dark_gray"] = "\033[100m"
+	config["b_light_red"] = "\033[101m"
+	config["b_light_green"] = "\033[102m"
+	config["b_light_yellow"] = "\033[103m"
+	config["b_light_blue"] = "\033[104m"
+	config["b_light_magenta"] = "\033[105m"
+	config["b_light_cyan"] = "\033[106m"
+	config["b_white"] = "\033[107m"
+}
+
+function fatal(desc) {
+	printf NAME ": ERROR: on parsing " $0 " : " desc "\n" > "/dev/stderr"
+	if (!safe) {
+		exit 1
+	}
+}
+
+function hex_to_dec(str) { 
+	return strtonum("0x" str)
+}
+
+function fg_to_num(num) {
+	if (length(num) != 1) fatal("fg_to_num: length not 1: length="length(num)" num="num)
+	if (num == "f") num = 3
+	else if (num == "b") num = 4
+	else fatal("fg_to_num: invalid first character of argument: length="length(num)" num="num)
+	return num
+}
+
+function cube_to_216_colors(r, g, b, \
+		tmp) {
+	if (0 > r) fatal("Color red "r" must be greater or equal 0.")
+	if (r > 5) fatal("Color red "r" must be lower or equal 5.")
+	if (0 > g) fatal("Color green "g" must be greater or equal 0.")
+	if (g > 5) fatal("Color green "g" must be greater or equal 5.")
+	if (0 > g) fatal("Color blue "b" must be greater or equal 0.")
+	if (b > 5) fatal("Color blue "b" must be greater or equal 5.")
+	tmp = 16 + 36 * r + 6 * g + b
+	if (tmp < 16) fatal("print_ansi_8_bit: smaller then 16: tmp="tmp)
+	if (tmp > 231) fatal("print_ansi_8_bit: greater then 241: tmp="tmp)
+	return tmp
+}
+
+function calc_8_bit(str, \
+		r, g, b, a, tmp) {
+	if (length(str) != 3) fatal("calc_8_bit: wrong length=" length(str))
+	split(str, a, "")
+	r = hex_to_dec(a[1])
+	g = hex_to_dec(a[2])
+	b = hex_to_dec(a[3])
+	return cube_to_216_colors(r, g, b)
+}
+
+function str_to_24_bit(output, str, \
+			a, r, g, b) {
+	if (length(str) != 6) fatal("str_to_24_bit: wrong length=" length(str) " str="str)
+	split(str, a, "")
+	r = hex_to_dec(a[1] a[2]);
+	g = hex_to_dec(a[3] a[4]);
+	b = hex_to_dec(a[5] a[6]);
+	if (r < 0) fatal("Color red "r" must be greater or equal 0.")
+	if (r > 256) fatal("Color red "r" must be lower or equal 256.")
+	if (0 > g) fatal("Color green "g" must be greater or equal 0.")
+	if (g > 256) fatal("Color green "g" must be greater or equal 256.")
+	if (0 > g) fatal("Color blue "b" must be greater or equal 0.")
+	if (b > 256) fatal("Color blue "b" must be greater or equal 256.")
+	output[1] = r
+	output[2] = g
+	output[3] = b
+}
+
+function print_ansi_8_bit(fgnum, num) {
+	if (fgnum != 3 && fgnum != 4) fatal("print_ansi_8_bit: fgnum="fgnum)
+	if (num < 0) fatal("print_ansi_8_bit: smaller then 0: num="num)
+	if (num > 255) fatal("print_ansi_8_bit: greater then 255: num="num)
+	printf "\033[%d8;5;%dm", fgnum, num
+}
+
+function print_ansi_24_bit(fgnum, r, g, b) {
+	if (fgnum != 3 && fgnum != 4) fatal("print_ansi_24_bit: fgnum="fgnum)
+	if (r < 0) fatal("Color red "r" must be greater or equal 0.")
+	if (r > 256) fatal("Color red "r" must be lower or equal 256.")
+	if (0 > g) fatal("Color green "g" must be greater or equal 0.")
+	if (g > 256) fatal("Color green "g" must be greater or equal 256.")
+	if (0 > g) fatal("Color blue "b" must be greater or equal 0.")
+	if (b > 256) fatal("Color blue "b" must be greater or equal 256.")
+	printf "\033[%d8;2;%d;%d;%dm", fgnum, r, g, b
+}
+
+function disp_fb_8(fg, str, \
+		num, tmp) {
+	print_ansi_8_bit(fg_to_num(fg), calc_8_bit(str))
+}
+
+function disp_fb_24_to_8_in(fg, c) {
+	for (i in c) {
+		c[i] = int(c[i] * 5 / 256);
+	}
+	print_ansi_8_bit(fg_to_num(fg), cube_to_216_colors(c[1], c[2], c[3]))
+}
+
+function disp_fb_24_in(fg, c) {
+	if (colors >= 256) {
+		print_ansi_24_bit(fg_to_num(fg), c[1], c[2], c[3])
+	} else {
+		disp_fb_24_to_8_in(fg, c)
+	}
+}
+
+function disp_fb_24_to_8(fg, str, \
+		tmp) {
+	str_to_24_bit(tmp, str)
+	disp_fb_24_to_8_in(fg, tmp)
+}
+
+function disp_fb_24(fg, str, \
+		tmp) {
+	str_to_24_bit(tmp, str)
+	disp_fb_24_in(fg, tmp)
+}
+
+function charrainbow(color1, color2, str, \
+		tmp, b, e, l, s, i, chars) {
+	str_to_24_bit(b, color1)
+	str_to_24_bit(e, color2)
+	l = length(str)
+	for (i in b) {
+		s[i] = (e[i] - b[i]) / l
+	}
+	split(str, chars, "")
+	for (i = 0; i < l; i++) {
+		for (j in b) {
+			c[j] = b[j] + s[j] * i
+		}
+		disp_fb_24_in("f", c)
+		printf("%s", chars[i + 1])
+	}
+}
+
+function charrainbow3(color1, color2, color3, str, \
+		  l) {
+	l = length(str)
+	charrainbow(color1, color2, substr(str, 1, l/2))
+	charrainbow(color2, color3, substr(str, l/2 + 1))
+}
+
+
+# Calculates md5 fo str string
+# and splits the input on 6 characters and puts
+# the result in input
+function md5_to_hex_helper(output, str, \
+		tmp) {
+	tmp = md5(str)
+	print str, tmp
+	gsub(/.{6}/, "& ", tmp)
+	split(tmp, output, " ")
+}
+
+function sha1_to_hex_helper(output, str, \
+		tmp) {
+	tmp = sha1(str)
+	gsub(/.{6}/, "& ", tmp)
+	split(tmp, output, " ")
+ }
+
+# I/O functions ##############################################################################
+
+# Get one line and handle error
+function Getline(desc) {
+	if (getline <= 0) {
+		fatal("Missing argument for: " desc)
+	}
+	return $0
+}
+
+function Next() {
+	# output separator between modes
+	if (length(separator)) {
+		printf("%s", separator)
+	}
+	next
+}
+
+# Modes ##############################################################################
+
+function mode_test( \
+		count, i, cols, longest, str) {
+	longest = 0
+	for (i in config) {
+		if (longest < length(i)) {
+			longest = length(i)
+		}
+	}
+	
+	cols = !COLS ? 3 : int(COLS / (longest + 1 + 4 + 8))
+	count = 0
+	for (i in config) {
+		printf("%-*s %stest%s%s", longest, i, config[i], config["reset"], count++%cols==cols-1?"\n":"\t")
+	}
+	printf "%s", --count%cols==cols-1?"":"\n"
+	printf "\n"
+
+	str = "###"
+	printf "Color pallete: "
+	for (i=0;i<=7;++i) {
+		printf "%s%s%s", "\033["30+i"m", str, config["reset"]
+	}
+	printf " "
+	for (i=0;i<=7;++i) {
+		printf "%s%s%s", "\033["40+i"m", str, config["reset"]
+	}
+	printf "\n"
+	printf "               "
+	for (i=0;i<=7;++i) {
+		printf "%s%s%s", "\033["90+i"m", str, config["reset"]
+	}
+	printf " "
+	for (i=0;i<=7;++i) {
+		printf "%s%s%s", "\033["100+i"m", str, config["reset"]
+	}
+	printf("%s\n", config["reset"])
+	printf "\n"
+
+	printf("charrainbow: ")
+	charrainbow("FF0000", "00FF00", "rainbow_from_red_to_green")
+	printf("%s\n", config["reset"])
+
+	printf("charrainbow3: ")
+	charrainbow3("FF0000", "00FF00", "0000FF", "rainbow_from_red_via_green_up_until_blue")
+	printf("%s\n", config["reset"])
+
+	printf("%s\n", config["reset"])
+}
+
+function mode_test1_in(fbnum) {
+	printf("Standard colors:\n");
+	for (i = 0; i <= 15; ++i) {
+		print_ansi_8_bit(fbnum, i)
+		printf(" ##%d##", i)
+	}
+	printf("%s\n", config["reset"])
+	printf("216 colors:\n");
+	for (i = 16; i <= 231; ++i) {
+		print_ansi_8_bit(fbnum, i)
+		printf("%03d", i)
+		if ((i - 16) % 36 == 35 && i != 0) {
+			printf("%s\n", config["reset"])
+		}
+	}
+	printf("%s\n", config["reset"])
+	printf("Greyscale colors:\n");
+	for (i = 232; i <= 255; ++i) {
+		print_ansi_8_bit(fbnum, i)
+		printf(" %03d", i)
+	}
+	printf("%s\n", config["reset"])
+}
+
+function mode_test1() {
+	printf("8-bit foreground color pallete:\n");
+	mode_test1_in(3)
+	printf("%s\n", config["reset"])
+	printf("8-bit background color pallete:\n");
+	mode_test1_in(4)
+	printf("%s\n", config["reset"])
+
+	printf("24-bit to 8-bit: ")
+	disp_fb_24_to_8("f", "FF0000");printf("RED ")
+	disp_fb_24_to_8("f", "0000FF");printf("BLUE ")
+	disp_fb_24_to_8("f", "00FF00");printf("GREEN")
+	printf("%s\n", config["reset"])
+
+	printf("%s\n", config["reset"])
+}
+
+function mode_echo() {
+	print Getline()
+}
+
+function mode_print() {
+	printf "%s", Getline()
+}
+
+function mode_charrainbow( \
+		tmp1, tmp2, tmp3) {
+	tmp1 = Getline()
+	tmp2 = Getline()
+	tmp3 = Getline()
+	charrainbow(tmp1, tmp2, tmp3)
+}
+
+function mode_charrainbow3( \
+		tmp1, tmp2, tmp3, tmp4) {
+	tmp1 = Getline()
+	tmp2 = Getline()
+	tmp3 = Getline()
+	tmp4 = Getline()
+	charrainbow3(tmp1, tmp2, tmp3, tmp4)
+}
+
+function mode_colors() {
+	print colors
+}
+
+function mode_listconfig() {
+	for (i in config) {
+		printf "%s\n", i
+	}
+}
+
+function mode_24_to_8() {
+	str=Getline()
+	
+}
+
+function helper_mode_something_charrainbow(funct, num, \
+		str, a) {
+	str = Getline()
+	@funct(a, str)
+	if (num == 3) {
+		charrainbow3(a[1], a[2], a[3], str)
+	} else {
+		charrainbow(a[1], a[2], str)
+	}
+}
+
+function mode_md5() {
+	str = Getline()
+	print md5(str), str
+}
+
+function mode_md5charrainbow() {
+	helper_mode_something_charrainbow("md5_to_hex_helper", 2)
+}
+
+function mode_md5charrainbow3() {
+	helper_mode_something_charrainbow("md5_to_hex_helper", 3)
+}
+
+function mode_sha1() {
+	str = Getline()
+	print sha1(str), str
+}
+
+function mode_sha1charrainbow() {
+	helper_mode_something_charrainbow("sha1_to_hex_helper", 2)
+}
+
+function mode_sha1charrainbow3() {
+	helper_mode_something_charrainbow("sha1_to_hex_helper", 3)
+}
+
+function load_modes() {
+	modes["test"]
+	modes["test1"]
+	modes["echo"]
+	modes["print"]
+	modes["charrainbow"]
+	modes["charrainbow3"]
+	modes["colors"]
+	modes["listconfig"]
+	modes["24_to_8"]
+	modes["md5"]
+	modes["md5charrainbow"]
+	modes["md5charrainbow3"]
+	modes["sha1"]
+	modes["sha1charrainbow"]
+	modes["sha1charrainbow3"]
+}
+
+# Main ##############################################################################
+
+BEGIN { load_config(); load_modes(); }
+
+# Parse the input as mode
+$0 ~ "^[fb]8#[[:xdigit:]]{3}$" { disp_fb_8(substr(i, 1, 1), substr(i, 4)); Next(); }
+$0 ~ "^[fb]24#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 5)); Next(); }
+$0 ~ "^[[:xdigit:]]{6}$" { disp_fb_24("f", $0); Next(); }
+$0 ~ "^[fb]#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 4)); Next(); }
+$0 in modes{ mode="mode_" $0; @mode(); Next(); }
+$0 in config{ printf "%s", config[$0]; Next(); }
+{ fatal("Invalid argument: "$0) }
+
+' <(printf "%s\n" "$@")
+
+
+# vim: filetype=awk
+
+
+

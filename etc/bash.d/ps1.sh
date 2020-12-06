@@ -5,8 +5,8 @@ if [[ $- != *i* ]]; then return; fi
 
 #### PS1
 PS1_setup() {
-	if ! hash color.sh >/dev/null 2>/dev/null; then
-		color.sh() { :; }
+	if ! hash ,color >/dev/null 2>/dev/null; then
+		,color() { :; }
 	fi
 
 	local tmp root noroot colors
@@ -14,18 +14,16 @@ PS1_setup() {
 	local $tmp
 	declare -g PS1
 
-	IFS=' ' read -r $tmp < <(
-		color.sh -s --separator=' ' $tmp
-	) ||:
+	IFS=' ' read -r $tmp < <(,color -s --separator=' ' $tmp) ||:
 
 	colors=0
-	if hash tput color.sh 2>/dev/null; then
+	if hash tput 2>/dev/null; then
 		if ! colors=$(tput colors 2>/dev/null); then
 			colors=0
 		fi
 	fi
 
-	if [ "$colors" -lt 256 ]; then
+	if ((colors < 256)); then
 		nostandout=
 		standout=
 	fi
@@ -47,10 +45,8 @@ PS1_setup() {
 	PS1+="\u"
 	PS1+="${root+\\[$nostandout\\]}"
 	PS1+="@"
-	if hash md5sum color.sh 2>/dev/null && [ "$colors" -ge 256 ]; then
-		#PS1+="\\[$(color.sh -s "f#$(<<<"$HOSTNAME" md5sum | cut -c-6)")\\]\h "
-		#PS1+="\\[$(color.sh -s charrainbow $(<<<"$HOSTNAME" md5sum | cut -c-12 | sed 's/.\{6\}/& /g') "$(hostname)")\\]"
-		PS1+="$(color.sh -s charrainbow3 $(<<<"$HOSTNAME" md5sum | cut -c-18 | sed 's/.\{6\}/& /g') "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
+	if ((colors)) && hash ,color 2>/dev/null; then
+		PS1+="$(,color -s sha1charrainbow3 "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
 	else
 		PS1+='\h'
 	fi	 

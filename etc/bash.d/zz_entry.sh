@@ -7,8 +7,9 @@
 # Put your local functions and aliases herea
 if hash cal 2>/dev/null && [[ $(cal --version 2>&1) =~ "util-linux" ]]; then
 	hash color.sh 2>/dev/null && color.sh green
+	if hash ,color 2>/dev/null; then ,color green; fi
 	cal -3m
-	hash color.sh 2>/dev/null && color.sh reset
+	if hash ,color 2>/dev/null; then ,color reset; fi
 fi
 hash fortune 2>/dev/null && fortune
 
