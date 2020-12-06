@@ -300,7 +300,7 @@ trap 'rm -f "$tmp"' EXIT
 } |
 {
 	if "$debug"; then set -x; fi
-	$cc -o "$tmp" "${ccargs[@]}" -
+	$cc -o "$tmp" - "${ccargs[@]}"
 } &&
 {
 	if "$debug"; then set -x; fi
