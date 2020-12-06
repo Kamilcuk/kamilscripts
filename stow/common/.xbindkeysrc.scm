@@ -162,15 +162,14 @@
 
 (define host (string->symbol (gethostname)))
 
-(xbindkey '(Mod4 F1)  "qqoknonainnypulpit.sh 0")
-(xbindkey '(Mod4 F2)  "qqoknonainnypulpit.sh 1")
-(xbindkey '(Mod4 F3)  "qqoknonainnypulpit.sh 2")
-(xbindkey '(Mod4 F4)  "qqoknonainnypulpit.sh 3")
-(xbindkey '(Mod4 F5)  "qqoknonainnypulpit.sh 4")
-(xbindkey '(Mod4 F6)  "qqoknonainnypulpit.sh 5")
-(xbindkey '(Mod4 F7)  "qqoknonainnypulpit.sh 6")
-(xbindkey '(Mod4 F8)  "qqoknonainnypulpit.sh 7")
-(xbindkey '(Mod4 F12) "qqoknonainnyscreen")
+(xbindkey '(Mod4 F1) "xdotool getactivewindow set_desktop_for_window 0")
+(xbindkey '(Mod4 F2) "xdotool getactivewindow set_desktop_for_window 1")
+(xbindkey '(Mod4 F3) "xdotool getactivewindow set_desktop_for_window 2")
+(xbindkey '(Mod4 F4) "xdotool getactivewindow set_desktop_for_window 3")
+(xbindkey '(Mod4 F5) "xdotool getactivewindow set_desktop_for_window 4")
+(xbindkey '(Mod4 F6) "xdotool getactivewindow set_desktop_for_window 5")
+(xbindkey '(Mod4 F7) "xdotool getactivewindow set_desktop_for_window 6")
+(xbindkey '(Mod4 F8) "xdotool getactivewindow set_desktop_for_window 7")
 
 (xbindkey '(Mod4 a) "geany")
 (xbindkey '(Mod4 s) "subl")
