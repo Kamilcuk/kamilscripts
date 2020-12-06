@@ -176,6 +176,7 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'junegunn/fzf.vim'
 	KcPlug2 'kamykn/spelunker.vim'
 	Plug 'honza/vim-snippets'
+	KcPlug2 'konfekt/vim-DetectSpellLang'
 	" generic
 	Plug 'Konfekt/FastFold'
 	Plug 'vim-scripts/LargeFile'
@@ -608,6 +609,12 @@ if kc#plugin#enabled('Colorizer')
 	let g:colorizer_auto_color = 1
 	" sets g:colorizer_custom_colors with xterm256 colors
 	call kc#xterm256colornames#colorizer()
+endif
+
+if kc#plugin#enabled('vim-DetectSpellLang')
+	let g:detectspelllang_langs = {}
+	let g:detectspelllang_langs.aspell = [ 'en_US', 'pl_PL' ]
+	let g:detectspelllang_langs.hunspell = [ 'en_US', 'pl_PL' ]
 endif
 
 " Shortcuts {{{1
