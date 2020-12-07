@@ -188,9 +188,9 @@
 (case host (
 	(leonidas)
 		(xbindkey '(Mod4 equal) "soffice --calc /home/moje/zestawienie.ods")
-		(xbindkey '(Mod4 "3") "/home/users/kamil/bin/leonidas_toggle_hdmi_mute.sh")
-		(xbindkey '(Mod4 "4") "/home/users/kamil/bin/qq_setbrigthness.sh --dec")
-		(xbindkey '(Mod4 "5") "/home/users/kamil/bin/qq_setbrigthness.sh --inc")
+		(xbindkey '(Mod4 "3") ",leonidas_toggle_hdmi_mute.sh")
+		(xbindkey '(Mod4 "4") ",xrandr_change_brightness.sh -0.1")
+		(xbindkey '(Mod4 "5") ",xrandr_change_brightness.sh +0.1")
 	)
   	(else
 		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
