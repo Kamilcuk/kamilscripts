@@ -43,4 +43,13 @@ shopt -s cmdhist # multiple commands in one line
 alias ls='ls --color -F'
 alias o='less'
 alias rm='rm --preserve-root -I'
+alias -- +='pushd .'
+alias -- -='popd'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias cd..='cd ..'
+alias beep='echo -en "\007"'
+alias l='command l'
+alias ll='ls -l'
+
 
