@@ -40,10 +40,7 @@ shopt -s cmdhist # multiple commands in one line
 
 # Aliases
 
-alias ping='ping -4'
 alias ls='ls --color -F'
 alias o='less'
 alias rm='rm --preserve-root -I'
-
-hist() { local args; for i; do args+=(-e "$i"); done; history | grep -a "${args[@]}"; }
 
