@@ -184,10 +184,10 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	" lang
 	if executable('node')
 		KcPlug2 'neoclide/coc.nvim'
+		KcPlug2 'jackguo380/vim-lsp-cxx-highlight'
 	endif
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
-	KcPlug2 'jackguo380/vim-lsp-cxx-highlight'
 	"KcPlug2 'puremourning/vimspector'
 	" pathogen
 	Plug 'tpope/vim-pathogen'
