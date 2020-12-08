@@ -96,8 +96,6 @@ package() { (
 		echo
 	done <<'EOF'
 		systemd             /usr/lib/systemd
-		bash-completions    /usr/share/bash-completion/completions
-		etc/profile.d       /etc/profile.d
 EOF
 
 	chown root:root -v -R "$pkgdir"/*

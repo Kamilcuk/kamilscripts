@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # check if running interactively
-if [[ $- != *i* ]]; then return; fi
+case $- in *i*) return; ;; esac
 
 #### PS1
 PS1_setup() {

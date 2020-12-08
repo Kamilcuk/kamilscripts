@@ -1,18 +1,16 @@
 #!/bin/bash
 
-if declare -f hist 2>/dev/null >/dev/null; then
+# function hist is declared in bash.d/hist.sh
+if declare -f hist >/dev/null 2>&1; then
 	# already sourced - just ignore
 	# hist function is defined below
 	return
 fi
 
-# re-load profile
-for _i in "$(dirname "$(readlink -f "$BASH_SOURCE")")"/profile.d/*.sh; do
-	if [[ -e "$_i" ]]; then
-		. "$_i"
-	fi
-done
-unset _i
+# re-load profile if not already sourced
+if [[ -z "$KCDIR" ]]; then
+	. "$(dirname "$(readlink -f "$BASH_SOURCE")")"/profile
+fi
 
 if [[ $- != *i* ]]; then return; fi
 
@@ -23,7 +21,6 @@ for _i in "$(dirname "$(readlink -f "$BASH_SOURCE")")"/bash.d/*.sh; do
 	fi
 done
 unset _i
-
 
 # set some history variables
 export HISTSIZE=
@@ -43,7 +40,7 @@ shopt -s cmdhist # multiple commands in one line
 alias ls='ls --color -F'
 alias o='less'
 alias rm='rm --preserve-root -I'
-alias -- +='pushd .'
+alias +='pushd .'
 alias -- -='popd'
 alias ..='cd ..'
 alias ...='cd ../..'

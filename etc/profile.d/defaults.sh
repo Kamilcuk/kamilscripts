@@ -2,39 +2,27 @@
 
 appendpath () {
 	case ":$PATH:" in
-		"$1":*|*:"$1":*|*:"$1") ;;
+		*:"$1":*) ;;
 		*) PATH="${PATH:+$PATH:}$1"; ;;
 	esac
 }
 
+appendpath "$HOME"/bin
+appendpath "${XDG_CONFIG_HOME:-"$HOME"/.config}"/bin
+appendpath "$KCDIR"/bin
 appendpath /usr/local/sbin
 appendpath /usr/local/bin
 appendpath /usr/sbin
 appendpath /usr/bin
 appendpath /sbin
 appendpath /bin
-if [ -d "$HOME" ]; then
-	appendpath "$HOME"/bin
-	appendpath "$HOME"/.config/bin
-fi
-for i in \
-		/usr/lib/kamilscripts \
-		"$HOME"/.kamilscripts \
-		"$HOME"/.config/kamilscripts/kamilscripts \
-		"$HOME"/.config/kamilscripts \
-; do
-	if [ -e "$i" ] && [ -e "$i"/.git ] && [ -e "$i"/bin ]; then
-		i=$(readlink -f "$i")
-		KCDIR="$i"
-		appendpath "$KCDIR"/bin
-		break
-	fi
-done
-unset i
 export PATH
 
 # https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
-if command -v vim >/dev/null 2>&1; then
+if command -v nvim >/dev/null 2>&1; then
+	export EDITOR=nvim
+	export VISUAL=nvim
+elif command -v vim >/dev/null 2>&1; then
 	export EDITOR=vim
 	export VISUAL=vim
 fi
@@ -52,5 +40,4 @@ appendpath "$HOME/.node_modules/bin"
 export npm_config_prefix="$HOME/.node_modules"
 
 unset -f appendpath
-unset KCDIR
 

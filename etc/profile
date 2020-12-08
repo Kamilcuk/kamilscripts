@@ -1,0 +1,36 @@
+#!/bin/sh
+# kamilscripts etc/profile
+
+if [ -n "$KCDIR" ]; then
+	return;
+fi
+
+
+# find KCDIR
+for i in \
+		/usr/lib/kamilscripts \
+		"$HOME"/.kamilscripts \
+		"$HOME"/.config/kamilscripts/kamilscripts \
+		"$HOME"/.config/kamilscripts \
+; do
+	if [ -e "$i" ] && [ -e "$i"/.git ] && [ -e "$i"/bin ]; then
+		export KCDIR=$(readlink -f "$i")
+		break
+	fi
+done
+unset i
+
+if [ -z "$KCDIR" ]; then
+	echo "KCDIR not found" >&2
+	return
+fi
+
+##################
+
+for _i in "$KCDIR"/etc/profile.d/*.sh; do
+	if [[ -e "$_i" ]]; then
+		. "$_i"
+	fi
+done
+unset _i
+
