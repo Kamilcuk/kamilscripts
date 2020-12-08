@@ -40,6 +40,7 @@ WARNING:
 
 Written by Kamil Cukrowski
 Licensed jointly under MIT License and Beerware License.
+SPDX-License-Identifier: MIT AND Beerware
 EOF
 }
 
@@ -250,12 +251,17 @@ _aLiAs_CoMpLeTe_::do::alias() {
 		fi
 	fi
 
-	local tmp
+	local tmp tmp2
 	if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
 		# echo _aLiAs_CoMpLeTe_::do::alias sourcing /usr/share/bash-completion/completions/$cmd
+		tmp2="/usr/share/bash-completion/completions/$cmd"
+		if [[ ! -e "$tmp2" ]]; then
+			# fail silently - there is just no completion for this command
+			return 2;
+		fi
 		# shellcheck disable=SC1090
-		if ! . "/usr/share/bash-completion/completions/$cmd"; then
-			echo "alias_complete: Sourcing /usr/share/bash-completion/completions/$cmd failed" >&2
+		if ! . "$tmp2"; then
+			echo "alias_complete: Sourcing $tmp2 failed" >&2
 			return 2
 		fi
 		if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
