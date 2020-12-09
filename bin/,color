@@ -689,16 +689,17 @@ function charrainbow3(color1, color2, color3, str, \
 function md5_to_hex_helper(output, str, \
 		tmp) {
 	tmp = md5(str)
-	print str, tmp
-	gsub(/.{6}/, "& ", tmp)
-	split(tmp, output, " ")
+	output[1] = substr(tmp, 1+6*0, 6)
+	output[2] = substr(tmp, 1+6*1, 6)
+	output[3] = substr(tmp, 1+6*2, 6)
 }
 
 function sha1_to_hex_helper(output, str, \
 		tmp) {
 	tmp = sha1(str)
-	gsub(/.{6}/, "& ", tmp)
-	split(tmp, output, " ")
+	output[1] = substr(tmp, 1+6*0, 6)
+	output[2] = substr(tmp, 1+6*1, 6)
+	output[3] = substr(tmp, 1+6*2, 6)
  }
 
 # I/O functions ##############################################################################
@@ -854,7 +855,9 @@ function mode_24_to_8() {
 function helper_mode_something_charrainbow(funct, num, \
 		str, a) {
 	str = Getline()
-	@funct(a, str)
+	if (funct == "md5_to_hex_helper") md5_to_hex_helper(a, str); else
+	if (funct == "sha1_to_hex_helper") sha1_to_hex_helper(a, str); else
+	fatal("helper_mode_something_charrainbow: unknown mode")
 	if (num == 3) {
 		charrainbow3(a[1], a[2], a[3], str)
 	} else {
@@ -906,6 +909,25 @@ function load_modes() {
 	modes["sha1charrainbow3"]
 }
 
+function choose_mode(mode) {
+	if (mode == "test") mode_test(); else
+	if (mode == "test1") mode_test1(); else
+	if (mode == "echo") mode_echo(); else
+	if (mode == "print") mode_print(); else
+	if (mode == "charrainbow") mode_charrainbow(); else
+	if (mode == "charrainbow3") mode_charrainbow3(); else
+	if (mode == "colors") mode_colors(); else
+	if (mode == "listconfig") mode_listconfig(); else
+	if (mode == "24_to_8") mode_24_to_8(); else
+	if (mode == "md5") mode_md5(); else
+	if (mode == "md5charrainbow") mode_md5charrainbow(); else
+	if (mode == "md5charrainbow3") mode_md5charrainbow3(); else
+	if (mode == "sha1") mode_sha1(); else
+	if (mode == "sha1charrainbow") mode_sha1charrainbow(); else
+	if (mode == "sha1charrainbow3") mode_sha1charrainbow3(); else
+	fatal("choose_modes: unknown mode");
+}
+
 # Main ##############################################################################
 
 BEGIN { load_config(); load_modes(); }
@@ -915,7 +937,7 @@ $0 ~ "^[fb]8#[[:xdigit:]]{3}$" { disp_fb_8(substr(i, 1, 1), substr(i, 4)); Next(
 $0 ~ "^[fb]24#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 5)); Next(); }
 $0 ~ "^[[:xdigit:]]{6}$" { disp_fb_24("f", $0); Next(); }
 $0 ~ "^[fb]#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 4)); Next(); }
-$0 in modes{ mode="mode_" $0; @mode(); Next(); }
+$0 in modes{ choose_mode($0); Next(); }
 $0 in config{ printf "%s", config[$0]; Next(); }
 { fatal("Invalid argument: "$0) }
 
