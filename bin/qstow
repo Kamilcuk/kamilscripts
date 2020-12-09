@@ -80,7 +80,7 @@ _qstow_complete() {
 		"stow delete restow info addfile removefile ls-files cat-ignore"
 	); ;;
 	*)
-		if ! hash getopt 2>/dev/null; then return; fi
+		if ! command_exists getopt; then return; fi
 
 		local getopt_args
 		getopt_args=""
@@ -226,8 +226,16 @@ Licensed jointly under Beerware License and MIT License.
 EOF
 }
 
+command_exists() {
+	command -v "$1" 2>/dev/null >&2
+}
+
+# Just a global hint that the variable is global.
+# Older bash version doesn't have declare -g.
+global() { :; }
+
 logl() {
-	declare -g verbose nolog
+	global verbose nolog
 	if "${nolog:-false}"; then
 		return
 	fi
@@ -299,6 +307,23 @@ file_exists() {
 nicepath() {
 	sed 's~///*~/~g; s~/\./~/~g' <<<"$1"
 }
+
+if command_exists realpath; then
+	path_relative_to() {
+		realpath -m -s --relative-to="$1" "$2"
+	}
+elif command_exists python2 || command_exists python3; then
+	path_relative_to() {
+		python -c '
+from __future__ import print_function;
+import sys
+import os.path
+print(os.path.relpath(sys.argv[2], sys.argv[1]))
+' "$1" "$2"
+	}
+else
+	fatal "could not found method to do relative path"
+fi
 
 default_ignores=(
 	"\.com$"
@@ -388,7 +413,7 @@ fi
 
 err=0
 m_err() {
-	declare -g err
+	global err
 	err=1
 	echo "$name: ERROR:" "$*" >&2
 }
@@ -452,7 +477,7 @@ m_run() {
 			if file_exists "$adddst"; then fatal "Destination file already exists: $adddst"; fi
 			# note - addsrc is dst and src is addst
 			dst="$addsrc"
-			src=$(realpath -m -s --relative-to="$(dirname "$dst")" "$adddst")
+			src=$(path_relative_to "$(dirname "$dst")" "$adddst")
 			log "MOVE: $addsrc => $adddst"
 			log "LINK: $dst => $src"
 			if ! "$dryrun"; then
@@ -516,7 +541,7 @@ m_run() {
 				# only not directories are stowed
 				if is_dir "$realsrc"; then continue; fi
 				# symlink is a destination relative to destination directory
-				src=$(realpath -m -s --relative-to="$(dirname "$dst")" "$stow/$pack/$path")
+				src=$(path_relative_to "$(dirname "$dst")" "$stow/$pack/$path")
 				if ! "$force" && [[ -e "$dst" && ! -L "$dst" ]]; then
 					m_err "conflict: $dst exists and is not a symblik link"
 					continue
@@ -554,9 +579,8 @@ m_run() {
 					tmp=$(readlink "$target/$line")
 					# get single canonical destinstaion path
 					# note: it's traversed _once_, not each
-					tmp2=$(cd "$target/$(dirname "$line")" && realpath -s "$tmp")
 					# get as-if destination to package directory
-					tmp3=$(realpath -s --relative-to="$tmp2" "$stow/$pack")
+					tmp3=$(path_relative_to "$target/$(dirname "$line")/$tmp" "$stow/$pack")
 					# now, if the destination has only ..(/..)+,
 					# that means it's within package directory
 					# so it's our package
