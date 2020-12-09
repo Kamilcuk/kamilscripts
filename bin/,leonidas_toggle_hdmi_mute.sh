@@ -11,8 +11,8 @@ declare $tmp
 
 muted=$(if [[ "${sink_hdmi_muted,,}" =~ no ]]; then echo true; else echo false; fi)
 
-,lib_pulseaudio.sh ,pulseaudio_filter_2 'Card' '' '"Built-in Audio"' | xargs -i pactl set-card-profile {} output:analog-stereo
-,lib_pulseaudio.sh ,pulseaudio_filter_2 'Sink' '' 'Built-in Audio Analog Stereo' | xargs -i pactl set-sink-port {} analog-output-lineout
+,lib_pulseaudio.sh ,pulseaudio_filter_2 'Card' '' '*Built-in Audio*' | xargs -i pactl set-card-profile {} output:analog-stereo
+
 if "$muted"; then
 	pactl set-sink-mute "$sink_hdmi" on
 	pactl set-sink-mute "$sink_builtin" off
@@ -27,6 +27,7 @@ fi
 	
 org.freedesktop.Notifications.Notify.sh "$(basename $0)" 0 "$icon" \
 	"$muted" \
-	"Monitor mute status" "" "" "" /tmp/.notifyval.$(basename $0) >/dev/null
+	"Monitor mute status" "" "" "" /tmp/.notifyval."$(basename $0)" >/dev/null
 
+,lib_pulseaudio.sh ,pulseaudio_filter_2 'Sink' '' 'Built-in Audio Analog Stereo' | xargs -i pactl set-sink-port {} analog-output-lineout
 
