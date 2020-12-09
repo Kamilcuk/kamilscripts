@@ -10,6 +10,6 @@
 [submodule "vim/ebundle/my/vim-showmarks"]
 	path = vim/ebundle/my/vim-showmarks
 	url = git@github.com:kamilcuk/vim-showmarks
-[submodule "third_party/.tmux"]
+[submodule "third_party/tmux"]
 	path = third_party/tmux
-	url = https://github.com/gpakosz/.tmux
+	url = git@github.com:Kamilcuk/.tmux
