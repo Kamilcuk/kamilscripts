@@ -1,8 +1,6 @@
 #!/bin/bash
-case "$-" in
-*i*) ;;
-*) return; ;;
-esac
+
+if [[ $- != *i* ]]; then return; fi
 
 hist() {
 	{

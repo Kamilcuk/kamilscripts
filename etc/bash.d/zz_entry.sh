@@ -1,3 +1,4 @@
+
 if [[ $- != *i* ]]; then return; fi
 
 # https://stackoverflow.com/questions/4261876/check-if-bash-script-was-invoked-from-a-shell-or-another-script-application
