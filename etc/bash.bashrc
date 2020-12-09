@@ -40,6 +40,7 @@ shopt -s cmdhist # multiple commands in one line
 alias ls='ls --color -F'
 alias o='less'
 alias rm='rm --preserve-root -I'
+alias mv='mv -i'
 alias +='pushd .'
 alias -- -='popd'
 alias ..='cd ..'
