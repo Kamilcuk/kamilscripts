@@ -1,4 +1,13 @@
-#!ssh_config
+#!/bin/sh
+# kamilscripts_ssh_config.sh
+# vim: ft=sshconfig
+
+cat <<'EOF'
+# ----- snip ------
+# DO NOT EDIT
+# UUIDMARK 6b248e21-6024-4544-8051-35cb3e3d2c4c
+# This part is checked with kamilscripts/bin/,ssh.sh script!
+# ----- snip ------
 
 Host dyzio
 	Hostname www.dyzio.pl
@@ -18,7 +27,7 @@ Host tunel_dyzio_root
 	Port 4004
 
 Host biurek
-	Hostname www.biurek.pl 
+	Hostname www.biurek.pl
 	User kamil
 	Port 4004
 	Compression yes
@@ -96,15 +105,6 @@ Host ustrotunel
 	User kamil
 	port 4004
 
-Host netemeradocker
-	Hostname production-0.netemera.com
-	Compression Yes
-	User docker
-Host netemera
-	Hostname production-0.netemera.com
-	Compression Yes
-	User kcukro
-
 Host aur.archlinux.org
 	IdentityFile ~/.ssh/aur_id_rsa
 	User aur
@@ -117,10 +117,39 @@ Host gorgo_borowej_gory
 Host gitlab.com github.com
 	IdentityFile ~/.ssh/github_id_rsa
 
+# netemera
+Host netemeradocker
+	Hostname production-0.netemera.com
+	Compression Yes
+	User docker
+Host netemera
+	Hostname production-0.netemera.com
+	Compression Yes
+	User kcukro
+
+# NCBJ
+Host *.cis.gov.pl
+	User kcukrowski
+Host dudek dudek.cis.gov.pl dzik dzik.cis.gov.pl jenot jenot.cis.gov.pl kumak kumak.cis.gov.pl leszcz leszcz.cis.gov.pl wilga wilga.cis.gov.pl bocian bocian.cis.gov.pl
+	User kcukrowski
+Host usrint2 usrint2_cis_gov_pl
+	Hostname 172.18.0.22
+	User kcukrowski
+Host interactive0001 interactive0001_cis_gov_pl
+	Hostname 172.18.128.2
+	User kcukrowski
+Host interactive0002 interactive0002_cis_gov_pl
+	Hostname 172.18.128.2
+	User kcukrowski
+Host ui_cis ui_cis_gov_pl
+	Hostname 192.68.51.202
+	Port 22222
+	User kcukrowski
+
 Host *
 	Compression yes
 	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
 	ServerAliveInterval 30
 	ServerAliveCountMax 3
 
-	
+EOF
