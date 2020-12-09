@@ -12,7 +12,6 @@ PS1_setup() {
 	local tmp root noroot colors
 	tmp="white reset bold yellow standout red blue green nostandout cyan"
 	local $tmp
-	declare -g PS1
 
 	IFS=' ' read -r $tmp < <(,color -s --separator=' ' $tmp) ||:
 
