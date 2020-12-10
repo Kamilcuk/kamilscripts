@@ -132,9 +132,8 @@ _qstow_complete() {
 }
 
 bash_completion() {
-	declare -f -p _qstow_complete
-	declare -f -p _qstow_complete_getopt_args
-	echo 'complete -F _qstow_complete qstow'
+	declare -f _qstow_complete _qstow_complete_getopt_args &&
+	echo 'complete -F _qstow_complete qstow' &&
 	exit 0
 }
 
