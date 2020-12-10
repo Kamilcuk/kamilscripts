@@ -268,11 +268,11 @@ _aLiAs_CoMpLeTe_::do::alias() {
 	IFS=' '
 	read -r -a complete_cmd <<<"$tmp"
 
-	if [[ "${complete_cmd[-1]}" != "$cmd" ]]; then
+	if [[ "${complete_cmd[${#complete_cmd[@]}-1]}" != "$cmd" ]]; then
 		echo "alias_complete: Internal error: Something very wrong happened" >&2
 		return 2
 	fi
-	unset 'complete_cmd[-1]'
+	unset 'complete_cmd[${#complete_cmd[@]}-1]'
 
 	local i next_is_func complete_args complete_func
 	next_is_func=false
@@ -310,7 +310,7 @@ _aLiAs_CoMpLeTe_::do::alias() {
 		'"$(declare -p cmd_with_args alias_name complete_func cmd_with_args_star_len)"'
 
 		if ((COMP_CWORD == 1)); then
-			set -- "${cmd_with_args[0]}" "$2" "${cmd_with_args[-1]}"
+			set -- "${cmd_with_args[0]}" "$2" "${cmd_with_args[${#cmd_with_args[@]}-1]}"
 		else
 			set -- "${cmd_with_args[0]}" "$2" "$3"
 		fi
