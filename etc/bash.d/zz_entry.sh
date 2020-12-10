@@ -1,5 +1,7 @@
 
 if [[ $- != *i* ]]; then return; fi
+# if connected via ssh, be empty
+if [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]; then return; fi
 
 # https://stackoverflow.com/questions/4261876/check-if-bash-script-was-invoked-from-a-shell-or-another-script-application
 # do not show calendar when su-ing
