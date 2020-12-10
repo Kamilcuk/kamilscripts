@@ -553,6 +553,10 @@ function fatal(desc) {
 	}
 }
 
+function max(a, b) {
+	return a < b ? b : a;
+}
+
 function hex_to_dec(str) { 
 	return strtonum("0x" str)
 }
@@ -723,7 +727,7 @@ function Next() {
 # Modes ##############################################################################
 
 function mode_test( \
-		count, i, cols, longest, str) {
+		count, i, cols, longest, str, savecolors, tmp, tmp2) {
 	longest = 0
 	for (i in config) {
 		if (longest < length(i)) {
@@ -760,13 +764,31 @@ function mode_test( \
 	printf("%s\n", config["reset"])
 	printf "\n"
 
-	printf("charrainbow: ")
-	charrainbow("FF0000", "00FF00", "rainbow_from_red_to_green")
+
+	tmp2 = 18
+	tmp = max(COLS - tmp2 - 2, 10);
+	i = "thisIsAVeryLongStringMadeForTestingRainbowViewFromRedMaybeViaBlueUpToGreenCheckItOutNow"
+	tmp = sprintf("%.*s", tmp, i i i)
+
+	printf("%*s: ", tmp2, "charrainbow")
+	charrainbow("FF0000", "00FF00", tmp)
 	printf("%s\n", config["reset"])
 
-	printf("charrainbow3: ")
-	charrainbow3("FF0000", "00FF00", "0000FF", "rainbow_from_red_via_green_up_until_blue")
+	savecolors = colors; colors = 8
+		printf("%*s: ", tmp2, "charrainbow 24->8")
+		charrainbow("FF0000", "00FF00", tmp)
+		printf("%s\n", config["reset"])
+	colors = savecolors
+
+	printf("%*s: ", tmp2, "charrainbow3")
+	charrainbow3("FF0000", "0000FF", "00FF00", tmp)
 	printf("%s\n", config["reset"])
+
+	savecolors = colors; colors = 8
+		printf("%*s: ", tmp2, "charrainbow3 24->8")
+		charrainbow3("FF0000", "0000FF", "00FF00", tmp)
+		printf("%s\n", config["reset"])
+	colors = savecolors
 
 	printf("%s\n", config["reset"])
 }
