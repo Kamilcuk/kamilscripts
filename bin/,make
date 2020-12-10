@@ -1,15 +1,4 @@
 #!/bin/sh
-
-# bash completion
-if [ "$#" -eq 1 ] && [ "$1" == "--bash-completion" ]; then
-	if [[ -e /usr/share/bash-completion/completions/make ]]; then
-		. /usr/share/bash-completion/completions/make
-		complete -F _make ,make
-	fi
-	return
-	exit
-fi
-
 nice=
 if hash nice >/dev/null 2>&1; then
 	nice+=" nice"

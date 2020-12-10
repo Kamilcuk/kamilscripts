@@ -1,3 +1,3 @@
 #!/bin/bash
-. ,make --bash-completion
+. alias_complete.sh ,make make
 
