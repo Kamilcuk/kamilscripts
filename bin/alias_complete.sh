@@ -163,14 +163,20 @@ fi
 
 shopt -s extglob
 
-_aLiAs_CoMpLeTe_::shortopt() {
+_aLiAs_CoMpLeTe_::init() {
 	if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
-		# shelcheck disable=SC1091
-		if ! . "/usr/share/bash-completion/bash_completion"; then
-			echo "complete_alias: Sourcing /usr/share/bash-completion/bash_completion failed" >&2
-			return 2
+		if [[ -e "/usr/share/bash-completion/bash_completion" ]]; then
+			# shelcheck disable=SC1091
+			if ! . "/usr/share/bash-completion/bash_completion"; then
+				echo "complete_alias: Sourcing /usr/share/bash-completion/bash_completion failed" >&2
+				return 2
+			fi
 		fi
 	fi
+}
+
+_aLiAs_CoMpLeTe_::shortopt() {
+	_aLiAs_CoMpLeTe_::init
 
 	# shellcheck disable=SC2034
     local cur prev words cword split
@@ -218,13 +224,7 @@ _aLiAs_CoMpLeTe_::shortopt() {
 }
 
 _aLiAs_CoMpLeTe_::longopt() {
-	if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
-		# shelcheck disable=SC1091
-		if ! . "/usr/share/bash-completion/bash_completion"; then
-			echo "alias_complete: Sourcing /usr/share/bash-completion/bash_completion failed" >&2
-			return 2
-		fi
-	fi
+	_aLiAs_CoMpLeTe_::init
 	_longopt "$@"
 }
 
@@ -234,6 +234,8 @@ _aLiAs_CoMpLeTe_::do::alias() {
 		return 2
 	fi
 
+	_aLiAs_CoMpLeTe_::init
+
 	local alias_name
 	alias_name=$1
 	shift
@@ -241,15 +243,6 @@ _aLiAs_CoMpLeTe_::do::alias() {
 	cmd=$1
 	local cmd_with_args
 	cmd_with_args=("$@")
-
-	if [[ -z "${BASH_COMPLETION_VERSINFO:-}" ]]; then
-		# echo _aLiAs_CoMpLeTe_::do::alias sourcing /usr/share/bash-completion/bash_completion
-		# shelcheck disable=SC1091
-		if ! . "/usr/share/bash-completion/bash_completion"; then
-			echo "alias_complete: Sourcing /usr/share/bash-completion/bash_completion failed" >&2
-			return 2
-		fi
-	fi
 
 	local tmp tmp2
 	if ! tmp=$(complete -p "$cmd" 2>/dev/null); then
