@@ -691,7 +691,7 @@ augroup Code Comments
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
 	autocmd FileType python,perl,ruby,sh,zsh,conf,bash
-				\ nnoremap <silent><buffer> <leader>hr 0i# -----------------------------------------------------------------------------<ESC>^1l
+				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 augroup END
 
 if kc#plugin#enabled('open-browser.vim')
