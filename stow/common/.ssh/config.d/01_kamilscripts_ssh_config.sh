@@ -2,13 +2,35 @@
 # kamilscripts_ssh_config.sh
 # vim: ft=sshconfig
 
-cat <<'EOF'
-# ----- snip ------
-# DO NOT EDIT
-# UUIDMARK 6b248e21-6024-4544-8051-35cb3e3d2c4c
-# This part is checked with kamilscripts/bin/,ssh.sh script!
-# ----- snip ------
+ssh_get_version() {
+	if [[ -z "$ssh_version" ]]; then
+		ssh_version=$(
+			ssh -V 2>&1 |
+			tr '[A-Z]' '[a-z]' |
+			sed 's/^openssh_\([0-9]*\).\([0-9]*\).*/\1.\2/'
+		)
+	fi
+}
+ssh_get_version
 
+ssh_check_ver() {
+	local tmp
+	tmp=$(echo "$ssh_version $1 $2" | bc)
+	if grep -qi error <<<"$tmp"; then
+		echo "ERROR: ssh_check_ver in $BASH_SOURCE" >&2
+		return 1
+	fi
+	if (($tmp)); then
+		shift 2
+		printf "%s\n" "$@"
+	fi
+}
+
+ProxyJump() {
+	ssh_check_ver '>=' 7.3 "ProxyJump $*"
+}
+
+cat <<EOF
 Host dyzio
 	Hostname www.dyzio.pl
 	User kamcuk
@@ -47,7 +69,7 @@ Host kurczak
 	Hostname 192.168.21.21
 	User kamil
 	Port 22
-	ProxyJump biurek
+	$(ProxyJump biurek)
 
 Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
@@ -89,11 +111,11 @@ Host mion
 Host michal
 	Hostname 192.168.20.7
 	User kamil
-	ProxyJump dyzio
+	$(ProxyJump dyzio)
 Host lenovo
 	Hostname 192.168.20.11
 	User henryk
-	ProxyJump dyzio
+	$(ProxyJump dyzio)
 
 #Host ustro
 #	Hostname ustropecet.ustronie.ds.pw.edu.pl
@@ -120,17 +142,36 @@ Host gitlab.com github.com
 # netemera
 Host netemeradocker
 	Hostname production-0.netemera.com
-	Compression Yes
+	Compression yes
 	User docker
 Host netemera
 	Hostname production-0.netemera.com
-	Compression Yes
+	Compression yes
 	User kcukro
 
 # NCBJ
 Host *.cis.gov.pl
 	User kcukrowski
-Host dudek dudek.cis.gov.pl dzik dzik.cis.gov.pl jenot jenot.cis.gov.pl kumak kumak.cis.gov.pl leszcz leszcz.cis.gov.pl wilga wilga.cis.gov.pl bocian bocian.cis.gov.pl
+Host dudek_cis dudek_cis_gov_pl
+	Hostname dudek.cis.gov.pl
+	User kcukrowski
+Host dzik_cis dzik_cis_gov_pl
+	Hostname dzik.cis.gov.pl
+	User kcukrowski
+Host jenot_cis jenot_cis_gov_pl
+	Hostname jenot.cis.gov.pl
+	User kcukrowski
+Host kumak_cis kumak_cis_gov_pl
+	Hostname kumak.cis.gov.pl
+	User kcukrowski
+Host leszcz_cis leszcz_cis_gov_pl
+	Hostname leszcz.cis.gov.pl
+	User kcukrowski
+Host wilga_cis wilga_cis_gov_pl
+	Hostname wilga.cis.gov.pl
+	User kcukrowski
+Host bocian_cis bocian_cis_gov_pl
+	Hostname bocian.cis.gov.pl
 	User kcukrowski
 Host usrint2 usrint2_cis_gov_pl
 	Hostname 172.18.0.22
@@ -145,6 +186,25 @@ Host ui_cis ui_cis_gov_pl
 	Hostname 192.68.51.202
 	Port 22222
 	User kcukrowski
+Host doc_cis doc_cis_gov_pl 
+	Hostname 172.17.0.10 
+	User kcukrowski
+Host licenses_cis licenses_cis_gov_pl
+	Hostname 172.17.0.3 
+	User kcukrowski
+Host repos2_cis repos2_cis_gov_pl
+	Hostname 172.18.0.28
+	User kcukrowski
+Host cms-vo_cis
+	Hostname cms-vo.cis.gov.pl
+	User kcukrowski
+Host pi-inc_cis
+	Hostname pi-int.cis.gov.pl
+	User kcukrowski
+Host code.cis.gov.pl
+	Hostname code.cis.gov.pl
+	User kcukrowski
+	IdentityFile ~/.ssh/github_id_rsa
 
 Host *
 	Compression yes
