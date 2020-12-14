@@ -13,3 +13,6 @@
 [submodule "third_party/tmux"]
 	path = third_party/tmux
 	url = git@github.com:Kamilcuk/.tmux
+[submodule "vim/ebundle/my/vim-templates"]
+	path = vim/ebundle/my/vim-templates
+	url = git@github.com:kamilcuk/vim-template

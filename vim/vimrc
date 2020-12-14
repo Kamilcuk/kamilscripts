@@ -159,9 +159,10 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 
 	" my
 	KcPlug2 g:kamilscripts . 'vim/ebundle/my/dbg'
-	Plug g:kamilscripts . 'vim/ebundle/my/vim-ctrlp-oldfiles'
-	Plug g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
-	Plug g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
+	Plug    g:kamilscripts . 'vim/ebundle/my/vim-ctrlp-oldfiles'
+	Plug    g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
+	Plug    g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
+	Plug    g:kamilscripts . 'vim/ebundle/my/vim-template'
 	" aaa_staging
 	Plug 'antoinemadec/coc-fzf'
 	Plug 'junegunn/fzf'
@@ -215,7 +216,6 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'terryma/vim-smooth-scroll'
 	Plug 'tpope/vim-surround'
 	Plug 'dhruvasagar/vim-table-mode'
-	Plug 'git@github.com:Kamilcuk/vim-template'
 	Plug 'michaelb/vim-tips'
 	Plug 'tpope/vim-unimpaired'
 	" view
