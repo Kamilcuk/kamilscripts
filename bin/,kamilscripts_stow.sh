@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+shopt -s extglob
 
 name=$(basename "$0")
 dir=$(readlink -f "$(dirname "$(readlink -f "$0")")")
@@ -17,6 +18,11 @@ Modes:
   uninstall
 
 EOF
+}
+
+fatal() {
+	echo "$name: ERROR:" "$@" >&2
+	exit 2
 }
 
 git_submodule_update() {
@@ -94,13 +100,18 @@ do_stow() {
 }
 
 stow_kamilscripts() {
-	local packages
-	packages=(common "$HOSTNAME")
+	local packages repo
+	repo="$(readlink -f "$dir/../stow")"
+	packages=(common)
+	if [[ -e "$repo/$HOSTNAME" ]]; then
+		packages+=("$HOSTNAME")
+	fi
 	case "$HOSTNAME" in
-	gucio|bocian.cis.gov.pl) packages+=(fix_term_missing_italic); ;;
+	gucio|@(dudek|dzik|jenot|kumak|leszcz|wilga|bocian).cis.gov.pl)
+		packages+=(fix_term_missing_italic); ;;
 	esac
 
-	do_stow "$(readlink -f "$dir/../stow")" "$@" "${packages[@]}"
+	do_stow "$repo" "$@" "${packages[@]}"
 }
 
 stow_work() {
