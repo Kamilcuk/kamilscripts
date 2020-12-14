@@ -42,6 +42,7 @@ stow_manage_installation() {
 	local d b
 	d=~/.config/kamilscripts/stow
 	b=~/.config/bin
+	export PATH="$PATH:$b"
 	if hash stow 2>/dev/null >&2; then
 		if [[ -e "$b"/stow && -d "$d" && ( -x /usr/bin/stow || -x /bin/stow ) ]]; then
 			echo "### System stow installation exists, removing our installation"
@@ -54,29 +55,27 @@ stow_manage_installation() {
 		fi
 		return
 	fi
-	if [[ ! -x "$d/stow" ]] || ! "$d"/stow --version 2>/dev/null >&2; then
-		echo "### Installing stow..." >&2
-		( set -xeuo pipefail
-		rm -rf "$d" &&
-		mkdir -p "$d"/src &&
-		cd "$d"/src &&
-		wget https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz &&
-		tar xaf stow-latest.tar.gz --strip-components=1 -C . &&
-		./configure --quiet --prefix="$d" --with-pmdir="$d" --bindir="$d" &&
-		make install MAKEINFO=true &&
-		cd "$d" &&
-		rm -rf "$d"/src/ "$d"/share/
-		)
-		if ! "$d"/stow --version 2>/dev/null >&2; then
-			echo "### stow installed unsuccessfully"
-			exit 1
-		fi
-		mkdir -p "$b"
-		ln -fs "$d"/stow "$b"/stow
-		ln -fs "$d"/chkstow "$b"/chkstow
-		echo "### stow installed!" >&2
+
+	echo "### Installing stow..." >&2
+	( set -xeuo pipefail
+	rm -rf "$d" &&
+	mkdir -p "$d"/src &&
+	cd "$d"/src &&
+	wget https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz &&
+	tar xaf stow-latest.tar.gz --strip-components=1 -C . &&
+	./configure --quiet --prefix="$d" --with-pmdir="$d" --bindir="$d" &&
+	make install MAKEINFO=true &&
+	cd "$d" &&
+	rm -rf "$d"/src/ "$d"/share/
+	)
+	if ! "$d"/stow --version 2>/dev/null >&2; then
+		echo "### stow installed unsuccessfully"
+		exit 1
 	fi
-	export PATH="$PATH:$b"
+	mkdir -p "$b"
+	ln -fs "$d"/stow "$b"/stow
+	ln -fs "$d"/chkstow "$b"/chkstow
+	echo "### stow installed!" >&2
 }
 
 do_stow() {
