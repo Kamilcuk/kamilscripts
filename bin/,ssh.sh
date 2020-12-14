@@ -9,42 +9,64 @@ shopt -s nullglob
 
 name=$(basename "$0")
 
-fatal() {
+error() {
 	echo "$name: ERROR:" "$*" >&2
+}
+
+fatal() {
+	error "$@"
 	exit 2
 }
 
-if [[ -d ~/.ssh/config.d ]]; then
+recreate_config() {
+	if [[ ! -d ~/.ssh/config.d ]]; then return; fi
+
+	local err
+	err=0
+
+	# Inform about old code removal.
 	if [[ -e ~/.ssh/config.d/kamilscripts.conf ]]; then
-		fatal "file ~/.ssh/config.d/kamilscripts.conf should be removed"
+		error "file ~/.ssh/config.d/kamilscripts.conf should be removed"
+		err=1
 	fi
-
 	if [[ -e ~/.ssh/config.d/kamilscripts || -L ~/.ssh/config.d/kamilscripts ]]; then
-		fatal "file ~/.ssh/config.d/kamilscripts should be removed"
+		error "file ~/.ssh/config.d/kamilscripts should be removed"
+		err=1
 	fi
 
-	# additional checking is done by checking if the file has our uuidmark
-	if [[ -e ~/.ssh/config ]] && ! grep -q '# UUIDMARK 6b248e21-6024-4544-8051-35cb3e3d2c4c' ~/.ssh/config; then
-		fatal '~/.ssh/config does not have uuid mark. Remove ~/.ssh/config to refresh configuration.'
-	fi
+	shopt -s nullglob
+	files=(~/.ssh/config.d/*.sh)
 
-	newest=""
-	oldest=""
-	for i in ~/.ssh/config.d ~/.ssh/config.d/*.sh; do
-		if [[ -e "$i" && ( -z "$newest" || "$i" -nt "$newest" ) ]]; then
-			newest="$i"
-		fi
-		if [[ -e "$i" && ( -z "$oldest" || "$i" -ot "$oldest" ) ]]; then
-			oldest="$i"
+	# No files to generate the config from.
+	if (("${#files[@]}" == 0)); then return; fi
+
+	# Find the newest file to generate config from.
+	newestf=""
+	for i in "${files[@]}"; do
+		if [[ ! -e "$i" ]]; then continue; fi
+		if [[ -z "$newestf" || "$newestf" -nt "$i" ]]; then
+			newestf="$i"
 		fi
 	done
 
-	if [[ -n "$newest" && ~/.ssh/config -nt "$newest" ]]; then
-		fatal '~/.ssh/config is newer then the newest file in ~/.ssh/config.d/*.sh. Remove ~/.ssh/config to refresh configuration.'
+	# Additional checking is done by checking if the file has our uuidmark.
+	if [[ -e ~/.ssh/config ]] && ! grep -q '# UUIDMARK 6b248e21-6024-4544-8051-35cb3e3d2c4c' ~/.ssh/config; then
+		error '~/.ssh/config does not have uuid mark. Remove ~/.ssh/config to refresh configuration.'
+		err=1
 	fi
 
-	if [[ -n "$oldest" && ~/.ssh/config -ot "$oldest" ]]; then
-		echo "$name: Recreating ~/.ssh/config"
+	# If the ~/.ssh/config file was edited manually.
+	if [[ -n "$newestf" && ~/.ssh/config -nt "$newestf" ]]; then
+		error '~/.ssh/config is newer then the newest file in ~/.ssh/config.d/*.sh. Remove ~/.ssh/config to refresh configuration.'
+		err=1
+	fi
+
+	if ((err)); then
+		exit 2
+	fi
+
+	if [[ ! -e ~/.ssh/config ]] || [[ ~/.ssh/config -ot "$newestf" ]]; then
+		echo "$name: Recreating ~/.ssh/config from ${#files[@]} files"
 		tmp=$(
 			cat <<EOF
 # ----- snip ------
@@ -54,16 +76,16 @@ if [[ -d ~/.ssh/config.d ]]; then
 # ----- snip ------
 
 EOF
-			for i in ~/.ssh/config.d/*.sh; do
-				if [[ -r "$i" ]]; then
-					"$i"
-				fi
+			for i in "${files[@]}"; do
+				"$i"
 			done
 		)
 		cat <<<"$tmp" > ~/.ssh/config
-		touch --reference="$HOME/.ssh/config" ~/.ssh/config.d/*.sh
+		touch --reference="$newestf" ~/.ssh/config
 	fi
-fi
+}
+
+recreate_config
 
 command ssh "$@"
 
