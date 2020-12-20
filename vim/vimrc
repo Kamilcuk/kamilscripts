@@ -610,6 +610,8 @@ if kc#plugin#enabled('vim-DetectSpellLang')
 	let g:detectspelllang_langs.hunspell = [ 'en_US', 'pl_PL' ]
 endif
 
+let g:dispatch_goto_end = 1
+
 " Shortcuts {{{1
 
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

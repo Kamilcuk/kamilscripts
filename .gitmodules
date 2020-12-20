@@ -7,6 +7,7 @@
 [submodule "vim/ebundle/my/vim-dispatch"]
 	path = vim/ebundle/my/vim-dispatch
 	url = git@github.com:kamilcuk/vim-dispatch
+	branch = kamilcuk
 [submodule "vim/ebundle/my/vim-showmarks"]
 	path = vim/ebundle/my/vim-showmarks
 	url = git@github.com:kamilcuk/vim-showmarks
