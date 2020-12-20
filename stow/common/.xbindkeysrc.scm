@@ -172,6 +172,8 @@
 (xbindkey '(Mod4 F8) "xdotool getactivewindow set_desktop_for_window 7")
 
 (xbindkey '(Mod4 a) "geany")
+(xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
+(xbindkey '(Mod4 t) "xdg-open https://todoist.com/app/#project%2F2252640035")
 (xbindkey '(Mod4 s) "subl")
 (xbindkey '(Mod4 f) "soffice --calc")
 (xbindkey '(Mod4 c) 
@@ -194,7 +196,7 @@
 	)
   	(else
 		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
-		(xbindkey '(Mod4 "5") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessUp   keydown Super_L")
+		(xbindkey '(Mod4 "5") "xdotool keyup 5 keyup Super_L key XF86MonBrightnessUp   keydown Super_L")
 	)
 )
 
@@ -213,7 +215,7 @@
 (xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 (xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 
-(xbindkey '(Mod4 d) "/home/users/kamil/bin/,slack_toggle.sh")
+(xbindkey '(Mod4 d) ",slack_toggle.sh")
 
 (xbindkey '(Alt F3) "xfce4-appfinder")
 (xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
