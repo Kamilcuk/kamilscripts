@@ -6,7 +6,7 @@ if ! flock -n 9; then
 	exit
 fi
 
-if v=$(xdotool search --onlyvisible --name 'Slack '); then
+if xdotool search --onlyvisible --name 'Slack ' >/dev/null 2>&1; then
 	xdotool search --onlyvisible --name 'Slack ' \
 		windowactivate --sync %1 \
 		key --window %1 --clearmodifiers --delay=0 ctrl+w \
@@ -17,18 +17,14 @@ if v=$(xdotool search --onlyvisible --name 'Slack '); then
 	not=''
 else
 	slack &
-	not='!'
+	not='not'
 fi
+
+not() { ! "$@"; }
 
 # wait until the window is ($not) visible
 sleep 0.1
-while
-	if [ "$not" = '!' ]; then
-		! xdotool search --onlyvisible --name 'Slack ' >/dev/null 2>&1
-	else
-		xdotool search --onlyvisible --name 'Slack ' >/dev/null 2>&1
-	fi
-do
+while $not xdotool search --onlyvisible --name 'Slack ' >/dev/null 2>&1; do
 	sleep 0.1
 done
 
