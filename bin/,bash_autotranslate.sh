@@ -742,7 +742,7 @@ To start working with the script:
 
 =back
 
-=item - Then execute C<,bash_autotranslate.sh your_script.sh > tempfile>
+=item - Then execute C<,bash_autotranslate.sh your_script.sh>
 
 =over 8
 

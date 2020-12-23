@@ -103,7 +103,7 @@ while "${again:-true}"; do
 		txt=$(sed 's/\(^\|[[:space:]]\)[#@][^[:space:]]*[[:space:]]*/\1/g' <<<"$txt")
 	done
 	mesg=$"task""."$'\n'
-	mesg+=$"With name: ""$txt"
+	mesg+=$"With name"": $txt"
 
 	cmd=(todoist add)
 	if [[ -n "${addlabels:-}" ]]; then
@@ -122,7 +122,7 @@ while "${again:-true}"; do
 	cmd+=("$txt")
 
 	if run "${cmd[@]}"; then
-		notify-send -i appointment-new "todoist" "${dryrun}"$"Added"" $mesg"
+		notify-send -i appointment-new "todoist" "${dryrun}"$"Added"": $mesg"
 	else
 		notify-send -i dialog-error "todoist" "${dryrun}"$"Problem with adding task"" $mesg"$'\n'$"Command"": ${cmd[*]}"
 		looperrormsg $"Problem with adding task"
@@ -189,7 +189,7 @@ msgid "task"
 msgstr "zadanie"
 
 #: bin/,todoist_dodaj_nowe_zadanie.sh:106
-msgid "With name: "
+msgid "With name"
 msgstr "O nazwie"
 
 #: bin/,todoist_dodaj_nowe_zadanie.sh:110
