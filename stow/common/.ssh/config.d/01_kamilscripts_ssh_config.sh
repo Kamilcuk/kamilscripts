@@ -30,6 +30,24 @@ ProxyJump() {
 	ssh_check_ver '>=' 7.3 "ProxyJump $*"
 }
 
+
+# Add a template function with <name> and <content>
+templ() {
+	local a
+	# Remove leading and trailing lines with whitespaces.
+	#a=$(sed -Ez 's/^([[:space:]]*\n)*//; s/(\n[[:space:]]*)*\n$//' <<<"$2")
+	a=$(sed ':a; /[^[:blank:]]/,$!d; /^[[:space:]]*$/{ $d; N; ba; }' <<<"$2")
+	eval "
+$1() {
+	cat <<EOF
+$a
+EOF
+}
+"
+}
+
+###############################################################################
+
 cat <<EOF
 Host dyzio
 	Hostname www.dyzio.pl
@@ -148,63 +166,45 @@ Host netemera
 	Hostname production-0.netemera.com
 	Compression yes
 	User kcukro
+EOF
 
+###############################################################################
+
+cat <<EOF
 # NCBJ
-Host *.cis.gov.pl
+Host *.cis.gov.pl *_cis
 	User kcukrowski
-Host dudek_cis dudek_cis_gov_pl
-	Hostname dudek.cis.gov.pl
-	User kcukrowski
-Host dzik_cis dzik_cis_gov_pl
-	Hostname dzik.cis.gov.pl
-	User kcukrowski
-Host jenot_cis jenot_cis_gov_pl
-	Hostname jenot.cis.gov.pl
-	User kcukrowski
-Host kumak_cis kumak_cis_gov_pl
-	Hostname kumak.cis.gov.pl
-	User kcukrowski
-Host leszcz_cis leszcz_cis_gov_pl
-	Hostname leszcz.cis.gov.pl
-	User kcukrowski
-Host wilga_cis wilga_cis_gov_pl
-	Hostname wilga.cis.gov.pl
-	User kcukrowski
-Host bocian_cis bocian_cis_gov_pl
-	Hostname bocian.cis.gov.pl
-	User kcukrowski
-Host usrint2 usrint2_cis_gov_pl
-	Hostname 172.18.0.22
-	User kcukrowski
-Host interactive0001 interactive0001_cis_gov_pl
-	Hostname 172.18.128.2
-	User kcukrowski
-Host interactive0002 interactive0002_cis_gov_pl
-	Hostname 172.18.128.2
-	User kcukrowski
-Host ui_cis ui_cis_gov_pl
-	Hostname 192.68.51.202
-	Port 22222
-	User kcukrowski
-Host doc_cis doc_cis_gov_pl 
-	Hostname 172.17.0.10 
-	User kcukrowski
-Host licenses_cis licenses_cis_gov_pl
-	Hostname 172.17.0.3 
-	User kcukrowski
-Host repos2_cis repos2_cis_gov_pl
-	Hostname 172.18.0.28
-	User kcukrowski
-Host cms-vo_cis
-	Hostname cms-vo.cis.gov.pl
-	User kcukrowski
-Host pi-inc_cis
-	Hostname pi-int.cis.gov.pl
-	User kcukrowski
-Host code.cis.gov.pl
-	Hostname code.cis.gov.pl
-	User kcukrowski
-	IdentityFile ~/.ssh/github_id_rsa
+	GSSAPIAuthentication=yes
+	GSSAPIDelegateCredentials yes
+
+EOF
+
+
+templ ncbj '
+Host $1_cis
+	Hostname ${2:-$1.cis.gov.pl}${3:+
+	$3}
+'
+ncbj   leszcz            10.200.4.5
+ncbj   dzik              10.200.4.4
+ncbj   kumak             10.200.4.3
+ncbj   bocian            10.200.4.11
+ncbj   dudek             10.200.4.12
+ncbj   jenot             10.200.4.13
+ncbj   wilga             10.200.4.14
+ncbj   usrint2           172.18.0.22
+ncbj   interactive0001   172.18.128.2
+ncbj   interactive0002   172.18.128.2
+ncbj   ui                192.68.51.202  'Port 22222'
+ncbj   doc               172.18.128.2
+ncbj   cms-vo ''
+ncbj   code '' 'IdentityFile ~/.ssh/cis_code_id_rsa'
+# https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
+ncbj   dizvm5  10.200.4.205
+
+###############################################################################
+
+cat <<EOF
 
 Host *
 	Compression yes
