@@ -6,7 +6,7 @@ if exists('g:kamilscripts') && kc#plugin#enabled('vim-dispatch') && !exists('b:d
 	endif
 	augroup try_autorun
 		autocmd!
-		execute "autocmd filetype c,cpp,python,sh,bash let b:dispatch = ',try_autorun.sh -S " . s:args . "-e ' . &filetype . ' %'"
+		execute "autocmd FileType c,cpp,python,sh,bash let b:dispatch = ',try_autorun.sh -S " . s:args . "-e ' . &filetype . ' %'"
 	augroup END
 	unlet s:args
 endif
