@@ -611,6 +611,7 @@ if kc#plugin#enabled('vim-DetectSpellLang')
 endif
 
 let g:dispatch_goto_end = 1
+let g:dispatch_keep_focus = 1
 
 " Shortcuts {{{1
 
