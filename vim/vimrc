@@ -635,6 +635,10 @@ endif
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
 nnoremap <leader>S :%s/\<<C-r><C-w>\>//g<Left><Left>
 
+" https://castel.dev/post/lecture-notes-1/
+inoremap <C-l>     <c-g>u<Esc>[s1z=`]a<c-g>u
+nnoremap <leader>l <c-g>u<Esc>[s1z=`]a<c-g>u
+
 if 0
 	function g:MyCscope(arg)
 		cexpr []
@@ -888,27 +892,6 @@ colorscheme kamilcuk
 
 " Seamlessly detect cmake out-of-source build errors in subdirectories
 let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
-
-if getcwd() == "/home/work/beacon"
-	let g:beacon_hw = "4.7"
-	let g:coc_config_home = g:kamilscripts . "vim/coc-settings/beacon"
-	function! Qfunc(pre, ...)
-		execute "Dispatch -compiler=make ". a:pre ." make hw=" . g:beacon_hw . " " . a:1
-	endfunction
-	autocmd BufEnter ?* let b:dispatch = ':Qdebug'
-	command! Qdebug    call Qfunc('', 'debug')
-	command! Qrelease  call Qfunc('', 'release pcb_test=0')
-	command! Qprogram  call Qfunc('unbuffer', 'program')
-
-	let g:termdebugger = 'arm-none-eabi-gdb'
-	command! QDebug  call Dbg_jlink_start({
-				\ "file": "_build/onemeter.elf",
-				\ "jlink_args": " -device nRF51822_xxAC -if swd -select USB "
-				\ })
-
-	nmap <leader>p :Dispatch make hw=4.7 debug program<CR>
-	nmap <leader>u :Make utest<CR>
-endif
 
 " }}}
 
