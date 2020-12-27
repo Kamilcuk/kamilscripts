@@ -48,6 +48,6 @@ alias ...='cd ../..'
 alias cd..='cd ..'
 alias beep='echo -en "\007"'
 alias l='command l'
-alias ll='ls -l'
+alias ll='ls -l -F --color -h --group-directories-first'
 
 
