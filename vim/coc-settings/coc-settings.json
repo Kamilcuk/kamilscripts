@@ -12,8 +12,7 @@
 	"diagnostic.virtualText": true,
 	"codeLens.enable": true,
 
-	"suggest.timeout": 5000,
-	"coc.preferences.highlightTimeout": 5000,
+	"suggest.triggerCompletionWait": 500,
 
 	"clangd.semanticHighlighting":true,
 
