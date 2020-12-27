@@ -211,6 +211,7 @@
 
 (xbindkey '(XF86Search) "xfce4-appfinder")
 (xbindkey '(XF86HomePage) "notify-send -t 500 browser ; firefox")
+(xbindkey '(XF86ScreenSaver) "xflock4")
 (xbindkey '(Mod4 n)       "notify-send -t 500 browser ; firefox")
 (xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 (xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
