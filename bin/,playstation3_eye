@@ -1,0 +1,45 @@
+#!/bin/bash
+# https://community.mycroft.ai/t/ps3-eye-best-settings/8152
+# https://community.mycroft.ai/t/ps3-eye-best-settings/8152
+set -o pipefail
+
+r() {
+	echo "+" "$@" >&2
+	"$@"
+}
+
+if [[ "${1:-}" = "udev" ]]; then
+	# exec > >(logger -p local3.info) 2>&1 
+	# echo 123
+	export PULSE_RUNTIME_PATH=/run/user/1000/pulse/
+	sleep 0.5
+fi
+name=alsa_input.usb-OmniVision_Technologies__Inc._USB_Camera-B4.09.24.1-01.multichannel-input
+if id=$(
+		pactl list short modules |
+			awk '$2 ~ /module-echo-cancel/ && $3 ~ /source_master=alsa_input.usb-OmniVision_Technologies__Inc._USB_Camera-B4.09.24.1-01.multichannel-input/{print $1;f=1} END{exit(!f)}'
+		); then
+	for i in $id; do
+		r pactl unload-module $i
+	done
+fi
+# sudo usbreset.py search 'Sony Playstation Eye'
+r pactl set-default-source "$name"
+tmp=$(r pactl load-module module-echo-cancel \
+	source_master="$name" \
+	use_volume_sharing=1 \
+	use_master_format=1 \
+	aec_method='webrtc' \
+	aec_args='"analog_gain_control=0 digital_gain_control=1 voice_detection=1 beamforming=1 mic_geometry=-0.03,0,0,-0.01,0,0,0.01,0,0,0.03,0,0"'
+)
+if [[ ! "$tmp" =~ ^[0-9]+$ ]]; then
+	printf "%s\n" "$tmp"
+fi
+r pactl set-default-source "$name".echo-cancel
+
+exit
+
+: <<EOF
+# playstation eye
+ACTION=="change", SUBSYSTEM=="sound", ATTRS{idProduct}=="2000", ATTRS{idVendor}=="1415", RUN+="/bin/bash -c '{ sudo -u kamil /home/users/kamil/bin/,playstation3_eye udev ;} 2>&1 | logger -p local3.info &'"
+EOF

@@ -1,0 +1,4 @@
+#!/bin/bash
+set -x
+gdb --batch -ex 'set width 0' -ex 'set height 0' -ex 'set verbose off' -ex 'run' -ex 'bt' --args "$@"
+

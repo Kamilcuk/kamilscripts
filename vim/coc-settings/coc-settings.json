@@ -1,4 +1,6 @@
 {
+	"coc.preferences.extensionUpdateCheck": "weekly",
+
 	"diagnostic.signOffset": 2,
 	"diagnostic.errorSign": "×",
 	"diagnostic.warningSign": "»",

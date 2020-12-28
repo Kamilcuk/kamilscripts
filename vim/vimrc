@@ -115,13 +115,14 @@ set display+=uhex
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
 
-" Load kamilscripts and load plugins {{{1
+" Load kamilscripts {{{1
 
 for i in [
 		\ '/usr/lib/kamilscripts/',
 		\ $HOME . '/.config/kamilscripts/kamilscripts/',
 		\ $HOME . '/.local/kamilscripts/',
 		\ $HOME . '/.config/kamilscripts/',
+		\ $HOME . '/.kamilscripts/',
 		\ ]
 	if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
 		let g:kamilscripts = i
@@ -151,10 +152,13 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	execute 'source ' . g:kamilscripts . 'vim/vim-plug/plug.vim'
 	call plug#begin('~/.vim/plugged')
 
+	command -nargs=+ KcPlug2 " empty
+	command -nargs=+ KcPlugCoc " empty
 	if v:version >= 800
-		command -nargs=+ KcPlug2 execute "Plug <args>"
-	else
-		command -nargs=+ KcPlug2 " empty
+		command! -nargs=+ KcPlug2 execute "Plug <args>"
+		if executable('node') && executable('npm') && executable('yarn')
+			command! -nargs=+ KcPlugCoc execute "Plug <args>"
+		endif
 	endif
 
 	" my
@@ -163,6 +167,8 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug    g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
 	Plug    g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
 	Plug    g:kamilscripts . 'vim/ebundle/my/vim-template'
+	" staging2
+	Plug 'lervag/vimtex', { 'for': 'tex' }
 	" aaa_staging
 	Plug 'antoinemadec/coc-fzf'
 	Plug 'junegunn/fzf'
@@ -183,10 +189,8 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'salcode/vim-interactive-rebase-reverse'
 	Plug 'tpope/vim-rhubarb'
 	" lang
-	if executable('node')
-		KcPlug2 'neoclide/coc.nvim'
-		KcPlug2 'jackguo380/vim-lsp-cxx-highlight'
-	endif
+	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
+	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
 	"KcPlug2 'puremourning/vimspector'
@@ -712,12 +716,31 @@ nnoremap <leader>s i<CR><Esc>
 " coc.nvim {{{1
 
 if kc#plugin#enabled('coc.nvim')
-"
 
 let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
+
 let g:coc_global_extensions	= [
-			\ 'coc-clangd', 'coc-cmake', 'coc-highlight', 'coc-json', 'coc-vimlsp',
-			\ 'coc-python', 'coc-yaml' ]
+			\ 'coc-highlight',
+			\ 'coc-yank',
+			\ ]
+" Dynamically installed coc extension depending on filetype.
+let g:coc_global_extensions_dynamics = {
+			\ 'cmake': ['coc-cmake'],
+			\ 'vim': ['coc-vimlsp'],
+			\ 'python': ['coc-python'],
+			\ 'c': ['coc-clangd'],
+			\ 'cpp': ['coc-clangd'],
+			\ 'yaml': ['coc-yaml'],
+			\ 'tex': ['coc-vimtex'],
+			\ }
+augroup CocGlobalExtensions
+	au!
+	execute 'autocmd FileType '.join(keys(g:coc_global_extensions_dynamics), ',').' '
+				\ .'let g:coc_global_extensions += g:coc_global_extensions_dynamics[&filetype]'
+augroup END
+
+" https://github.com/neoclide/coc-highlight
+autocmd CursorHold ?* silent call CocActionAsync('highlight')
 
 " This has been taken from the readme:
 " https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
@@ -882,6 +905,12 @@ endif " kc#plugin#enabled('coc-fzf')
 
 endif " kc#plugin#enabled('coc.nvim')
 
+" vimtex Configuration {{{1
+
+let g:vimtex_view_use_temp_files = 1
+let g:vimtex_view_method = 'mupdf'
+let g:livepreview_previewer = 'evince'
+
 " Color scheme {{{1
 
 set background=dark
@@ -894,4 +923,4 @@ let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' .
 
 " }}}
 
-" vim: filetype=vim:foldmethod=marker
+" vim: filetype=vim:foldmethod=marker:foldenable

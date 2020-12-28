@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-set -x
 
 name=$(basename "$0")
 usage() {
@@ -20,6 +19,7 @@ if (($# != 1)); then
 	exit 1
 fi
 if [[ ! "$1" =~ ^[+-]?([0-9]+\.?[0-9]*|[0-9]*\.[0-9]+)$ ]]; then
+	usage
 	echo "$name: ERROR: Argument is not a float: $1" >&2
 	exit 1
 fi

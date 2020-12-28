@@ -198,9 +198,13 @@ ncbj   interactive0002   172.18.128.2
 ncbj   ui                192.68.51.202  'Port 22222'
 ncbj   doc               172.18.128.2
 ncbj   cms-vo ''
-ncbj   code '' 'IdentityFile ~/.ssh/cis_code_id_rsa'
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
 ncbj   dizvm5  10.200.4.205
+
+cat <<EOF
+Host code.cis.gov.pl
+	IdentityFile ~/.ssh/cis_code_id_rsa
+EOF
 
 ###############################################################################
 
