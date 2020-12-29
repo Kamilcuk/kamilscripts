@@ -18,7 +18,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" || "${BASH_AUTOTRANSLATE_SOURCE:-}" = "true"
 		# Then remove temporary directory in trap.
 	) &
 	# Generate translations. Uses TEXTDOMAINDIR and TEXTDOMAIN.
-	if ! "$BASH_SOURCE" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
+	if ! "$BASH_SOURCE" "$@" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
 
 	return
 fi
@@ -933,6 +933,7 @@ loglevel=1
 mode=generate
 in_place=false
 in_place_suffix=""
+g_regex=""
 while (($#)); do
 	case "$1" in
 	-q) loglevel=0; ;;
@@ -943,7 +944,7 @@ while (($#)); do
 	--test) run_tests "${2:-}"; shift; exit; ;;
 	-i|--in-place) in_place=true; in_place_suffix="${2:-}"; shift; ;;
 	-v|--verbose) loglevel=$((loglevel+1)); ;;
-	--regex) export g_regex="$2"; shift; ;;
+	--regex) g_regex="$2"; shift; ;;
 	--) shift; break; ;;
 	*) error "internal error on parsing arguments: $*" ;;
 	esac
@@ -955,7 +956,7 @@ if [[ "$mode" != "translate" ]]; then
 	# This is not done in translate mode, cause this mode is executed when sourcing.
 	# So to pretect against recursive endless loop.
 	BASH_AUTOTRANSLATE_SOURCE=true
-	. "$0"
+	. "$0" --regex="^#:#:#:#: bash_autotranslate [^ ]*$"
 fi
 
 if (($# == 0)); then usage; error "missing argument"; fi
