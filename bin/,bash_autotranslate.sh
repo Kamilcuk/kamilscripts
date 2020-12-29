@@ -48,6 +48,7 @@ run_tests() {
 			"tests_$i"
 			trap '' EXIT
 		)
+		echo
 	done
 	echo "###### tests SUCCESS" >&2
 }
@@ -57,7 +58,7 @@ tests_1() {
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -72,7 +73,7 @@ EOF
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -91,18 +92,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr ""
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr ""
 
 #### bash_autotranslate END
 
 EOF
-	$0 "$tmp1" > "$tmp3"
+	"$0" "$tmp1" > "$tmp3"
 	diff "$tmp3" "$tmp2"
 }
 
@@ -111,7 +112,7 @@ tests_2() {
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -132,11 +133,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr "To jest przykładowy skrypt do pokazania generacji translacji"
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr "Witaj świecie!"
 
@@ -148,7 +149,7 @@ EOF2
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -169,15 +170,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr "To jest przykładowy skrypt do pokazania generacji translacji"
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr "Witaj świecie!"
 
-#: $tmp1:8
+#: $(basename "$tmp1"):8
 msgid "New thing to translate!"
 msgstr ""
 
@@ -185,7 +186,7 @@ msgstr ""
 EOF
 
 EOF2
-	$0 "$tmp1" > "$tmp3"
+	"$0" "$tmp1" > "$tmp3"
 	diff "$tmp2" "$tmp3"
 	LANGUAGE=C bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
@@ -208,7 +209,7 @@ tests_3() {
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -227,7 +228,7 @@ EOF2
 #!/bin/bash
 
 # setup
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -247,11 +248,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr ""
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr ""
 
@@ -267,11 +268,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr ""
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr ""
 
@@ -280,7 +281,7 @@ END
 
 
 EOF2
-	$0 "$tmp1" > "$tmp3"
+	"$0" "$tmp1" > "$tmp3"
 	diff "$tmp3" "$tmp2"
 }
 
@@ -289,7 +290,7 @@ tests_4() {
 #!/bin/bash
 
 
-. $0
+. "$0"
 
 echo $"This is a sample script to show generating translate to work"
 echo $"Hello world"
@@ -310,11 +311,11 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 # some initial comment
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr "To jest przykładowy skrypt pokazujący jak działa translacja"
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr "Witaj świecie"
 
@@ -330,11 +331,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: $tmp1:6
+#: $(basename "$tmp1"):6
 msgid "This is a sample script to show generating translate to work"
 msgstr "Dies ist ein Beispielskript, das zeigt, wie das Übersetzen in die Arbeit generiert wird"
 
-#: $tmp1:7
+#: $(basename "$tmp1"):7
 msgid "Hello world"
 msgstr "Hallo Welt"
 
@@ -343,9 +344,14 @@ END
 
 
 EOF
-	$0 "$tmp1" > "$tmp2"
-	diff -Naur "$tmp1" "$tmp2"
+	echo "Stage 0"
+	"$0" -O "$tmp1" > "$tmp2"
+	diff "$tmp1" "$tmp2"
+	"$0" -i "$tmp1"
+	diff "$tmp1" "$tmp2"
 
+
+	echo "Stage 1"
 	LANGUAGE=C bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 This is a sample script to show generating translate to work
@@ -353,6 +359,7 @@ Hello world
 EOF
 	diff "$tmp2" "$tmp3"
 
+	echo "Stage 2"
 	LANGUAGE=pl_PL bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 To jest przykładowy skrypt pokazujący jak działa translacja
@@ -360,6 +367,7 @@ Witaj świecie
 EOF
 	diff "$tmp2" "$tmp3"
 
+	echo "Stage 3"
 	LANGUAGE=de_DE bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 Dies ist ein Beispielskript, das zeigt, wie das Übersetzen in die Arbeit generiert wird
@@ -370,7 +378,7 @@ EOF
 
 tests_will_fail() {
 	local tmp
-	if tmp=$($0 "$1" 2>&1) || [[ -z "$tmp" ]]; then
+	if tmp=$("$0" "$1" 2>&1) || [[ -z "$tmp" ]]; then
 		{
 			printf "Parsing the following should have failed, but didn't\n"
 			echo ---------------------------------
@@ -383,7 +391,7 @@ tests_will_fail() {
 	fi
 }
 tests_5() {
-
+	log "Stage 1"
 	cat <<EOF >"$tmp1"
 #### bash_autotranslate pl_PL
 #### bash_autotranslate END
@@ -391,6 +399,7 @@ tests_5() {
 EOF
 	tests_will_fail "$tmp1"
 
+	log "Stage 2"
 	cat <<EOF >"$tmp1"
 #### bash_autotranslate pl_PL
 ####  bash_autotranslate 	ulubankga
@@ -400,6 +409,7 @@ EOF
 EOF
 	tests_will_fail "$tmp1"
 
+	log "Stage 3"
 	cat <<EOF >"$tmp1"
 #### bash_autotranslate pl_PL
 ####  bash_autotranslate 	ulubankga
@@ -407,14 +417,16 @@ EOF
 EOF
 	tests_will_fail "$tmp1"
 
+	log "Stage 4"
 	cat <<EOF >"$tmp1"
 ####  bash_autotranslate 	pl_PL
 ####  bash_autotranslate 	en_US
 ####  bash_autotranslate 	ulubankga
 ####  bash_autotranslate 	 END
 EOF
-	$0 -q "$tmp1" >/dev/null
+	"$0" -q "$tmp1" >/dev/null
 
+	log "Stage 5"
 	cat <<EOF >"$tmp1"
 #### bash_autotranslate pl_PL
 msgid "missing invalid"
@@ -436,7 +448,7 @@ echo $"one message"
 #### bash_autotranslate en_US
 #### bash_autotranslate END
 EOF
-	$0 -q "$tmp1" >/dev/null
+	"$0" -q "$tmp1" >/dev/null
 }
 
 # Awk parser {{{1
@@ -690,8 +702,8 @@ error() {
 output_template() {
 	cat <<SUPEREOF
 : <<EOF
-#### bash_autotranslate en_US
-#### bash_autotranslate pl_PL
+#### bash_autotranslate en_US.UTF-8
+#### bash_autotranslate pl_PL.UTF-8
 #### bash_autotranslate END
 EOF
 SUPEREOF
@@ -709,7 +721,19 @@ help() {
 
 =head1 USAGE
 
-See C<,bash_autotranslate.sh -h>.
+See C<,bash_autotranslate.sh -h> for command line options.
+
+To regenerate script translations use:
+
+    ,bash_autotranslate.sh ./path/to/script
+
+When you are happy with the changes, you may use B<-i> command line option to modify the script in-place.
+
+From within the to-be-translated script source the autotranslate script:
+
+    source ,bash_autotranslate.sh
+
+You may use B<--regex> command line option to specify the regex, also when sourcing.
 
 =head1 STARTUP
 
@@ -728,9 +752,9 @@ To start working with the script:
     blabla your script
     exit # no point in running past here
 
-    : <<'EOF'  # you may want to use here document to disable shell IDE
-    #### bash_autotranslate pl_PL
-    #### bash_autotranslate de_DE
+    : <<'EOF'  # you may want to use here document to disable ex. IDE highlighting
+    #### bash_autotranslate pl_PL.UTF-8
+    #### bash_autotranslate de_DE.UTF-8
     #### bash_autotranslate pt_PT.UTF-8
     #### bash_autotranslate <another language here>
     #### bash_autotranslate END
@@ -777,9 +801,121 @@ To start working with the script:
 
 =back
 
-=head1 EXAMPLE
+=head1 EXAMPLE1
 
-The follwing script:
+First the following script is created and saved as C<script.sh>:
+
+    #!/bin/bash
+    . ,bash_autotranslate.sh
+    echo $"Some message"
+    exit
+    : <<EOF
+    #### bash_autotranslate pl_PL.UTF-8
+    #### bash_autotranslate de_DE.UTF-8
+    #### bash_autotranslate END
+    EOF
+
+Then execute from command line:
+
+    ,bash_autotranslate.sh -i ./script.sh
+
+
+This will modify C<./script.sh> and result in:
+
+    #!/bin/bash
+    . ,bash_autotranslate.sh
+    echo $"Some message"
+    exit
+    : <<EOF
+    #### bash_autotranslate pl_PL.UTF-8
+    msgid ""
+    msgstr ""
+    "Project-Id-Version: PACKAGE VERSION\n"
+    "Last-Translator: Automatically generated\n"
+    "Language-Team: none\n"
+    "Language: pl\n"
+    "MIME-Version: 1.0\n"
+    "Content-Type: text/plain; charset=UTF-8\n"
+    "Content-Transfer-Encoding: 8bit\n"
+    "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+    #: script.sh:3
+    msgid "Some message"
+    msgstr ""
+
+    #### bash_autotranslate de_DE.UTF-8
+    msgid ""
+    msgstr ""
+    "Project-Id-Version: PACKAGE VERSION\n"
+    "Last-Translator: Automatically generated\n"
+    "Language-Team: none\n"
+    "Language: de\n"
+    "MIME-Version: 1.0\n"
+    "Content-Type: text/plain; charset=ASCII\n"
+    "Content-Transfer-Encoding: 8bit\n"
+    "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+    #: script.sh:3
+    msgid "Some message"
+    msgstr ""
+
+    #### bash_autotranslate END
+    EOF
+
+Now you may insert the translation in specific C<msgstr> places, like:
+
+    #!/bin/bash
+    . ,bash_autotranslate.sh
+    echo $"Some message"
+    exit
+    : <<EOF
+    #### bash_autotranslate pl_PL.UTF-8
+    msgid ""
+    msgstr ""
+    "Project-Id-Version: PACKAGE VERSION\n"
+    "Last-Translator: Automatically generated\n"
+    "Language-Team: none\n"
+    "Language: pl\n"
+    "MIME-Version: 1.0\n"
+    "Content-Type: text/plain; charset=UTF-8\n"
+    "Content-Transfer-Encoding: 8bit\n"
+    "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+    #: script.sh:3
+    msgid "Some message"
+    msgstr "Jakaś wiadomość"
+
+    #### bash_autotranslate de_DE.UTF-8
+    msgid ""
+    msgstr ""
+    "Project-Id-Version: PACKAGE VERSION\n"
+    "Last-Translator: Automatically generated\n"
+    "Language-Team: none\n"
+    "Language: de\n"
+    "MIME-Version: 1.0\n"
+    "Content-Type: text/plain; charset=ASCII\n"
+    "Content-Transfer-Encoding: 8bit\n"
+    "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+    #: script.sh:3
+    msgid "Some message"
+    msgstr "Eine Nachricht"
+
+    #### bash_autotranslate END
+    EOF
+
+After the edit, when executing the script it will be translated:
+
+    $ LC_ALL=C ./script.sh
+    Some message
+    $ LC_ALL=pl_PL.UTF-8 ./script.sh
+    Jakaś wiadomość
+    $ LANGUAGE=de_DE.UTF-8 ./script.sh
+    Eine Nachricht
+
+=head1 EXAMPLE2
+
+Yet another example. The follwing script:
 
     #!/bin/bash
 
@@ -881,7 +1017,7 @@ it will provide polish translation.
 
 Written by Kamil Cukrowski <kamilcukrowski@gmail.com>
 
-=head1 REPORING BUGS
+=head1 REPORTING BUGS
 
 Just write me or post it on my gitlab.com page.
 
@@ -900,7 +1036,7 @@ SUPER_EOF
 
 usage() {
 	cat <<EOF
-Usage: $0 [options] <file>
+Usage: "$(basename "$0")" [options] <file>
 
 Automatically generate translation from bash script sources with gettext.
 The script is meant to be sourced from bash script, in which case it sets
@@ -913,7 +1049,8 @@ Options:
   -q                Be quiet!
   -v --verbose      Be verbose!
      --template     Print sample a template section to add to script.
-  -i --in-place[=SUF]    Edit the file in-place.
+  -O --output       Output the script to stdout, even when there are no changes.
+  -i --in-place[=SUF]    Edit the file in-place. Optional suffix used to create backup.
      --translate    Generate translations for TEXTDOMAIN in TEXTDOMAINDIR.
      --regex=REGEX  Use this regex in awk when matching markings.
   -h                Print this help and exit.
@@ -927,13 +1064,14 @@ EOF
 
 # main {{{1
 
-args=$(getopt -n ",bash_autotranslate" -o qhi::v -l help,translate,template,test::,,in-place::,verbose,regex: -- "$@")
+args=$(getopt -n ",bash_autotranslate" -o qhOi::v -l help,translate,template,test::,output,in-place::,verbose,regex: -- "$@")
 eval set -- "$args"
 loglevel=1
 mode=generate
 in_place=false
 in_place_suffix=""
 g_regex=""
+g_output=false
 while (($#)); do
 	case "$1" in
 	-q) loglevel=0; ;;
@@ -942,6 +1080,7 @@ while (($#)); do
 	--translate) mode=translate; ;;
 	--template) output_template; exit; ;;
 	--test) run_tests "${2:-}"; shift; exit; ;;
+	-O|--output) g_output=true; ;;
 	-i|--in-place) in_place=true; in_place_suffix="${2:-}"; shift; ;;
 	-v|--verbose) loglevel=$((loglevel+1)); ;;
 	--regex) g_regex="$2"; shift; ;;
@@ -1002,7 +1141,8 @@ generate)
 	trap 'rm -f "$tmp_pos" "$tmp_po"' EXIT
 
 	log $"Getting po-strings from the file""..."
-	bash --dump-po-strings "$inputfile" | awk_po_strings_deduplicate > "$tmp_pos"
+	( cd "$(dirname "$inputfile")" && bash --dump-po-strings "$(basename "$inputfile")" ) |
+		awk_po_strings_deduplicate > "$tmp_pos"
 
 	for ((i = 0; i < sectioncnt; ++i)); do
 		out+="${marks[i]}"$'\n'
@@ -1040,8 +1180,7 @@ generate)
 	else
 		if ! "$in_place"; then
 			log $"Replace file content with the following content"":"
-			log ""
-			cat "$tmp_po"
+			g_output=true # Used below
 		else
 			if [[ -n "$in_place_suffix" ]]; then
 				log $"Creating backupfile"" $inputfile$in_place_suffix"
@@ -1050,6 +1189,10 @@ generate)
 			log $"Replacing file content in place"
 			cp "$tmp_po" "$inputfile"
 		fi
+	fi
+	if "$g_output"; then
+		log ""
+		cat "$tmp_po"
 	fi
 	;;
 esac
