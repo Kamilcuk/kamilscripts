@@ -182,7 +182,10 @@ EOF
 
 templ ncbj '
 Host $1_cis
-	Hostname ${2:-$1.cis.gov.pl}${3:+
+	Hostname ${2:-$1.cis.gov.pl}
+	User kcukrowski
+	GSSAPIAuthentication=yes
+	GSSAPIDelegateCredentials yes${3:+
 	$3}
 '
 ncbj   leszcz            10.200.4.5

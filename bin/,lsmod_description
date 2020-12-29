@@ -1,0 +1,3 @@
+#!/bin/sh
+lsmod | awk 'NR>1{print $1,$4}' | xargs -P0 -d'\n' -n1 sh -c 'echo "$1" | { read -r n d; printf "%s\t%s\t%s\n" "$n" "$(modinfo -F description "$n" | paste -sd" ")" "$d"; }' _  | sort | column -s $'\t' -t
+
