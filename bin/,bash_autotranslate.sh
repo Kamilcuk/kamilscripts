@@ -7,18 +7,22 @@
 if [[ "${BASH_SOURCE[0]}" != "${0}" || "${BASH_AUTOTRANSLATE_SOURCE:-}" = "true" ]]; then
 
 	# We create a temporary directory for translations and set TEXTDOMAIN and TEXTDOMAINDIR.
-	if ! export TEXTDOMAINDIR=$(mktemp --tmpdir -d tmp.bash_autotranslate.XXXXXXXXXX); then exit 1; fi
-	if ! export TEXTDOMAIN="${TEXTDOMAIN:-bash_autotranslate}"; then exit 1; fi
-	# In a background process remove the temporary directory once the parent exits.
-	(
-		trap 'rm -rf "$TEXTDOMAINDIR"' EXIT
-		# Poll for parent pid to die!
-		# This is the same that tail --pid= does anyway.
-		while kill -s 0 "$$" 2>/dev/null >&2; do sleep 1; done
-		# Then remove temporary directory in trap.
-	) &
-	# Generate translations. Uses TEXTDOMAINDIR and TEXTDOMAIN.
-	if ! "$BASH_SOURCE" "$@" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
+	TEXTDOMAIN="${TEXTDOMAIN:-bash_autotranslate}" &&
+	export TEXTDOMAIN &&
+	TEXTDOMAINDIR=$(mktemp --tmpdir -d tmp.bash_autotranslate.XXXXXXXXXX) &&
+	export TEXTDOMAINDIR &&
+	{
+		# In a background process remove the temporary directory once the parent exits.
+		(
+			trap 'rm -rf "$TEXTDOMAINDIR"' EXIT
+			# Poll for parent pid to die!
+			# This is the same that tail --pid= does anyway.
+			while kill -s 0 "$$" 2>/dev/null >&2; do sleep 1; done
+			# Then remove temporary directory in trap.
+		) &
+		# Generate translations. Uses TEXTDOMAINDIR and TEXTDOMAIN.
+		if ! "$BASH_SOURCE" "$@" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
+	}
 
 	return
 fi
@@ -1105,7 +1109,8 @@ readonly inputfile
 
 # Parser prints it's own error message.
 tmp=$(mode=extract bash_autotranslate_parser "$inputfile")
-readarray -t -d $'\x01' section <<<"$tmp"
+section=(); IFS=$'\x01' read -d '' -r -a section <<<"$tmp" ||:
+if ((${#section} == 0)); then fatal "internal error: failed reading section from parser"; fi
 readarray -t languages < <(printf "%s" "${section[0]}")
 readarray -t marks < <(printf "%s" "${section[1]}")
 unset section[0] section[1]
