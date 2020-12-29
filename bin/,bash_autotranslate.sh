@@ -851,7 +851,7 @@ This will modify C<./script.sh> and result in:
     "Language-Team: none\n"
     "Language: de\n"
     "MIME-Version: 1.0\n"
-    "Content-Type: text/plain; charset=ASCII\n"
+    "Content-Type: text/plain; charset=UTF-8\n"
     "Content-Transfer-Encoding: 8bit\n"
     "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
@@ -893,7 +893,7 @@ Now you may insert the translation in specific C<msgstr> places, like:
     "Language-Team: none\n"
     "Language: de\n"
     "MIME-Version: 1.0\n"
-    "Content-Type: text/plain; charset=ASCII\n"
+    "Content-Type: text/plain; charset=UTF-8\n"
     "Content-Transfer-Encoding: 8bit\n"
     "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
@@ -1147,12 +1147,16 @@ generate)
 	for ((i = 0; i < sectioncnt; ++i)); do
 		out+="${marks[i]}"$'\n'
 		cat <<<"${section[i]}" >"$tmp_po"
+
+		lang=${languages[i]}
+		add_utf=false
+		if [[ ! "$lang" =~ \. ]]; then
+			# When encoding is missing, default to UTF-8, not to "ASCII", as msginit does.
+			lang+=".UTF-8"
+			add_utf=true
+		fi
+
 		if [[ "${section[i]}" =~ ^$'\n'*$ ]]; then
-			lang=${languages[i]}
-			if [[ ! "$lang" =~ \. ]]; then
-				# When encoding is missing, default to UTF-8, not to "ASCII", as msginit does.
-				lang+=".UTF-8"
-			fi
 
 			log $"Initializing translation to"" ${languages[i]}..."
 			cmd=(msginit --no-wrap --no-translator -l "$lang" -i "$tmp_pos" -o "$tmp_po")
@@ -1165,6 +1169,10 @@ generate)
 				sed 's/^/*.pos: /' "$tmp_pos" | cat -n >&2
 			fi
 			exit 1
+		fi
+		if "$add_utf" && [[ "${cmd[0]}" == "msginit" ]]; then
+			# Yes, I _REALLY_ want UTF-8
+			sed -i -e 's@^"Content-Type: text/plain; charset=ASCII\\n"$@"Content-Type: text/plain; charset=UTF-8\\n"@' "$tmp_po"
 		fi
 
 		# Remove leading empty lines with sed.
