@@ -192,14 +192,14 @@ EOF
 EOF2
 	"$0" "$tmp1" > "$tmp3"
 	diff "$tmp2" "$tmp3"
-	LANGUAGE=C bash "$tmp1" > "$tmp2"
+	LC_MESSAGES=C bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 This is a sample script to show generating translate to work
 Hello world
 New thing to translate!
 EOF
 	diff "$tmp2" "$tmp3"
-	LANGUAGE=pl_PL bash "$tmp1" > "$tmp2"
+	LC_MESSAGES=pl_PL.UTF-8 bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 To jest przykładowy skrypt do pokazania generacji translacji
 Witaj świecie!
@@ -268,7 +268,7 @@ msgstr ""
 "Language-Team: none\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ASCII\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
@@ -356,27 +356,35 @@ EOF
 
 
 	echo "Stage 1"
-	LANGUAGE=C bash "$tmp1" > "$tmp2"
+	LC_MESSAGES=C bash "$tmp1" > "$tmp2"
 	cat <<EOF >"$tmp3"
 This is a sample script to show generating translate to work
 Hello world
 EOF
 	diff "$tmp2" "$tmp3"
 
-	echo "Stage 2"
-	LANGUAGE=pl_PL bash "$tmp1" > "$tmp2"
+	echo "Stage 2.1"
 	cat <<EOF >"$tmp3"
 To jest przykładowy skrypt pokazujący jak działa translacja
 Witaj świecie
 EOF
+	LANGUAGE=pl_PL bash "$tmp1" > "$tmp2"
 	diff "$tmp2" "$tmp3"
 
-	echo "Stage 3"
-	LANGUAGE=de_DE bash "$tmp1" > "$tmp2"
+	echo "Stage 2.2"
+	LANGUAGE=pl_PL.UTF-8 bash "$tmp1" > "$tmp2"
+	diff "$tmp2" "$tmp3"
+
+	echo "Stage 3.1"
 	cat <<EOF >"$tmp3"
 Dies ist ein Beispielskript, das zeigt, wie das Übersetzen in die Arbeit generiert wird
 Hallo Welt
 EOF
+	LANGUAGE=de_DE bash "$tmp1" > "$tmp2"
+	diff "$tmp2" "$tmp3"
+
+	echo "Stage 3.2"
+	LANGUAGE=de_DE.UTF-8 bash "$tmp1" > "$tmp2"
 	diff "$tmp2" "$tmp3"
 }
 
@@ -912,7 +920,7 @@ After the edit, when executing the script it will be translated:
 
     $ LC_ALL=C ./script.sh
     Some message
-    $ LC_ALL=pl_PL.UTF-8 ./script.sh
+    $ LC_MESSAGES=pl_PL.UTF-8 ./script.sh
     Jakaś wiadomość
     $ LANGUAGE=de_DE.UTF-8 ./script.sh
     Eine Nachricht
@@ -1007,7 +1015,7 @@ The script when executed would output:
 
 However executing with polish language:
 
-    $ export LANGUAGE=pl_PL
+    $ export LC_MESSAGES=pl_PL
     $ ./the_script.sh
     Wprowadź pierwszą liczbę
     1
