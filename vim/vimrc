@@ -117,22 +117,24 @@ set visualbell
 
 " Load kamilscripts {{{1
 
-for i in [
-		\ '/usr/lib/kamilscripts/',
-		\ $HOME . '/.config/kamilscripts/kamilscripts/',
-		\ $HOME . '/.local/kamilscripts/',
-		\ $HOME . '/.config/kamilscripts/',
-		\ $HOME . '/.kamilscripts/',
-		\ ]
-	if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
-		let g:kamilscripts = i
-		break
-	endif
-endfor
-unlet i
+if !exists('g:kamilscripts')
+	for i in [
+			\ '/usr/lib/kamilscripts/',
+			\ $HOME . '/.config/kamilscripts/kamilscripts/',
+			\ $HOME . '/.local/kamilscripts/',
+			\ $HOME . '/.config/kamilscripts/',
+			\ $HOME . '/.kamilscripts/',
+			\ ]
+		if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
+			let g:kamilscripts = i
+			break
+		endif
+	endfor
+	unlet i
+endif
 
 if !exists('g:kamilscripts')
-	autocmd VimEnter * echom "~/.vimrc: ERROR: No g:kamilscripts"
+	echoe '~/.vimrc: ERROR: No g:kamilscripts'
 else
 	execute 'set rtp^=' . g:kamilscripts . 'vim'
 	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
@@ -146,23 +148,38 @@ if exists('g:kamilscripts')
 endif
 
 " Load plugins with vim-plug {{{1
+"
+if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
+	call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+	!git clone 'https://github.com/junegunn/vim-plug' '~/.vim/plugged/vim-plug/'
+endif
 
-if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.vim')
-	filetype off
-	execute 'source ' . g:kamilscripts . 'vim/vim-plug/plug.vim'
-	call plug#begin('~/.vim/plugged')
+if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 
-	command -nargs=+ KcPlug2 " empty
-	command -nargs=+ KcPlugCoc " empty
+	command -nargs=+ KcPlug8 " Empty. Only enable in vim version above 800
+	command -nargs=+ KcPlugCoc " Empty. Only enable when coc is able to be enabled
 	if v:version >= 800
-		command! -nargs=+ KcPlug2 execute "Plug <args>"
+		command! -nargs=+ KcPlug8 execute "Plug <args>"
 		if executable('node') && executable('npm') && executable('yarn')
 			command! -nargs=+ KcPlugCoc execute "Plug <args>"
 		endif
 	endif
+	function KcUpdate()
+		PlugUpgrade
+		PlugUpdate
+		if exists(':CocUpdate')
+			CocUpdate
+		endif
+	endfunction
+	command Update call KcUpdate()
 
-	" my
-	"KcPlug2 g:kamilscripts . 'vim/ebundle/my/dbg'
+	filetype off
+	execute 'source ~/.vim/plugged/vim-plug/plug.vim'
+	call plug#begin('~/.vim/plugged')
+
+	" My Plugins
+	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
+	"KcPlug8 'puremourning/vimspector'
 	Plug g:kamilscripts . 'vim/bundle/vim-dispatch'
 	Plug g:kamilscripts . 'vim/bundle/vim-template'
 	Plug 'kamilcuk/vim-showmarks'
@@ -173,9 +190,9 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	" aaa_staging
 	Plug 'junegunn/fzf'
 	Plug 'junegunn/fzf.vim'
-	KcPlug2 'kamykn/spelunker.vim'
+	KcPlug8 'kamykn/spelunker.vim'
 	Plug 'honza/vim-snippets'
-	KcPlug2 'konfekt/vim-DetectSpellLang'
+	KcPlug8 'konfekt/vim-DetectSpellLang'
 	" generic
 	Plug 'Konfekt/FastFold'
 	Plug 'vim-scripts/LargeFile'
@@ -194,13 +211,11 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
-	"KcPlug2 'puremourning/vimspector'
-	" pathogen
 	Plug 'tpope/vim-pathogen'
 	" utils
 	Plug 'chrisbra/NrrwRgn'
 	Plug 'mileszs/ack.vim'
-	KcPlug2 'jlanzarotta/bufexplorer'
+	KcPlug8 'jlanzarotta/bufexplorer'
 	Plug 'FelikZ/ctrlp-py-matcher'
 	Plug 'kien/ctrlp.vim'
 	Plug 'idbrii/golden-ratio'
@@ -223,22 +238,26 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'dhruvasagar/vim-table-mode'
 	Plug 'michaelb/vim-tips'
 	Plug 'tpope/vim-unimpaired'
-	" view
-	Plug 'wimstefan/Lightning'
-	Plug 'yankcrime/direwolf'
+	" view {{{2
+	"Plug 'wimstefan/Lightning'
+	"Plug 'yankcrime/direwolf'
 	Plug 'NLKNguyen/papercolor-theme'
-	Plug 'junegunn/seoul256.vim'
-	KcPlug2 'vim-airline/vim-airline'
-	KcPlug2 'vim-airline/vim-airline-themes'
-	Plug 'endel/vim-github-colorscheme'
-	Plug 'jonathanfilip/vim-lucius'
-	Plug 'rakr/vim-one'
-	" zzz_utils
+	"Plug 'junegunn/seoul256.vim'
+	KcPlug8 'vim-airline/vim-airline'
+	KcPlug8 'vim-airline/vim-airline-themes'
+	"Plug 'endel/vim-github-colorscheme'
+	"Plug 'jonathanfilip/vim-lucius'
+	"Plug 'rakr/vim-one'
+	" zzz_utils {{{2
 	"Plug 'thaerkh/vim-workspace'
 	Plug 'kamilcuk/vim-workspace'
+	" 2}}}
 
 	call plug#end()
 	filetype on
+
+	delcommand KcPlug8
+	delcommand KcPlugCoc
 endif
 
 " Some view things {{{1
