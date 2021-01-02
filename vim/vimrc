@@ -162,15 +162,15 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	endif
 
 	" my
-	KcPlug2 g:kamilscripts . 'vim/ebundle/my/dbg'
-	Plug    g:kamilscripts . 'vim/ebundle/my/vim-ctrlp-oldfiles'
-	Plug    g:kamilscripts . 'vim/ebundle/my/vim-dispatch'
-	Plug    g:kamilscripts . 'vim/ebundle/my/vim-showmarks'
-	Plug    g:kamilscripts . 'vim/ebundle/my/vim-template'
+	"KcPlug2 g:kamilscripts . 'vim/ebundle/my/dbg'
+	Plug g:kamilscripts . 'vim/bundle/vim-dispatch'
+	Plug g:kamilscripts . 'vim/bundle/vim-template'
+	Plug 'kamilcuk/vim-showmarks'
+	Plug 'kamilcuk/vim-ctrlp-oldfiles'
 	" staging2
+	Plug '907th/vim-auto-save'
 	Plug 'lervag/vimtex', { 'for': 'tex' }
 	" aaa_staging
-	Plug 'antoinemadec/coc-fzf'
 	Plug 'junegunn/fzf'
 	Plug 'junegunn/fzf.vim'
 	KcPlug2 'kamykn/spelunker.vim'
@@ -190,6 +190,7 @@ if exists('g:kamilscripts') && filereadable(g:kamilscripts . 'vim/vim-plug/plug.
 	Plug 'tpope/vim-rhubarb'
 	" lang
 	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
+	KcPlugCoc 'antoinemadec/coc-fzf'
 	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
 	Plug 'vim-syntastic/syntastic'
 	Plug 'derekwyatt/vim-fswitch'
@@ -614,8 +615,10 @@ if kc#plugin#enabled('vim-DetectSpellLang')
 	let g:detectspelllang_langs.hunspell = [ 'en_US', 'pl_PL' ]
 endif
 
-let g:dispatch_goto_end = 1
-let g:dispatch_keep_focus = 1
+let g:dispatch_keep_focus = 0
+doautocmd User DispatchComplete copen \| normal G \| wincmd p
+
+let g:auto_save = 1
 
 " Shortcuts {{{1
 
@@ -641,7 +644,7 @@ nnoremap <leader>S :%s/\<<C-r><C-w>\>//g<Left><Left>
 
 " https://castel.dev/post/lecture-notes-1/
 inoremap <C-l>     <c-g>u<Esc>[s1z=`]a<c-g>u
-nnoremap <leader>l <c-g>u<Esc>[s1z=`]a<c-g>u
+"nnoremap <leader>p <c-g>u<Esc>[s1z=`]a<c-g>u
 
 if 0
 	function g:MyCscope(arg)
@@ -907,9 +910,13 @@ endif " kc#plugin#enabled('coc.nvim')
 
 " vimtex Configuration {{{1
 
-let g:vimtex_view_use_temp_files = 1
 let g:vimtex_view_method = 'mupdf'
-let g:livepreview_previewer = 'evince'
+"let g:livepreview_previewer = 'evince'
+
+augroup KcLatex
+	au!
+	autocmd filetype tex :map <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
+augroup END
 
 " Color scheme {{{1
 
