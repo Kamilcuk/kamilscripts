@@ -7,30 +7,8 @@
 # slackware version of dircolors) are recognized but ignored.
 # Below are TERM entries, which can be a glob patterns, to match
 # against the TERM environment variable to determine if it is colorizable.
-TERM Eterm
-TERM ansi
-TERM *color*
-TERM con[0-9]*x[0-9]*
-TERM cons25
-TERM console
-TERM cygwin
-TERM dtterm
-TERM gnome
-TERM hurd
-TERM jfbterm
-TERM konsole
-TERM kterm
-TERM linux
-TERM linux-c
-TERM mlterm
-TERM putty
-TERM rxvt*
-TERM screen*
-TERM st
-TERM terminator
-TERM tmux*
-TERM vt100
-TERM xterm*
+TERM $TERM
+
 # Below are the color init strings for the basic file types.
 # One can use codes for 256 or more colors supported by modern terminals.
 # The default color codes use the capabilities of an 8 color terminal
@@ -193,3 +171,4 @@ EXEC 01;32
 .opus 00;36
 .spx 00;36
 .xspf 00;36
+
