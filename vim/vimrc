@@ -970,8 +970,8 @@ let g:vimtex_view_method = 'mupdf'
 "let g:livepreview_previewer = 'evince'
 
 augroup KcLatex
-	au!
-	autocmd filetype tex :map <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
+	autocmd!
+	autocmd FileType tex :TexItemize <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
 augroup END
 
 " Color scheme {{{1
