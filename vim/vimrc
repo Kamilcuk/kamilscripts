@@ -20,6 +20,10 @@ endif
 
 " Global configuration {{{1
 
+if !isdirectory(expand('~/.vim'))
+	call mkdir(expand('~/.vim'))
+endif
+
 " HOW-TO make vim not suck Out of the Box
 set nocompatible   " This option has the effect of making Vim either more Vi-compatible, or make Vim behave in a more useful way.
 set ruler          " Show the line and column number of the cursor position, separated by a comma
@@ -59,6 +63,10 @@ let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/sh
 if !isdirectory(fnamemodify(tmp, ':h'))
 	call mkdir(fnamemodify(tmp, ':h'), 'p')
 endif
+" Remove ~/.viminfo
+if filereadable(expand('~/.viminfo'))
+	silent !mkdir -p ~/.cache/vim && mv ~/.viminfo ~/.cache/vim/viminfo.old
+endif
 let &viminfo="'100,/50,:5000,<800,@500,h,n" . tmp
 "             |    |   |     |    |    | + viminfo file path
 "             |    |   |     |    |    + disable 'hlsearch' loading viminfo
@@ -68,6 +76,14 @@ let &viminfo="'100,/50,:5000,<800,@500,h,n" . tmp
 "             |    + search history saved
 "             + number of edited files for which marks are remembered
 unlet tmp
+
+" https://stackoverflow.com/questions/17936130/vim-undo-undo-changes-after-file-write
+if has('persistent_undo')    "check if your vim version supports it
+	set undofile             "turn on the feature  
+	if !has('nvim')
+		set undodir=~/.vim/undo  "directory where the undo files will be stored
+	endif
+endif     
 
 " https://vim.fandom.com/wiki/Folding
 set foldmethod=syntax
