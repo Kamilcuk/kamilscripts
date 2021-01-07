@@ -18,8 +18,8 @@ command! -nargs=? -complete=buffer -bang BOnly
     \ :call BufOnly('<args>', '<bang>')
 "command! -nargs=? -complete=buffer -bang Bufonly
 "    \ :call BufOnly('<args>', '<bang>')
-command! -nargs=? -complete=buffer -bang BufOnly
-    \ :call BufOnly('<args>', '<bang>')
+"command! -nargs=? -complete=buffer -bang BufOnly
+    "\ :call BufOnly('<args>', '<bang>')
 
 function! BufOnly(buffer, bang)
 	if a:buffer == ''
@@ -68,7 +68,4 @@ function! BufOnly(buffer, bang)
 	endif
 
 endfunction
-
-
-
 

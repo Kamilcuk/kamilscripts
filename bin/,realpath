@@ -1,0 +1,24 @@
+#!/bin/sh
+
+if hash realpath 2>/dev/null >&2; then 
+	exec realpath "$@"
+fi
+
+pycmd='
+from __future__ import print_function;
+import sys
+import os.path
+if len(sys.argv) == 1:
+	sys.exit(",realpath: missing operand")
+for path in sys.argv[1:]:
+	print(os.path.realpath(path))
+'
+for i in python python2 python3; do
+	if hash "$i" 2>/dev/null >&2; then
+		exec "$i" -c "$pycmd" "$@"
+	fi
+done
+
+echo ",realpath: ERROR: realpath command not found" >&2
+exit 1
+

@@ -137,7 +137,7 @@ if "$use_project"; then
 		run make "$@"
 		exit
 	elif [[ -e 'CMakeLists.txt' ]] &&
-			grep -q 'cmake_minimum_required\s*\(\s*VERSION.*\)' 'CMakeLists.txt'; then
+			grep -q 'cmake_minimum_required\s*(\s*VERSION.*)' 'CMakeLists.txt'; then
 		args=()
 		if hash ninja 2>/dev/null; then args+=(-G Ninja); fi
 		cflags_detect

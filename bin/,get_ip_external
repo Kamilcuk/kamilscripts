@@ -1,4 +1,5 @@
 #!/bin/sh
+
 f1() {
 	if hash host 2>/dev/null >/dev/null; then
 		host -4 o-o.myaddr.l.google.com ns1.google.com |
@@ -34,7 +35,7 @@ f5() {
 
 for i in f4 f5 f1 f2 f3; do
 	ip=$("$i") ||:
-	if grep -xE "([0-9]{1,3}\.){3}[0-9]{1,3}" <<<"$ip"; then
+	if echo "$ip" | grep -xE "([0-9]{1,3}\.){3}[0-9]{1,3}"; then
 		exit
 	fi      
 done

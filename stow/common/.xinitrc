@@ -2,10 +2,11 @@
 # kamilscripts ~/.xinitrc
 # Copied from /etc/lightdm/Xsession
 
-if [ -e ~/.xsession-errors ]; then
-	mv ~/.xsession-errors ~/.xsession-errors.old
+log=~/.cache/xsession-errors
+if [ -e "$log" ]; then
+	mv "$log" "$log".old
 fi
-exec 1>>~/.xsession-errors 2>&1
+exec 1>>"$log" 2>&1
 
 echo "::: Running kamilscripts X session wrapper"
 

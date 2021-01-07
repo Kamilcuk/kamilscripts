@@ -15,12 +15,7 @@ ssh_get_version
 
 ssh_check_ver() {
 	local tmp
-	tmp=$(echo "$ssh_version $1 $2" | bc)
-	if grep -qi error <<<"$tmp"; then
-		echo "ERROR: ssh_check_ver in $BASH_SOURCE" >&2
-		return 1
-	fi
-	if (($tmp)); then
+	if awk "BEGIN{exit(!($ssh_version $1 $2))}" <&-; then
 		shift 2
 		printf "%s\n" "$@"
 	fi
@@ -181,7 +176,7 @@ EOF
 
 
 templ ncbj '
-Host $1_cis
+Host cis-$1
 	Hostname ${2:-$1.cis.gov.pl}
 	User kcukrowski
 	GSSAPIAuthentication=yes

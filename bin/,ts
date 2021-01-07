@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if hash python 2>/dev/null >/dev/null; then
+	exec python -u -c '
+import sys, datetime;
+for i in sys.stdin:
+	sys.stdout.write(datetime.datetime.now().strftime("%H:%M:%S.%f ") + i)
+'
+elif { awk --version | awk -v ver=4.1 'NR==1{gsub(/\.[^\.]*$/,"",$3); exit !($3 >= ver)}' ;} 2>/dev/null; then
+	exec awk '@load "time"; {
+		v = gettimeofday()
+		t = v - int(v)
+		t = sprintf("%.6f", t)
+		gsub("^0", "", t)
+		print strftime("%H:%M:%S", int(v)) t, $0
+	}'
+else
+	exec awk '{ print strftime("%H:%M:%S"), $0; fflush(); }'
+fi

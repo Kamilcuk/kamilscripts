@@ -1,10 +1,15 @@
 #!/bin/bash
 # run from ~/.config/autorun/kamilscripts.desktop
 
-if (($#)) && [[ "$1" = "desktopentry" ]]; then
-	# We are called from desktopentry - redirect stdout and stderr to xsession-errors
-	exec 1>>~/.xsession-errors 2>&1
+if (($# == 1)) && [[ "$1" = "desktopentry" ]]; then
+	log=~/.cache/xsession-errors
+	if [[ -e "$log" ]]; then
+		mv "$log" "$log".old
+	fi
+	exec 1>>"$log" 2>&1
 fi
+
+###############################################################################
 
 log() {
 	printf "%s\n" "$*"
@@ -84,7 +89,7 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 esac
 
 if ! pgrep xbindkeys >/dev/null; then
-	run bindkeys
+	run xbindkeys
 fi
 
 for i in ~/.config/kamilscripts/kamilscripts/etc/autostart/*.sh; do

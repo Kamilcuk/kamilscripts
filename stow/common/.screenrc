@@ -141,3 +141,5 @@ bind I login on
 bind O login off
 bind } history
 
+term xterm
+

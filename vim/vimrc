@@ -156,12 +156,12 @@ endif
 
 if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 
-	command -nargs=+ KcPlug8 " Empty. Only enable in vim version above 800
-	command -nargs=+ KcPlugCoc " Empty. Only enable when coc is able to be enabled
+	command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
+	command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
 	if v:version >= 800
-		command! -nargs=+ KcPlug8 execute "Plug <args>"
+		command! -nargs=+ -bar KcPlug8 call plug#(<args>)
 		if executable('node') && executable('npm') && executable('yarn')
-			command! -nargs=+ KcPlugCoc execute "Plug <args>"
+			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
 		endif
 	endif
 	function KcUpdate()
@@ -180,65 +180,72 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" My Plugins
 	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 	"KcPlug8 'puremourning/vimspector'
-	Plug g:kamilscripts . 'vim/bundle/vim-dispatch'
-	Plug g:kamilscripts . 'vim/bundle/vim-template'
-	Plug 'kamilcuk/vim-showmarks'
-	Plug 'kamilcuk/vim-ctrlp-oldfiles'
+	Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
+	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
+	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
 	" staging2
-	Plug '907th/vim-auto-save'
-	Plug 'lervag/vimtex', { 'for': 'tex' }
+	"Plug 'LucHermitte/lh-vim-lib'
+	"Plug 'LucHermitte/lh-tags'
+	"Plug 'LucHermitte/lh-dev'
+	"Plug 'LucHermitte/lh-style'
+	"Plug 'LucHermitte/lh-brackets'
+	"Plug 'LucHermitte/vim-refactor'
+	"Plug '907th/vim-auto-save'
+	Plug 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
 	" aaa_staging
-	Plug 'junegunn/fzf'
-	Plug 'junegunn/fzf.vim'
-	KcPlug8 'kamykn/spelunker.vim'
-	Plug 'honza/vim-snippets'
-	KcPlug8 'konfekt/vim-DetectSpellLang'
+	Plug 'junegunn/fzf' " fzf.vim needs it
+	Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
+	KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
+	KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
+	Plug 'honza/vim-snippets' " vim-snipmate default snippets
 	" generic
 	Plug 'Konfekt/FastFold'
 	Plug 'vim-scripts/LargeFile'
 	Plug 'wellle/targets.vim'
 	Plug 'airblade/vim-gitgutter'
 	Plug 'mhinz/vim-hugefile'
-	Plug 'tpope/vim-sensible'
+	Plug 'tpope/vim-sensible' " Defaults everyone can agree on
 	" integration
-	Plug 'shumphrey/fugitive-gitlab.vim'
-	Plug 'tpope/vim-fugitive'
-	Plug 'salcode/vim-interactive-rebase-reverse'
-	Plug 'tpope/vim-rhubarb'
+	Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
+	Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :Git
+	Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
+	Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
 	" lang
 	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
-	KcPlugCoc 'antoinemadec/coc-fzf'
+	KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
 	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
 	Plug 'vim-syntastic/syntastic'
-	Plug 'derekwyatt/vim-fswitch'
-	Plug 'tpope/vim-pathogen'
+	"Plug 'derekwyatt/vim-fswitch'
 	" utils
-	Plug 'chrisbra/NrrwRgn'
-	Plug 'mileszs/ack.vim'
-	KcPlug8 'jlanzarotta/bufexplorer'
-	Plug 'FelikZ/ctrlp-py-matcher'
-	Plug 'kien/ctrlp.vim'
-	Plug 'idbrii/golden-ratio'
-	Plug 'fidian/hexmode'
-	Plug 'preservim/nerdcommenter'
-	Plug 'preservim/nerdtree'
-	Plug 'tyru/open-browser.vim'
-	Plug 'luochen1990/rainbow'
-	Plug 'godlygeek/tabular'
-	Plug 'tpope/vim-abolish'
+	Plug 'vimwiki/vimwiki' " make notes
+	Plug 'sk1418/HowMuch' " calculate stuff
+	Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR
+	Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
+	KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating
+	Plug 'suy/vim-ctrlp-commandline' " Search ctrlp in command line also
+	Plug 'FelikZ/ctrlp-py-matcher' " Faster ctrl-p matcher with python
+	Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
+	Plug 'idbrii/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
+	Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
+	Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
+	Plug 'preservim/nerdtree' " The file browser.
+	Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
+	Plug 'luochen1990/rainbow' " Rainbow Parentheses
+	Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
+	Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
 	Plug 'gyim/vim-boxdraw'
-	Plug 'suy/vim-ctrlp-commandline'
-	Plug 'junegunn/vim-easy-align'
-	Plug 'tpope/vim-eunuch'
-	Plug 'samoshkin/vim-mergetool'
-	Plug 'tpope/vim-repeat'
-	Plug 'tpope/vim-scriptease'
+	Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
+	Plug 'junegunn/vim-easy-align' " A Vim alignment plugin.
+	Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
+	Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
 	Plug 'terryma/vim-smooth-scroll'
-	Plug 'tpope/vim-surround'
-	Plug 'dhruvasagar/vim-table-mode'
-	Plug 'michaelb/vim-tips'
-	Plug 'tpope/vim-unimpaired'
-	" view {{{2
+	Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
+	Plug 'dhruvasagar/vim-table-mode' " 
+	Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
+	" For vim plugins
+	Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
+	Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins 
+	" view
 	"Plug 'wimstefan/Lightning'
 	"Plug 'yankcrime/direwolf'
 	Plug 'NLKNguyen/papercolor-theme'
@@ -248,10 +255,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	"Plug 'endel/vim-github-colorscheme'
 	"Plug 'jonathanfilip/vim-lucius'
 	"Plug 'rakr/vim-one'
-	" zzz_utils {{{2
+	" zzz_utils
 	"Plug 'thaerkh/vim-workspace'
 	Plug 'kamilcuk/vim-workspace'
-	" 2}}}
 
 	call plug#end()
 	filetype on
@@ -462,6 +468,16 @@ endif
 if kc#plugin#enabled('vim-template')
 	let g:templates_no_autocmd = 1
 	let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
+	let g:templates_user_variables = [
+		\ ['GUARDPATH', 'KcVimTemplateGuardpath'],
+		\ ['RANDOM', 'KcVimTemplateRandom'],
+		\ ]
+	function! KcVimTemplateGuardpath()
+		return toupper(substitute(expand("%:p:."), "[^a-zA-Z0-9]", "_", "g")) . "_"
+	endfunction
+	function! KcVimTemplateRandom()
+		return system('uuidgen')[:-2]
+	endfunction
 endif
 
 if 0
@@ -494,20 +510,26 @@ let g:ctrlp_extensions += ['oldfiles']
 command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 
 " https://github.com/ggreer/the_silver_searcher
-if executable('ag')
-	let g:ackprg = 'ag --vimgrep'
+if kc#plugin#enabled('ack.vim')
+	if executable('ag')
+		let g:ackprg = 'ag --vimgrep'
+	elseif executable('rg')
+		let g:ackprg = 'rg --vimgrep'
+	else
+		" defaults
+	endif
 endif
 
-if 0 || kc#plugin#enabled('gen_tags.vim')
-	let g:loaded_gentags#ctags = 0
-	let g:gen_tags#gtags_auto_gen = 1
-	let g:gen_tags#gtags_auto_update = 1
-	let g:gen_tags#blacklist = [ $HOME ]
-	let g:gen_tags#statusline = 0
-	let g:gen_tags#gtags_default_map = 0
-	let g:gen_tags#use_cache_dir = 0
-	let g:gen_tags#cache_dir = ".cache"
-endif
+"if 0 || kc#plugin#enabled('gen_tags.vim')
+	"let g:loaded_gentags#ctags = 0
+	"let g:gen_tags#gtags_auto_gen = 1
+	"let g:gen_tags#gtags_auto_update = 1
+	"let g:gen_tags#blacklist = [ $HOME ]
+	"let g:gen_tags#statusline = 0
+	"let g:gen_tags#gtags_default_map = 0
+	"let g:gen_tags#use_cache_dir = 0
+	"let g:gen_tags#cache_dir = ".cache"
+"endif
 
 " goldenratio
 " Don't resize automatically.
@@ -518,72 +540,72 @@ nmap <C-w>- <Plug>(golden_ratio_resize)
 " Fill screen with current window.
 nnoremap <C-w>+ <C-w><Bar><C-w>_
 
-if 0 || kc#plugin#enabled('youcompleteme')
-	if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
-		let g:ycm_clangd_binary_path = '/usr/bin/clangd'
-	endif
-	let g:ycm_autoclose_preview_window_after_completion = 1
-	let g:ycm_confirm_extra_conf = 0
-	let g:ycm_auto_hover = ''
-	let g:ycm_enable_hover = 1
-	nnoremap <leader>d  :YcmShowDetailedDiagnostic<CR>
-	nnoremap <leader>Q  :YcmDiags<CR> " matches [q ]q moves from the other thingi
-	" https://gitter.im/Valloric/YouCompleteMe?at=5d3183545ea6e644ecdf5a7a
-	nnoremap <leader>gd :YcmCompleter GoToDefinitionElseDeclaration<CR>
-	nnoremap <leader>gr :YcmCompleter GoToReferences<CR>
-	nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
-	nnoremap <leader>gf :YcmCompleter FixIt<CR>
-	nnoremap <leader>gK :YcmCompleter GetDoc<CR>
-	nnoremap <leader>gR :YcmCompleter RefactorRename<Space>
-	nnoremap <leader>gF :YcmCompleter Format<CR>
-	"
-	let g:ycm_collect_identifiers_from_tags_files = 1
-	"
-	let g:ycm_global_ycm_extra_conf = g:kamilscripts . 'vim/youcompleteme/ycm_extra_conf.py'
-	let g:ycmconf_loglevel = 0
-	let g:ycmconf_extra_flags = []
-	let g:ycm_extra_conf_vim_data = [ 'g:ycmconf_loglevel', 'g:ycmconf_extra_flags' ]
-endif
+"if 0 || kc#plugin#enabled('youcompleteme')
+	"if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
+		"let g:ycm_clangd_binary_path = '/usr/bin/clangd'
+	"endif
+	"let g:ycm_autoclose_preview_window_after_completion = 1
+	"let g:ycm_confirm_extra_conf = 0
+	"let g:ycm_auto_hover = ''
+	"let g:ycm_enable_hover = 1
+	"nnoremap <leader>d  :YcmShowDetailedDiagnostic<CR>
+	"nnoremap <leader>Q  :YcmDiags<CR> " matches [q ]q moves from the other thingi
+	"" https://gitter.im/Valloric/YouCompleteMe?at=5d3183545ea6e644ecdf5a7a
+	"nnoremap <leader>gd :YcmCompleter GoToDefinitionElseDeclaration<CR>
+	"nnoremap <leader>gr :YcmCompleter GoToReferences<CR>
+	"nnoremap <leader>gt :YcmCompleter GoToInclude<CR>
+	"nnoremap <leader>gf :YcmCompleter FixIt<CR>
+	"nnoremap <leader>gK :YcmCompleter GetDoc<CR>
+	"nnoremap <leader>gR :YcmCompleter RefactorRename<Space>
+	"nnoremap <leader>gF :YcmCompleter Format<CR>
+	""
+	"let g:ycm_collect_identifiers_from_tags_files = 1
+	""
+	"let g:ycm_global_ycm_extra_conf = g:kamilscripts . 'vim/youcompleteme/ycm_extra_conf.py'
+	"let g:ycmconf_loglevel = 0
+	"let g:ycmconf_extra_flags = []
+	"let g:ycm_extra_conf_vim_data = [ 'g:ycmconf_loglevel', 'g:ycmconf_extra_flags' ]
+"endif
 
-if 0 || kc#plugin#enabled('gutentags')
-	let g:gutentags_dont_load = 1
-	let g:gutentags_ctags_exclude = [
-		\ '*.git', '*.svg', '*.hg', '.git', '.github',
-		\ '*/tests/*', '_build', '.build', 'build', '.clangd',
-		\ 'dist', '*sites/*/files/*',
-		\ 'bin', 'node_modules', 'bower_components', 'cache', 'compiled',
-		\ 'docs', 'example', 'bundle', 'vendor', '*.md',
-		\ '*-lock.json', '*.lock', '*bundle*.js', '*build*.js',
-		\ '.*rc*', '*.json', '*.html', '*.min.*', '*.map', '*.bak',
-		\ '*.zip', '*.pyc', '*.class', '*.sln', '*.Master', '*.csproj', '*.tmp',
-		\ '*.csproj.user', '*.cache', '*.pdb', 'tags*', 'cscope.*', '*.css',
-		\ '*.less', '*.scss', '*.exe', '*.dll', '*.mp3', '*.ogg', '*.flac', '*.swp', '*.swo',
-		\ '*.bmp', '*.gif', '*.ico', '*.jpg', '*.png',
-		\ '*.rar', '*.zip', '*.tar', '*.tar.gz', '*.tar.xz', '*.tar.bz2',
-		\ '*.pdf', '*.doc', '*.docx', '*.ppt', '*.pptx',
-		\ '*.map', '*.ld', '*.txt', '.vscode', '*.key',
-		\ '*.json', '*.cproject', '*.project',
-		\ ]
-	let g:gutentags_modules = ['ctags', 'gtags_cscope']
-	let g:gutentags_generate_on_new = 1
-	let g:gutentags_generate_on_missing = 1
-	let g:gutentags_generate_on_write = 1
-	let g:gutentags_generate_on_empty_buffer = 0
-	let g:gutentags_cscope_build_inverted_index = 1
-	let g:gutentags_ctags_extra_args = [
-		\ '--tag-relative=yes',
-		\ '-h=.c.h.cpp.hpp.asm.cmake.make',
-		\ '--fields=+ailmnS',
-		\ ]
-	let g:gutentags_ctags_exclude += [
-		\ '*/Unity/examples',
-		\ '*/Unity/extra',
-		\ '*/Unity/test',
-		\ '_build_tools/*/examples',
-		\ ]
-	let g:gutentags_trace = 0
-	let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
-endif
+"if 0 || kc#plugin#enabled('gutentags')
+	"let g:gutentags_dont_load = 1
+	"let g:gutentags_ctags_exclude = [
+		"\ '*.git', '*.svg', '*.hg', '.git', '.github',
+		"\ '*/tests/*', '_build', '.build', 'build', '.clangd',
+		"\ 'dist', '*sites/*/files/*',
+		"\ 'bin', 'node_modules', 'bower_components', 'cache', 'compiled',
+		"\ 'docs', 'example', 'bundle', 'vendor', '*.md',
+		"\ '*-lock.json', '*.lock', '*bundle*.js', '*build*.js',
+		"\ '.*rc*', '*.json', '*.html', '*.min.*', '*.map', '*.bak',
+		"\ '*.zip', '*.pyc', '*.class', '*.sln', '*.Master', '*.csproj', '*.tmp',
+		"\ '*.csproj.user', '*.cache', '*.pdb', 'tags*', 'cscope.*', '*.css',
+		"\ '*.less', '*.scss', '*.exe', '*.dll', '*.mp3', '*.ogg', '*.flac', '*.swp', '*.swo',
+		"\ '*.bmp', '*.gif', '*.ico', '*.jpg', '*.png',
+		"\ '*.rar', '*.zip', '*.tar', '*.tar.gz', '*.tar.xz', '*.tar.bz2',
+		"\ '*.pdf', '*.doc', '*.docx', '*.ppt', '*.pptx',
+		"\ '*.map', '*.ld', '*.txt', '.vscode', '*.key',
+		"\ '*.json', '*.cproject', '*.project',
+		"\ ]
+	"let g:gutentags_modules = ['ctags', 'gtags_cscope']
+	"let g:gutentags_generate_on_new = 1
+	"let g:gutentags_generate_on_missing = 1
+	"let g:gutentags_generate_on_write = 1
+	"let g:gutentags_generate_on_empty_buffer = 0
+	"let g:gutentags_cscope_build_inverted_index = 1
+	"let g:gutentags_ctags_extra_args = [
+		"\ '--tag-relative=yes',
+		"\ '-h=.c.h.cpp.hpp.asm.cmake.make',
+		"\ '--fields=+ailmnS',
+		"\ ]
+	"let g:gutentags_ctags_exclude += [
+		"\ '*/Unity/examples',
+		"\ '*/Unity/extra',
+		"\ '*/Unity/test',
+		"\ '_build_tools/*/examples',
+		"\ ]
+	"let g:gutentags_trace = 0
+	"let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
+"endif
 
 if kc#plugin#enabled('smooth-scroll')
 	noremap <silent> <c-u> :call smooth_scroll#up(&scroll, 5, 2)<CR>
@@ -634,10 +656,25 @@ if kc#plugin#enabled('vim-DetectSpellLang')
 	let g:detectspelllang_langs.hunspell = [ 'en_US', 'pl_PL' ]
 endif
 
-let g:dispatch_keep_focus = 0
-doautocmd User DispatchComplete copen \| normal G \| wincmd p
+function KcDispatchComplete() abort
+	copen
+	normal G
+	wincmd p
+endfunction
+augroup KcDispatchComplete
+	au!
+	autocmd User DispatchComplete call KcDispatchComplete()
+augroup END
 
-let g:auto_save = 1
+if kc#plugin#enabled('vimwiki')
+	let g:vimwiki_list = [{'path': '~/vimwiki/',
+						  \ 'syntax': 'markdown', 'ext': '.md'}]
+endif
+
+function! s:GoogleSearchSelection() abort
+	execute 'OpenBrowser http://www.google.pl/search?q=' . kc#UrlEncode(kc#VisualSelection())
+endfunction
+vmap <leader>G :call <SID>GoogleSearchSelection()<CR>
 
 " Shortcuts {{{1
 
@@ -655,7 +692,7 @@ noremap ;; ;
 "augroup END
 
 if kc#plugin#enabled('vim-workspace')
-	nnoremap <leader>w :ToggleWorkspace<CR>
+	nnoremap <leader>W :ToggleWorkspace<CR>
 endif
 
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
@@ -948,5 +985,9 @@ colorscheme kamilcuk
 let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
 
 " }}}
+" Custom functions {{{1
+
+" }}}
 
 " vim: filetype=vim:foldmethod=marker:foldenable
+

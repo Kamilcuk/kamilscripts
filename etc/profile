@@ -14,7 +14,7 @@ for i in \
 		"$HOME"/.config/kamilscripts \
 ; do
 	if [ -e "$i" ] && [ -e "$i"/.git ] && [ -e "$i"/bin ]; then
-		export KCDIR=$(readlink -f "$i")
+		KCDIR=$(readlink -f "$i")
 		break
 	fi
 done
@@ -28,7 +28,7 @@ fi
 ##################
 
 for _i in "$KCDIR"/etc/profile.d/*.sh; do
-	if [[ -e "$_i" ]]; then
+	if [ -r "$_i" ]; then
 		. "$_i"
 	fi
 done

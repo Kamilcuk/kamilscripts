@@ -33,6 +33,7 @@ Options:
    ---defaults <func>   Run this function on defaults
    ---n ---nodefaults   Don't include default headers.
    ---d ---usedefaults  Force including default headers.
+   ---V ---valgrind     Run executable through valgrind.
    ---m                 Add a 'int main(int argc, char *argv[]) {' + '}' to the input.
    ---h -h ---help      Print this help and exit.
    ---debug             Debug.
@@ -202,6 +203,8 @@ usedefaults=
 addmain=false
 defaultsfunc=
 debug=false
+c_valgrind=false
+c_gdb=false
 while (($#)); do
 	case "$1" in
 	---cc) shift; cc="$1"; ;;
@@ -209,6 +212,8 @@ while (($#)); do
 	---n|---nodefaults) usedefaults=false; ;;
 	---d|---usedefaults) usedefaults=true; ;;
 	---m|---main) addmain=true; ;;
+	---V|---valgrind) c_valgrind=true; ;;
+	---G|---gdb) c_gdb=true; ;;
 	---h|-h|---help) usage; exit; ;;
 	---debug) debug=true; ;;
 	---test) testme; exit; ;;
@@ -303,8 +308,14 @@ trap 'rm -f "$tmp"' EXIT
 	$cc -o "$tmp" - "${ccargs[@]}"
 } &&
 {
+	cmd=()
+	if "$c_valgrind"; then cmd=(valgrind -q --track-origins=yes --leak-check=full --); fi
+	if "$c_gdb"; then cmd=(
+		gdb --batch -ex 'set width 0' -ex 'set height 0' -ex 'set verbose off' -ex 'run' -ex 'bt' --args
+	); fi
+	cmd+=("$tmp" "${progargs[@]}")
 	if "$debug"; then set -x; fi
-	"$tmp" "${progargs[@]}"
+	"${cmd[@]}"
 }
 
 

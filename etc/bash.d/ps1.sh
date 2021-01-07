@@ -3,6 +3,8 @@
 # check if running interactively
 if [[ $- =~ *i* ]]; then return; fi
 
+unset PROMPT_COMMAND
+
 #### PS1
 PS1_setup() {
 	if ! hash ,color >/dev/null 2>/dev/null; then
@@ -40,9 +42,11 @@ PS1_setup() {
 	PS1=
 	PS1+="\\[$reset\\]"
 	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
-	PS1+="\\[$bold${root+$standout$red}${noroot+$green}\\]"
+	PS1+="\\[$bold"
+		PS1+="\$(if ((UID)); then echo \"$green\"; else echo \"$standout$red\"; fi)"
+	PS1+="\\]"
 	PS1+="\u"
-	PS1+="${root+\\[$nostandout\\]}"
+	PS1+="\$(if ((UID)); then :; else echo \"\\[$nostandout\\]\"; fi)"
 	PS1+="@"
 	if ((colors)) && hash ,color 2>/dev/null; then
 		PS1+="$(,color -s sha1charrainbow3 "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
@@ -73,9 +77,9 @@ PS1_setup() {
 	PS1+=')'
 	PS1+="\\[$reset\\]"
 	PS1+=$'\n'
-	PS1+="${root+\\[$red\\]}"
+	PS1+="\$(if ((UID)); then :; else echo \"\\[$red\\]\"; fi)"
 	PS1+='\$'
-	PS1+="${root+\\[$reset\\]}"
+	PS1+="\$(if ((UID)); then :; else echo \"\\[$reset\\]\"; fi)"
 	PS1+=' '
 	export PS1
 
