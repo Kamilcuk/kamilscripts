@@ -175,7 +175,7 @@ as a star * - match everything.
 
 Example:
 
-,lib_pulseaudio.sh ,pulseaudio_filter_1 'Sink' '' '' 'Built-in Audio Analog Stereo'
+,pulseaudio_lib filter_1 'Sink' '' '' 'Built-in Audio Analog Stereo'
 
 EOF
 		return

@@ -75,11 +75,6 @@ notify() {
 	"$notify_msgs$name" "${title:-$name}" "" "" 500 /tmp/.notifyval."$n" >/dev/null ||:
 }
 
-if ! source ,lib_x_functions.sh; then
-	notify "could not souce lib_x_functions"
-	exit 2
-fi
-
 getPanelHeight() {
 	# add more panels if needed
 	local w
@@ -96,7 +91,7 @@ getScreenGeometry() {
 }
 
 getBorderInfo() {
-	,x_get_window_border_info "$@"
+	,x_lib get_window_border_info "$@"
 }
 
 wmove() {
@@ -141,10 +136,10 @@ action() {
 	if ((activedesktop < 0)); then return; fi
 
 	local mx my tmp
-	tmp=$(,x_get_window_monitor "$activew" | awk '{print $2,$3}')
+	tmp=$(,x_lib get_window_monitor "$activew" | awk '{print $2,$3}')
 	read -r mx my <<<"$tmp" # Monitor X, Monitor Y
 
-	tmp=$(,x_get_xfce4_panel_info)
+	tmp=$(,x_lib get_xfce4_panel_info)
 	read -r _ _ _ _ panelheight hiding <<<"$tmp"
 	if ((!hiding)); then
 		my=$((my - panelheight))

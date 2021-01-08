@@ -1,0 +1,224 @@
+#!/bin/bash
+set -euo pipefail
+
+# be nice
+if [[ $(nice) -lt 10 ]]; then
+	exec nice -n 10 "$0" "$@"
+fi
+
+name=$(basename "$0")
+
+dir_is_empty() {
+	[[ -z "$(ls -A "$1")" ]]
+}
+
+fatal() {
+	echo "$name: ERROR:" "$*" >&2
+	exit 1
+}
+
+run() {
+	echo "+" "$*" >&2
+	"$@"
+}
+
+ask() {
+	echo -n "$1"
+	read -r ans
+	case "$ans" in y) ;; *) exit; ;; esac
+}
+
+###############################################################################
+
+rootdir=${rootdir:-~/.pkgsrc}
+pkgdir=${pkgdir:-"$rootdir/pkg"}
+srcdir=${srcdir:-"$rootdir/src"}
+export WRKOBJDIR=$rootdir/work
+export DISTDIR=$rootdir/distfiles
+export MAKE_JOBS=${MAKE_JOBS:-$(nproc)}
+export SH=/bin/bash
+export PATH="$pkgdir/bin:$PATH"
+export MANPATH="$pkgdir/man:$MANPATH"
+mk_conf="$pkgdir/etc/mk.conf"
+
+,pkgsrc_usage() {
+	cat <<EOF
+Usage: $name <command> [options]
+
+Run with no arguments to see available commands.
+
+A general wrapper around pkgsrc to install everything and stuff
+with some generic ease what not.
+
+Variables:
+$(declare -p rootdir pkgdir srcdir WRKOBJDIR DIRSTDIR MAKE_JOBS SH mk_conf | sed 's/^/  /')
+
+Written by Kamil Cukrowski
+Licensed jointly under Beerware and MIT License
+EOF
+}
+
+,pkgsrc_bootstrap_download_unpack() {
+	if (($# != 0)); then fatal "Takes no arguments"; fi
+	mkdir -p "$pkgdir" "$srcdir" "$WRKOBJDIR" "$DISTDIR"
+	if ! dir_is_empty "$srcdir"; then
+		fatal "Dir is not empty $srcdir"
+	fi
+	run wget -c -O "$rootdir"/pkgsrc.tar.xz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.xz
+	run tar -xaf "$rootdir"/pkgsrc.tar.xz --strip-components=1 -C "$srcdir"
+}
+
+,pkgsrc_bootstrap_run() {
+	if (($# != 0)); then fatal "Takes no arguments"; fi
+	run rm -rf "$WRKOBJDIR" # no idea why
+	run "$srcdir"/bootstrap/bootstrap \
+		--make-jobs "$MAKE_JOBS" \
+		--unprivileged \
+		--ignore-user-check \
+		--prefix "$pkgdir" \
+		--workdir "$WRKOBJDIR"
+  cat <<EOF >>"$mk_conf"
+
+# Configured from $0
+WRKOBJDIR=   $WRKOBJDIR
+DISTDIR=     $DISTDIR
+# EOF Configured from $0
+
+EOF
+	cat <<EOF
+Add to your bashrc:
+export PATH=$pkgdir/bin:$pkgdir/sbin:$PATH
+export MANPATH=$pkgdir/man:$MANPATH
+export MAKE_JOBS=\$(nproc)
+alias bmake='nice bmake'
+EOF
+}
+
+,pkgsrc_bootstrap_update() {
+	ask 'You sure? There be hard coming back. [y/n] '
+	if [[ -e "$srcdir" ]]; then
+		run rm -r "$srcdir"
+	fi
+	,pkgsrc_bootstrap_download_unpack
+	,pkgsrc_bootstrap_run
+}
+
+,pkgsrc_list_packages() {
+	if (($# != 0)); then fatal "Needs no arguments"; fi
+	( cd "$srcdir" && find . -mindepth 2 -maxdepth 2 -type d | cut -c3- )
+}
+
+,pkgsrc_search() {
+	if [[ -z "${1:-}" ]]; then fatal "Needs an argument"; fi
+	,pkgsrc_list_packages | grep "$1"
+}
+
+,pkgsrc_searchx() {
+	if [[ -z "${1:-}" ]]; then fatal "Needs an argument"; fi
+	,pkgsrc_list_packages | grep -x "[^/]*/$1"
+}
+
+,pkgsrc_install() {
+	if [[ -z "${1:-}" ]]; then fatal "Needs an argument"; fi
+	local i
+	for i in "$@"; do
+		if [[ ! -d "$srcdir/$i" ]]; then
+			echo "Package $i not found, did you mean:"
+			,pkgsrc_search "$i"
+			return 1
+		fi
+	done
+	for i in "$@"; do
+		run cd "$srcdir/$i"
+		run bmake install clean clean-depends
+	done
+}
+
+,pkgsrc_installx() {
+	if [[ -z "${1:-}" ]]; then fatal "Needs an argument"; fi
+	local list tmp
+	list=()
+	for i in "$@"; do
+		if ! tmp=$(,pkgsrc_searchx "$i"); then
+			fatal "Package $i not found"
+		fi
+		list+=("$tmp")
+	done		
+	echo "Installing ${list[*]}"
+	,pkgsrc_install "${list[@]}"
+}
+
+,pkgsrc_edit_mk() {
+	if (($# != 0)); then fatal "Needs no arguments"; fi
+	run "${EDITOR:-vim}" "$mk_conf"
+}
+
+,pkgsrc_fetch_vulnerabilities() {
+	run "$pkgdir"/sbin/pkg_admin -K "$pkgdir"/pkgdb fetch-pkg-vulnerabilities
+}
+
+,pkgsrc_clean_dist() {
+	,pkgsrc_clean
+	run rm -rf "$DISTDIR"
+}
+
+,pkgsrc_clean() {
+	run rm -rf "$WRKOBJDIR"
+}
+
+,pkgsrc_installed() {
+	run pkg_info | sed 's/^\([^ \t]*\) */\1\t/' | column -t -s $'\t'
+}
+
+,pkgsrc_uninstall() {
+	run pkg_delete "$@"
+}
+
+,pkgsrc_wip_update() {
+	if [[ ! -d "$srcdir"/wip ]] || dir_is_empty "$srcdir"/wip; then
+		# run git clone git://wip.pkgsrc.org/pkgsrc-wip.git "$srcdir"/wip
+		run git clone https://github.com/NetBSD/pkgsrc-wip.git "$srcdir"/wip
+	fi
+	run cd "$srcdir"/wip
+	run git pull -r
+}
+
+LIB_,pkgsrc_edit_mk.add_curl_with_timeout() {
+	desc="add curl with connection timeout configuration to make.mk"
+}
+,pkgsrc_edit_mk.add_curl_with_timeout() {
+	cat <<'EOF' >>"$conf_mk"
+
+FETCH_WITH_TIMEOUT=1
+.if ${FETCH_WITH_TIMEOUT} == 1
+FETCH_USING=custom
+FETCH_CMD=curl
+FETCH_BEFORE_ARGS=--fail --insecure --location --remote-time --connect-timeout 5
+FETCH_AFTER_ARGS=-O
+FETCH_RESUME_ARGS=-C -
+FETCH_OUTPUT_ARGS=-o 
+.endif
+
+EOF
+}
+
+# shortcuts
+while IFS=' ' read -r from to; do
+	eval "
+LIB_,pkgsrc_$from() { desc='Shortcut to $to'; }
+,pkgsrc_$from() { run ,pkgsrc_$to \"\$@\"; }
+"
+done <<EOF
+s search
+sx searchx
+i install
+ix installx
+e edit_mk
+l installed
+u uninstall
+EOF
+
+###############################################################################
+
+. ,lib_lib "$BASH_SOURCE" ',pkgsrc_' "$@"
+

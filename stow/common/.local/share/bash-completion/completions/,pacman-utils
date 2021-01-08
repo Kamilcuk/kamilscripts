@@ -1,0 +1,2 @@
+eval "$(,pacman-utils --bash-completion)"
+

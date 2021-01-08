@@ -1,0 +1,2 @@
+eval "$(,pulseaudio_lib --bash-completion)"
+

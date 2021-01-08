@@ -1,14 +1,14 @@
 
 # https://alexpearce.me/2014/05/italics-in-iterm2-vim-tmux/
 if ! hash tput 2>/dev/null >&2; then return; fi; # no ncurses, no point
-if [[ "$({ tput sitm; } 2>/dev/null)" != "" ]]; then return; fi
+# if [[ "$({ tput sitm; } 2>/dev/null)" != "" ]]; then return; fi
 
 newterm=""
 case "$TERM" in
-screen-256color)
+screen-256color|screen-256color-italic)
 	newterm=screen-256color-italic
 	;;
-xterm-256color)
+xterm-256color|xterm-256color-italic)
 	newterm=xterm-256color-italic
 	;;
 esac

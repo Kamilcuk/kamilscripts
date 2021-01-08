@@ -5,9 +5,9 @@ if [[ "$HOSTNAME" != 'leonidas' ]]; then return; exit; fi
 # xrandr --output HDMI-0 --gamma 0.95:0.97:1.0
 # xcalib -a -c ; xcalib -a -red 0.95 0 100 -green 0.97 0 100 -blue 1.00 0 100
 
-,lib_pulseaudio.sh ,pulseaudio_filter_2 'Card' '' '*Built-in Audio*' |
+,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' |
 	xargs -i pactl set-card-profile {} output:analog-stereo
-,lib_pulseaudio.sh ,pulseaudio_filter_2 'Sink' '' 'Built-in Audio Analog Stereo' |
+,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' |
 	xargs -i pactl set-sink-port {} analog-output-lineout
 
 return
@@ -113,5 +113,4 @@ runinbg xbindkeys
 #( exec nohup Toggledesktop.sh >/dev/null 2>/dev/null ) &
 
 #
-
 
