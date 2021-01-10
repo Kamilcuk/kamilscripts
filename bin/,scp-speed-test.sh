@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+name=$(basename "$0")
+
 # functions #####################################
 
 usage() {
-	n=qqscp-speed-test.sh
 	cat <<EOF
-Usage: $n [OPTIONS] [user@]hostname [file size in kB]
+Usage: $nane [OPTIONS] [user@]hostname [file size in kB]
 
 Tests ssh connection speed by uploading and then downloading a test file
 Default file size is 10000kB
@@ -21,8 +22,8 @@ Options:
 	-B arg 		pass additional argument arg to both ssh and scp commands
 
 Examples:
-	$n host@hostname 200
-	$n -S -p -C -P -B 10022 -B -o -B ConnectTimeout=4 myuser@myhostname
+	$name host@hostname 200
+	$name -S -p -C -P -B 10022 -B -o -B ConnectTimeout=4 myuser@myhostname
 
 Written by Kamil Cukrowski. Jointly under MIT License and Beetware license.
 Based on scp-speed-test.sh from  Alec Jacobson alecjacobsonATgmailDOTcom
@@ -37,6 +38,11 @@ trap_exit() {
 	fi
 }
 trap trap_exit EXIT
+
+fatal() {
+	echo "$name: ERROR:" "$*" >&2
+	exit 1 
+}
 
 # main ##########################################
 
@@ -60,6 +66,8 @@ while true; do
 	esac
 	shift;
 done
+
+if (($# == 0)); then fatal "Server name is missing"; fi
 ssh_server=$1
 test_size=${2:-10000}
 

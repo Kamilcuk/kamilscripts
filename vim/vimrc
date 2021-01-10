@@ -167,7 +167,7 @@ endif
 "
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
-	!git clone 'https://github.com/junegunn/vim-plug' '~/.vim/plugged/vim-plug/'
+	!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
 endif
 
 if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
