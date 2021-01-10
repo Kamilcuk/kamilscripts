@@ -7,6 +7,13 @@ if get(g:, 'loaded_kamilscripts_vimrc', 0)
 endif
 let g:loaded_kamilscripts_vimrc = 1
 
+" Ignore missing terminfo - ie. wrong TERM.
+if 0 && &t_cm == ""
+	" It still _will_ work with 99% of nowadays terminals anyway.
+	echo dupa
+	let &t_cm = "\<esc>[%i%p1%d;%p2%dH"
+endif
+
 if !has('nvim') && filereadable(expand('$VIMRUNTIME/defaults.vim'))
 	source $VIMRUNTIME/defaults.vim
 endif
@@ -166,7 +173,9 @@ endif
 " Load plugins with vim-plug {{{1
 "
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-	call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
+		call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+	endif
 	!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
 endif
 
@@ -186,6 +195,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		if exists(':CocUpdate')
 			CocUpdate
 		endif
+		execute '!cd '.g:kamilscripts.' && ./update.sh'
 	endfunction
 	command Update call KcUpdate()
 
@@ -274,6 +284,8 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" zzz_utils
 	"Plug 'thaerkh/vim-workspace'
 	Plug 'kamilcuk/vim-workspace'
+	" Add itself
+	Plug 'junegunn/vim-plug'
 
 	call plug#end()
 	filetype on
@@ -359,6 +371,7 @@ augroup END
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 " Reload vim and config automatically
+if 0
 augroup UpdateVim
 	autocmd!
 	autocmd UpdateVim BufWritePost ~/vimrc source ~/vimrc | redraw | silent doautocmd ColorScheme
@@ -371,6 +384,7 @@ augroup UpdateVim
 	autocmd VimResized * redraw!
 	autocmd VimResized * wincmd =
 augroup END
+endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 " Set tmux title

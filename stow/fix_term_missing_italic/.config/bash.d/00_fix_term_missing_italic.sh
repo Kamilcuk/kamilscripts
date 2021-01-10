@@ -5,20 +5,26 @@ if ! hash tput 2>/dev/null >&2; then return; fi; # no ncurses, no point
 
 newterm=""
 case "$TERM" in
-screen-256color|screen-256color-italic)
+screen-256color)
 	newterm=screen-256color-italic
 	;;
-xterm-256color|xterm-256color-italic)
+xterm-256color)
 	newterm=xterm-256color-italic
 	;;
 esac
 
 if [[ -n "$newterm" ]]; then
-	if 
-		[[ -e "$HOME/.terminfo/${newterm:0:1}/$newterm" ]] || 
-		{ hash toe 2>/dev/null >&2 && { toe -a | grep -q "^$newterm\s\+" ;} ;} ||
-		{ hash tic 2>/dev/null >&2 && tic "$(dirname "$BASH_SOURCE")"/"$newterm".terminfo ;}
-	then
+	# Regenerate all custom terminals if not generated already.
+	if hash tic 2>/dev/null >&1; then
+		for i in "$(dirname "$BASH_SOURCE")"/*.terminfo; do 
+			if [[ -e "$i" && ! -e "$HOME/.terminfo/${i:0:1}/$i" ]]; then
+				tic "$i"
+			fi
+		done
+	fi
+	if [[ -e "$HOME/.terminfo/${newterm:0:1}/$newterm" ]]; then
+		alias su="TERM=$TERM su"
+		alias sudo="TERM=$TERM sudo"
 		export TERM="$newterm"
 	fi
 fi
