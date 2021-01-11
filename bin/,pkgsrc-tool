@@ -38,7 +38,7 @@ export DISTDIR=$rootdir/distfiles
 export MAKE_JOBS=${MAKE_JOBS:-$(nproc)}
 export SH=/bin/bash
 export PATH="$pkgdir/bin:$PATH"
-export MANPATH="$pkgdir/man:$MANPATH"
+export MANPATH="$pkgdir/man${MANPATH:+:$MANPATH}"
 mk_conf="$pkgdir/etc/mk.conf"
 
 ,pkgsrc_usage() {
@@ -84,13 +84,6 @@ WRKOBJDIR=   $WRKOBJDIR
 DISTDIR=     $DISTDIR
 # EOF Configured from $0
 
-EOF
-	cat <<EOF
-Add to your bashrc:
-export PATH=$pkgdir/bin:$pkgdir/sbin:$PATH
-export MANPATH=$pkgdir/man:$MANPATH
-export MAKE_JOBS=\$(nproc)
-alias bmake='nice bmake'
 EOF
 }
 
@@ -167,11 +160,11 @@ EOF
 }
 
 ,pkgsrc_installed() {
-	run pkg_info | sed 's/^\([^ \t]*\) */\1\t/' | column -t -s $'\t'
+	run "$pkgdir"/sbin/pkg_info | sed 's/^\([^ \t]*\) */\1\t/' | column -t -s $'\t'
 }
 
 ,pkgsrc_uninstall() {
-	run pkg_delete "$@"
+	run "$pkgdir"/sbin/pkg_delete "$@"
 }
 
 ,pkgsrc_wip_update() {
@@ -200,6 +193,12 @@ FETCH_OUTPUT_ARGS=-o
 .endif
 
 EOF
+}
+
+,pkgsrc_enable() {
+	export PATH=$pkgdir/bin:$pkgdir/sbin:$PATH
+	export MANPATH=$pkgdir/man:$MANPATH
+	declare -p PATH MANPATH
 }
 
 # shortcuts
