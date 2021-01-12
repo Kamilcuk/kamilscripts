@@ -1,2 +1,2 @@
-eval "$(,pkgsrc-lib --bash-completion)"
+eval "$(,pkgsrc-tool --bash-completion)"
 
