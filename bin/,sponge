@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if hash sponge 2>/dev/null >&2; then
+	exec sponge "$@"
+else
+	set -euo pipefail
+	append=false
+	if (($#)) && [[ "$1" == "-a" ]]; then
+		append=true
+		shift
+	fi
+	if (($#)) && [[ "$1" == "--" ]]; then
+		shift
+	fi
+	if (($# != 1)); then
+		echo "Usage: ,sponge [-a] file" >&2
+		exit 1
+	fi
+	outf=$1
+
+	tmp=$(mktemp)
+	trap 'rm "$tmp"' EXIT
+	{
+		if "$append"; then
+			cat "$outf"
+		fi
+		cat
+	} > "$tmp"
+	mv "$tmp" "$outf"
+	trap '' EXIT
+fi
+
