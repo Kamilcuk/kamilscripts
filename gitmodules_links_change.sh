@@ -2,15 +2,15 @@
 set -euo pipefail
 
 to_ssh() {
-	sed -E 's~^(\s*url\s*=\s*)https://github.com/kamilcuk/~\1git@github.com:kamilcuk/~' -i .gitmodules
+	sed -E 's~^(\s*url\s*=\s*)https://github.com/[kK]amilcuk/~\1git@github.com:kamilcuk/~' -i .gitmodules
 }
 to_https() {
-	sed -E 's~^(\s*url\s*=\s*)git@github.com:kamilcuk/~\1https://github.com/kamilcuk/~' -i .gitmodules
+	sed -E 's~^(\s*url\s*=\s*)git@github.com:[kK]amilcuk/~\1https://github.com/kamilcuk/~' -i .gitmodules
 }
 detect() {
 	sed -E '
-		\~^\s*url\s*=\s*https://github.com/kamilcuk~{ s/.*/https/; q }
-		\~^\s*url\s*=\s*git@github.com:kamilcuk/~{ s/.*/ssh/; q }
+		\~^\s*url\s*=\s*https://github.com/[kK]amilcuk~{ s/.*/https/; q }
+		\~^\s*url\s*=\s*git@github.com:[kK]amilcuk/~{ s/.*/ssh/; q }
 		d
 	' .gitmodules
 }

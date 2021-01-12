@@ -4,4 +4,4 @@
 	branch = kamilcuk
 [submodule "third_party/tmux"]
 	path = third_party/tmux
-	url = git@github.com:Kamilcuk/.tmux
+	url = git@github.com:kamilcuk/.tmux
