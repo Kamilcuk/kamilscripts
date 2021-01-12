@@ -5,9 +5,17 @@ NAME=$(basename "$0")
 
 # Bash functions ################################################################################
 
+_usage_listconfig() {
+	"$0" listconfig | sort | if hash fmt 2>/dev/null; then fmt; else cat; fi | sed 's/^/  /'
+}
+
+_usage_modes() {
+	"$0" usagemodes
+}
+
 usage() {
 	cat <<EOF
-Usage: $NAME [options] mode...
+Usage: $NAME [OPTIONS] [MODE [ARGS...]] [MODE [ARGS...]]...
 
 Translated user readable format string in ascii escape seqeunces.
 
@@ -20,11 +28,9 @@ Options:
        --test[=NUM]  Print all possible configurations. Optionally specify test part number.
 
 Modes:
-$($0 listconfig | sort | if hash fmt 2>/dev/null; then fmt; else cut; fi | sed 's/^/  /')
+$(_usage_listconfig)
 
   b_*           - Are shortcuts to background_*.
-  reset         - Resets the current settings.
-  test          - Print the string 'test' in requested mode.
   f8#RGB        - 8-bit RGB code for foreground. Values must be within 0-5 range
   b8#RGB        - 8-bit RGB code for background.
   f26#RRGGBB    - 24-bit RGB code for foreground.
@@ -32,19 +38,14 @@ $($0 listconfig | sort | if hash fmt 2>/dev/null; then fmt; else cut; fi | sed '
   RRGGBB        - Same as f#RRGGBB.
   f#RRGGBB      - Uses 8-bit or 24-bit colors for foreground.
   b#RRGGBB      - Uses 8-bit or 24-bit colors for background.
-  print "text"  - print the text
-  echo "text"   - print the text with a newline
-  charrainbow RRGGBB RRGGBB "text" 
-                - print each word from text using colors from one color to another
-  charrainbow3 RRGGBB RRGGBB RRGGBB "text"
-                - print each word from text using colors changing from 3 colors
-  colors        - runs tput colors
+$(_usage_modes)
 
 Examples:
     $NAME red b_green; echo 123; $NAME reset
-    $NAME green b_red test reset red b_green test
+    $NAME green b_red echo "Soem strimg" reset
     $NAME charrainbow ff0000 00ff00 this_is_funny_string
     $NAME charrainbow3 ff0000 00ff00 00000ff this_is_funny_string
+    $NAME sha1charrainbow3 this_is_funny_string
 
 Written by Kamil Cukrowski
 SPDX-License-Identifier: GPL-3.0+
@@ -53,8 +54,8 @@ EOF
 
 bashautocomplete() {
 	local tmp
-	tmp="$($0 listconfig) -h --help -s --safe --separator= # b# 8# b8# 26# b26#"
-	printf "complete -W %q %s\n" "$tmp" "$NAME"
+	tmp="$($0 listconfig listmodes | paste -sd ' ') -h --help -s --safe --separator= # b# 8# b8# 26# b26#"
+	printf "complete -W %q %q\n" "$tmp" "$NAME"
 }
 
 # Main ################################################################################################
@@ -103,13 +104,23 @@ fi
 #################################################################################################
 
 awk \
-	-v colors="$colors" \
+	-v SCRIPT="$0" \
 	-v NAME="$NAME" \
+	-v colors="$colors" \
 	-v safe="$safe" \
 	-v separator="$separator" \
-	-v COLS=$cols \
-	-v LINES=$lines \
-"$(seq -f "# %f" 0 "$LINENO")"'
+	-v COLS="$cols" \
+	-v LINES="$lines" \
+	-f <(
+		seq -f "# %f" 0 "$LINENO"
+		sed -n -e '/^### AWK SCRIPT STARTS HERE ### b1dbe8d8-d112-4e04-a32f-8b7f901c9580$/,$p' "$0"
+	) <(printf "%s\n" "$@")
+
+exit
+
+# vim: filetype=awk
+
+### AWK SCRIPT STARTS HERE ### b1dbe8d8-d112-4e04-a32f-8b7f901c9580
 
 # MD5 ###########################################################################################
 
@@ -421,13 +432,41 @@ function _md5_init() {
 function sha1(str, \
 		tmp, cmd) {
 	tmp = str
+	# \047 is apostrophe.
+	# Fun fact - we are here inside single bash quoting.
 	gsub("\047", "\047\\\047\047", tmp)
-	cmd = sprintf("printf '%%s' '%s' | sha1sum", tmp)
+	cmd = sprintf("printf \047%%s\047 \047%s\047 | sha1sum", tmp)
 	cmd | getline tmp
 	return tmp
 }
 
 # End of sha1 ###################################################################################
+# Library #######################################################################################
+
+function _qsort(A, left, right, \
+		i, last) {
+	if (left >= right)
+		return
+	_qsort_swap(A, left, left+int((right-left+1)*rand()))
+	last = left
+	for (i = left+1; i <= right; i++)
+		if (A[i] < A[left])
+			_qsort_swap(A, ++last, i)
+	_qsort_swap(A, left, last)
+	_qsort(A, left, last-1)
+	_qsort(A, last+1, right)
+}
+
+function _qsort_swap(A, i, j, \
+		t) {
+	t = A[i]; A[i] = A[j]; A[j] = t
+}
+
+function qsort(A, first, leng) {
+	_qsort(A, first, leng - 1)
+}
+
+# End of Library ################################################################################
 # Global functions ##############################################################################
 
 function load_config() {
@@ -869,9 +908,54 @@ function mode_listconfig() {
 	}
 }
 
-function mode_24_to_8() {
-	str=Getline()
-	
+function mode_listmodes() {
+	for (i in modes) {
+		printf "%s\n", i
+	}
+}
+
+function mode_usagemodes( \
+		i, tmp, l, lf, f, s, out, outnum) {
+	l=0
+	for (i in modes) {
+		# Extract modes into "name|desc"
+		f[i] = i
+		s[i] = ""
+		if (length(modes[i])) {
+			# Some parsign - remove leading spaces and add | is missing
+			gsub(/^ */, "", modes[i])
+			if (modes[i] !~ /\|/) {
+				modes[i] = "|" modes[i]
+			} else {
+				modes[i] = " " modes[i]
+			}
+
+			split(modes[i], a, "|")
+			f[i] = f[i] a[1]
+			s[i] = a[2]
+		}
+		# Get the length of first column
+		if (l < length(f[i])) {
+			l = length(f[i])
+		}
+	}
+
+	# Print it
+	numnum=1
+	for (i in modes) {
+		if (length(s[i])) {
+			tmp = sprintf("%-*s - %s", l, f[i], s[i])
+		} else {
+			tmp = sprintf("%s", f[i])
+		}
+		out[outnum++] = tmp
+	}
+
+	# Sort it and print it
+	qsort(out, 1, outnum)
+	for (i = 1; i < outnum; ++i) {
+		printf "  %s\n", out[i]
+	}
 }
 
 function helper_mode_something_charrainbow(funct, num, \
@@ -913,22 +997,28 @@ function mode_sha1charrainbow3() {
 	helper_mode_something_charrainbow("sha1_to_hex_helper", 3)
 }
 
+function mode_nl() {
+	printf "\n"
+}
+
 function load_modes() {
-	modes["test"]
-	modes["test1"]
-	modes["echo"]
-	modes["print"]
-	modes["charrainbow"]
-	modes["charrainbow3"]
-	modes["colors"]
-	modes["listconfig"]
-	modes["24_to_8"]
-	modes["md5"]
-	modes["md5charrainbow"]
-	modes["md5charrainbow3"]
-	modes["sha1"]
-	modes["sha1charrainbow"]
-	modes["sha1charrainbow3"]
+	modes["test"]="|Print all testing styles and various data"
+	modes["test1"]="|Print 8-bit background and foreground pallete"
+	modes["echo"]="TEXT|Print argument with newline"
+	modes["print"]="TEXT|Print argument without a newline"
+	modes["charrainbow"]="RRGGBB RRGGBB TEXT|Print each character using a rainbow from one color to another"
+	modes["charrainbow3"]="RRGGBB RRGGBB RRGGBB TEXT|Print each character using a rainbow"
+	modes["colors"]="Runs tput colors"
+	modes["listconfig"]="List all avilable configs"
+	modes["listmodes"]="List all available modes"
+	modes["usagemodes"]="Print usage modes"
+	modes["md5"]="STR|Compute md5 of string"
+	modes["md5charrainbow"]="STR|Feed charrainbow from md5 of string"
+	modes["md5charrainbow3"]="STR|Feed charrainbow3 from md5 of string"
+	modes["sha1"]="STR|Compute sha1 of string"
+	modes["sha1charrainbow"]="STR|Feed charrainbow from sha1 of string"
+	modes["sha1charrainbow3"]="STR|Feed charrainbow3 from sha1 of string"
+	modes["nl"]="|Print a newline"
 }
 
 function choose_mode(mode) {
@@ -940,13 +1030,15 @@ function choose_mode(mode) {
 	if (mode == "charrainbow3") mode_charrainbow3(); else
 	if (mode == "colors") mode_colors(); else
 	if (mode == "listconfig") mode_listconfig(); else
-	if (mode == "24_to_8") mode_24_to_8(); else
+	if (mode == "listmodes") mode_listmodes(); else
+	if (mode == "usagemodes") mode_usagemodes(); else
 	if (mode == "md5") mode_md5(); else
 	if (mode == "md5charrainbow") mode_md5charrainbow(); else
 	if (mode == "md5charrainbow3") mode_md5charrainbow3(); else
 	if (mode == "sha1") mode_sha1(); else
 	if (mode == "sha1charrainbow") mode_sha1charrainbow(); else
 	if (mode == "sha1charrainbow3") mode_sha1charrainbow3(); else
+	if (mode == "nl") mode_nl(); else
 	fatal("choose_modes: unknown mode");
 }
 
@@ -962,11 +1054,4 @@ $0 ~ "^[fb]#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 4)); Next(
 $0 in modes{ choose_mode($0); Next(); }
 $0 in config{ printf "%s", config[$0]; Next(); }
 { fatal("Invalid argument: "$0) }
-
-' <(printf "%s\n" "$@")
-
-
-# vim: filetype=awk
-
-
 
