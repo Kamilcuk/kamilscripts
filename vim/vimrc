@@ -217,7 +217,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	"Plug 'LucHermitte/lh-brackets'
 	"Plug 'LucHermitte/vim-refactor'
 	"Plug '907th/vim-auto-save'
-	Plug 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
+	KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
 	" aaa_staging
 	Plug 'junegunn/fzf' " fzf.vim needs it
 	Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim

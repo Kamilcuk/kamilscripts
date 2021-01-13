@@ -38,8 +38,14 @@ PS1_setup() {
 		root=;
 	fi
 
-	# {user:green/root:red}<username>@{rainbow}<hostname> {lightblue}/{blue}<dir>...\n$
 	PS1=
+
+	local virt
+	if hash systemd-detect-virt 2>/dev/null >&2 && virt=$(systemd-detect-virt); then
+		PS1="\\[$bold$red\\]$virt\\[$reset\\] "
+	fi
+
+	# {user:green/root:red}<username>@{rainbow}<hostname> {lightblue}/{blue}<dir>...\n$
 	PS1+="\\[$reset\\]"
 	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
 	PS1+="\\[$bold"
