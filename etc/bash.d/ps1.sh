@@ -3,16 +3,13 @@
 # check if running interactively
 if [[ $- =~ *i* ]]; then return; fi
 
-unset PROMPT_COMMAND
-
-#### PS1
-PS1_setup() {
+_kc_prompt_setup() {
 	if ! hash ,color >/dev/null 2>/dev/null; then
 		,color() { :; }
 	fi
 
 	local tmp root noroot colors
-	tmp="white reset bold yellow standout red blue green nostandout cyan"
+	tmp="reset bold standout nostandout yellow red blue green cyan"
 	local $tmp
 
 	IFS=' ' read -r $tmp < <(,color -s --separator=' ' $tmp) ||:
@@ -29,68 +26,55 @@ PS1_setup() {
 		standout=
 	fi
 
-	# ${var+expr} expands to expr is var is set, but empty
-	if ((UID)); then 
-		noroot=;
-		unset root
-	else
-		unset noroot;
-		root=;
-	fi
-
-	PS1=
-
-	local virt
-	if hash systemd-detect-virt 2>/dev/null >&2 && virt=$(systemd-detect-virt); then
-		PS1="\\[$bold$red\\]$virt\\[$reset\\] "
-	fi
-
 	# {user:green/root:red}<username>@{rainbow}<hostname> {lightblue}/{blue}<dir>...\n$
-	PS1+="\\[$reset\\]"
-	PS1+='$(if ((ret = $?)); then printf '\''\[%s\]%s\[%s\] '\'' '\'"$bold$yellow"\'' "$ret" '\'"$reset"\''; fi)'
-	PS1+="\\[$bold"
-		PS1+="\$(if ((UID)); then echo \"$green\"; else echo \"$standout$red\"; fi)"
-	PS1+="\\]"
-	PS1+="\u"
-	PS1+="\$(if ((UID)); then :; else echo \"\\[$nostandout\\]\"; fi)"
-	PS1+="@"
-	if ((colors)) && hash ,color 2>/dev/null; then
-		PS1+="$(,color -s sha1charrainbow3 "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\\[&\\]/g')"
-	else
-		PS1+='\h'
-	fi	 
-	PS1+=' '
-	# PS1+="\\[$blue\\]"
-	# PS1+='\w'
-	local printf
-	printf="printf"
-	if hash "/usr/bin/printf" 2>/dev/null && /usr/bin/printf "%q" 2>/dev/null >&1; then
-		printf="/usr/bin/printf"
-	elif hash "/bin/printf" 2>/dev/null && /bin/printf "%q" 2>/dev/null >&1; then
-		printf="/bin/printf"
-	fi
-	PS1+='$('
-	if "$printf" "%q" something 2>/dev/null >&2; then
-	# check if %q is supported with printf
-		PS1+="$printf"' "%q" "$PWD" | '
-	else
-		PS1+='<<<"$PWD" '
-	fi
-	PS1+='awk -F"/"'
-		PS1+=' -vfront="\["'"$cyan"'"\]"'
-		PS1+=' -vback="\["'"$blue"'"\]"'
-		PS1+=' '\''{gsub("/", front "/" back)}1'\'
-	PS1+=')'
-	PS1+="\\[$reset\\]"
-	PS1+=$'\n'
-	PS1+="\$(if ((UID)); then :; else echo \"\\[$red\\]\"; fi)"
-	PS1+='\$'
-	PS1+="\$(if ((UID)); then :; else echo \"\\[$reset\\]\"; fi)"
-	PS1+=' '
-	export PS1
 
-	unset printf
+	# Detect virtualization with the help of systemd
+	local virt
+	if hash systemd-detect-virt 2>/dev/null >&2 &&
+		{ virt=$(systemd-detect-virt) && [[ -n "$virt" && virt != 'none' ]] ;} ||
+		{ systemd-detect-virt -q -r 2>/dev/null && virt=chroot ;} ||
+		{ systemd-detect-virt -q --private-users 2>/dev/null && virt=usernm ;}
+	then
+		virt="\\[$bold$red\\]$virt\\[$reset\\] "
+	else
+		virt=""
+	fi
+
+	if ((colors)) && hash ,color 2>/dev/null; then
+		hostname="$(,color -s sha1charrainbow3 "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\x01&\x02/g')"
+	else
+		hostname='$HOSTNAME'
+	fi
+
+	eval "$(
+		export $tmp virt hostname
+		envsubst "$(sed 's/ / $/g' <<<" $tmp virt hostname")" <<'EOF'
+_kc_prompt_command() {
+	# Running in a subshell, so don't caring about parent shell.
+
+	# Use:
+	#   ${root+something} for root
+	#   ${root-soemthing} for user
+	if ((UID)); then unset root; else root=; fi
+
+	if (($1)); then
+		printf "\001$bold$yellow\002$1\001$reset\002 "
+	fi
+	printf "\001$bold${root+$standout$red}${root-$green}\002$USER${root+\001${nostandout}\002}@$hostname\001$reset$bold\002 $(
+		printf "%q" "$PWD" | sed "
+			/^$'.*'$/{
+				s/^$'/\x01$reset\x02$'\x01$bold\x02/;
+				s/'$/\x01$reset\x02'/;
+			}"'
+			s@\\@\\\\@g; s@/@\x01$cyan\x02/\x01$blue\x02@g
+		'
+	)\001$reset\002${root+$'\001'$red$'\002'}"
 }
-PS1_setup
-unset -f PS1_setup
+EOF
+)"
+	PS1="\[$reset\]\$(_kc_prompt_command \$?)\n\$\[$reset\] "
+}
+
+_kc_prompt_setup
+
 
