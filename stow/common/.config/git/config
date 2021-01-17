@@ -94,3 +94,5 @@
 	br = branch
 	m3 = mergetool -t merge3
 	mt = mergetool
+[init]
+	defaultBranch = master

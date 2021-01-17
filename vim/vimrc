@@ -706,6 +706,12 @@ function! s:GoogleSearchSelection() abort
 endfunction
 vmap <leader>G :call <SID>GoogleSearchSelection()<CR>
 
+if kc#plugin#enabled('vim-eunuch')
+	"delcommand W
+	"delcommand Wall
+	cmap W!! SudoWrite
+endif
+
 " Shortcuts {{{1
 
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -1,45 +1,122 @@
 #!/bin/sh
 
-f1() {
-	if hash host 2>/dev/null >/dev/null; then
-		host -4 o-o.myaddr.l.google.com ns1.google.com |
-		sed -n '/^Address: \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/s//\1/p'
-	fi
+if [ -n "$BASH_VERSION" ]; then
+	set -euo pipefail -o posix
+fi
+
+name=$(basename -- "$0")
+
+usage() {
+	cat <<EOF
+Usage: $name [OPTIONS]
+
+Very defensive and ultimate script for getting external ip on anything.
+
+Options:
+  -6  Display ipv6
+  -A  Use all methods available
+  -q  Do not print error messages on error
+
+Written by Kamil Cukrowski
+EOF
 }
 
-f2() {
-	if hash dig 2>/dev/null >/dev/null; then
-		dig -4 TXT o-o.myaddr.l.google.com @ns1.google.com |
-		sed -n '/^o-o.myaddr.l.google.com..*"\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)"$/s//\1/p'
-	fi
+fatal() {
+	echo "$name: ERROR: $*" >&2
+	exit 1
 }
 
-f3() {
-	if hash wget 2>/dev/null >/dev/null; then
-		wget -qO- https://ipecho.net/plain &&
-		echo
+download() {
+	# local pre to
+	to=2
+	pre=""
+	if cmdexists timeout; then
+		pre="timeout $to"
 	fi
-	if hash curl 2>/dev/null >/dev/null; then
-		curl -sS https://ipecho.net/plain &&
-		echo
+	if cmdexists wget; then
+		$pre wget -qO- --timeout "$to" "$@"
+	elif cmdexists curl; then
+		$pre curl -sS --max-time "$to" "$@"
+	else
+		return 1
 	fi
 }
-f4() {
-	hash curl >/dev/null 2>&1 &&
-	curl -sS https://ipinfo.io/ip
-}
-f5() {
-	hash curl >/dev/null 2>&1 &&
-	curl -sS -s https://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
+cmdexists() {
+	hash "$@" 2>/dev/null >&2
 }
 
-for i in f4 f5 f1 f2 f3; do
-	ip=$("$i") ||:
-	if echo "$ip" | grep -xE "([0-9]{1,3}\.){3}[0-9]{1,3}"; then
-		exit
-	fi      
+###############################################################################
+
+# https://www.shellhacks.com/regex-find-ip-addresses-file-grep/
+ipv4_rgx="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+
+ipv4_host() {
+	cmdexists host && 
+	host -4 o-o.myaddr.l.google.com ns1.google.com |
+	sed -n '/^Address: \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/s//\1/p'
+}
+ipv4_dig() {
+	cmdexists dig &&
+	dig -4 TXT o-o.myaddr.l.google.com @ns1.google.com |
+	sed -n '/^o-o.myaddr.l.google.com..*"\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)"$/s//\1/p'
+}
+ipv4_ipecho() {
+	download https://ipecho.net/plain
+}
+ipv4_ipinfo() {
+	download https://ipinfo.io/ip
+}
+ipv4_checkip() {
+	download https://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
+}
+
+###############################################################################
+
+g_quiet=false
+g_all=false
+g_mode=ipv4
+while getopts "6qAh" opt; do
+	case "$opt" in
+	6) g_mode=ipv6; ;;
+	q) g_quiet=true; ;;
+	A) g_all=true; ;;
+	h) usage; exit; ;;
+	?) usage; fatal "Inavlid argument"; ;;
+	esac
 done
+shift "$((OPTIND-1))"
+if [ "$#" -ne 0 ]; then
+	fatal "Too many arguments"
+fi	
 
-printf "%s: error: %s\n" "$(basename "$0")" "Could not get public ip address" >&2
+case "$g_mode" in
+ipv4)
+	for i in ipv4_host ipv4_dig ipv4_ipecho ipv4_ipinfo ipv4_checkip; do
+		if "$g_all"; then printf "%s: " "$i"; fi
+		ip=$("$i") ||: # we check with regex
+		if tmp=$(echo "$ip" | grep -xE "$ipv4_rgx"); then
+			echo "$tmp" # make sure there is a newline there
+			if ! "$g_all"; then
+				exit
+			fi
+		else
+			if "$g_all"; then echo; fi
+		fi      
+	done
+	;;
+ipv6)
+	fatal "Not implemented"
+	;;
+*)
+	fatal "Internal error: mode=$mode"
+	;;
+esac
+
+if "$g_all"; then
+	exit
+fi
+if ! "$g_quiet"; then
+	fatal "Could not get public ip address"
+fi
 exit 1
 

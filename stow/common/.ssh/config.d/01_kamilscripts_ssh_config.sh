@@ -209,6 +209,10 @@ EOF
 
 cat <<EOF
 
+Host 207.180.196.233
+	User root
+	Port 60022
+
 Host *
 	Compression yes
 	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
