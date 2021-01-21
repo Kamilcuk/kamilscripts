@@ -94,5 +94,14 @@
 	br = branch
 	m3 = mergetool -t merge3
 	mt = mergetool
+	acp = "! f() { ( set -x ; git commit -a -m \"$@\" && git push; ); } ; f"
+	allcp = "! f() { ( set -x ; git add -A && git commit -m \"$@\" && git push; ); } ; f"
 [init]
 	defaultBranch = master
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[credential]
+	helper = store

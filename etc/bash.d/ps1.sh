@@ -8,7 +8,7 @@ _kc_prompt_setup() {
 		,color() { :; }
 	fi
 
-	local tmp root noroot colors
+	local tmp colors
 	tmp="reset bold standout nostandout yellow red blue green cyan"
 	local $tmp
 
@@ -40,6 +40,7 @@ _kc_prompt_setup() {
 		virt=""
 	fi
 
+	local hostname
 	if ((colors)) && hash ,color 2>/dev/null; then
 		hostname="$(,color -s sha1charrainbow3 "$HOSTNAME" | sed 's/\x1b\[[0-9;]*m/\x01&\x02/g')"
 	else
@@ -72,7 +73,7 @@ _kc_prompt_command() {
 }
 EOF
 )"
-	PS1="\[$reset\]\$(_kc_prompt_command \$?)\n\$\[$reset\] "
+	PS1="\[$reset\]$virt\$(_kc_prompt_command \$?)\n\$\[$reset\] "
 }
 
 _kc_prompt_setup
