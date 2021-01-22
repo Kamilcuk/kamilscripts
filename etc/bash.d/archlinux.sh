@@ -11,16 +11,18 @@ fi
 _archlinux_pacman() {
 	local tmp
 	if hash yay 2>/dev/null; then
-		tmp="yay"
-	elif ((UID)); then
-		tmp="sudo pacman"
+		if ((UID == 0)) && id kamil 2>/dev/null >&2; then
+			tmp=(sudo -u kamil yay)
+		else
+			tmp=(yay)
+		fi
+	elif ((UID != 0)); then
+		tmp=(sudo pacman)
 	else
-		tmp="pacman"
+		tmp=(pacman)
 	fi
-	if [ -z "${_ARCHLINUX_PACMAN_QUIET:-}" ]; then
-		echo "+" $tmp "$@"
-	fi
-	nice ionice $tmp "$@"
+	echo "+ ${tmp[*]} $*" >&2
+	nice ionice "${tmp[@]}" "$@"
 }
 
 p() { _archlinux_pacman "$@"; }
@@ -42,6 +44,7 @@ pacmann() { pacman --noconfirm "$@"; }
 yayn() { yay --noconfirm "$@"; }
 # . alias_complete.sh yayn yay
 pacman_autoremove() {
+	local tmp
 	while tmp=$(pacman --query --deps --unrequired --quiet) && [[ -n "$tmp" ]]; do
 		p --noconfirm --R $tmp
 	done
