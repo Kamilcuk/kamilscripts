@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+
+regex='^.*/[^/]* (conflicted copy [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9]+)\(\.\w+\)?$'
+
+cmd_conflicts_find() {
+	find "${1:-.}" -regex "$regex" "${@:2}"
+}
+cmd_conflicts_list() {
+	cmd_conflicts_find "$@"
+}
+cmd_conflicts_remove() {
+	echo "This will remove following files:"
+	cmd_conflicts_list "${1:-.}"
+	echo "Are you sure? [y/n]"
+	read -r ans
+	case "$ans" in y) ;; *) exit;; esac
+	cmd_conflicts_list "${1:-.}" -print0 | xargs -0 rm -v
+}
+cmd_restore_from_conflict() {
+	local a
+	a=$(readlink -f "$1")
+	if [[ "$a" =~ "$regex" ]]; then
+		:;
+	fi
+}	
+
+. ,lib_lib "$BASH_SOURCE" 'cmd_' "$@"
+
