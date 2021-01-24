@@ -222,7 +222,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'junegunn/fzf' " fzf.vim needs it
 	Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
 	KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
-	KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
+	if exists('hunspell') || exists('aspell')
+		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
+	fi
 	Plug 'honza/vim-snippets' " vim-snipmate default snippets
 	" generic
 	Plug 'Konfekt/FastFold'
