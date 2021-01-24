@@ -215,9 +215,18 @@ Host perun 207.180.196.233
 	Port 60022
 
 Host *
+	# https://www.systutorials.com/improving-sshscp-performance-by-choosing-ciphers/
+	# http://homepages.warwick.ac.uk/staff/E.J.Brambley/sshspeedtest.php
+	Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com
 	Compression yes
-	Ciphers aes128-cbc,aes192-cbc,aes128-ctr,aes256-cbc,aes192-ctr,aes256-ctr,3des-cbc
-	ServerAliveInterval 30
-	ServerAliveCountMax 3
+
+	ServerAliveInterval 60
+	ServerAliveCountMax 20
+	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
+	ControlMaster auto
+	ControlPath  ~/.ssh/.socket_%r@%h-%p
+	ControlPersist 600
+
+	ExitOnForwardFailure Yes
 
 EOF
