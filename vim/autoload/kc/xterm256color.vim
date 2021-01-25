@@ -284,12 +284,13 @@ function! kc#xterm256color#_command_handler(bang, name, ...)
 	"   x_something into guifg=something ctermfg=number
 	"   fg=x_something into same as above
 	"   bg=x_somethign into guibg and ctermbg
+	"   bold,italic into gui=bold,italic and cterm=bold,italic
 	let l:args = []
 	for i in a:000
 		if i =~# "^fg=x_"
 			let i = split(i, '=')[1]
 		endif
-		if i =~# "^x_"
+		if i !~# "=" && i =~# "^x_"
 			if !has_key(s:xterm256colordict, i)
 				echoe "kchi: Invalid xterm256 color name: ".i
 				return
@@ -304,6 +305,8 @@ function! kc#xterm256color#_command_handler(bang, name, ...)
 			endif
 			let val = s:xterm256colordict[i]
 			let l:args += ["guibg=".val[0], "ctermbg=".val[1]]
+		elseif i !~# "=" && i =~# 'none\|italic\|bold'
+			let l:args += ["cterm=".i, "gui=".i]
 		else
 			let l:args += [i]
 		endif

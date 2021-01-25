@@ -12,6 +12,83 @@ let g:PaperColor_Theme_Options = {
 			\        'allow_bold': 1,
 			\        'allow_italic': 1,
 			\     },
+			\     'default.dark': {
+			\       'NO_CONVERSION': 0,
+            \       'override': {
+			\       'color00' : ['#000000'],
+			\       'color01' : ['#af005f'],
+			\       'color02' : ['#5faf00'],
+			\       'color03' : ['#d7af5f'],
+			\       'color04' : ['#5fafd7'],
+			\       'color05' : ['#8a8a8a'],
+			\       'color06' : ['#d7875f'],
+			\       'color07' : ['#ffffff'],
+			\       'color08' : ['#585858'],
+			\       'color09' : ['#5faf5f'],
+			\       'color10' : ['#afd700'],
+			\       'color11' : ['#af87d7'],
+			\       'color12' : ['#ffaf00'],
+			\       'color13' : ['#ff5faf'],
+			\       'color14' : ['#00afaf'],
+			\       'color15' : ['#5f8787'],
+			\       'color16' : ['#5fafd7'],
+			\       'color17' : ['#d7af00'],
+			\       'cursor_fg' : ['#000000'],
+			\       'cursor_bg' : ['#c6c6c6'],
+			\       'cursorline' : ['#303030'],
+			\       'cursorcolumn' : ['#303030'],
+			\       'cursorlinenr_fg' : ['#ffff00'],
+			\       'cursorlinenr_bg' : ['#000000'],
+			\       'popupmenu_fg' : ['#c6c6c6'],
+			\       'popupmenu_bg' : ['#303030'],
+			\       'search_fg' : ['#000000'],
+			\       'search_bg' : ['#00875f'],
+			\       'linenumber_fg' : ['#9e9e9e'],
+			\       'linenumber_bg' : ['#000000'],
+			\       'vertsplit_fg' : ['#5f8787'],
+			\       'vertsplit_bg' : ['#000000'],
+			\       'statusline_active_fg' : ['#000000'],
+			\       'statusline_active_bg' : ['#5f8787'],
+			\       'statusline_inactive_fg' : ['#bcbcbc'],
+			\       'statusline_inactive_bg' : ['#3a3a3a'],
+			\       'todo_fg' : ['#ff8700'],
+			\       'todo_bg' : ['#000000'],
+			\       'error_fg' : ['#af005f'],
+			\       'error_bg' : ['#5f0000'],
+			\       'matchparen_bg' : ['#4e4e4e'],
+			\       'matchparen_fg' : ['#c6c6c6'],
+			\       'visual_fg' : ['#000000'],
+			\       'visual_bg' : ['#8787af'],
+			\       'folded_fg' : ['#d787ff'],
+			\       'folded_bg' : ['#5f005f'],
+			\       'wildmenu_fg': ['#000000'],
+			\       'wildmenu_bg': ['#afd700'],
+			\       'spellbad':   ['#5f0000'],
+			\       'spellcap':   ['#5f005f'],
+			\       'spellrare':  ['#005f00'],
+			\       'spelllocal': ['#00005f'],
+			\       'diffadd_fg':    ['#87d700'],
+			\       'diffadd_bg':    ['#005f00'],
+			\       'diffdelete_fg': ['#af005f'],
+			\       'diffdelete_bg': ['#5f0000'],
+			\       'difftext_fg':   ['#5fffff'],
+			\       'difftext_bg':   ['#008787'],
+			\       'diffchange_fg': ['#d0d0d0'],
+			\       'diffchange_bg': ['#005f5f'],
+			\       'tabline_bg':          ['#262626'],
+			\       'tabline_active_fg':   ['#121212'],
+			\       'tabline_active_bg':   ['#00afaf'],
+			\       'tabline_inactive_fg': ['#bcbcbc'],
+			\       'tabline_inactive_bg': ['#585858'],
+			\       'buftabline_bg':          ['#262626'],
+			\       'buftabline_current_fg':  ['#121212'],
+			\       'buftabline_current_bg':  ['#00afaf'],
+			\       'buftabline_active_fg':   ['#00afaf'],
+			\       'buftabline_active_bg':   ['#585858'],
+			\       'buftabline_inactive_fg': ['#bcbcbc'],
+			\       'buftabline_inactive_bg': ['#585858']
+			\       }
+			\     },
 			\     'default.light': {
 			\       'NO_CONVERSION': 0,
 			\       'override' : {
@@ -124,11 +201,10 @@ if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 " Cursor is set above also
 " hi clear CursorLine after
 hi CursorLineNr cterm=bold gui=bold
-
-KcHi! cInclude x_DodgerBlue2_27 cterm=none gui=none
-KcHi! cInclude x_Black_0 cterm=italic gui=italic
+ 
+KcHi! cInclude x_DodgerBlue1_33 none
 hi cRepeat cterm=italic gui=italic
-KcHi! cDefine x_DodgerBlue1_33
+KcHi! cDefine x_DeepSkyBlue1_39
 " hi cStorageClass cterm=bold gui=bold ctermfg=126 guifg=#7F0087
 
 hi Repeat cterm=italic gui=italic
@@ -157,24 +233,20 @@ KcHi DispatchCompleteMsg  bg=x_Green_2 fg=x_Black_0
 " LspCxx stuff {{{1
 
 " 3 manually configured in lsp
-KcHi LspCxxHlGroupNamespace x_MediumOrchid3_133
-KcHi LspCxxHlGroupEnumConstant x_DarkSeaGreen2_157 cterm=italic,bold gui=italic,bold
-KcHi LspCxxHlGroupMemberVariable x_Black_0 cterm=bold gui=bold
-" overwrite the defaults for the rest
-hi LspCxxHlSymMethod cterm=bold gui=bold
-hi LspCxxHlSymStaticMethod cterm=bold gui=bold
-hi LspCxxHlSymEnum cterm=italic,bold gui=italic,bold guifg=#A070A0
-hi LspCxxHlGroupEnumConstant cterm=italic gui=italic
-KcHi LspCxxHlSymParameter cterm=none gui=none x_Grey63_139
-KcHi LspCxxHlSymField cterm=none gui=none x_DeepPink4_53
-KcHi LspCxxHlSymUnknownStaticField cterm=none gui=none x_MediumPurple4_60
+KcHi LspCxxHlGroupNamespace        none        x_MediumOrchid3_133
+KcHi LspCxxHlGroupEnumConstant     italic,bold x_DarkSeaGreen2_157
+KcHi LspCxxHlGroupMemberVariable   bold        x_NavyBlue_17
+KcHi LspCxxHlSymMethod             bold
+KcHi LspCxxHlSymStaticMethod       bold        x_Grey78_251
+KcHi LspCxxHlSymEnum               italic,bold x_Grey63_139
+KcHi LspCxxHlGroupEnumConstant     italic
+KcHi LspCxxHlSymParameter          none        x_PaleTurquoise1_159
+KcHi LspCxxHlSymField              bold        x_LightSteelBlue3_146
+KcHi LspCxxHlSymUnknownStaticField bold        x_LightSteelBlue_147
+KcHi LspCxxHlSymFunctionVariable   none        x_Green_2
+KcHi LspCxxHlSymUnknownStatic      none        x_Red3_160
+KcHi LspCxxHlSymUnknownNone        bold        x_Red_9
 hi link LspCxxHlSkippedRegion normal
-" Highlight local variables Green
-KcHi! LspCxxHlSymFunctionVariable x_Green_2 cterm=none gui=none
-" Highlight statics Red
-KcHi! LspCxxHlSymUnknownStatic x_Red_9 cterm=none gui=none
-" Highlight globals Red with Bold text
-KcHi! LspCxxHlSymUnknownNone x_Red_9 cterm=bold gui=bold
 
 " NERDTree File highlighting {{{1
 
@@ -211,7 +283,7 @@ call NERDTreeHighlightFileLink('gitignore'           , 'x_Grey2_232')
 call NERDTreeHighlightFileLink('bash\(rc\|profile\)' , s:dark ? 'x_SeaGreen1_85' : 'x_DarkSeaGreen_108')
 call NERDTreeHighlightFileLink('[ch]'                , s:dark ? 'x_Orchid1_213' : 'x_DarkMagenta_90')
 call NERDTreeHighlightFileLink('[ch]pp'              , s:dark ? 'x_Orchid2_212' : 'x_DarkMagenta_91')
-call NERDTreeHighlightFileLink('\(tx_Green1_t\|rst\|md\)'    , s:dark ? 'x46' : 'x_DarkGreen_22')
+call NERDTreeHighlightFileLink('\(txt\|rst\|md\)'    , s:dark ? 'x_Green1_46' : 'x_DarkGreen_22')
 call NERDTreeHighlightFileLink('cmake'               , s:dark ? 'x_LightSteelBlue_147' : 'x_NavyBlue_17')
 call NERDTreeHighlightFileLink('m4'                  , 'x_SteelBlue3_68')
 call NERDTreeHighlightFileLink('ld'                  , s:dark ? 'x_Pink1_218' : 'x_DeepPink4_89')
@@ -219,27 +291,6 @@ call NERDTreeHighlightFileLink('\(a\|o\)'            , 'x_Gold3_142')
 
 delf NERDTreeHighlightFileLink
 delf NERDTreeHighlightFile_syn_match
-
-" }}}
-" Unused {{{1
-
-function! NERDTreeHighlightFile_old(extension, fg, ...) abort
-	"                                              bg, guifg, guibg
-	" Optionally takes additional arguments, if `guifg` is not specified, the
-	" same as for fg is used. If `bg` is not specified, "none" is used. If `guibg`
-	" is not specified, the value for `bg` is used.
-	let l:name = a:0 >= 1 ? a:1 : substitute(a:extension, '[^a-zA-Z_0-9]*', '', 'g')
-	let l:bg = a:0 >= 1 ? a:1 : 'none'
-	let l:guifg = a:0 >= 2 ? a:2 : a:fg
-	let l:guibg = a:0 >= 3 ? a:3 : l:bg
-	if a:0 >= 4
-		echoe "NERDTreeHighlightFile: Invalid count of arguments"
-		return
-	endif
-	exec 'autocmd FileType nerdtree highlight nerdtree_'.l:name.' ctermfg='.a:fg.' ctermbg='.l:bg.' guifg='.l:guifg.' guibg='.l:guibg
-	call NERDTreeHighlightFile_syn_match(l:name, a:extension)
-endfunction
-delf NERDTreeHighlightFile_old
 
 " }}}
 " vim: foldmethod=marker
