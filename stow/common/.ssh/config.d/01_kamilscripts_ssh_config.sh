@@ -169,7 +169,7 @@ cat <<EOF
 # NCBJ
 Host *.cis.gov.pl *_cis
 	User kcukrowski
-	GSSAPIAuthentication=yes
+	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes
 
 EOF
@@ -179,26 +179,35 @@ templ ncbj '
 Host cis-$1
 	Hostname ${2:-$1.cis.gov.pl}
 	User kcukrowski
-	GSSAPIAuthentication=yes
+	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes${3:+
 	$3}
 '
-ncbj   leszcz            10.200.4.5
-ncbj   dzik              10.200.4.4
-ncbj   kumak             10.200.4.3
-ncbj   bocian            10.200.4.11
-ncbj   dudek             10.200.4.12
-ncbj   jenot             10.200.4.13
-ncbj   wilga             10.200.4.14
-ncbj   usrint2           172.18.0.22
-ncbj   interactive0001   172.18.128.2
-ncbj   interactive0002   172.18.128.2
-ncbj   ui                192.68.51.202  'Port 22222'
-ncbj   doc               172.18.128.2
-ncbj   cms-vo            ''
-ncbj   slimak            10.200.4.20
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
-ncbj   dizvm5  10.200.4.205
+ncbj leszcz          10.200.4.5
+ncbj dzik            10.200.4.4
+ncbj kumak           10.200.4.3
+ncbj bocian          10.200.4.11
+ncbj dudek           10.200.4.12
+ncbj jenot           10.200.4.13
+ncbj wilga           10.200.4.14
+ncbj usrint2         172.18.0.22
+ncbj interactive0001 172.18.128.2
+ncbj interactive0002 172.18.128.2
+ncbj ui              192.68.51.202      'Port 22222'
+ncbj doc             172.18.128.2
+ncbj cms-vo          ''
+ncbj slimak          10.200.4.20
+ncbj ci              dizvm7.cis.gov.pl
+ncbj fb_core         dizvm4.cis.gov.pl
+ncbj fmr             dizvm5.cis.gov.pl
+ncbj jenkins         dizvm2.cis.gov.pl
+ncbj nexus           dizvm35.cis.gov.pl
+ncbj teptest         dizvm3.cis.gov.pl
+ncbj zabbixserver    dizvm11.cis.gov.pl
+ncbj proxy           dizvm8.cis.gov.pl
+ncbj grafana         dizvm9.cis.gov.pl
+ncbj smtp2rest       dizvm13.cis.gov.pl
 
 cat <<EOF
 Host code.cis.gov.pl

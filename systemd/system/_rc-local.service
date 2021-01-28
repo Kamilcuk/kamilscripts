@@ -1,0 +1,14 @@
+[Unit]
+Description=/etc/rc.local compatibility
+ConditionPathExists=/etc/rc.local
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/sh /etc/rc.local
+TimeoutSec=0
+StandardOutput=tty
+RemainAfterExit=yes
+SysVStartPriority=99
+
+[Install]
+WantedBy=multi-user.target

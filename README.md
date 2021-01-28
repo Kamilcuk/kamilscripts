@@ -10,7 +10,7 @@ curl 'https://gitlab.com/Kamcuk/kamilscripts/raw/master/pkg/archlinux/autoinstal
 
 # License & Author
 
-Author: Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`  
+Author: Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`
 Licenses jointly under MIT License and Beerware License.
 
 

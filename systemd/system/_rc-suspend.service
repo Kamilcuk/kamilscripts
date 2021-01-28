@@ -1,0 +1,16 @@
+[Unit]
+Description=/etc/rc.resume compatibility
+ConditionPathExists=/etc/rc.resume
+After=suspend.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/sh /etc/rc.resume
+TimeoutSec=0
+StandardOutput=tty
+RemainAfterExit=yes
+SysVStartPriority=99
+
+[Install]
+WantedBy=suspend.target
+

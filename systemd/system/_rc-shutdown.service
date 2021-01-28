@@ -1,0 +1,11 @@
+[Unit]
+Description=/etc/rc.shutdown compatibility
+ConditionPathExists=/etc/rc.shutdown
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStop=/usr/bin/sh /etc/rc.shutdown
+
+[Install]
+WantedBy=multi-user.target
