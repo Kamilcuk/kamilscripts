@@ -50,6 +50,23 @@ cmdexists() {
 # https://www.shellhacks.com/regex-find-ip-addresses-file-grep/
 ipv4_rgx="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
 
+ipv4_ipecho() {
+	download https://ipecho.net/plain
+}
+ipv4_ipinfo() {
+	download https://ipinfo.io/ip
+}
+ipv4_amazonaws() {
+	download checkip.amazonaws.com
+}
+ipv4_icanhazip() {
+	download icanhazip.com -4
+}
+ipv4_checkip() {
+	download http://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
+}
+
+if false; then # do not work
 ipv4_host() {
 	cmdexists host && 
 	host -4 o-o.myaddr.l.google.com ns1.google.com |
@@ -60,15 +77,10 @@ ipv4_dig() {
 	dig -4 TXT o-o.myaddr.l.google.com @ns1.google.com |
 	sed -n '/^o-o.myaddr.l.google.com..*"\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)"$/s//\1/p'
 }
-ipv4_ipecho() {
-	download https://ipecho.net/plain
+ipv4_ifconfig_co() {
+	download ifconfig.co
 }
-ipv4_ipinfo() {
-	download https://ipinfo.io/ip
-}
-ipv4_checkip() {
-	download https://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
-}
+fi
 
 ###############################################################################
 
@@ -91,18 +103,29 @@ fi
 
 case "$g_mode" in
 ipv4)
-	for i in ipv4_host ipv4_dig ipv4_ipecho ipv4_ipinfo ipv4_checkip; do
-		if "$g_all"; then printf "%s: " "$i"; fi
-		ip=$("$i") ||: # we check with regex
-		if tmp=$(echo "$ip" | grep -xE "$ipv4_rgx"); then
-			echo "$tmp" # make sure there is a newline there
+	compgen -A function | grep '^ipv4_' | sort  | {
+		while read -r i; do
+			(
+				out=""
+				if "$g_all"; then out=$(printf "%s: " "$i"); fi
+				ip=$("$i") ||: # we check with regex
+				if tmp=$(echo "$ip" | grep -xE "$ipv4_rgx"); then
+					out+="$tmp" # make sure there is a newline there
+				fi
+				printf "%s\n" "$out"
+			) &
+			child=$!
+			trap 'kill "$child" 2>/dev/null' EXIT
 			if ! "$g_all"; then
-				exit
+				if wait "$child"; then exit; fi
 			fi
+		done
+		if "$g_all"; then
+			wait
 		else
-			if "$g_all"; then echo; fi
-		fi      
-	done
+			exit 1
+		fi
+	}
 	;;
 ipv6)
 	fatal "Not implemented"
@@ -112,11 +135,9 @@ ipv6)
 	;;
 esac
 
-if "$g_all"; then
-	exit
-fi
-if ! "$g_quiet"; then
+err=$?
+if ! "$g_all" && ((err != 0)) && ! "$g_quiet"; then
 	fatal "Could not get public ip address"
 fi
-exit 1
+exit
 
