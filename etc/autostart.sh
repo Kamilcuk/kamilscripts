@@ -81,12 +81,12 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 	xfconf-query -c xfwm4           -p /general/mousewheel_rollup               -s false
 	xfconf-query -c xfwm4           -p /general/theme                           -s Adapta-Nokto
 	xfconf-query -c xfwm4           -p /general/tile_on_move                    -s true
-	xfconf-query -c xfwm4           -p /general/title_font                      -s 'Liberation  Sans Bold 9'
+	xfconf-query -c xfwm4           -p /general/title_font                      -s 'Liberation Sans Bold 9'
 	xfconf-query -c xfwm4           -p /general/workspace_count                 -s 4
 	xfconf-query -c xfwm4           -p /general/wrap_windows                    -s false
 	xfconf-query -c xfwm4           -p /general/wrap_windows                    -s true
-	xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'Liberation  Sans 10'
-	xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'Liberation  Mono 10'
+	xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'Liberation Sans 10'
+	xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'Liberation Mono 10'
 	xfconf-query -c xsettings       -p /Net/CursorBlinkTime                     -s 1200
 	xfconf-query -c xsettings       -p /Net/IconThemeName                       -s Adwaita
 	xfconf-query -c xsettings       -p /Net/ThemeName                           -s Adwaita-dark
