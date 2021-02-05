@@ -1025,6 +1025,12 @@ let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' .
 " }}}
 " Custom functions {{{1
 
+function KcRestartXbindkeys()
+	! if pid=$(pgrep -u "$(id -u)" xbindkeys); then kill -HUP "$pid"; else xbindkeys; fi
+endfunction
+autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
+autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
+
 " }}}
 
 " vim: filetype=vim:foldmethod=marker:foldenable

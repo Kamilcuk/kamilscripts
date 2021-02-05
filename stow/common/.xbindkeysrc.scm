@@ -161,6 +161,12 @@
 ;;   "gv" "xpdf" "xterm" "xterm")
 
 (define host (string->symbol (gethostname)))
+(define E (lambda (text cmd) (string-append 
+	"if hash notify-send 2>/dev/null >&2; then"
+	"   notify-send -t 2000 XBINDKEYS '" text "' ;"
+	"fi;"
+	cmd
+)))
 
 (xbindkey '(Mod4 F1) "xdotool getactivewindow set_desktop_for_window 0")
 (xbindkey '(Mod4 F2) "xdotool getactivewindow set_desktop_for_window 1")
@@ -173,23 +179,24 @@
 
 (xbindkey '(Mod4 a) "geany")
 (xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
-(xbindkey '(Mod4 t) "xdg-open https://todoist.com/app/#project%2F2252640035")
+(xbindkey '(Mod4 t) (E "todoist" "firefox --new-window https://todoist.com/app/#project%2F2252640035"))
 (xbindkey '(Mod4 s) "subl")
 (xbindkey '(Mod4 f) "soffice --calc")
-(xbindkey '(Mod4 c) 
+(xbindkey '(Mod4 c) (E "terminal"
 	(string-append "xfce4-terminal "
 		(case host 
-			((leonidas) "--geometry 140x35")
+			;((leonidas) "--geometry 140x35")
+			((leonidas) "--geometry 157x40")
 			((ardalus)  "--geometry 126x34")
 			((gorgo)    "--geometry 94x22")
 			(else "")
 		)
 	)
-)
+))
 
 (case host (
 	(leonidas)
-		(xbindkey '(Mod4 equal) "soffice --calc /home/moje/zestawienie.ods")
+		(xbindkey '(Mod4 "=") "soffice --calc /home/moje/zestawienie.ods")
 		(xbindkey '(Mod4 "3") ",leonidas_toggle_hdmi_mute.sh")
 		(xbindkey '(Mod4 "4") ",xrandr_change_brightness.sh -0.1")
 		(xbindkey '(Mod4 "5") ",xrandr_change_brightness.sh +0.1")
@@ -210,10 +217,10 @@
 (xbindkey '(Mod4 Left)  ",magic_position_window.sh left")
 
 (xbindkey '(XF86Search) "xfce4-appfinder")
-(xbindkey '(XF86HomePage) "notify-send -t 500 browser ; firefox")
+(xbindkey '(XF86HomePage) (E "browser" "firefox"))
 (xbindkey '(XF86ScreenSaver) "xflock4")
-(xbindkey '(Mod4 n)       "notify-send -t 500 browser ; firefox")
-(xbindkey '(Mod4 e)       "notify-send -t 500 'File Explorer' ; xdg-open ~")
+(xbindkey '(Mod4 n)       (E "browser" "firefox"))
+(xbindkey '(Mod4 e)       (E "File Explorer" "xdg-open ~"))
 (xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 (xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
 
@@ -222,7 +229,7 @@
 (xbindkey '(Alt F3) "xfce4-appfinder")
 (xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
 
-(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "notify-send -t 1000 suspend ; systemctl suspend")
+(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) (E "suspend" "systemctl suspend"))
 
 (xbindkey '(Control Escape) "xfce4-popup-whiskermenu")
 
