@@ -63,10 +63,10 @@ endfunction
 
 function! kc#viewrestore#load()
 	if kc#viewrestore#check()
-		silent loadview
-		echom line("'\"") . "and" . line("$")
+		silent! loadview
+		" echom line("'\"") . "and" . line("$")
 		if line("'\"") >= 1 && line("'\"") <= line("$")
-			echom "HERE"
+			" echom "HERE"
 			call setpos(".", getpos("'\""))
 		endif
 	endif

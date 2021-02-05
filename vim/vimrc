@@ -299,7 +299,7 @@ endif
 " Some view things {{{1
 
 " See kamilscript/autoload/viewrestore.vim
-" call viewrestore#enable()
+call kc#viewrestore#enable()
 
 " Highlight current line when leaving buffer buffer
 " https://vim.fandom.com/wiki/Highlight_current_line
