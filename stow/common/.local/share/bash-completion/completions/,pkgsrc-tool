@@ -1,2 +1,1 @@
-eval "$(,pkgsrc-tool --bash-completion)"
-
+,lib_lib

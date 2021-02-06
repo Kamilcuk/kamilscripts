@@ -1,2 +1,1 @@
-eval "$(,x_lib --bash-completion)"
-
+,lib_lib

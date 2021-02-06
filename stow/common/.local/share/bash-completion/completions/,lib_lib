@@ -1,0 +1,2 @@
+eval "$("$(basename -- "${BASH_SOURCE}")" --bash-completion)"
+
