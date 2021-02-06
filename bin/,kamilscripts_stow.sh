@@ -10,8 +10,9 @@ usage() {
 Usage: $name [options] <mode>
 
 Options:
-  -h --help  Pritn this text and exit
-  -k --ok    Actually do changes
+  -h --help    Print this text and exit
+  -f --force   Overwrite files
+  -k --ok      Actually do changes
 
 Modes:
   install
@@ -92,10 +93,9 @@ do_stow() {
 		fatal "$repo/.stowrc not such file"
 	fi
 
-	echo "+" "cd" "$repo" "&&" stow "$@"
-	pushd "$repo" >/dev/null
-	command stow "$@"
-	popd >/dev/null
+	cmd=(stow -d "$repo" -t ~ --no-folding "${STOWARGS[@]}" "$@")
+	echo "+ ${cmd[*]}"
+	( cd "$repo" ; command "${cmd[@]}" )
 }
 
 stow_kamilscripts() {
@@ -125,12 +125,14 @@ stow_work() {
 
 # main ##############################################################################
 
-args=$(getopt -n "$name" -o hk -l help,ok -- "$@")
+args=$(getopt -n "$name" -o hfk -l help,force,ok -- "$@")
 eval set -- "$args"
 dryrun=true
+STOWARGS=()
 while (($#)); do
 	case "$1" in
 	-h|--help) usage; exit 0; ;;
+	-f|--force) STOWARGS+=(--override='.*'); ;;
 	-k|--ok) dryrun=false; ;;
 	--) shift; break; ;;
 	esac
