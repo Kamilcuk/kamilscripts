@@ -160,13 +160,53 @@
 ;; (define-chord-keys '(alt "b:1") '(alt "b:3")
 ;;   "gv" "xpdf" "xterm" "xterm")
 
-(define host (string->symbol (gethostname)))
-(define E (lambda (text cmd) (string-append 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(use-modules (ice-9 regex))
+(use-modules (srfi srfi-1))
+
+; Regex replace
+(define (kc-replace str what for) (regexp-substitute/global #f what str 'pre for 'post))
+; Quote the argument
+(define (kc-shell-quote-in str) (kc-replace str "'" "'\\''"))
+(define (kc-shell-quote . strs) (string-append "'" (string-join (map kc-shell-quote-in strs) "") "'"))
+; Also replace some html characters we  need to
+(define (kc-html-quote arg) 
+	(kc-replace (kc-replace (kc-replace arg
+	"&" "&amp;")
+	"<" "&lt;")
+	">" "&gt;")
+)
+; Display message with notify-send and execute the command
+(define old_E_use_Xbindkey (lambda (text cmd) (string-append 
 	"if hash notify-send 2>/dev/null >&2; then"
-	"   notify-send -t 2000 XBINDKEYS '" text "' ;"
+	"   notify-send -u low -t 2000 -i forward xbindkeys " (kc-shell-quote 
+		(if (string-null? text) "" (string-append "<big><b>\t" (kc-html-quote text) "</b></big>\n"))
+		"<small>Running: <tt>" (kc-html-quote cmd) "</tt></small>"
+		) " ;"
 	"fi;"
 	cmd
 )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; The hostname
+(define host (string->symbol (gethostname)))
+
+; Simpler version of notify what is executing
+; Use (Xbindkey '(Mod4 F1) "Some message" "Some command)
+; or use (Xbindkey '(Mod4 F1) "Some command)
+(define (Xbindkey_in bind text cmd) (xbindkey bind (E text cmd)))
+(define (Xbindkey bind . args) (xbindkey bind
+	(string-append
+		",xbindkeys-helper.sh "
+		(kc-shell-quote (if (= (length args) 1) "" (first args))) 
+		" "
+		(kc-shell-quote (last args))
+	)
+))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (xbindkey '(Mod4 F1) "xdotool getactivewindow set_desktop_for_window 0")
 (xbindkey '(Mod4 F2) "xdotool getactivewindow set_desktop_for_window 1")
@@ -177,12 +217,12 @@
 (xbindkey '(Mod4 F7) "xdotool getactivewindow set_desktop_for_window 6")
 (xbindkey '(Mod4 F8) "xdotool getactivewindow set_desktop_for_window 7")
 
-(xbindkey '(Mod4 a) "geany")
-(xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
-(xbindkey '(Mod4 t) (E "todoist" "firefox --new-window https://todoist.com/app/#project%2F2252640035"))
-(xbindkey '(Mod4 s) "subl")
-(xbindkey '(Mod4 f) "soffice --calc")
-(xbindkey '(Mod4 c) (E "terminal"
+(Xbindkey '(Mod4 a) "geany")
+(Xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
+(Xbindkey '(Mod4 t) "todoist" "firefox --new-window 'https://todoist.com/app/#project%2F2252640035'")
+(Xbindkey '(Mod4 s) "subl")
+(Xbindkey '(Mod4 f) "soffice --calc")
+(Xbindkey '(Mod4 c) "terminal"
 	(string-append "xfce4-terminal "
 		(case host 
 			;((leonidas) "--geometry 140x35")
@@ -192,7 +232,7 @@
 			(else "")
 		)
 	)
-))
+)
 
 (case host (
 	(leonidas)
@@ -216,20 +256,21 @@
 (xbindkey '(Mod4 Down)  ",magic_position_window.sh down")
 (xbindkey '(Mod4 Left)  ",magic_position_window.sh left")
 
-(xbindkey '(XF86Search) "xfce4-appfinder")
-(xbindkey '(XF86HomePage) (E "browser" "firefox"))
-(xbindkey '(XF86ScreenSaver) "xflock4")
-(xbindkey '(Mod4 n)       (E "browser" "firefox"))
-(xbindkey '(Mod4 e)       (E "File Explorer" "xdg-open ~"))
-(xbindkey '(XF86Mail) "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
-(xbindkey '(Mod4 m)   "nohup birdtray -t >/dev/null </dev/null 2>&1 &")
+(Xbindkey '(XF86Search) "xfce4-appfinder")
+(Xbindkey '(XF86HomePage) "browser" "firefox")
+(Xbindkey '(XF86ScreenSaver) "xflock4")
+(Xbindkey '(Print)  "printscreen" "xfce4-screenshooter --fullscreen")
+(Xbindkey '(Mod4 n) "browser" "firefox")
+(Xbindkey '(Mod4 e) "File Explorer" "xdg-open ~")
+(Xbindkey '(XF86Mail) "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
+(Xbindkey '(Mod4 m)   "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
 
-(xbindkey '(Mod4 d) ",slack_toggle.sh")
+(Xbindkey '(Mod4 d) ",slack_toggle.sh")
 
-(xbindkey '(Alt F3) "xfce4-appfinder")
-(xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
+(Xbindkey '(Alt F3) "xfce4-appfinder")
+(Xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
 
-(xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) (E "suspend" "systemctl suspend"))
+(Xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "Suspend" "systemctl suspend")
 
 (xbindkey '(Control Escape) "xfce4-popup-whiskermenu")
 
