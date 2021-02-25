@@ -54,7 +54,7 @@ fi
 mkdir -p "$d"/src
 d=$(readlink -f "$d")
 cd "$d"/src
-run wget https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz.sig
+run curl -sSLO https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz
 run tar xaf stow-latest.tar.gz --strip-components=1 -C .
 run ./configure --quiet --prefix="$d" --with-pmdir="$d" --bindir="$d"
 run make install MAKEINFO=true
