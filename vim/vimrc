@@ -25,6 +25,7 @@ if 0 && $LC_CTYPE == 'pl_PL.UTF-8'
 	source $VIMRUNTIME/menu.vim
 endif
 
+" }}}
 " Global configuration {{{1
 
 if !isdirectory(expand('~/.vim'))
@@ -64,6 +65,10 @@ set nosmarttab     " Enabling this will make the tab key (in insert mode) insert
 
 " https://vi.stackexchange.com/questions/2162/why-doesnt-the-backspace-key-work-in-insert-mode
 set backspace=indent,eol,start  " let backspece delete everything in intsert mode
+
+" https://stackoverflow.com/questions/2288756/how-to-set-working-current-directory-in-vim
+"set autochdir
+"Messes up any plugin configuration
 
 " Tell vim to remember certain things when we
 let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
@@ -138,6 +143,7 @@ set display+=uhex
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
 
+" }}}
 " Load kamilscripts {{{1
 
 if !exists('g:kamilscripts')
@@ -170,6 +176,7 @@ if exists('g:kamilscripts')
 	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
 endif
 
+" }}}
 " Load plugins with vim-plug {{{1
 "
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
@@ -210,6 +217,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
 	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
 	" staging2
+	Plug 'sbdchd/neoformat'
 	"Plug 'LucHermitte/lh-vim-lib'
 	"Plug 'LucHermitte/lh-tags'
 	"Plug 'LucHermitte/lh-dev'
@@ -296,6 +304,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	delcommand KcPlugCoc
 endif
 
+" }}}
 " Some view things {{{1
 
 " See kamilscript/autoload/viewrestore.vim
@@ -323,6 +332,7 @@ else
 	let &t_EI = "\<esc>[2 q"
 endif
 
+" }}}
 " Miscellaneous configuration {{{1
 
 " https://vim.fandom.com/wiki/Cscope
@@ -425,6 +435,7 @@ endif
 
 autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 
+" }}}
 " Plugins configuration {{{1
 
 " Termdebug configuration
@@ -714,7 +725,8 @@ if kc#plugin#enabled('vim-eunuch')
 	cmap W!! SudoWrite
 endif
 
-" Shortcuts {{{1
+" }}}
+" Custom maps and functions {{{1
 
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 " https://vim.fandom.com/wiki/Map_semicolon_to_colon
@@ -810,6 +822,11 @@ endif
 " https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
 nnoremap <leader>s i<CR><Esc>
 
+" Add `:Format` command to format current buffer.
+"command! -nargs=0 Format :call CocAction('format')
+command! -nargs=? Format :Neoformat <args>
+
+" }}}
 " coc.nvim {{{1
 
 if kc#plugin#enabled('coc.nvim')
@@ -968,9 +985,6 @@ endif
 nmap <silent> <C-s> <Plug>(coc-range-select)
 xmap <silent> <C-s> <Plug>(coc-range-select)
 
-" Add `:Format` command to format current buffer.
-command! -nargs=0 Format :call CocAction('format')
-
 " Add `:Fold` command to fold current buffer.
 command! -nargs=? Fold :call     CocAction('fold', <f-args>)
 
@@ -1002,6 +1016,7 @@ endif " kc#plugin#enabled('coc-fzf')
 
 endif " kc#plugin#enabled('coc.nvim')
 
+" }}}
 " vimtex Configuration {{{1
 
 let g:vimtex_view_method = 'mupdf'
@@ -1012,11 +1027,13 @@ augroup KcLatex
 	autocmd FileType tex :TexItemize <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
 augroup END
 
+" }}}
 " Color scheme {{{1
 
 set background=dark
 colorscheme kamilcuk
 
+" }}}
 " Project specific {{{1
 
 " Seamlessly detect cmake out-of-source build errors in subdirectories
