@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
-dest=/tmp/.,proot/proot
+dest="${TMPDIR:-/tmp}"/proot
 if [[ ! -e "$dest" ]]; then
-	mkdir -p "$(dirname "$dest")"
+	echo ",proot: Downloading proot executable to $dest ..." >&2
 	curl -sS --output "$dest" -L 'https://proot.gitlab.io/proot/bin/proot'
 	chmod +x "$dest"
 fi
