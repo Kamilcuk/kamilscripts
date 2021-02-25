@@ -1,18 +1,57 @@
 
 image: archlinux/base
-
 variables:
   PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
+
+.test_setup: &test_setup
+  before_script:
+    - pacman -Suy --noconfirm tar python awk grep gettext make diffutils bc
+    - echo "$BASH_VERSION" || true
+    - export "PATH=$PWD/bin:$PATH"
+
+test_stow:
+  <<: *test_setup
+  script:
+    - mkdir -p /tmp/stow
+    - bin/,install_stow.sh /tmp/stow
+    - /tmp/stow/stow --version
+test_proot:
+  <<: *test_setup
+  script:
+    - bin/,proot --version
+test_alias_complete:
+  <<: *test_setup
+  script:
+    - bin/alias_complete.sh --unittest
+test_blockinfile:
+  <<: *test_setup
+  script:
+    - bin/blockinfile.sh --unittest
+test_,hextodectobin:
+  <<: *test_setup
+  script:
+    - bin/,hextodectobin --test
+test_bash_autotranslate:
+  <<: *test_setup
+  script:
+    - bin/,bash_autotranslate.sh --test
+test_lineinfile:
+  <<: *test_setup
+  script:
+    - bin/lineinfile.sh --unittest
+test_ccrun:
+  <<: *test_setup
+  script:
+    - bin/,ccrun ---test
+
 pages:
-  stage: build
+  stage: deploy
   only:
     - master
   script:
-  - mkdir -p /tmp/stow && bin/,install_stow.sh /tmp/stow && /tmp/stow/stow --version
-  - bin/,proot --version
-  - pkg/archlinux/docker_build.sh ./archlinux-output
-  - pkg/archlinux/repo_create.sh ./public/archlinux/kamilrepo ./archlinux-output
-  - pkg/create_index.sh ./public/
+    - pkg/archlinux/docker_build.sh ./archlinux-output
+    - pkg/archlinux/repo_create.sh ./public/archlinux/kamilrepo ./archlinux-output
+    - pkg/create_index.sh ./public/
   artifacts:
     paths:
       - public
