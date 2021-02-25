@@ -2,8 +2,8 @@
 
 # https://www.topbug.net/blog/2017/07/31/inputrc-for-humans/
 $include /etc/inputrc
-"\C-p":history-search-backward
-"\C-n":history-search-forward
+#"\C-p":history-search-backward
+#"\C-n":history-search-forward
 set colored-stats On
 set completion-ignore-case On
 set completion-prefix-display-length 12
@@ -16,10 +16,27 @@ set visible-stats On
 # Enable case-insensitive tab-complete
 set completion-ignore-case on
 # Press up or down arrow to search through shell history on what you've already typed
-"\e[A": history-search-backward
-"\e[B": history-search-forward
+#"\e[A": history-search-backward
+#"\e[B": history-search-forward
 
 # https://tldp.org/HOWTO/Visual-Bell-8.html
 set bell-style visible
 set prefer-visible-bell
 
+# \e is ALT !
+
+$if mode=emacs
+# Page up and page down
+# Page up always confuses me
+"\e[5~":
+"\e[6~":
+$endif
+
+# https://www.shell-tips.com/bash/shortcuts/
+
+# https://unix.stackexchange.com/questions/182855/deleting-input-forward-to-the-next-space
+"\eq": "\C-]\ \C-f\C-w"
+# https://unix.stackexchange.com/questions/150578/confusing-behavior-of-emacs-style-keybindings-in-bash/150591#150591
+"\eb": vi-bword
+"\ef": vi-fword
+"\ed": "\ef\C-w"
