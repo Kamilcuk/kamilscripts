@@ -52,6 +52,7 @@ if is_stow "$d"/stow; then
 	run rm -r "$d"
 fi
 mkdir -p "$d"/src
+d=$(readlink -f "$d")
 cd "$d"/src
 run wget https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz https://ftp.gnu.org/gnu/stow/stow-latest.tar.gz.sig
 run tar xaf stow-latest.tar.gz --strip-components=1 -C .
@@ -62,5 +63,7 @@ cd "$d"
 if ! is_stow "$d"/stow; then
 	fatal "Problem installing stow"
 fi
-quit "$("$d"/stow --version) installed to $d/stow"
+version=$("$d"/stow --version)
+echo
+quit "$version installed to $d/stow"
 
