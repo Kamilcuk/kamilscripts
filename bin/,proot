@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+dest=/tmp/.,proot/proot
+if [[ ! -e "$dest" ]]; then
+	mkdir -p "$(dirname "$dest")"
+	curl -sS --output "$dest" -L 'https://proot.gitlab.io/proot/bin/proot'
+	chmod +x "$dest"
+fi
+"$dest" "$@"
+
