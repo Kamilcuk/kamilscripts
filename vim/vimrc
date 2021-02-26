@@ -699,13 +699,35 @@ if kc#plugin#enabled('vim-DetectSpellLang')
 	let g:detectspelllang_langs.hunspell = [ 'en_US', 'pl_PL' ]
 endif
 
+function KcDispatchComplete_firstErrorHasValidFile() abort
+	" Check if the first valid error in quickfix has a valid file
+	for i in getqflist()
+		if !i.valid | continue | endif
+		if file_readable(bufname(i.bufnr))
+			echo bufname(i.bufnr)
+			return 1
+		endif
+		break
+	endfor
+	return 0
+endfunction
 function KcDispatchComplete() abort
 	copen
-	normal G
-	wincmd p
+	if KcDispatchComplete_firstErrorHasValidFile()
+		" If we can navigate to the file with the first error, then
+		" instantaneously navigate to it.
+		cc 1
+		cn
+	else
+		" Otherwise on success or file not found,
+		" let the cursor stay where it is.
+		normal G
+		wincmd p
+	endif
 endfunction
 augroup KcDispatchComplete
 	au!
+	" DispatchComplete is my patch to vim-dispath
 	autocmd User DispatchComplete call KcDispatchComplete()
 augroup END
 
@@ -1037,7 +1059,9 @@ colorscheme kamilcuk
 " Project specific {{{1
 
 " Seamlessly detect cmake out-of-source build errors in subdirectories
-let &errorformat = '../../../%f:%l:%c: %m,../../%f:%l:%c: %m,../%f:%l:%c: %m,' . &errorformat
+set errorformat^=../%f:%l:%c:\ %m
+set errorformat^=../../%f:%l:%c:\ %m
+set errorformat^=../../../%f:%l:%c:\ %m
 
 " }}}
 " Custom functions {{{1
