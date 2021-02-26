@@ -746,7 +746,7 @@ if kc#plugin#enabled('vim-workspace')
 endif
 
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
-nnoremap <leader>S :%s/\<<C-r><C-w>\>//g<Left><Left>
+nnoremap <leader>S :%s/\<<C-r><C-w>\>/<C-r><C-w>/g<Left><Left>
 
 " https://castel.dev/post/lecture-notes-1/
 inoremap <C-l>     <c-g>u<Esc>[s1z=`]a<c-g>u
