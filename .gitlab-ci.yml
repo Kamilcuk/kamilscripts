@@ -5,7 +5,7 @@ variables:
 
 .test_setup: &test_setup
   before_script:
-    - pacman -Suy --noconfirm tar python awk grep gettext make diffutils bc
+    - pacman -Suy --noconfirm tar python awk grep gettext make diffutils bc 
     - echo "$BASH_VERSION" || true
     - export "PATH=$PWD/bin:$PATH"
 
@@ -34,6 +34,9 @@ test_,hextodectobin:
 test_bash_autotranslate:
   <<: *test_setup
   script:
+    - echo pl_PL.UTF-8 UTF-8 >> /etc/locale.gen
+    - sed -i -e 's/NoExtract/#NoExtract/' /etc/pacman.conf
+    - pacman -S --noconfirm glibc
     - bin/,bash_autotranslate.sh --test
 test_lineinfile:
   <<: *test_setup
@@ -42,6 +45,7 @@ test_lineinfile:
 test_ccrun:
   <<: *test_setup
   script:
+    - pacman -Suy --noconfirm gcc
     - bin/,ccrun ---test
 
 pages:
