@@ -30,10 +30,12 @@ _kc_prompt_setup() {
 
 	# Detect virtualization with the help of systemd
 	local virt
-	if hash systemd-detect-virt 2>/dev/null >&2 &&
-		{ virt=$(systemd-detect-virt) && [[ -n "$virt" && virt != 'none' ]] ;} ||
-		{ systemd-detect-virt -q -r 2>/dev/null && virt=chroot ;} ||
-		{ systemd-detect-virt -q --private-users 2>/dev/null && virt=usernm ;}
+	if
+		hash systemd-detect-virt 2>/dev/null >&2 && {
+			{ virt=$(systemd-detect-virt) && [[ -n "$virt" && virt != 'none' ]] ;} ||
+			{ systemd-detect-virt -q -r 2>/dev/null && virt='chroot' ;} ||
+			{ systemd-detect-virt -q --private-users 2>/dev/null && virt='usernm' ;}
+		}
 	then
 		virt="\\[$bold$red\\]$virt\\[$reset\\] "
 	else
