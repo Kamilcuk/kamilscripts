@@ -16,7 +16,9 @@ function kc#viewrestore#enable()
 
 	" $VIMRUNTIME/defaults.vim
 	" Put these in an autocmd group, so that you can revert them with:
-	augroup vimStartup | au! | augroup END
+	augroup vimStartup
+		au!
+	augroup END
 
 	augroup vimrcAutoView
     	autocmd!
@@ -24,7 +26,7 @@ function kc#viewrestore#enable()
 		autocmd BufWritePost,BufLeave,WinLeave ?* call kc#viewrestore#save()
 		" When entering, restore window position __and__ cursor position.
 	    autocmd BufWinEnter ?* call kc#viewrestore#load()
-	augroup end
+	augroup END
 endfunction
 
 function! kc#viewrestore#check()
