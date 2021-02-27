@@ -1,23 +1,23 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT+Beerware
 set -euo pipefail
+shopt -s extglob
 
-name=$(basename "$0")
+# General {{{
+
+name=${BASH_SOURCE##*/}
 
 usage() {
 	cat <<EOF
 Usage:
-   $name [---options] [-cc_options...] [-- progargs...] <file
-   $name [---options] - [cc_options...] [-- progargs...] <file
-   $name [---options] file [cc_options...] [-- progargs...]
-   $name [---options] string [cc_options...] [-- progargs...]
+   $name [+opts] [++] [-ccopts...] file.c [-- [progargs...]]
+   $name [+opts] [++] [-ccopts...] -- file.c [progargs...]
+   $name [+opts] [++] [-ccopts...] 'C source code' [-- [progargs...]]
+   $name [+opts] [++] [-ccopts...] [-- [progargs...]] < file
    $name -h
 
 Compiles and runs a source file in one run.
-The script takes it's own arguments with 3 leading dashes.
-
-If there are no arguments or the first argument starts with a leading dash, then "defaults" are
-passed to the compiler that include all needed header files followed by standard input.
+The script takes it's own arguments with a leading '+' plus sign.
 
 If the first argument doesn't start with a leading dash, the first argumnet is expected to be
 a source file to compiler. All following arguments are passed to the compiler. In this mode
@@ -26,58 +26,202 @@ defaults are not passed.
 If this script is executed with exactly one argument '-h', this script prints this text
 and exits. The $name --help would result in compiler help printed.
 
-Current compiler: $cc
+Current compiler: $g_cc
+
+"Default headers" are automatically included to the source code if it's detected.
+The C11 standard and POSIX headers are automatically added to the souce code, if
+it's not a file.
+
+The +safe option adds many compiler warnings, default compiler flags recommended by redhat,
+adds stack protection, sanitizer when available, etc.
+
+\`int main(int argc, char *argv[])\` is also automatically added if detected it's missing.
 
 Options:
-   ---cc <compiler>     Set the C compiler.
-   ---defaults <func>   Run this function on defaults
-   ---n ---nodefaults   Don't include default headers.
-   ---d ---usedefaults  Force including default headers.
-   ---V ---valgrind     Run executable through valgrind.
-   ---m                 Add a 'int main(int argc, char *argv[]) {' + '}' to the input.
-   ---h -h ---help      Print this help and exit.
-   ---debug             Debug.
-   ---test              Test
+   +cc <compiler>      Set the C compiler.
+   +n +nochange        Disable automatic adding of include headers and \`int main()\` body.
+   +V +valgrind        Run executable via valgrind.
+   +G +gdb             Run executable under gdb.
+   +I +interactivegdb  Run executable in gdb, drop to interactive before running.
+   +S +safe            Enable safe options.
+   +d +debug           Display debugging information.
+      +defaultsf <f>   This exported bash function should output #include statements.
+   +unittest           Run unittests.
+   +h -h +help         Print this help and exit.
 
 Examples:
    echo 'int main() { printf("Hello world\n"); }' | $name
+   $name 'printf("Hello world\n");'
+   printf "%s\n" '#include <stdio.h>' 'int main() { printf("Hello world\n"); }' > file.c ; $name file.c -lm -O3
+   $name +n -O 'printf("sqrtl(5)=%f\n", sqrtl(5))' -lm
 
 Written by Kamil Cukrowski
-Licensed jointly under Beerware License and MIT Lisense
+Licensed jointly under Beerware License and MIT License.
 EOF
 }
 
+parse_options() {
+	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc= g_debug=false
+	g_valgrind=false g_gdb=false g_interactivegdb=false g_safe=false g_optind=$#
+	while (($#)); do
+		case "$1" in
+			+cc) shift; g_cc="$1"; ;;
+			+n|+nochange) g_change=false; ;;
+			+V|+valgrind) g_valgrind=true; ;;
+			+G|+gdb) g_gdb=true; ;;
+			+I|+interactivegdb) g_interactivegdb=true; ;;
+			+S|+safe) g_safe=true; ;;
+			+d|+debug) g_debug=true; ;;
+			+defaultsf) shift; g_defaultsfunc=$1; ;;
+			+unittest) unittest; exit; ;;
+			+h|-h|+help) usage; exit; ;;
+			++) shift; break; ;;
+			+*) fatal "Invalid command $1"; ;;
+			*) break; ;;
+		esac
+		shift
+	done
+	g_optind=$((g_optind - $#))
+
+	if "$g_valgrind" && "$g_gdb"; then
+		fatal "Both valgrind and gdb are enabled. Can run only through one of them at a time."
+	fi
+
+	# -c or -o are dissallowed options
+	local tmp
+	if tmp=$(check_options '-c|-S|-E|-o' "$@"); then
+		fatal "Option not allowed: $tmp"
+	fi
+}
+
+check_options() {
+	local check
+	check=$1
+	shift
+	while (($#)); do
+		if <<<"$1" grep -E -q -- "$check"; then
+			echo "$1"; return 0
+		fi
+		shift
+	done
+	return 1
+}
+
 fatal() {
-	echo "$name" "$*" >&2
+	echo "$name: $*" >&2
 	exit 2
 }
 
-testme() {
-	echo "##################### See hello worlds"
-	( set -x
-	$0 -Wall <<<'int main() { printf("Hello world\n"); }'
-	$0 ---n ---debug -Wall <<<$'#include <stdio.h>\n''int main() { printf("Hello world\n"); }'
-	$0 ---d <(echo 'int main() { printf("Hello world\n"); }') -Wall
-	$0 ---d ---m <(echo 'printf("Hello world\n");') -Wall
-	)
-	echo
-	echo "##################### See failure to compile cause implicit declaration"
-	( set -x
-	$0 <(echo 'int main() { printf("Hello world\n"); }') -Wall -Werror ||
-	$0 ---n -Wall -Werror <<<'int main() { printf("Hello world\n"); }'
-	) ||:
-	echo
-	true
+run() {
+	echo "+ $*" >&2
+	"$@"
 }
 
-c_defaults_macros='#define _GNU_SOURCE  1
+# }}}
+# Testing {{{
+
+testit() {
+	local desc=$1
+	shift
+
+	printf "TESTING: %d %s" "${BASH_LINENO[0]}" "$desc" >&2
+	printf " %q" "$name" "$@" >&2
+	echo >&2
+
+	local tmp ret
+	ret=0
+	tmp=$(bash -x "$0" "$@" 2>"$errf") || ret=$?
+
+	local errout=$(
+	cat <<EOF
+EXIT STATUS: $ret
+STDOUT:
+$tmp
+
+STDERR:
+$(cat "$errf")
+
+EOF
+)
+
+if
+	if [[ "$desc" == "!" ]]; then ((ret == 0)); else ((ret != 0)); fi
+then
+	echo "$errout" >&2
+	fatal "Compile command failed:" "$@"
+fi
+if [[ "$desc" != "!" ]] && ! cmp -s <(cat <<<"$tmp") <(echo HelloWorld); then 
+	echo "$errout" >&2
+	fatal "Program output invalid:" "$@"
+fi
+}
+
+unittest() (
+	exec 0<&-
+
+	local errf tmpf
+	tmpf=/tmp/.ccrun.$$.unittest
+	errf=/tmp/.ccrun.$$.errf
+	trap 'rm -f "$tmpf" "$errf"' EXIT
+
+	# hex encoded hello world
+	local prog str mainprog fullprog
+	str='48656c6c6f576f726c64'
+	prog='printf("\x48\x65\x6c\x6c\x6f\x57\x6f\x72\x6c\x64\n");'
+	mainprog="int main() { $prog }"
+	fullprog="#include <stdio.h>"$'\n'"$mainprog"
+
+	for i in "$prog" "$mainprog" "$fullprog"; do
+		testit '' -Werror "$i"
+		testit '' -Werror <<<"$i"
+		testit '' -Werror <(echo "$i")
+	done
+
+	testit '' -Werror "$prog" -Wall
+	testit '' -Werror -Wall "$prog"
+	testit '' ++ -Wall "$prog" -Werror
+
+	testit ! "$0" <(echo "int main() { printf(\"%d\", 1.0); }") -Wall -Werror
+	testit ! "$0" "printf(\"%d\", 1.0);" -Wall -Werror
+	testit '' +debug ++ -Wall -Werror 'int num; while (scanf("%2x", &num) == 1) putchar(num);' <<<"$str"
+
+	src1='assert(argc == 2); assert(strcmp(argv[1], "'"$str"'") == 0);
+		for (int n; sscanf(argv[1], "%2x", &n) == 1; argv[1] += 2) putchar(n);'
+	testit '' ++ -Wall "$src1" -- "$str"
+	testit '' ++ -Wall <<<"$src1" -- "$str"
+	src2='volatile char s[] = "HelloWorld"; volatile long arr[4] = {0}; volatile long var = (long)s; (void)var; printf("%s\n", (char*)arr[-1]);'
+	testit '' ++ -O "$src2"
+	testit '!' ++ +S -O "$src2"
+
+	echo "$prog" > "$tmpf"
+	testit '!' -Werror "$tmpf"
+	echo "$mainprog" > "$tmpf"
+	testit '!' -Werror "$tmpf"
+	echo "$fullprog" > "$tmpf"
+	testit '' -Werror "$tmpf"
+
+	local ret
+	ret=0
+	run ,ccrun 'return 5;' || ret=$?
+	if ((ret != 5)); then fatal "Test of retuning failed: $ret"; fi
+	run ,ccrun 'int main() { return 5; }' || ret=$?
+	if ((ret != 5)); then fatal "Test of retuning failed: $ret"; fi
+)
+
+# }}}
+# Defaults {{{
+
+c_defaults_macros() { cat <<EOF
+#define _GNU_SOURCE  1
 #define _POSIX_C_SOURCE  300000L
 #define _POSIX_SOURCE  1
 #define _XOPEN_SOURCE  1
 #define _DEFAULT_SOURCE  1
-'
+EOF
+}
 
-c_defaults_headers='/* C */
+c_defaults_headers() { cat <<EOF
+/* C */
 #include <assert.h>
 #include <complex.h>
 #include <ctype.h>
@@ -103,9 +247,11 @@ c_defaults_headers='/* C */
 #include <uchar.h>
 #include <wchar.h>
 #include <wctype.h>
-'
+EOF
+}
 
-c_defaults_posix='/* posix */
+c_defaults_posix() { cat <<EOF
+/* posix */
 #include <aio.h>
 #include <arpa/inet.h>
 #include <assert.h>
@@ -186,89 +332,132 @@ c_defaults_posix='/* posix */
 #include <wchar.h>
 #include <wctype.h>
 #include <wordexp.h>
-'
-
-c_defaults() {
-	cat <<EOF
-$c_defaults_macros
-$c_defaults_headers
-$c_defaults_posix
 EOF
 }
 
-######################################################
+c_defaults() {
+	c_defaults_macros
+	c_defaults_headers
+	c_defaults_posix
+}
 
-cc="${CC:-gcc -x c}${CC:+$CC $CFLAGS}"
-usedefaults=
-addmain=false
-defaultsfunc=
-debug=false
-c_valgrind=false
-c_gdb=false
+# }}}
+# Options detection {{{
+
+gcc_version() {
+	if ! gcc --version | grep '^gcc' | sed 's/^.* \([0-9]\+\.[0-9]\+\).*/\1/'; then
+		fatal "Getting gcc version failed"
+	fi
+}
+
+gcc_try_gcc_compile() (
+	local tmps tmpo
+	tmps=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.c)
+	tmpo=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.out)
+	trap 'rm "$tmps" "$tmpo"' EXIT
+	echo 'int main(){}' > "$tmps"
+	LC_ALL=C gcc "$@" "$tmps" -o "$tmpo" </dev/null
+)
+
+awkeval() {
+	if (($# != 1)); then fatal "internal error: awkeval takes one argument"; fi
+	awk 'BEGIN{exit(!('"$1"'))}' <&-
+}
+
+safe_cflags_add() {
+	local flags
+	flags=(
+		-D_FORTIFY_SOURCE=2
+		-D_GLIBCXX_ASSERTIONS
+
+		-fasynchronous-unwind-tables
+		-fexceptions
+		-fpie -Wl,-pie
+		-fstack-clash-protection
+		-fstack-protector-all
+		-fstack-protector-strong
+
+		-ggdb3
+		-grecord-gcc-switches
+		-fcf-protection
+
+		-O
+
+		-Wall
+		-Wextra
+		-Wwrite-strings
+		-Wno-unused-function
+		-Wno-unused-argument
+		-Wno-unused-parameter
+
+		-Wl,-z,defs
+		-Wl,-z,now
+		-Wl,-z,relro
+	)
+	#-fplugin=annobin
+
+	if ! "$g_valgrind"; then
+		local ver
+		if ! ver=$(gcc_version); then
+			fatal "Could not get gcc version"
+		fi
+
+		local sanitize
+		if awkeval "$ver >= 4.8"; then
+			sanitize+=(-fsanitize=address)
+		fi
+		if awkeval "$ver >= 5"; then
+			sanitize+=(-fsanitize=undefined)
+		fi
+		if awkeval "$ver >= 8"; then
+			sanitize+=(-fsanitize=pointer-compare -fsanitize=pointer-subtract)
+		fi
+		local tmp
+		if ((${#sanitize[@]} != 0)) && tmp=$(gcc_try_gcc_compile "${sanitize[@]}" 2>&1); then
+			flags+=("${sanitize[@]}")
+		fi
+	fi
+
+	# add to global array options
+	g_ccargs=("${flags[@]}" "${g_ccargs[@]}")
+}
+
+# }}}
+######################################################
+# Main {{{
+
+parse_options "$@"
+shift "$g_optind"
+
+s_source=""
+s_sourceisfile=false
+s_sourcefound=false
+g_ccargs=()
+# For each passe options...
 while (($#)); do
 	case "$1" in
-	---cc) shift; cc="$1"; ;;
-	---defaults) shift; defaultsfunc=$1; ;;
-	---n|---nodefaults) usedefaults=false; ;;
-	---d|---usedefaults) usedefaults=true; ;;
-	---m|---main) addmain=true; ;;
-	---V|---valgrind) c_valgrind=true; ;;
-	---G|---gdb) c_gdb=true; ;;
-	---h|-h|---help) usage; exit; ;;
-	---debug) debug=true; ;;
-	---test) testme; exit; ;;
-	---*) fatal "Invalid command $1"; ;;
-	*) break; ;;
-	esac
-	shift
-done
-
-# -c or -o are dissallowed options
-if ! (
-	while (($#)); do
-		case "$1" in
-		-c|-o) fatal "$1 option is not allowed"; ;;
-		esac
-		shift
-	done
-); then
-	exit 2
-fi
-
-shopt -s extglob
-
-# if we have only dashes options and last option doesn't have dash
-input="-"
-inputstr=""
-if (($#)); then
-	case "$1" in
-	# is this an option? If so, pass to gcc
-	-*) ;;
-	# anything that looks like main or #include?
-	*main*([ $'\t'])'('*')'*'{'*'}'*) ;&
-	*'#'*([ $'\t'])'include'+([ $'\t'])*)
-		inputstr="$1"
-		shift
-		;;
-	# is there anything that looks like a function call?
-	*[^a-zA-Z_][a-zA-Z_]+([a-zA-Z_0-9])*([ $'\t'])'('*')'*';'*) ;&
-	           [a-zA-Z_]+([a-zA-Z_0-9])*([ $'\t'])'('*')'*';'*)
-		inputstr="$1"
-		addmain=true
-		shift
-		;;
-	# So that must be a filename!
+	# `--` means end of options.
+	--) break; ;;
+	# if it starts with `-` - it must be a gcc option
+	-*) g_ccargs+=("$1"); ;;
+	# Anything else is a source file - concatenated with space.
 	*)
-		input="$1"
-		usedefaults=${usedefaults:-false}
-		shift
+		if "$s_sourcefound" && "$s_sourceisfile"; then
+			fatal "Multiple file sources found when parsing: $1"
+		fi
+		if [[ -e "$1" ]]; then
+			if [[ -p "$1" ]]; then
+				s_source=$(cat "$1")
+			else
+				s_source="$1"
+				s_sourceisfile=true
+			fi
+		else
+			s_source="${s_source:+$s_source$'\n'}$1"
+		fi
+		s_sourcefound=true
 		;;
 	esac
-fi
-
-ccargs=()
-while (($#)) && [[ $1 != '--' ]]; do
-	ccargs+=("$1")
 	shift
 done
 
@@ -276,47 +465,95 @@ progargs=()
 if (($#)) && [[ "$1" == '--' ]]; then
 	shift
 	progargs=("$@")
+	shift "$#"
 fi
 
-tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
-{
-	if "${usedefaults:-true}"; then
-		"${defaultsfunc:-c_defaults}"
+if (($# != 0)); then 
+	fatal "Internal options parser error"
+fi
+
+# When there's no source on command line, read stdin.
+if ! "$s_sourcefound"; then
+	s_source=$(cat)
+fi
+
+# Detect if additional includes and main function should be added.
+g_addmain=false
+g_adddefaults=false
+if ! "$s_sourceisfile" && "$g_change"; then
+
+	# If there are no includes...
+	if ! <<<"$s_source" grep -z -q '#[[:blank:]]*include[[:blank:]]\+["<]'; then
+		# then add defaults includes.
+		g_adddefaults=true
+		# If there's additionally no main function
+		if ! <<<"$s_source" grep -z -q '[[:space:]]\+main[[:space:]]*(.*)[[:space:]]*{.*}'; then
+			# Then add a main function.
+			g_addmain=true
+		fi
 	fi
-	if "$addmain"; then
-		echo 'int main(int argc, char *argv[]) {'
-	fi
-	if [[ -n "$inputstr" ]]; then
-		printf "%s\n" "$inputstr"
-	else
-		cat "$input"
-	fi
-	if "$addmain"; then
-		echo '}'
-	fi
-} |
-{
-	if "$debug"; then
-		tee >(sed 's/^/> /' >/dev/stderr)
-	else
-		cat
-	fi
-} |
-{
-	if "$debug"; then set -x; fi
-	$cc -o "$tmp" - "${ccargs[@]}"
-} &&
-{
-	cmd=()
-	if "$c_valgrind"; then cmd=(valgrind -q --track-origins=yes --leak-check=full --); fi
-	if "$c_gdb"; then cmd=(
-		gdb --batch -ex 'set width 0' -ex 'set height 0' -ex 'set verbose off' -ex 'run' -ex 'bt' --args
-	); fi
-	cmd+=("$tmp" "${progargs[@]}")
-	if "$debug"; then set -x; fi
+fi
+
+if "$g_safe"; then
+	safe_cflags_add
+fi
+
+srctmpfile=/tmp/.ccrun.$$.source
+exefile=/tmp/.ccrun.$$.exefile
+trap 'rm -f "$srctmpfile" "$exefile"' EXIT
+touch "$srctmpfile" "$exefile"
+
+# Srctmpfile is the temporary file, but replace it with real filename
+# if we can.
+srcfile="$srctmpfile"
+
+if "$s_sourceisfile" && ! "$g_adddefaults" && ! "$g_addmain"; then
+	srcfile="$s_source"
+else
+	{
+		if "${g_adddefaults:-true}"; then
+			"${g_defaultsfunc:-c_defaults}"
+		fi
+		if "$g_addmain"; then
+			echo 'int main(int argc, char *argv[]) {'
+		fi
+		if "$s_sourceisfile"; then
+			cat "$s_source"
+		else
+			cat <<<"$s_source"
+		fi
+		if "$g_addmain"; then
+			echo '}'
+		fi
+	} > "$srcfile"
+fi
+
+cmd=()
+if "$g_valgrind"; then
+	cmd=(valgrind -q --track-origins=yes --leak-check=full --)
+elif "$g_gdb"; then
+	cmd=(gdb --batch
+		-ex 'set disassembly-flavor intel'
+		-ex 'set width 0' -ex 'set height 0'
+		-ex 'set verbose off'
+		-ex 'run' -ex 'bt' --args)
+elif "$g_interactivegdb"; then
+	exec 0</dev/tty
+	cmd=(gdb -q -ex 'set disassembly-flavor intel' -ex 'b main' --args)
+fi
+cmd+=("$exefile" "${progargs[@]}")
+
+if "$g_debug" && ! "$s_sourceisfile"; then
+	sed 's/^/>    /' "$srcfile" >&2
+fi
+
+if "$g_debug"; then
+	echo "+" $g_cc "${g_ccargs[@]}" >&2
+fi
+$g_cc -o "$exefile" "${g_ccargs[@]}" "$srcfile" &&
+(
+	if "$g_debug"; then set -x; fi
 	"${cmd[@]}"
-}
+)
 
-
-
+# }}}

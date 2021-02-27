@@ -1,6 +1,15 @@
 #!/bin/bash
-cxx="${CXX:-g++ -xc++}${CXX:+$CXX $CXXFLAGS}"
-cxx_defaults_headers='/* C++ */
+
+g_cxx="${CXX:-g++ -xc++}${CXX:+$CXX $CXXFLAGS}"
+
+cxx_defaults_headers() { cat <<EOF
+/* C++ */
+#include <bits/stdc++.h>
+EOF
+}
+
+cxx_defaults_headers_all_unused() { cat <<EOF
+/* C++ */
 #include <algorithm>
 #include <any>
 #include <array>
@@ -83,18 +92,17 @@ cxx_defaults_headers='/* C++ */
 #include <valarray>
 #include <variant>
 #include <vector>
-'
-
-cxx_defaults() {
-	cat <<EOF
-$c_defaults_macros
-$cxx_defaults_headers
-extern "C" {
-$c_defaults_posix
-}
-using namespace std;
 EOF
 }
 
-. ,ccrun ---defaults cxx_defaults ---cc "$cxx" "$@"
+cxx_defaults() {
+	c_defaults_macros
+	cxx_defaults_headers
+	echo 'extern "C" {'
+	c_defaults_posix
+	echo '}'
+	echo 'using namespace std;'
+}
+
+. ,ccrun +defaultsf cxx_defaults +cc "$g_cxx" "$@"
 

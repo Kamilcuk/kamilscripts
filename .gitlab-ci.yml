@@ -46,7 +46,7 @@ test_ccrun:
   <<: *test_setup
   script:
     - pacman -Suy --noconfirm gcc
-    - bin/,ccrun ---test
+    - bin/,ccrun +unittest
 
 pages:
   stage: deploy
