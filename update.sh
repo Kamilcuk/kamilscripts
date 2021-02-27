@@ -1,9 +1,22 @@
 #!/bin/bash
 set -euo pipefail
-cd "$(dirname "$(readlink -f "$0")")"
-set -x
+. "$(dirname "$0")"/.funcs.sh
+
+log "Updating repository..."
+git remote get-url origin | sed_remote_to_https | xargs -t git remote set-url origin
+runlog git pull --rebase
+git remote get-url origin | sed_remote_to_ssh | xargs -t git remote set-url origin
+
+log "Updating submodules..."
 cur=$(./gitmodules_links_change.sh detect)
-./gitmodules_links_change.sh https
-./update_submodules.sh
-./gitmodules_links_change.sh "$cur"
+runlog ./gitmodules_links_change.sh https
+runlog ./update_submodules.sh
+runlog ./gitmodules_links_change.sh "$cur"
+
+f=~/.config/kamilscripts/kamilscripts
+if [[ -e "$f" && -L "$f" ]]; then
+	log "Stowing kamilscripts..."
+	runlog bin/,kamilscripts_stow.sh i --ok
+fi
+
 

@@ -1,18 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+. "$(dirname "$0")"/.funcs.sh
 to_ssh() {
-	sed -E 's~^(\s*url\s*=\s*)https://github.com/[kK]amilcuk/~\1git@github.com:kamilcuk/~' -i .gitmodules
+	sed_remote_to_ssh -i .gitmodules
 }
 to_https() {
-	sed -E 's~^(\s*url\s*=\s*)git@github.com:[kK]amilcuk/~\1https://github.com/kamilcuk/~' -i .gitmodules
+	sed_remote_to_https -i .gitmodules
 }
 detect() {
-	sed -E '
-		\~^\s*url\s*=\s*https://github.com/[kK]amilcuk~{ s/.*/https/; q }
-		\~^\s*url\s*=\s*git@github.com:[kK]amilcuk/~{ s/.*/ssh/; q }
-		d
-	' .gitmodules
+	sed_remote_detect .gitmodules
 }
 syncme() {
 	diff --old-line-format=$'- %l\n' --new-line-format=$'+ %l\n' --old-group-format='%<' --new-group-format='%>' --changed-group-format='%<%>' --unchanged-group-format='' <(cat <<<"$tmp") .gitmodules ||:
@@ -20,7 +17,7 @@ syncme() {
 }
 usage() {
 	cat <<EOF
-Usage: $(basename "$0") [https|ssh|detect|auto]
+Usage: $name [https|ssh|detect|auto]
 EOF
 	exit 1
 }
