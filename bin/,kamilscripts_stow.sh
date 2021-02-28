@@ -93,7 +93,7 @@ do_stow() {
 		fatal "$repo/.stowrc not such file"
 	fi
 
-	cmd=(stow -d "$repo" -t ~ --no-folding "${STOWARGS[@]}" "$@")
+	cmd=(stow -d "$repo" -t ~ --no-folding ${STOWARGS[@]+"${STOWARGS[@]}"} "$@")
 	echo "+ ${cmd[*]}"
 	( cd "$repo" ; command "${cmd[@]}" )
 }
