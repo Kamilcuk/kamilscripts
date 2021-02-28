@@ -3,9 +3,9 @@ set -euo pipefail
 . "$(dirname "$0")"/.funcs.sh
 
 log "Updating repository..."
-git remote get-url origin | sed_remote_to_https | xargs -t git remote set-url origin
+git_remote_get-url | sed_remote_to_https | xargs -t git remote set-url origin
 runlog git pull --rebase
-git remote get-url origin | sed_remote_to_ssh | xargs -t git remote set-url origin
+git_remote_get-url | sed_remote_to_ssh | xargs -t git remote set-url origin
 
 log "Updating submodules..."
 cur=$(./gitmodules_links_change.sh detect)

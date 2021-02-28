@@ -29,3 +29,8 @@ sed_remote_detect() {
 		d
 	' "$@"
 }
+
+git_remote_get-url() {
+	git remote -v show | awk 'NR==1{print $2}'
+}
+
