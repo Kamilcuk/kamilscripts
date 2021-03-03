@@ -22,6 +22,7 @@ Translated user readable format string in ascii escape seqeunces.
 Options:
     -s --safe        If terminal does not support colors, print nothing.
                      The default is: print an error message and exit with nonzero exit status.
+    -q --quoted      Print in a way that is sourcable in a shell script.
     -h --help        Print this help and exit.
        --separator=STR  Output colors separated by this.
        --bashautocompletaion  Output a bash complation invocation that needs to be eval-ed.
@@ -46,6 +47,7 @@ Examples:
     $NAME charrainbow ff0000 00ff00 this_is_funny_string
     $NAME charrainbow3 ff0000 00ff00 00000ff this_is_funny_string
     $NAME sha1charrainbow3 this_is_funny_string
+    $NAME -q standout red
 
 Written by Kamil Cukrowski
 SPDX-License-Identifier: GPL-3.0+
@@ -60,15 +62,17 @@ bashautocomplete() {
 
 # Main ################################################################################################
 
-args=$(getopt -n "$NAME" -o hsdi -l help,safe,separator:,bashautocomplete,test:: -- "$@")
+args=$(getopt -n "$NAME" -o hqsdi -l help,quoted,safe,separator:,bashautocomplete,test:: -- "$@")
 eval set -- "$args"
-safe=0
-separator=""
+g_safe=0
+g_separator=""
+g_quoted=false
 while (($#)); do
 	case "$1" in
 	-h|--help) usage; exit; ;;
-	-s|--safe) safe=1; ;;
-	--separator) separator="$2"; shift; ;;
+	-s|--safe) g_safe=1; ;;
+	-q|--quoted) g_quoted=true; ;;
+	--separator) g_separator="$2"; shift; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
 	--test) unittest "$2"; exit; ;;
 	--) shift; break; ;;
@@ -84,12 +88,12 @@ fi
 
 if ! {
 		tmp=$(tput -S <<<$'colors\ncols\nlines') &&
-		{ read -r colors && read -r cols && read -r lines ;} <<<"$tmp" &&
-		[[ -n "$colors" ]] &&
-		(( colors >= 8 ))
+		{ read -r g_colors && read -r g_cols && read -r g_lines ;} <<<"$tmp" &&
+		[[ -n "$g_colors" ]] &&
+		(( g_colors >= 8 ))
 } ;then
-	if ((!safe)); then
-		echo "ERROR: Terminal does not support colors=$colors" >&2
+	if ((!g_safe)); then
+		echo "ERROR: Terminal does not support colors=$g_colors" >&2
 		exit 1
 	else
 		exit 0
@@ -103,18 +107,32 @@ fi
 
 #################################################################################################
 
-awk \
-	-v SCRIPT="$0" \
-	-v NAME="$NAME" \
-	-v colors="$colors" \
-	-v safe="$safe" \
-	-v separator="$separator" \
-	-v COLS="$cols" \
-	-v LINES="$lines" \
-	-f <(
-		seq -f "# %f" 0 "$LINENO"
-		sed -n -e '/^### AWK SCRIPT STARTS HERE ### b1dbe8d8-d112-4e04-a32f-8b7f901c9580$/,$p' "$0"
-	) <(printf "%s\n" "$@")
+work() {
+	{
+		 awk -v mark="^### AWK SCRIPT STARTS HERE ### b1dbe8d8-d112-4e04-a32f-8b7f901c9580$" '
+		 	$0 ~ mark{
+				for (i=1;i<=NR;i++) printf"\n"
+				f=1
+			}
+			f
+		' "$0"
+	} | awk \
+		-v SCRIPT="$0" \
+		-v NAME="$NAME" \
+		-v g_colors="$g_colors" \
+		-v g_safe="$g_safe" \
+		-v g_separator="$g_separator" \
+		-v COLS="$g_cols" \
+		-v LINES="$g_lines" \
+		-f - \
+		<(printf "%s\n" "$@")
+}
+if "$g_quoted"; then
+	tmp=$(work "$@")
+	printf "%q\n" "$tmp"
+else
+	work "$@"
+fi
 
 exit
 
@@ -587,7 +605,7 @@ function load_config() {
 
 function fatal(desc) {
 	printf NAME ": ERROR: on parsing " $0 " : " desc "\n" > "/dev/stderr"
-	if (!safe) {
+	if (!g_safe) {
 		exit 1
 	}
 }
@@ -681,7 +699,7 @@ function disp_fb_24_to_8_in(fg, c) {
 }
 
 function disp_fb_24_in(fg, c) {
-	if (colors >= 256) {
+	if (g_colors >= 256) {
 		print_ansi_24_bit(fg_to_num(fg), c[1], c[2], c[3])
 	} else {
 		disp_fb_24_to_8_in(fg, c)
@@ -757,8 +775,8 @@ function Getline(desc) {
 
 function Next() {
 	# output separator between modes
-	if (length(separator)) {
-		printf("%s", separator)
+	if (length(g_separator)) {
+		printf("%s", g_separator)
 	}
 	next
 }
@@ -813,21 +831,21 @@ function mode_test( \
 	charrainbow("FF0000", "00FF00", tmp)
 	printf("%s\n", config["reset"])
 
-	savecolors = colors; colors = 8
+	savecolors = g_colors; g_colors = 8
 		printf("%*s: ", tmp2, "charrainbow 24->8")
 		charrainbow("FF0000", "00FF00", tmp)
 		printf("%s\n", config["reset"])
-	colors = savecolors
+	g_colors = savecolors
 
 	printf("%*s: ", tmp2, "charrainbow3")
 	charrainbow3("FF0000", "0000FF", "00FF00", tmp)
 	printf("%s\n", config["reset"])
 
-	savecolors = colors; colors = 8
+	savecolors = g_colors; g_colors = 8
 		printf("%*s: ", tmp2, "charrainbow3 24->8")
 		charrainbow3("FF0000", "0000FF", "00FF00", tmp)
 		printf("%s\n", config["reset"])
-	colors = savecolors
+	g_colors = savecolors
 
 	printf("%s\n", config["reset"])
 }
@@ -899,7 +917,7 @@ function mode_charrainbow3( \
 }
 
 function mode_colors() {
-	print colors
+	print g_colors
 }
 
 function mode_listconfig() {
@@ -1053,5 +1071,5 @@ $0 ~ "^[[:xdigit:]]{6}$" { disp_fb_24("f", $0); Next(); }
 $0 ~ "^[fb]#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 4)); Next(); }
 $0 in modes{ choose_mode($0); Next(); }
 $0 in config{ printf "%s", config[$0]; Next(); }
-{ fatal("Invalid argument: "$0) }
+{ fatal("Invalid argument nr=" NR " fnr=" FNR " $0=`" $0 "'") }
 
