@@ -44,6 +44,7 @@ Options:
    +G +gdb             Run executable under gdb.
    +I +interactivegdb  Run executable in gdb, drop to interactive before running.
    +S +safe            Enable safe options.
+   +v +verbose         Print compile command and execution info.
    +d +debug           Display debugging information.
       +defaultsf <f>   This exported bash function should output #include statements.
    +unittest           Run unittests.
@@ -62,7 +63,7 @@ EOF
 
 parse_options() {
 	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc= g_debug=false
-	g_valgrind=false g_gdb=false g_interactivegdb=false g_safe=false g_optind=$#
+	g_valgrind=false g_gdb=false g_interactivegdb=false g_safe=false g_verbose=false g_optind=$# 
 	while (($#)); do
 		case "$1" in
 			+cc) shift; g_cc="$1"; ;;
@@ -71,6 +72,7 @@ parse_options() {
 			+G|+gdb) g_gdb=true; ;;
 			+I|+interactivegdb) g_interactivegdb=true; ;;
 			+S|+safe) g_safe=true; ;;
+			+v|+verbose) g_verbose=true; ;;
 			+d|+debug) g_debug=true; ;;
 			+defaultsf) shift; g_defaultsfunc=$1; ;;
 			+unittest) unittest; exit; ;;
@@ -130,7 +132,7 @@ testit() {
 
 	local tmp ret
 	ret=0
-	tmp=$(bash -x "$0" "$@" 2>"$errf") || ret=$?
+	tmp=$(bash -x "$0" +d "$@" 2>"$errf") || ret=$?
 
 	local errout=$(
 	cat <<EOF
@@ -142,18 +144,18 @@ STDERR:
 $(cat "$errf")
 
 EOF
-)
+	)
 
-if
-	if [[ "$desc" == "!" ]]; then ((ret == 0)); else ((ret != 0)); fi
-then
-	echo "$errout" >&2
-	fatal "Compile command failed:" "$@"
-fi
-if [[ "$desc" != "!" ]] && ! cmp -s <(cat <<<"$tmp") <(echo HelloWorld); then 
-	echo "$errout" >&2
-	fatal "Program output invalid:" "$@"
-fi
+	if
+		if [[ "$desc" == "!" ]]; then ((ret == 0)); else ((ret != 0)); fi
+	then
+		echo "$errout" >&2
+		fatal "Compile command failed:" "$@"
+	fi
+	if [[ "$desc" != "!" ]] && ! cmp -s <(cat <<<"$tmp") <(echo HelloWorld); then 
+		echo "$errout" >&2
+		fatal "Program output invalid:" "$@"
+	fi
 }
 
 unittest() (
@@ -177,6 +179,8 @@ unittest() (
 		testit '' -Werror <(echo "$i")
 	done
 
+	#testit '' -Werror -- <(echo "$fullprog")
+
 	testit '' -Werror "$prog" -Wall
 	testit '' -Werror -Wall "$prog"
 	testit '' ++ -Wall "$prog" -Werror
@@ -199,6 +203,7 @@ unittest() (
 	testit '!' -Werror "$tmpf"
 	echo "$fullprog" > "$tmpf"
 	testit '' -Werror "$tmpf"
+	#testit '' -Werror -- "$tmpf"
 
 	local ret
 	ret=0
@@ -345,19 +350,23 @@ c_defaults() {
 # Options detection {{{
 
 gcc_version() {
-	if ! gcc --version | grep '^gcc' | sed 's/^.* \([0-9]\+\.[0-9]\+\).*/\1/'; then
-		fatal "Getting gcc version failed"
+	declare -g GCC_VERSION
+	if [[ -z "${GCC_VERSION:-}" ]]; then
+		if ! GCC_VERSION=$(gcc --version | grep '^gcc' | sed 's/^.* \([0-9]\+\.[0-9]\+\).*/\1/'); then
+			fatal "Getting gcc version failed"
+		fi
 	fi
+	echo "$GCC_VERSION"
 }
 
-gcc_try_gcc_compile() (
+gcc_try_compile() { (
 	local tmps tmpo
 	tmps=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.c)
 	tmpo=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.out)
 	trap 'rm "$tmps" "$tmpo"' EXIT
 	echo 'int main(){}' > "$tmps"
 	LC_ALL=C gcc "$@" "$tmps" -o "$tmpo" </dev/null
-)
+); }
 
 awkeval() {
 	if (($# != 1)); then fatal "internal error: awkeval takes one argument"; fi
@@ -387,16 +396,15 @@ safe_cflags_add() {
 		-Wextra
 		-Wwrite-strings
 		-Wno-unused-function
-		-Wno-unused-argument
 		-Wno-unused-parameter
 
 		-Wl,-z,defs
 		-Wl,-z,now
 		-Wl,-z,relro
 	)
-	#-fplugin=annobin
 
-	if ! "$g_valgrind"; then
+	# Sanitize options are disabled when running via gdb or valgrind
+	if ! "$g_valgrind" && ! "$g_gdb" && ! "$g_interactivegdb"; then
 		local ver
 		if ! ver=$(gcc_version); then
 			fatal "Could not get gcc version"
@@ -413,7 +421,7 @@ safe_cflags_add() {
 			sanitize+=(-fsanitize=pointer-compare -fsanitize=pointer-subtract)
 		fi
 		local tmp
-		if ((${#sanitize[@]} != 0)) && tmp=$(gcc_try_gcc_compile "${sanitize[@]}" 2>&1); then
+		if ((${#sanitize[@]} != 0)) && tmp=$(gcc_try_compile "${sanitize[@]}" 2>&1); then
 			flags+=("${sanitize[@]}")
 		fi
 	fi
@@ -464,6 +472,11 @@ done
 progargs=()
 if (($#)) && [[ "$1" == '--' ]]; then
 	shift
+	#if ! "$s_sourcefound"; then
+	#	s_source=$1
+	#	s_sourceisfile=true
+	#	s_sourcefound=true
+	#fi
 	progargs=("$@")
 	shift "$#"
 fi
@@ -528,23 +541,35 @@ else
 	} > "$srcfile"
 fi
 
-cmd=()
+precmd=()
 if "$g_valgrind"; then
-	cmd=(valgrind -q --track-origins=yes --leak-check=full --)
+	precmd=(valgrind -q --track-origins=yes --leak-check=full)
 elif "$g_gdb"; then
-	cmd=(gdb --batch
+	precmd=(gdb --batch
 		-ex 'set disassembly-flavor intel'
 		-ex 'set width 0' -ex 'set height 0'
 		-ex 'set verbose off'
 		-ex 'run' -ex 'bt' --args)
 elif "$g_interactivegdb"; then
 	exec 0</dev/tty
-	cmd=(gdb -q -ex 'set disassembly-flavor intel' -ex 'b main' --args)
+	precmd=(gdb -q -ex 'set disassembly-flavor intel' -ex 'b main' --args)
 fi
-cmd+=("$exefile" "${progargs[@]}")
+cmd=("${precmd[@]}" "$exefile" "${progargs[@]}")
 
 if "$g_debug" && ! "$s_sourceisfile"; then
 	sed 's/^/>    /' "$srcfile" >&2
+fi
+
+if "${g_verbose:-false}"; then
+	{
+	printf "%s\n" "+" $g_cc "${g_ccargs[@]}"
+	if "$s_sourceisfile"; then
+		printf "%s\n" "$s_source"
+	fi
+	if ((${#precmd[@]})); then
+		printf "%s\n" "&&" "${precmd[@]}"
+	fi
+	} | paste -sd' ' >&2
 fi
 
 if "$g_debug"; then

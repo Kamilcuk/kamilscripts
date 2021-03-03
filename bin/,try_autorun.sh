@@ -3,35 +3,6 @@ set -euo pipefail
 
 name=$(basename "$0")
 
-run() {
-	printf "+ %s\n" "$*" >&2
-	if ! "$g_dryrun"; then
-		"$@"
-	fi
-}
-
-runeval() {
-	printf "+ %s\n" "$*" >&2
-	if ! "$g_dryrun"; then
-		eval "$1"
-	fi
-}
-
-fatal() {
-	echo "$name: error:" "$@" >&2
-	exit 1
-}
-
-be_nice() {
-	if (($(nice) < 10)); then
-		ionice=()
-		if { ionice -V 2>&1 | grep -q util-linux; } 2>/dev/null; then
-			ionice=(ionice --)
-		fi
-		exec nice -n 20 -- "${ionice[@]}" "$0" "$@"
-	fi
-}
-
 usage() {
 	cat <<EOF
 Usage: $name [options] <file> [tool_specific_arguments...]
@@ -43,6 +14,7 @@ In project mode chooses from: make, cmake.
 
 Options:
    -e filetype   Pass filetype as vim filetype.
+   -T <timeout>  Timeout execution.
    -S            Synchronize stderr with stdout and be line buffered.
    -p            Try to detect project files before detecting filetype.
    -n            Dry run.
@@ -57,18 +29,98 @@ parse_arguments() {
 	declare -g file g_use_project g_dryrun g_sync_output
 	g_use_project=false
 	g_dryrun=false
+	g_syncoutput=false
+	g_timeout=
 
 	local o
-	while getopts ":e:pSnh" o; do
+	while getopts ":e:pT:Snh" o; do
 		case "$o" in
 		e) ;;
 		p) g_use_project=true; ;;
-		S) exec 2>&1; ;;
+		T) g_timeout=$OPTARG; ;;
+		S) g_syncoutput=true; ;;
 		n) g_dryrun=true; ;;
 		h) usage; exit 0; ;;
 		*) fatal "Invalid argument: -$OPTARG"; ;;
 		esac
 	done
+
+	if "$g_syncoutput"; then
+		exec 2>&1
+	fi
+
+	if [[ -n "$g_timeout" ]]; then
+		timeout_watcher &
+	fi
+}
+
+run() {
+	printf "+ %s\n" "$*" >&2
+	if ! "$g_dryrun"; then
+		"$@"
+	fi
+}
+
+runeval() {
+	printf "+ %s\n" "$*" >&2
+	if ! "$g_dryrun"; then
+		eval "$1"
+	fi
+}
+
+logrun() {
+	echo "+" "$@" >&2
+}
+
+fatal() {
+	echo "$name: error:" "$@" >&2
+	exit 1
+}
+
+runexec() {
+	exec "$@"
+}
+
+be_nice() {
+	if [[ -z "${TRY_AUTORUN_IS_NICE:-}" ]]; then
+		local ionice
+		ionice=()
+		if { ionice -V 2>&1 | grep -q util-linux; } 2>/dev/null; then
+			ionice=(ionice --)
+		fi
+		exec nice -n 20 "${ionice[@]}" env TRY_AUTORUN_IS_NICE=true "$0" "$@"
+	fi
+}
+
+be_unbuffered() {
+	if [[ -z "${TRY_AUTORUN_IS_UNBUFFERED:-}" ]]; then
+		local unbuffer
+		unbuffer=()
+		if hash unbuffer 2>/dev/null >&2; then
+			unbuffer=(unbuffer)
+		elif hash stdbuf 2>/dev/null >&2; then
+			unbuffer=(stdbuf -oL -eL)
+		fi
+		if ((${#unbuffer[@]})); then
+			exec env TRY_AUTORUN_IS_UNBUFFERED=true "${unbuffer[@]}" "$0" "$@"
+		else
+			export TRY_AUTORUN_IS_UNBUFFERED=true
+		fi
+	fi
+}
+
+timeout_watcher() {
+	timeout="$g_timeout"
+	interval=1
+	while ((timeout--)); do
+		sleep 1
+		if ! kill -0 $BASHPID 2>/dev/null >&2; then
+			exit 0
+		fi
+	done
+
+	echo "Timeout of 1 second reached - terminating..." >&2
+	kill -s SIGTERM 0
 }
 
 gcc_version() {
@@ -178,6 +230,7 @@ list_functions_prefixed() {
 # main #########################################
 
 be_nice "$@"
+be_unbuffered "$@"
 
 parse_arguments "$@"
 shift "$((OPTIND-1))"
@@ -198,11 +251,17 @@ fi
 ext=${file,,}
 ext=${file##*.}
 case "$ext" in
-c)
-	: "${ccompiler:=gcc}"
-	;& # fallthrough
-cpp|cxx|cc|c++)
-	: "${ccompiler:=g++}"
+c|cpp|cxx|cc|c++)
+	case "$ext" in
+	c) : "${ccompiler:=gcc}"; run=,ccrun; ;;
+	*) : "${ccompiler:=g++}"; run=,c++run; ;;
+	esac
+
+	if hash "$run" 2>/dev/null >&2; then
+		cmd=("$run" +n +v +S "$file" ${1:+--} "$@")
+		runexec "${cmd[@]}"
+	fi
+
 	if [[ -z "$ccompiler" ]] || ! hash "$ccompiler" 2>/dev/null; then
 		fatal "Compiler could not be found: $ccompiler"
 	fi
@@ -210,20 +269,25 @@ cpp|cxx|cc|c++)
 	tmp=$(mktemp --suffix='.out')
 	trap 'rm "$tmp"' EXIT
 	{
-		echo "+" "$ccompiler" "${cflags[@]}" "$file" >&2
+		logrun "$ccompiler" "${cflags[@]}" "$@" "$file"
 		"$ccompiler" "${cflags[@]}" "$@" -o "$tmp" "$file"
-		"$tmp"
+		runexec "$tmp"
 	}
 	# tmp removed on EXIT
 	;;
 py)
-	run python "$@" "$file"
+	cmd=(python "$@" "$file")
+	logrun "${cmd[@]}"
+	runexec "${cmd[@]}"
 	;;
 sh|bash|bashrc)
-	run bash "$@" "$file"
+	cmd=(bash "$@" "$file")
+	logrun "${cmd[@]}"
+	runexec "${cmd[@]}"
 	;;
 *)
 	fatal "Don't know how to build $file"
 esac
+
 
 
