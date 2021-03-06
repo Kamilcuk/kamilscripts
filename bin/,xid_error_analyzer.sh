@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Extracted the html page and copied into https://www.convertcsv.com/html-table-to-csv.htm converter
 # Then copied here
@@ -102,6 +103,7 @@ EOF
 )
 # Copied the html text from the page
 g_common=$(cat <<EOF
+
 XID 13: GR: SW Notify Error
 
 This event is logged for general user application faults. Typically this is an out-of-bounds error where the user has walked past the end of an array, but could also be an illegal instruction, illegal register, or other case.
@@ -115,6 +117,7 @@ When this event is logged, NVIDIA recommends the following:
     File a bug if the previous two come back inconclusive to eliminate potential NVIDIA driver or hardware bug.
 
 Note: The cuda-memcheck tool instruments the running application and reports which line of code performed the illegal read.
+
 XID 31: Fifo: MMU Error
 
 This event is logged when a fault is reported by the MMU, such as when an illegal address access is made by an applicable unit on the chip Typically these are application-level bugs, but can also be driver bugs or hardware bugs.
@@ -126,19 +129,23 @@ When this event is logged, NVIDIA recommends the following:
     File a bug if the previous two come back inconclusive to eliminate potential NVIDIA driver or hardware bug.
 
 Note: The cuda-memcheck tool instruments the running application and reports which line of code performed the illegal read.
+
 XID 32: PBDMA Error
 
 This event is logged when a fault is reported by the DMA controller which manages the communication stream between the NVIDIA driver and the GPU over the PCI-E bus. These failures primarily involve quality issues on PCI, and are generally not caused by user application actions.
+
 XID 43: RESET CHANNEL VERIF ERROR
 
 This event is logged when a user application hits a software induced fault and must terminate. The GPU remains in a healthy state.
 
 In most cases, this is not indicative of a driver bug but rather a user application error.
+
 XID 45: OS: Preemptive Channel Removal
 
 This event is logged when the user application aborts and the kernel driver tears down the GPU application running on the GPU. Control-C, GPU resets, sigkill are all examples where the application is aborted and this event is created.
 
 In many cases, this is not indicative of a bug but rather a user or system action.
+
 XID 48: DBE (Double Bit Error) ECC Error
 
 This event is logged when the GPU detects that an uncorrectable error occurs on the GPU. This is also reported back to the user application. A GPU reset or node reboot is needed to clear this error.
@@ -147,7 +154,7 @@ The tool nvidia-smi can provide a summary of ECC errors. See “Tools That Provi
 EOF
 )
 get_common() {
-	awk -v RS='XID ' -v num="$1" '$0 ~ "^"num": "{print RS $0}' <<<"$g_common"
+	awk -v RS='\nXID ' -v num="$1" '$0 ~ "^"num": "{print RS $0}' <<<"$g_common"
 }
 
 c_cross=$'\E[9m'
@@ -155,56 +162,90 @@ c_notcrossed=$'\E[0m'
 c_red=$'\E[91m'
 c_reset=$'\E(B\E[m'
 
+fatal() {
+	echo "${BASH_SOURCE##*/}: ERROR: $*" >&2
+	exit 1
+}
+
+run() {
+	echo "+" "$@" >&2
+	"$@"
+}
+
 ###############################################################################
 
-#input=$(dmesg -T)
-input=$(journalctl -t kernel --no-hostname | sed -n 's/^\(.*[^ ]\) *kernel: */[\1] /p')
+args=$(getopt -n "${BASH_SOURCE###*/}" -o ab:d -- "$@")
+eval set -- "$args"
+g_boot=0
+jbootargs=(-b 0)
+g_usedmesg=false
+while (($#)); do
+	case "$1" in
+	-a) jbootargs=(); ;;
+	-b) jbootargs=(-b "$2"); shift; ;;
+	-d) g_usedmesg=true; ;;
+	--) shift; break; 
+	esac
+	shift
+done
 
-input=$(<<<"$input" grep 'NVRM:')
+if "$g_usedmesg"; then
+	input=$(dmesg -T)
+else
+	input=$(
+		run journalctl -t kernel "${jbootargs[@]}" |
+		sed -n 's/^\(.*[^ ]\) \+[^ ]\+ \+kernel: \+/[\1] /p'
+	)
+fi
+
+if ! input=$(<<<"$input" grep 'NVRM:'); then
+	fatal "No lines with NVRM found"
+fi
 output=""
 found=()
 
 cat <<<"$input"
 echo
 
-while read -r line; do
-	tmp=$(<<<"$line" sed -n 's/^\[\([^]]*\)\].*NVRM: Xid (\(.*\)): \([0-9]*\), \(.*\)/\1\t\2\t\3\t\4/p')
-	if [[ -z "$tmp" ]]; then continue; fi
-	IFS=$'\t' read -r date deviceid xid info <<<"$tmp"
+input=$(<<<"$input" sed -n 's/^\[\([^]]*\)\].*NVRM: Xid (\(.*\)): \([0-9]*\), \(.*\)/\1\t\2\t\3\t\4/p')
+if [[ -z "$input" ]]; then
+	echo "No Xid errors...."
+else
+	while IFS=$'\t' read -r date deviceid xid info; do
+		if ! err=$(grep "^$xid" <<<"$g_xids"); then continue; fi
+		IFS=',' read -ra err <<<"$err"
+		desc=${err[1]}
+		unset err[0] err[1]
+		causes=("${err[@]}")
 
-	err=$(grep "^$xid" <<<"$g_xids")
-	IFS=',' read -ra err <<<"$err"
-	desc=${err[1]}
-	unset err[0] err[1]
-	causes=("${err[@]}")
+		output+=$(
+			{
+				printf "%s\n" "$date" "$xid" "$desc"
+				paste <(printf "%s\n" "${causes[@]}") <(printf "%s\n" "${g_causes[@]}") |
+				awk '
+					BEGIN{
+						FS="\t"
+						cross="\033[9m"
+						notcross="\033[29m"
+						red="\033[91m"
+						reset="\033(B\033[m"
+					}
+					/^X\t/{print red $2 reset}
+					/^\t/{print red "" reset }
+				'
+			} | paste -sd$'\t'
+		)$'\n'
+		found+=("$xid")
 
-	output+=$(
-		{
-			printf "%s\n" "$date" "$xid" "$desc"
-			paste <(printf "%s\n" "${causes[@]}") <(printf "%s\n" "${g_causes[@]}") |
-			awk '
-				BEGIN{
-					FS="\t"
-					cross="\033[9m"
-					notcross="\033[29m"
-					red="\033[91m"
-					reset="\033(B\033[m"
-				}
-				/^X\t/{print red $2 reset}
-				/^\t/{print red "" reset }
-			'
-		} | paste -sd$'\t'
-	)$'\n'
-	found+=("$xid")
-
-done <<<"$input"
+	done <<<"$input"
+fi
 
 <<<"$output" column -ts $'\t' -o ' | ' -N Data,Xid,Failure,"Causes$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset"
 
 if ((${#found[@]})); then
 	echo
 	printf "%s\n" "${found[@]}" | sort -u |
-		while read -r id; do get_common "$id" | fmt; done
+		while read -r id; do get_common "$id" | fmt; echo; done
 fi
 
 exit
