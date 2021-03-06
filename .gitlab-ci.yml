@@ -9,12 +9,10 @@ variables:
     - echo "$BASH_VERSION" || true
     - export "PATH=$PWD/bin:$PATH"
 
-test_stow:
+test_install_stow:
   <<: *test_setup
   script:
-    - mkdir -p /tmp/stow
-    - bin/,install_stow.sh /tmp/stow
-    - /tmp/stow/stow --version
+    - bin/,install_stow.sh --unittest
 test_proot:
   <<: *test_setup
   script:
@@ -47,7 +45,7 @@ test_ccrun:
   script:
     - pacman -Suy --noconfirm gcc
     - bin/,ccrun +unittest
-test_ccrun:
+test_rstow:
   <<: *test_setup
   script:
     - bin/,rstow unittest
