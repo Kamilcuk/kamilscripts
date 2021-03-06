@@ -326,11 +326,13 @@ check_packages_valid() {
 
 hook_run_post() {
 	if fn_exists post; then
-		log "+ . $1 && post ${g_postargs[*]}"
+		log "+ . $PWD/RSTOW.sh && post ${g_postargs[*]}"
 		if ((!g_dryrun)); then
 			(
 				set +euo pipefail
+				logname="$name: $PWD/RSTOW.sh"
 				post "${g_postargs[@]}"
+				unset logname
 			) ||:
 		fi
 	fi
@@ -402,11 +404,11 @@ stow_repo() {
 			cd "$i"
 			if [[ -e ./RSTOW.sh ]]; then
 				RSTOW_source
-				hook_run_post "$g_repo/$i/RSTOW.sh"
+				hook_run_post
 			fi
 		)
 	done
-	hook_run_post "$g_repo/STOW.sh"
+	hook_run_post
 	hook_run_systemd_reload
 }
 
