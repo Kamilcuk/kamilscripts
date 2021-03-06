@@ -258,7 +258,7 @@ stow_repo() {
 	fi
 
 	check_packages_valid "${PACKAGES[@]}"
-	cmd=(stow -v "${g_stowargs[@]}" "${PACKAGES[@]}")
+	cmd=(stow --ignore=RSTOW.sh -v "${g_stowargs[@]}" "${PACKAGES[@]}")
 	log "+" cd "$1" "&&" "${cmd[@]}"
 	"${cmd[@]}"
 
