@@ -9,7 +9,7 @@ if exists('g:kamilscripts')
 	endif
 	augroup try_autorun
 		autocmd!
-		execute "autocmd FileType c,cpp,python,sh,bash let &makeprg = ',try_autorun.sh -S " . s:args . "% $*'"
+		execute "autocmd FileType c,cpp,python,sh,bash let &makeprg = ',try_autorun.sh -V -- " . s:args . "% $*'"
 	augroup END
 	unlet s:args
 endif

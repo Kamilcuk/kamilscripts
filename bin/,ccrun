@@ -43,7 +43,7 @@ Options:
    +V +valgrind        Run executable via valgrind.
    +G +gdb             Run executable under gdb.
    +I +interactivegdb  Run executable in gdb, drop to interactive before running.
-   +S +safe            Enable safe options.
+   +p +pure            Do not pass default options.
    +v +verbose         Print compile command and execution info.
    +d +debug           Display debugging information.
       +defaultsf <f>   This exported bash function should output #include statements.
@@ -63,7 +63,7 @@ EOF
 
 parse_options() {
 	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc= g_debug=false
-	g_valgrind=false g_gdb=false g_interactivegdb=false g_safe=false g_verbose=false g_optind=$# 
+	g_valgrind=false g_gdb=false g_interactivegdb=false g_defaultflags=true g_verbose=false g_optind=$# 
 	while (($#)); do
 		case "$1" in
 			+cc) shift; g_cc="$1"; ;;
@@ -71,7 +71,7 @@ parse_options() {
 			+V|+valgrind) g_valgrind=true; ;;
 			+G|+gdb) g_gdb=true; ;;
 			+I|+interactivegdb) g_interactivegdb=true; ;;
-			+S|+safe) g_safe=true; ;;
+			+p|+pure) g_defaultflags=false; ;;
 			+v|+verbose) g_verbose=true; ;;
 			+d|+debug) g_debug=true; ;;
 			+defaultsf) shift; g_defaultsfunc=$1; ;;
@@ -373,9 +373,11 @@ awkeval() {
 	awk 'BEGIN{exit(!('"$1"'))}' <&-
 }
 
-safe_cflags_add() {
+default_flags_add() {
 	local flags
 	flags=(
+		-march=native
+
 		-D_FORTIFY_SOURCE=2
 		-D_GLIBCXX_ASSERTIONS
 
@@ -507,8 +509,8 @@ if ! "$s_sourceisfile" && "$g_change"; then
 	fi
 fi
 
-if "$g_safe"; then
-	safe_cflags_add
+if "$g_defaultflags"; then
+	default_flags_add
 fi
 
 srctmpfile=/tmp/.ccrun.$$.source

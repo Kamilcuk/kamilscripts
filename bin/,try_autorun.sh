@@ -16,6 +16,7 @@ Options:
    -e filetype   Pass filetype as vim filetype.
    -T <timeout>  Timeout execution.
    -S            Synchronize stderr with stdout and be line buffered.
+   -V            Run from vim.
    -p            Try to detect project files before detecting filetype.
    -n            Dry run.
    -h            Print this help and exit.
@@ -30,15 +31,17 @@ parse_arguments() {
 	g_use_project=false
 	g_dryrun=false
 	g_syncoutput=false
+	g_removecolors=false
 	g_timeout=
 
 	local o
-	while getopts ":e:pT:Snh" o; do
+	while getopts ":e:pT:SVnh" o; do
 		case "$o" in
 		e) ;;
 		p) g_use_project=true; ;;
 		T) g_timeout=$OPTARG; ;;
 		S) g_syncoutput=true; ;;
+		V) g_syncoutput=true; g_removecolors=true; ;;
 		n) g_dryrun=true; ;;
 		h) usage; exit 0; ;;
 		*) fatal "Invalid argument: -$OPTARG"; ;;
@@ -47,6 +50,11 @@ parse_arguments() {
 
 	if "$g_syncoutput"; then
 		exec 2>&1
+	fi
+
+	if "$g_removecolors"; then
+		exec 1> >(sed 's/\x1b[^m]*m//g')
+		exec 2> >(sed 's/\x1b[^m]*m//g' >&2)
 	fi
 
 	if [[ -n "$g_timeout" ]]; then
@@ -238,7 +246,6 @@ if (($# != 1)); then usage; fatal "Invalid count of arguments: $#"; fi
 file=$1
 shift
 
-
 if "$g_use_project"; then
 	for i in $(list_functions_prefixed ,project_detect_); do
 		if ,project_detect_"$i"; then
@@ -258,7 +265,7 @@ c|cpp|cxx|cc|c++)
 	esac
 
 	if hash "$run" 2>/dev/null >&2; then
-		cmd=("$run" +n +v +S "$file" ${1:+--} "$@")
+		cmd=("$run" +n +v "$file" ${1:+--} "$@")
 		runexec "${cmd[@]}"
 	fi
 
