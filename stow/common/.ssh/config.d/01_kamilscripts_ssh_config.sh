@@ -181,7 +181,7 @@ Host cis-$1 $1 $1-cis
 	User ${3:-kcukrowski}
 	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes${4:+
-	$3}
+	$4}
 '
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
 ncbj leszcz          10.200.4.5
