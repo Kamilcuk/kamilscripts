@@ -109,5 +109,13 @@ backtrace
 
 ===============================================================================
 
+Kalkulate: *my-calculator* *my-calc* *my-math*
+
+https://github.com/arecarn/vim-crunch
+
+type g={motion}
+
+===============================================================================
+
 " https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
 " vim: filetype=help foldmethod=marker foldmarker=<<<,>>> modifiable noreadonly

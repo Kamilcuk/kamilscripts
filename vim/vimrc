@@ -216,6 +216,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
 	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
+	Plug 'arecarn/vim-crunch'
 	" staging2
 	Plug 'sbdchd/neoformat'
 	"Plug 'LucHermitte/lh-vim-lib'
