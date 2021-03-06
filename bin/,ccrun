@@ -194,8 +194,8 @@ unittest() (
 	testit '' ++ -Wall "$src1" -- "$str"
 	testit '' ++ -Wall <<<"$src1" -- "$str"
 	src2='volatile char s[] = "HelloWorld"; volatile long arr[4] = {0}; volatile long var = (long)s; (void)var; printf("%s\n", (char*)arr[-1]);'
-	testit '' ++ -O "$src2"
-	testit '!' ++ +S -O "$src2"
+	testit '' +p "$src2"
+	testit '!' "$src2"
 
 	echo "$prog" > "$tmpf"
 	testit '!' -Werror "$tmpf"
