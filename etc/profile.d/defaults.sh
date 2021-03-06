@@ -28,8 +28,8 @@ elif command -v vim >/dev/null 2>&1; then
 fi
 export TMPDIR=/tmp
 export COUNTRY=PL
-export HISTSIZE=
-export HISTFILESIZE=
+export HISTSIZE=2147483648
+export HISTFILESIZE=2147483648
 mesg y
 
 # https://wiki.archlinux.org/index.php/Makepkg
