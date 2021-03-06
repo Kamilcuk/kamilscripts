@@ -1,0 +1,352 @@
+#!/bin/bash
+set -euo pipefail
+
+dir="${BASH_SOURCE%/*}"
+name="${BASH_SOURCE##*/}"
+
+usage() {
+	cat <<EOF
+Usage:
+	$name [OPTIONS] <stow|restow|delete> <repo>...
+	$name [OPTIONS] add <file> <repo>
+
+Modes:
+	S s stow     Stow
+	D d delete   Delete
+	R r restow   Restow
+	A a add      Add a file to repo
+
+Options:
+	-s --stowloc <path>   Location to install stow to 
+	                      when system installation is not found.
+	-n --no               Do not make changes.
+	-v --verbose          Be a bit more verbose.
+	-h --help             Print this help and exit.
+
+Written by Kamil Cukrowski
+Licensed jointly under MIT License and Beerware License.
+EOF
+}
+
+parse_arguments() {
+	local args
+	args=$(getopt -n "$name" \
+		-o s:nvh \
+		-l stowloc:,no,verbose,help \
+		-- "$@")
+	eval set -- "$args"
+	g_mode=
+	g_verbose=0
+	g_dryrun=0
+	g_stowloc=/tmp/stow
+	while (($#)); do
+		case "$1" in
+		-s|--stowloc) g_stowloc="$2"; shift; ;;
+		-n|--no) g_dryrun=1; ;;
+		-v|--verbose) g_verbose=1; ;;
+		-h|--help) usage; exit; ;;
+		--) shift; break; ;;
+		*) fatal "internal error when parsing argument: $1"; ;;
+		esac
+		shift
+	done
+
+	if (($# == 0)); then usage; fatal "Missing arguments"; fi
+
+	case "${1,,}" in
+	s|st|sto|stow) g_mode=stow; ;;
+	r|re|res|rest|resto|restow) g_mode=restow; ;;
+	d|de|del|dele|delet|delete) g_mode=delete; ;;
+	a|ad|add) g_mode=add; ;;
+	*) fatal "Invalid mode: $1"; ;;
+	esac
+	shift
+	g_args=("$@")
+}
+
+dbg() {
+	if ((g_verbose)); then
+		log "$@"
+	fi
+}
+
+log() {
+	echo "${logname:-$name}:" "$@"
+}
+
+fatal() {
+	log "ERROR:" "$@"
+	exit 1
+}
+
+run() {
+	log "+" "$@"
+	"$@"
+}
+
+runnotdry() {
+	log "+" "$@"
+	if ((!g_dryrun)); then
+		"$@"
+	fi
+}
+
+int_to_bool() {
+	case "$1" in
+	1) echo true; ;;
+	*) echo false; ;;
+	esac
+}
+
+fn_exists() {
+	declare -F "$1" >/dev/null
+}
+
+fn_callifexists() {
+	if fn_exists "$1"; then
+		"$@"
+	fi
+}
+
+sourceifexists() {
+	if [[ -e "$1" ]]; then
+		source "$@"
+	fi
+}
+
+stow_op_long_to_short() {
+	case "$1" in
+	stow) printf -- -S; ;;
+	restow) printf -- -R; ;;
+	delete) printf -- -D; ;;
+	*) fatal ""; ;;
+	esac
+}
+
+###############################################################################
+
+# Auto install stow.
+stow() {
+	unset -f stow
+	export PATH="$PATH:$g_stowloc/"
+	if ! hash stow 2>/dev/null >&2; then
+		if ! curl https://gitlab.com/Kamcuk/kamilscripts/-/raw/master/bin/,install_stow.sh | bash -s -- "$g_stowloc"; then
+			fatal "Stow installation failed"
+		fi
+	fi
+	if ! hash stow 2>/dev/null >&2; then
+		fatal "Could not install stow"
+	fi
+	stow "$@"
+
+}
+
+###############################################################################
+
+repo_is_valid() {
+	if [[ ! -d "$1" ]]; then
+		fatal "Repo is not a directory: $1"
+	fi
+	if [[ ! -e "$1"/RSTOW.sh ]]; then
+		fatal "Repo does not have RSTOW.sh file: $1"
+	fi
+	if [[ ! -e "$1"/.stowrc ]]; then
+		fatal "Repo does not have .stowrc file: $1"
+	fi
+	if ! grep -q -- '--target=' "$1"/.stowrc; then
+		fatal "Repo does not have --target= in .stowrc: $1"
+	fi
+}
+
+repo_get_target() {
+	local tmp
+	tmp=$(
+		cd "$1"
+		stow -v -v -n -S _ 2>&1 ||:
+	)
+	tmp=$(<<<"$tmp" sed -n 's/^stow dir path relative to target \(.*\) is .*$/\1/p')
+	if [[ -z "$tmp" ]]; then
+		fatal "Could not get target of repository: $1"
+	fi
+	if [[ ! -d "$tmp" ]]; then
+		fatal "Target $tmp of repository $1 does not exists"
+	fi
+	printf "%s" "$tmp"
+}
+
+check_packages_valid() {
+	local packages
+	packages=("${PACKAGES[@]}")
+	local i
+	for i in "${packages[@]}"; do
+		if [[ ! "$i" =~ ^[a-z] ]]; then
+			fatal "Package name does not start with lowercase latter: $i";
+		fi
+		if [[ ! "$i" =~ ^[a-z][a-z_A-Z]+$ ]]; then
+			fatal "Pacakge name is not alphanumeric or _: $i";
+		fi
+		if [[ ! -d "$i" ]]; then
+			fatal "No such directory: $i";
+		fi
+	done
+}
+
+hook_run_post() {
+	if fn_exists post; then
+		log "+ . $1 && post ${g_postargs[*]}"
+		if ((!g_dryrun)); then
+			(
+				set +euo pipefail
+				post "${g_postargs[@]}"
+			)
+		fi
+	fi
+}
+
+hook_run_systemd_reload() {
+	# Only run when root and systemd is found
+	if ((UID != 0)) || ! hash systemctl 2>/dev/null >&2; then
+		return
+	fi
+	# Only run if repo targets / directory
+	local target
+	target=$(repo_get_target "$g_repo")
+	if [[ "$target" != "/" ]]; then
+		return
+	fi
+	# Refresh systemd if anything of systemd was installed.
+	local systemd_reload
+	systemd_reload=false
+	local tmp p
+	for p in "${PACKAGES[@]}"; do
+		tmp=$(
+			cd "$p" &&
+			find . -type f '(' \
+			-path './usr/lib/systemd/system/*' -o \
+			-path './etc/systemd/system/*' ')' \
+			-printf '.'
+		)
+		if [[ -n "$tmp" ]]; then
+			systemd_reload=true
+			break
+		fi
+	done
+	if "$systemd_reload"; then
+		runnotdry systemctl daemon-reload
+	fi
+}
+
+RSTOW_source() {
+	unset -f post
+	dbg "+ . $(readlink -f ./RSTOW.sh)"
+	logname="$name: $1/RSTOW.sh"
+	source ./RSTOW.sh
+	unset logname
+}
+
+stow_repo() {
+	repo_is_valid "$1"
+	cd "$1"
+
+	local PACKAGES
+	PACKAGES=()
+	RSTOW_source "$g_mode"
+
+	if ((${#PACKAGES[@]} == 0)); then
+		log "No packages to install for repo: $g_repo"
+		return
+	fi
+
+	check_packages_valid "${PACKAGES[@]}"
+	cmd=(stow -v "${g_stowargs[@]}" "${PACKAGES[@]}")
+	log "+" cd "$1" "&&" "${cmd[@]}"
+	"${cmd[@]}"
+
+	g_postargs=("$g_mode" "${PACKAGES[@]}")
+
+	for i in "${PACKAGES[@]}"; do
+		(
+			cd "$i"
+			if [[ -e ./RSTOW.sh ]]; then
+				RSTOW_source "$g_repo/$i/RSTOW.sh"
+				hook_run_post "$g_repo/$i/RSTOW.sh"
+			fi
+		)
+	done
+	hook_run_post "$g_repo/STOW.sh"
+	hook_run_systemd_reload
+}
+
+mode_stow() {
+	if (($# == 0)); then fatal "Missing repositories for mode: $g_mode"; fi
+	g_repos=("$@")
+	for g_repo in "${g_repos[@]}"; do
+		if [[ ! -e "$g_repo"/RSTOW.sh ]]; then
+			fatal "Repository $(readlink -f "$g_repo") has no RSTOW.sh file."
+		fi
+	done
+	g_stowargs=()
+	if ((g_dryrun)); then
+		g_stowargs+=(-n)
+	fi
+	g_stowargs+=("$(stow_op_long_to_short "$g_mode")")
+	for g_repo in "${g_repos[@]}"; do
+		(
+			g_repo="$(readlink -f "$g_repo")"
+			stow_repo "$g_repo"
+		)
+	done
+}
+
+mode_add() {
+	if (($# == 0)); then fatal "Mode $g_mode: missing arguments"; fi
+	if (($# == 1)); then fatal "Mode $g_mode: missing destination package"; fi
+
+	# Get arguments
+	# Last argument is the destination directory, like cp
+	files=()
+	package="$1"
+	shift 1
+	while (($#)); do
+		files+=("$package")
+		package="$1"
+		shift
+	done
+	if ((${#files[@]} == 0)); then fatal "Files needed"; fi
+
+	package=$(readlink -f "$package")
+	if [[ ! -e "$package" ]]; then fatal "Package does not exists: $package"; fi
+	if [[ ! -d "$package" ]]; then fatal "Package is not a directory: $package"; fi
+	repo=$(dirname "$package")
+	repo_is_valid "$repo"
+	target=$(repo_get_target "$repo")
+	dbg "repo=$repo target=$target"
+
+	for file in "${files[@]}"; do
+		dbg "Adding $file to $package"
+		if [[ -L "$file" ]]; then fatal "Source file is a symlink: $file"; fi
+		if [[ ! -e "$file" ]]; then fatal "Source file does not exists: $file"; fi
+
+		srcabs=$(readlink -f "$file")
+		srcdir=$(dirname "$srcabs")
+		dest="$package/$srcdir"
+		
+		runnotdry mkdir -vp "$dest"
+		runnotdry mv -v "$srcabs" "$dest"
+	done
+	log "+ $name stow $repo"
+	if ((!g_dryrun)); then
+		"$0" stow "$repo"
+	fi
+}
+
+###############################################################################
+
+parse_arguments "$@"
+set -- "${g_args[@]}"
+
+case "$g_mode" in
+stow|delete|restow) mode_stow "$@"; ;;
+add) mode_add "$@"; ;;
+esac
+
