@@ -559,7 +559,7 @@ let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 let g:ctrlp_extensions = []
 " ctrlp oldfiles plugin
 let g:ctrlp_extensions += ['oldfiles']
-let g:ctrlp_working_path_mode = 'c'
+let g:ctrlp_working_path_mode = ''
 command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 
 " https://github.com/ggreer/the_silver_searcher
