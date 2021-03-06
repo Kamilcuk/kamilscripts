@@ -149,8 +149,11 @@ Host leonidas_borowej_gory
 Host gorgo_borowej_gory
 	Hostname 192.168.0.6
 
+$(if [[ -e ~/.ssh/github_id_rsa ]]; then cat <<END
 Host gitlab.com github.com
 	IdentityFile ~/.ssh/github_id_rsa
+END
+fi; )
 
 # netemera
 Host netemeradocker
