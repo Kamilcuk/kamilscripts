@@ -487,121 +487,130 @@ function qsort(A, first, leng) {
 # End of Library ################################################################################
 # Global functions ##############################################################################
 
-function load_config() {
+function t_reset() {
 	#  this is the output of tput sgr0
-	config["reset"] = "\033(B\033[m"
+	return "\033(B\033[m"
+}
 
+function load_config() {
 	# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
 
 	# specials
-	config["bold"] = "\033[1m"
-	config["bright"] = "\033[1m"
-	config["dim"] = "\033[2m"
-	config["faint"] = "\033[2m"
-	config["standout"] = "\033[3m"
-	config["underline"] = "\033[4m"
-	config["blink"] = "\033[5m"
-	config["reverse"] = "\033[7m"
-	config["hidden"] = "\033[8m"
-	config["conceal"] = "\033[8m"
-	config["crossedout"] = "\033[9m"
+	config["bold"] = "1"
+	config["bright"] = "1"
+	config["dim"] = "2"
+	config["faint"] = "2"
+	config["standout"] = "3"
+	config["underline"] = "4"
+	config["blink"] = "5"
+	config["reverse"] = "7"
+	config["hidden"] = "8"
+	config["conceal"] = "8"
+	config["crossedout"] = "9"
 
 	# fonts
-	config["font0"] = "\03310m"
-	config["font1"] = "\03311m"
-	config["font2"] = "\03312m"
-	config["font3"] = "\03313m"
-	config["font4"] = "\03314m"
-	config["font5"] = "\03315m"
-	config["font6"] = "\03316m"
-	config["font7"] = "\03317m"
-	config["font8"] = "\03318m"
-	config["font9"] = "\03319m"
+	config["font0"] = "10"
+	config["font1"] = "11"
+	config["font2"] = "12"
+	config["font3"] = "13"
+	config["font4"] = "14"
+	config["font5"] = "15"
+	config["font6"] = "16"
+	config["font7"] = "17"
+	config["font8"] = "18"
+	config["font9"] = "19"
 
-	config["fraktur"] = "\033[20m"
+	config["fraktur"] = "20"
 	# ECMA-48
-	config["double_underline"] = "\033[21m"
-	# nobold          \033[21m
-	# nobright        \033[21m
-	config["nodim"] = "\033[22m"
-	config["nostandout"] = "\033[23m"
-	config["nounderline"] = "\033[24m"
-	config["noblink"] = "\033[25m"
-	config["noreverse"] = "\033[27m"
-	config["nohidden"] = "\033[28m"
-	config["reveal"] = "\033[28m"
-	config["nocrossedout"] = "\033[29m"
+	config["double_underline"] = "21"
+	# nobold          21
+	# nobright        21
+	config["nodim"] = "22"
+	config["nostandout"] = "23"
+	config["nounderline"] = "24"
+	config["noblink"] = "25"
+	config["noreverse"] = "27"
+	config["nohidden"] = "28"
+	config["reveal"] = "28"
+	config["nocrossedout"] = "29"
 
 	# foreground colors
-	config["black"] = "\033[30m"
-	config["red"] = "\033[31m"
-	config["green"] = "\033[32m"
-	config["yellow"] = "\033[33m"
-	config["blue"] = "\033[34m"
-	config["magenta"] = "\033[35m"
-	config["cyan"] = "\033[36m"
-	config["light_gray"] = "\033[37m"
+	config["black"] = "30"
+	config["red"] = "31"
+	config["green"] = "32"
+	config["yellow"] = "33"
+	config["blue"] = "34"
+	config["magenta"] = "35"
+	config["cyan"] = "36"
+	config["light_gray"] = "37"
 
-	config["foreground_default"] = "\033[39m"
-	config["default"] = "\033[39m"
+	config["foreground_default"] = "39"
+	config["default"] = "39"
 
 	# background colors
 
-	config["background_green"] = "\033[42m"
-	config["background_yellow"] = "\033[43m"
-	config["background_blue"] = "\033[44m"
-	config["background_magenta"] = "\033[45m"
-	config["background_cyan"] = "\033[46m"
-	config["background_light_gray"] = "\033[47m"
-	config["background_default"] = "\033[49m"
+	config["background_green"] = "42"
+	config["background_yellow"] = "43"
+	config["background_blue"] = "44"
+	config["background_magenta"] = "45"
+	config["background_cyan"] = "46"
+	config["background_light_gray"] = "47"
+	config["background_default"] = "49"
 
 	# others
-	config["framed"] = "\033[51m"
-	config["encircled"] = "\033[52m"
-	config["overlined"] = "\033[53m"
-	config["noframed"] = "\033[54m"
-	config["noencircled"] = "\033[54m"
-	config["nooverlined"] = "\033[55m"
+	config["framed"] = "51"
+	config["encircled"] = "52"
+	config["overlined"] = "53"
+	config["noframed"] = "54"
+	config["noencircled"] = "54"
+	config["nooverlined"] = "55"
 
 	# set bright foreground color
-	config["dark_gray"] = "\033[90m"
-	config["light_red"] = "\033[91m"
-	config["light_green"] = "\033[92m"
-	config["light_yellow"] = "\033[93m"
-	config["light_blue"] = "\033[94m"
-	config["light_magenta"] = "\033[95m"
-	config["light_cyan"] = "\033[96m"
-	config["white"] = "\033[97m"
+	config["dark_gray"] = "90"
+	config["light_red"] = "91"
+	config["light_green"] = "92"
+	config["light_yellow"] = "93"
+	config["light_blue"] = "94"
+	config["light_magenta"] = "95"
+	config["light_cyan"] = "96"
+	config["white"] = "97"
 
 	# set bright background color
-	config["background_dark_gray"] = "\033[100m"
-	config["background_light_red"] = "\033[101m"
-	config["background_light_green"] = "\033[102m"
-	config["background_light_yellow"] = "\033[103m"
-	config["background_light_blue"] = "\033[104m"
-	config["background_light_magenta"] = "\033[105m"
-	config["background_light_cyan"] = "\033[106m"
-	config["background_white"] = "\033[107m"
+	config["background_dark_gray"] = "100"
+	config["background_light_red"] = "101"
+	config["background_light_green"] = "102"
+	config["background_light_yellow"] = "103"
+	config["background_light_blue"] = "104"
+	config["background_light_magenta"] = "105"
+	config["background_light_cyan"] = "106"
+	config["background_white"] = "107"
 
 	# shortcuts to background colors, because typing background is long
-	config["b_black"] = "\033[40m"
-	config["b_red"] = "\033[41m"
-	config["b_green"] = "\033[42m"
-	config["b_yellow"] = "\033[43m"
-	config["b_blue"] = "\033[44m"
-	config["b_magenta"] = "\033[45m"
-	config["b_cyan"] = "\033[46m"
-	config["b_light_gray"] = "\033[47m"
+	config["b_black"] = "40"
+	config["b_red"] = "41"
+	config["b_green"] = "42"
+	config["b_yellow"] = "43"
+	config["b_blue"] = "44"
+	config["b_magenta"] = "45"
+	config["b_cyan"] = "46"
+	config["b_light_gray"] = "47"
 
-	config["b_dark_gray"] = "\033[100m"
-	config["b_light_red"] = "\033[101m"
-	config["b_light_green"] = "\033[102m"
-	config["b_light_yellow"] = "\033[103m"
-	config["b_light_blue"] = "\033[104m"
-	config["b_light_magenta"] = "\033[105m"
-	config["b_light_cyan"] = "\033[106m"
-	config["b_white"] = "\033[107m"
+	config["b_dark_gray"] = "100"
+	config["b_light_red"] = "101"
+	config["b_light_green"] = "102"
+	config["b_light_yellow"] = "103"
+	config["b_light_blue"] = "104"
+	config["b_light_magenta"] = "105"
+	config["b_light_cyan"] = "106"
+	config["b_white"] = "107"
+
 }
+
+function config_get(idx) {
+	return "\033[" config[idx] "m"
+}
+
+###############################################################################
 
 function fatal(desc) {
 	printf NAME ": ERROR: on parsing " $0 " : " desc "\n" > "/dev/stderr"
@@ -795,7 +804,7 @@ function mode_test( \
 	cols = !COLS ? 3 : int(COLS / (longest + 1 + 4 + 8))
 	count = 0
 	for (i in config) {
-		printf("%-*s %stest%s%s", longest, i, config[i], config["reset"], count++%cols==cols-1?"\n":"\t")
+		printf("%-*s %stest%s%s", longest, i, config_get(i), t_reset(), count++%cols==cols-1?"\n":"\t")
 	}
 	printf "%s", --count%cols==cols-1?"":"\n"
 	printf "\n"
@@ -803,22 +812,22 @@ function mode_test( \
 	str = "###"
 	printf "Color pallete: "
 	for (i=0;i<=7;++i) {
-		printf "%s%s%s", "\033["30+i"m", str, config["reset"]
+		printf "%s%s%s", "\033["30+i"m", str, t_reset()
 	}
 	printf " "
 	for (i=0;i<=7;++i) {
-		printf "%s%s%s", "\033["40+i"m", str, config["reset"]
+		printf "%s%s%s", "\033["40+i"m", str, t_reset()
 	}
 	printf "\n"
 	printf "               "
 	for (i=0;i<=7;++i) {
-		printf "%s%s%s", "\033["90+i"m", str, config["reset"]
+		printf "%s%s%s", "\033["90+i"m", str, t_reset()
 	}
 	printf " "
 	for (i=0;i<=7;++i) {
-		printf "%s%s%s", "\033["100+i"m", str, config["reset"]
+		printf "%s%s%s", "\033["100+i"m", str, t_reset()
 	}
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 	printf "\n"
 
 
@@ -829,25 +838,25 @@ function mode_test( \
 
 	printf("%*s: ", tmp2, "charrainbow")
 	charrainbow("FF0000", "00FF00", tmp)
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 
 	savecolors = g_colors; g_colors = 8
 		printf("%*s: ", tmp2, "charrainbow 24->8")
 		charrainbow("FF0000", "00FF00", tmp)
-		printf("%s\n", config["reset"])
+		printf("%s\n", t_reset())
 	g_colors = savecolors
 
 	printf("%*s: ", tmp2, "charrainbow3")
 	charrainbow3("FF0000", "0000FF", "00FF00", tmp)
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 
 	savecolors = g_colors; g_colors = 8
 		printf("%*s: ", tmp2, "charrainbow3 24->8")
 		charrainbow3("FF0000", "0000FF", "00FF00", tmp)
-		printf("%s\n", config["reset"])
+		printf("%s\n", t_reset())
 	g_colors = savecolors
 
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 }
 
 function mode_test1_in(fbnum) {
@@ -856,39 +865,39 @@ function mode_test1_in(fbnum) {
 		print_ansi_8_bit(fbnum, i)
 		printf(" ##%d##", i)
 	}
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 	printf("216 colors:\n");
 	for (i = 16; i <= 231; ++i) {
 		print_ansi_8_bit(fbnum, i)
 		printf("%03d", i)
 		if ((i - 16) % 36 == 35 && i != 0) {
-			printf("%s\n", config["reset"])
+			printf("%s\n", t_reset())
 		}
 	}
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 	printf("Greyscale colors:\n");
 	for (i = 232; i <= 255; ++i) {
 		print_ansi_8_bit(fbnum, i)
 		printf(" %03d", i)
 	}
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 }
 
 function mode_test1() {
 	printf("8-bit foreground color pallete:\n");
 	mode_test1_in(3)
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 	printf("8-bit background color pallete:\n");
 	mode_test1_in(4)
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 
 	printf("24-bit to 8-bit: ")
 	disp_fb_24_to_8("f", "FF0000");printf("RED ")
 	disp_fb_24_to_8("f", "0000FF");printf("BLUE ")
 	disp_fb_24_to_8("f", "00FF00");printf("GREEN")
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 
-	printf("%s\n", config["reset"])
+	printf("%s\n", t_reset())
 }
 
 function mode_echo() {
@@ -1069,7 +1078,8 @@ $0 ~ "^[fb]8#[[:xdigit:]]{3}$" { disp_fb_8(substr(i, 1, 1), substr(i, 4)); Next(
 $0 ~ "^[fb]24#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 5)); Next(); }
 $0 ~ "^[[:xdigit:]]{6}$" { disp_fb_24("f", $0); Next(); }
 $0 ~ "^[fb]#[[:xdigit:]]{6}$" { disp_fb_24(substr(i, 1, 1), substr(i, 4)); Next(); }
+$0 == "reset"{ printf("%s", t_reset()); Next(); }
 $0 in modes{ choose_mode($0); Next(); }
-$0 in config{ printf "%s", config[$0]; Next(); }
+$0 in config{ printf("%s", config_get($0)); Next(); }
 { fatal("Invalid argument nr=" NR " fnr=" FNR " $0=`" $0 "'") }
 
