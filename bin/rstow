@@ -198,7 +198,7 @@ hook_run_post() {
 			(
 				set +euo pipefail
 				post "${g_postargs[@]}"
-			)
+			) ||:
 		fi
 	fi
 }
