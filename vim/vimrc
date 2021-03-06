@@ -511,6 +511,7 @@ endif
 " https://github.com/aperezdc/vim-template
 if kc#plugin#enabled('vim-template')
 	let g:templates_no_autocmd = 1
+	let g:templates_global_name_prefix = "=template=."
 	let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
 	let g:templates_user_variables = [
 		\ ['GUARDPATH', 'KcVimTemplateGuardpath'],
@@ -551,6 +552,7 @@ let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 let g:ctrlp_extensions = []
 " ctrlp oldfiles plugin
 let g:ctrlp_extensions += ['oldfiles']
+let g:ctrlp_working_path_mode = 'c'
 command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 
 " https://github.com/ggreer/the_silver_searcher
