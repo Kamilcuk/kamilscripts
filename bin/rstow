@@ -58,6 +58,7 @@ parse_arguments() {
 	r|re|res|rest|resto|restow) g_mode=restow; ;;
 	d|de|del|dele|delet|delete) g_mode=delete; ;;
 	a|ad|add) g_mode=add; ;;
+	unittest) unittest; exit; ;;
 	*) fatal "Invalid mode: $1"; ;;
 	esac
 	shift
@@ -121,6 +122,138 @@ stow_op_long_to_short() {
 	delete) printf -- -D; ;;
 	*) fatal ""; ;;
 	esac
+}
+
+command_exists() {
+	command -v "$1" 2>/dev/null >&2
+}
+
+path_relative_to() {
+	# Compute relative one path to another,
+	# Work around when realpath doesn't exists
+	if command_exists realpath; then
+		path_relative_to() {
+			realpath -m -s --relative-to="$1" "$2"
+		}
+	elif
+		local py=""
+		for i in "" "2" "3"; do
+			if command_exists "python$i"; then
+				py="python$i"
+				break
+			fi
+		done
+		[[ -n "$py" ]]
+	then
+		path_relative_to() {
+			python -c '
+				from __future__ import print_function;
+				import sys
+				import os.path
+				print(os.path.relpath(sys.argv[2], sys.argv[1]))
+			' "$1" "$2"
+		}
+	else
+		fatal "could not found method to do relative path"
+	fi
+	path_relative_to "$@"
+}
+
+
+###############################################################################
+
+testit() {
+	local tmp not="" ret
+	echo "TESTING: ${BASH_LINENO[0]} $*" >&2
+	if [[ "$1" = "!" ]]; then
+		not=$1
+		shift
+	fi
+	ret=0
+	log "$not $*"
+	"$@" 2>&1 || ret=$?
+	if (($not$ret)); then
+		echo "FAILED: $not $*"
+		exit 1
+	fi
+	echo
+}
+
+testit_link() {
+	local f tmp
+	f="$1"
+	testit [ -e "$tmpd"/dest/"$f" ]
+	testit [ -f "$tmpd"/dest/"$f" ]
+	tmp=$(readlink -f "$tmpd"/dest/"$f")
+	testit [ "$tmp" = "$tmpd"/stow/pkg/"$f" ]
+}
+
+unittest() {
+	if ((0)); then
+		tmpd=/tmp/testdir
+		rm -rf "$tmpd"; mkdir -p "$tmpd"
+	else
+		tmpd="$(mktemp -d)"
+		trap 'cd / ; set -x ; rm -r "$tmpd"' EXIT
+	fi
+
+	cd "$tmpd"
+	mkdir -p "$tmpd"/dest/{1/2/3,2/3/4,3/4/5,4/5/6} "$tmpd"/stow/pkg/a/b/c
+	echo somestring > "$tmpd"/stow/pkg/a/b/c/installfile.txt
+	echo stringsome1 > "$tmpd"/dest/1/2/3/addfile1.txt
+	echo stringsome2 > "$tmpd"/dest/2/3/4/addfile2.txt
+	echo stringsome3 > "$tmpd"/dest/3/4/5/addfile3.txt
+	echo stringsome4 > "$tmpd"/dest/4/5/6/addfile4.txt
+	cat > "$tmpd"/stow/.stowrc <<-EOF
+	--target=$tmpd/dest
+	--no-folding
+	EOF
+	cat > "$tmpd"/stow/RSTOW.sh <<-'EOF'
+	PACKAGES=(nonexistent)
+	EOF
+	testit "!" rstow -v stow "$tmpd"/stow
+	cat > "$tmpd"/stow/RSTOW.sh <<-'EOF'
+	PACKAGES=(pkg)
+	EOF
+
+	echo "========= TESTING stowing ============================================"
+	testit rstow -v stow "$tmpd"/stow
+	testit_link a/b/c/installfile.txt
+
+	testit rstow -v restow "$tmpd"/stow
+	testit_link a/b/c/installfile.txt
+
+	testit rstow -v delete "$tmpd"/stow
+	testit [ "!" -e dest/a/b/c/installfile.txt ]
+
+	testit rstow -v restow "$tmpd"/stow
+	testit_link a/b/c/installfile.txt
+
+	echo "========= TESTING ADDING ============================================"
+	testit rstow -v add ./dest/1/2/3/addfile1.txt ./stow/pkg
+	testit_link 1/2/3/addfile1.txt
+
+	pushd ./dest/2/3/4 >/dev/null
+	testit "!" rstow -v add ./nonexistent_file.txt ./stow/pkg
+	testit "!" rstow -v add ./nonexistent_file.txt ./stow/pkg
+	testit "!" rstow -v add ./addfile2.txt "$tmpd"/invalidstow
+	testit "!" rstow -v add ./addfile2.txt "$tmpd"/stow
+	testit "!" rstow -v add ./addfile2.txt "$tmpd"
+	testit "!" rstow -v add ./addfile2.txt "$tmpd"/stow/invalidpackage
+
+	testit rstow -v add ./addfile2.txt "$tmpd"/stow/pkg
+	testit_link 2/3/4/addfile2.txt
+	popd >/dev/null
+
+	pushd ./dest/3/4 >/dev/null
+	testit rstow -v add ./5/addfile3.txt ../../../stow/pkg
+	testit_link 3/4/5/addfile3.txt
+	popd >/dev/null
+
+	pushd ./dest/4/ >/dev/null
+	testit rstow -v add ./5/6/addfile4.txt ../../stow/pkg
+	testit_link 4/5/6/addfile4.txt
+	popd >/dev/null
 }
 
 ###############################################################################
@@ -304,6 +437,7 @@ mode_add() {
 
 	# Get arguments
 	# Last argument is the destination directory, like cp
+	local files package
 	files=()
 	package="$1"
 	shift 1
@@ -314,13 +448,17 @@ mode_add() {
 	done
 	if ((${#files[@]} == 0)); then fatal "Files needed"; fi
 
+	local package repo
 	package=$(readlink -f "$package")
 	if [[ ! -e "$package" ]]; then fatal "Package does not exists: $package"; fi
 	if [[ ! -d "$package" ]]; then fatal "Package is not a directory: $package"; fi
 	repo=$(dirname "$package")
 	repo_is_valid "$repo"
-	target=$(repo_get_target "$repo")
-	dbg "repo=$repo target=$target"
+
+	local targetdir
+	targetdir=$(repo_get_target "$repo")
+
+	dbg "repo=$repo targetdir=$targetdir"
 
 	for file in "${files[@]}"; do
 		dbg "Adding $file to $package"
@@ -329,6 +467,7 @@ mode_add() {
 
 		srcabs=$(readlink -f "$file")
 		srcdir=$(dirname "$srcabs")
+		srcdir=$(path_relative_to "$targetdir" "$srcdir")
 		dest="$package/$srcdir"
 		
 		runnotdry mkdir -vp "$dest"
