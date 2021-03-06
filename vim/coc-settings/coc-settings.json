@@ -21,6 +21,8 @@
   "python.linting.pylintEnabled": true,
   "python.linting.enabled": true,
 
+	"solargraph.checkGemVersion": false,
+
 	"_comment": ""
 }
 

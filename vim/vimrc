@@ -214,11 +214,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 	"KcPlug8 'puremourning/vimspector'
 	Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
-	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
-	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
-	Plug 'arecarn/vim-crunch'
 	" staging2
-	Plug 'sbdchd/neoformat'
 	"Plug 'LucHermitte/lh-vim-lib'
 	"Plug 'LucHermitte/lh-tags'
 	"Plug 'LucHermitte/lh-dev'
@@ -235,6 +231,17 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 	endif
 	Plug 'honza/vim-snippets' " vim-snipmate default snippets
+	" Puppet https://voxpupuli.org/blog/2019/04/08/puppet-lsp-vim/
+	Plug 'editorconfig/editorconfig-vim'
+	Plug 'mrk21/yaml-vim'
+	Plug 'rodjek/vim-puppet'
+	Plug 'vim-ruby/vim-ruby'
+	Plug 'lingua-pupuli/puppet-vscode'
+	" Utilities
+	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
+	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
+	Plug 'arecarn/vim-crunch'
+	Plug 'sbdchd/neoformat'
 	" generic
 	Plug 'Konfekt/FastFold'
 	Plug 'vim-scripts/LargeFile'
@@ -874,6 +881,7 @@ let g:coc_global_extensions_dynamics = {
 			\ 'cpp': ['coc-clangd'],
 			\ 'yaml': ['coc-yaml'],
 			\ 'tex': ['coc-vimtex'],
+			\ 'pp': ['coc-solargraph'],
 			\ }
 augroup CocGlobalExtensions
 	au!
