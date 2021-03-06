@@ -372,7 +372,7 @@ hook_run_systemd_reload() {
 RSTOW_source() {
 	unset -f post
 	dbg "+ . $(readlink -f ./RSTOW.sh)"
-	logname="$name: $1/RSTOW.sh"
+	logname="$name: $PWD/RSTOW.sh"
 	source ./RSTOW.sh
 	unset logname
 }
@@ -383,7 +383,7 @@ stow_repo() {
 
 	local PACKAGES
 	PACKAGES=()
-	RSTOW_source "$g_mode"
+	RSTOW_source
 
 	if ((${#PACKAGES[@]} == 0)); then
 		log "No packages to install for repo: $g_repo"
@@ -401,7 +401,7 @@ stow_repo() {
 		(
 			cd "$i"
 			if [[ -e ./RSTOW.sh ]]; then
-				RSTOW_source "$g_repo/$i/RSTOW.sh"
+				RSTOW_source
 				hook_run_post "$g_repo/$i/RSTOW.sh"
 			fi
 		)
