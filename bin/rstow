@@ -375,7 +375,7 @@ RSTOW_source() {
 	unset -f post
 	dbg "+ . $(readlink -f ./RSTOW.sh)"
 	logname="$name: $PWD/RSTOW.sh"
-	source ./RSTOW.sh
+	source ./RSTOW.sh "$g_mode"
 	unset logname
 }
 
