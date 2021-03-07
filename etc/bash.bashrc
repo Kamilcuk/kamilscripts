@@ -23,8 +23,8 @@ done
 unset _i
 
 # set some history variables
-export HISTSIZE=2147483648
-export HISTFILESIZE=2147483648
+export HISTSIZE=
+export HISTFILESIZE=
 export HISTCONTROL="ignorespace:erasedups"
 export HISTIGNORE="123:234:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
 export HISTTIMEFORMAT='%FT%T '
