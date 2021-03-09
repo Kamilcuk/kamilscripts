@@ -222,9 +222,9 @@ EOF
 
 cat <<EOF
 
-Host perun 207.180.196.233
-	Hostname 2a02:c207:2050:3924::1
-	#Hostname 207.180.196.233
+Host perun
+	#Hostname 2a02:c207:2050:3924::1
+	Hostname 207.180.196.233
 	User root
 	Port 60022
 
