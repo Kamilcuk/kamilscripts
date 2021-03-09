@@ -20,6 +20,7 @@ Options:
 	-s --stowloc <path>   Location to install stow to 
 	                      when system installation is not found.
 	-n --no               Do not make changes.
+	--override=<regex>    Forwarded to stow.
 	-v --verbose          Be a bit more verbose.
 	-h --help             Print this help and exit.
 
@@ -32,18 +33,20 @@ parse_arguments() {
 	local args
 	args=$(getopt -n "$name" \
 		-o s:nvh \
-		-l stowloc:,no,verbose,help \
+		-l stowloc:,no,override:,verbose,help \
 		-- "$@")
 	eval set -- "$args"
 	g_mode=
 	g_verbose=0
 	g_dryrun=0
 	g_stowloc=/tmp/stow
+	g_stowargs=()
 	while (($#)); do
 		case "$1" in
 		-s|--stowloc) g_stowloc="$2"; shift; ;;
 		-n|--no) g_dryrun=1; ;;
-		-v|--verbose) g_verbose=1; ;;
+		--override) g_stowargs+=(--override="$2"); shift; ;;
+		-v|--verbose) if ((g_verbose)); then g_stowargs+=(-v); fi; g_verbose=1; ;;
 		-h|--help) usage; exit; ;;
 		--) shift; break; ;;
 		*) fatal "internal error when parsing argument: $1"; ;;
@@ -254,6 +257,19 @@ unittest() {
 	testit rstow -v add ./5/6/addfile4.txt ../../stow/pkg
 	testit_link 4/5/6/addfile4.txt
 	popd >/dev/null
+
+	# test --override
+	mkdir -vp "$tmpd"/stow/somepackage/5/6/7
+	echo original > "$tmpd"/stow/somepackage/5/6/7/addfile5.txt
+	mkdir -vp "$tmpd"/dest/5/6/7
+	ln -vs ../../../../stow/somepackage/5/6/7/addfile5.txt "$tmpd"/dest/5/6/7/addfile5.txt
+	mkdir -vp "$tmpd"/stow/pkg/5/6/7
+	echo canthisbeadded > "$tmpd"/stow/pkg/5/6/7/addfile5.txt
+	pushd ./dest/4/ >/dev/null
+	testit '!' rstow -v stow ./../../stow
+	testit rstow -v --override='.*' stow ./../../stow
+	testit [ "$(cat "$tmpd"/stow/pkg/5/6/7/addfile5.txt)" = "canthisbeadded" ]
+	popd >/dev/null
 }
 
 ###############################################################################
@@ -375,7 +391,7 @@ RSTOW_source() {
 	unset -f post
 	dbg "+ . $(readlink -f ./RSTOW.sh)"
 	logname="$name: $PWD/RSTOW.sh"
-	source ./RSTOW.sh
+	source ./RSTOW.sh "$g_mode"
 	unset logname
 }
 
@@ -420,11 +436,12 @@ mode_stow() {
 			fatal "Repository $(readlink -f "$g_repo") has no RSTOW.sh file."
 		fi
 	done
-	g_stowargs=()
+
 	if ((g_dryrun)); then
 		g_stowargs+=(-n)
 	fi
 	g_stowargs+=("$(stow_op_long_to_short "$g_mode")")
+
 	for g_repo in "${g_repos[@]}"; do
 		(
 			g_repo="$(readlink -f "$g_repo")"
@@ -484,7 +501,7 @@ mode_add() {
 ###############################################################################
 
 parse_arguments "$@"
-set -- "${g_args[@]}"
+set -- ${g_args[@]+"${g_args[@]}"}
 
 case "$g_mode" in
 stow|delete|restow) mode_stow "$@"; ;;

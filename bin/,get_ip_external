@@ -1,8 +1,5 @@
-#!/bin/sh
-
-if [ -n "$BASH_VERSION" ]; then
-	set -euo pipefail -o posix
-fi
+#!/bin/bash
+set -euo pipefail
 
 name=$(basename -- "$0")
 
@@ -10,39 +7,70 @@ usage() {
 	cat <<EOF
 Usage: $name [OPTIONS]
 
-Very defensive and ultimate script for getting external ip on anything.
+Print the external ip address.
+With no options specified, works as if -46 was specified.
 
 Options:
-  -6  Display ipv6
-  -A  Use all methods available
+  -4  Display ipv4 address.
+  -6  Display ipv6 address.
+  -A  Use all methods available and print header column.
+  -H  Print header column.
   -q  Do not print error messages on error
+  -h  Print this help and exit.
 
-Written by Kamil Cukrowski
+Written by Kamil Cukrowski.
+Licensed jointly under Beerware License and MIT License.
 EOF
 }
 
+log() {
+	if ! "$g_quiet"; then
+		echo "$name:" "$@" >&2
+	fi
+}
+
+error() {
+	log "ERROR:" "$@"
+}
+
 fatal() {
-	echo "$name: ERROR: $*" >&2
+	error "$@"
 	exit 1
 }
 
-download() {
-	# local pre to
-	to=2
-	pre=""
-	if cmdexists timeout; then
-		pre="timeout $to"
-	fi
-	if cmdexists wget; then
-		$pre wget -qO- --timeout "$to" "$@"
-	elif cmdexists curl; then
-		$pre curl -sS --max-time "$to" "$@"
-	else
-		return 1
-	fi
-}
 cmdexists() {
 	hash "$@" 2>/dev/null >&2
+}
+
+_timeout() {
+	local timeout
+	timeout=$1
+	shift
+	if cmdexists timeout; then
+		timeout "$timeout" "$@"
+	else
+		"$@"
+	fi
+}
+
+if cmdexists curl; then
+	_download() { _timeout 2 curl -sS --max-time 2 "$@"; }
+elif cmdexists wget; then
+	_download() { _timeout 2 wget -qO- --timeout 2 "$@"; }
+else
+	fatal "No valid method of downloading found - not curl nor wget"
+fi
+
+download() {
+	_download "$@"
+}
+
+download4() {
+	_download -4 "$@"
+}
+
+download6() {
+	_download -6 "$@"
 }
 
 ###############################################################################
@@ -50,21 +78,31 @@ cmdexists() {
 # https://www.shellhacks.com/regex-find-ip-addresses-file-grep/
 ipv4_rgx="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
 
+ipv4__icanhazip() {
+	download4 http://icanhazip.com
+}
 ipv4_ipecho() {
-	download https://ipecho.net/plain
+	download4 https://ipecho.net/plain
 }
 ipv4_ipinfo() {
-	download https://ipinfo.io/ip
+	download4 https://ipinfo.io/ip
 }
 ipv4_amazonaws() {
-	download checkip.amazonaws.com
-}
-ipv4_icanhazip() {
-	download icanhazip.com -4
+	download4 http://checkip.amazonaws.com
 }
 ipv4_checkip() {
-	download http://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
+	download4 http://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
 }
+ipv4_wtfismyip() {
+	download4 http://wtfismyip.com/text
+}
+ipv4_ipify() {
+	download4 https://api64.ipify.org
+}
+ipv4_ifconfig_me() {
+	download4 http://ifconfig.me
+}
+
 
 if false; then # do not work
 ipv4_host() {
@@ -78,66 +116,101 @@ ipv4_dig() {
 	sed -n '/^o-o.myaddr.l.google.com..*"\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)"$/s//\1/p'
 }
 ipv4_ifconfig_co() {
-	download ifconfig.co
+	download4 ifconfig.co
 }
 fi
 
 ###############################################################################
 
-g_quiet=false
-g_all=false
-g_mode=ipv4
-while getopts "6qAh" opt; do
-	case "$opt" in
-	6) g_mode=ipv6; ;;
-	q) g_quiet=true; ;;
-	A) g_all=true; ;;
-	h) usage; exit; ;;
-	?) usage; fatal "Inavlid argument"; ;;
-	esac
-done
-shift "$((OPTIND-1))"
-if [ "$#" -ne 0 ]; then
-	fatal "Too many arguments"
-fi	
+# https://stackoverflow.com/questions/53497/regular-expression-that-matches-valid-ipv6-addresses
+ipv6_rgx='(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))'
 
-case "$g_mode" in
-ipv4)
-	compgen -A function | grep '^ipv4_' | sort  | {
-		while read -r i; do
+ipv6__icanhazip() {
+	download6 http://icanhazip.com
+}
+ipv6_wtfismyip() {
+	download6 http://wtfismyip.com/text
+}
+ipv6_ipify() {
+	download6 https://api64.ipify.org
+}
+ipv6_whatismyip() {
+	download https://www.whatismyip.com/ | sed -n 's/.*<a id="ipv6"[^>]*>\([^<]*\)<.*/\1/p'
+}
+
+###############################################################################
+
+work_query_in() {
+	local i rgx
+	i=$1
+	rgx=$2
+	local tmp
+	tmp=$(compgen -A function | grep "^ipv${i}_" | sort)
+	(
+		err=0
+		childs=()
+		trap 'kill "${childs[@]}" 2>/dev/null' EXIT
+		while IFS= read -u 3 -r i; do
 			(
 				out=""
-				if "$g_all"; then out=$(printf "%s: " "$i"); fi
+				if "$g_header"; then out=$(printf "%-18s" "$i:"); fi
 				ip=$("$i") ||: # we check with regex
-				if tmp=$(echo "$ip" | grep -xE "$ipv4_rgx"); then
+				if tmp=$(echo "$ip" | grep -xE "$rgx"); then
 					out+="$tmp" # make sure there is a newline there
 				fi
 				printf "%s\n" "$out"
 			) &
-			child=$!
-			trap 'kill "$child" 2>/dev/null' EXIT
+			childs=($!)
+			# When not g_all, just the first one we care about.
 			if ! "$g_all"; then
-				if wait "$child"; then exit; fi
+				wait "${childs[0]}" || err=$?
+				trap '' EXIT
+				exit "$err"
 			fi
-		done
-		if "$g_all"; then
-			wait
-		else
-			exit 1
-		fi
-	}
-	;;
-ipv6)
-	fatal "Not implemented"
-	;;
-*)
-	fatal "Internal error: mode=$mode"
-	;;
-esac
+		done 3<<<"$tmp"
+		wait || err=$?
+		trap '' EXIT
+		exit "$err"
+	)
+}
 
-err=$?
-if ! "$g_all" && ((err != 0)) && ! "$g_quiet"; then
-	fatal "Could not get public ip address"
+work_query() {
+	if [[ "$g_mode" =~ $1 ]]; then
+		work_query_in "$@"
+	fi
+}
+
+###############################################################################
+
+g_quiet=false
+g_all=false
+g_header=false
+g_mode=""
+while getopts "46qAHh" opt; do
+	case "$opt" in
+	4) g_mode+="4"; ;;
+	6) g_mode+="6"; ;;
+	q) g_quiet=true; ;;
+	A) g_all=true; g_header=true; ;;
+	H) g_header=true; ;;
+	h) usage; exit; ;;
+	?) usage; fatal "Inavlid argument"; ;;
+	esac
+done
+: "${g_mode:=46}"
+shift "$((OPTIND-1))"
+if [ "$#" -ne 0 ]; then
+	fatal "Too many arguments"
 fi
-exit
+
+err4=0; work_query 4 "$ipv4_rgx" || err4=$?
+err6=0; work_query 6 "$ipv6_rgx" || err6=$?
+
+if ((err4)); then
+	error "Could not get ipv4 address"
+fi
+if ((err6)); then
+	error "Could not get ipv6 address"
+fi
+exit $((err4 | err6))
 

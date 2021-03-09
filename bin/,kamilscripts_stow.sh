@@ -3,7 +3,7 @@ set -euo pipefail
 shopt -s extglob
 
 name=$(basename "$0")
-dir="$(git rev-parse --show-toplevel)"
+dir="$(cd "$(dirname "$0")" && git rev-parse --show-toplevel)"
 cd "$dir"
 
 usage() {
