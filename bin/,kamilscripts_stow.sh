@@ -4,7 +4,7 @@ shopt -s extglob
 
 name=$(basename "$0")
 dir="$(cd "$(dirname "$0")" && git rev-parse --show-toplevel)"
-cd "$dir"
+export PATH="$dir/bin:$PATH"
 
 usage() {
 	cat <<EOF
@@ -19,6 +19,7 @@ Modes:
   r restow u update
   s stow i install
   d delete uninstall
+  add <file>
 
 EOF
 }
@@ -62,7 +63,8 @@ case "$1" in
 r|restow|u|update)   g_stowargs+=(restow) ;;
 s|stow|i|install)    g_stowargs+=(stow) ;;
 d|delete|uninstall)  g_stowargs+=(delete); ;;
+add) run rstow ${g_stowargs[@]+"${g_stowargs[@]}"} "$@" "$dir/stow/$HOSTNAME"; exit; ;;
 *) echo "Unknown mode: $1" >&2; ;;
 esac
 
-run "$dir"/bin/rstow "${g_stowargs[@]}" "$dir/stow"
+run rstow "${g_stowargs[@]}" "$dir/stow"

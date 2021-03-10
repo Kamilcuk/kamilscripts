@@ -44,37 +44,20 @@ EOF
 ###############################################################################
 
 cat <<EOF
-Host dyzio
+Host dyzio server
 	Hostname www.dyzio.pl
 	User kamcuk
-	Port 4004
-Host dyzio_root
-	Hostname www.dyzio.pl
-	User root
 	Port 4004
 Host tunel_dyzio
 	Hostname 192.168.20.1
 	User kamcuk
-	Port 4004
-Host tunel_dyzio_root
-	Hostname 192.168.20.1
-	User root
 	Port 4004
 
 Host biurek
 	Hostname www.biurek.pl
 	User kamil
 	Port 4004
-	Compression yes
-Host biurek_root
-	Hostname www.biurek.pl
-	User root
-	Port 4004
 Host tunel_biurek
-	Hostname 192.168.21.1
-	User kamil
-	Port 4004
-Host tunel_biurek_root
 	Hostname 192.168.21.1
 	User kamil
 	Port 4004
@@ -158,11 +141,9 @@ fi; )
 # netemera
 Host netemeradocker
 	Hostname production-0.netemera.com
-	Compression yes
 	User docker
 Host netemera
 	Hostname production-0.netemera.com
-	Compression yes
 	User kcukro
 EOF
 

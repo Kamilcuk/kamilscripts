@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+if (($# > 1)); then
+	cat <<EOF
+Usage: ${0##*/} dir_with_Puppetfile_or_Puppetfile
+
+EOF
+	exit 1
+fi
+
+tmp=$(readlink -f "${1:-$PWD}")
+set -- "$tmp"
+if [[ -f "$1" && "${1##*/}" = "Puppetfile" ]]; then
+	set -- "${1%/*}"
+fi
+if [[ ! -f "$1"/Puppetfile ]]; then
+	echo "${0##*/}: ERROR: Puppefile not found: $1/Puppetfile" >&2
+	exit 1
+fi
+set -x
+docker run -ti --rm -v "$1":/mnt:ro -w /mnt puppet/r10k puppetfile check

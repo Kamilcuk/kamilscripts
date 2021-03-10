@@ -231,35 +231,35 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 	endif
 	Plug 'honza/vim-snippets' " vim-snipmate default snippets
-	" Puppet https://voxpupuli.org/blog/2019/04/08/puppet-lsp-vim/
-	Plug 'editorconfig/editorconfig-vim'
-	Plug 'mrk21/yaml-vim'
-	Plug 'rodjek/vim-puppet'
-	Plug 'vim-ruby/vim-ruby'
-	Plug 'lingua-pupuli/puppet-vscode'
 	" Utilities
 	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
 	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
 	Plug 'arecarn/vim-crunch'
 	Plug 'sbdchd/neoformat'
-	" generic
+	" Generic
 	Plug 'Konfekt/FastFold'
 	Plug 'vim-scripts/LargeFile'
 	Plug 'wellle/targets.vim'
 	Plug 'airblade/vim-gitgutter'
 	Plug 'mhinz/vim-hugefile'
 	Plug 'tpope/vim-sensible' " Defaults everyone can agree on
-	" integration
+	" Integration
 	Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
 	Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :Git
 	Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
 	Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
-	" lang
+	" Languages
 	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
 	KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
 	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
 	Plug 'vim-syntastic/syntastic'
 	"Plug 'derekwyatt/vim-fswitch'
+	" Puppet https://voxpupuli.org/blog/2019/04/08/puppet-lsp-vim/
+	Plug 'editorconfig/editorconfig-vim'
+	Plug 'mrk21/yaml-vim'
+	Plug 'rodjek/vim-puppet'
+	Plug 'vim-ruby/vim-ruby'
+	Plug 'lingua-pupuli/puppet-vscode'
 	" utils
 	Plug 'vimwiki/vimwiki' " make notes
 	Plug 'sk1418/HowMuch' " calculate stuff
@@ -1078,6 +1078,10 @@ set errorformat^=../%f:%l:%c:\ %m
 set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 
+if getcwd() =~ "/home/kamil/ncbj/puppet"
+	let &makeprg="p=$(git rev-parse --show-toplevel) && time { set -x && cd \"$p\" && pdk validate -a && pdk test unit ;}"
+endif
+
 " }}}
 " Custom functions {{{1
 
@@ -1089,5 +1093,5 @@ autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
 " }}}
 
-" vim: filetype=vim:foldmethod=marker:foldenable
+" vim: filetype=vim:foldmethod=marker:nofoldenable
 
