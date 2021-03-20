@@ -20,6 +20,10 @@ run() {
 	"$@"
 }
 
+L_command_exists() {
+	command -v "$1" >/dev/null 2>&1
+}
+
 verbosed=()
 
 verbosed_on() {
@@ -106,8 +110,8 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 	;;
 esac
 
-if ! pgrep xbindkeys >/dev/null; then
-	run xbindkeys
+if L_command_exists xbindkeys && ! pgrep xbindkeys >/dev/null; then
+	run xbindkeys -p
 fi
 
 for i in ~/.config/kamilscripts/kamilscripts/etc/autostart/*.sh; do
