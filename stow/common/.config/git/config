@@ -96,6 +96,7 @@
 	mt = mergetool
 	acp = "! f() { ( set -x ; git commit -a -m \"$@\" && git push; ); } ; f"
 	allcp = "! f() { ( set -x ; git add -A && git commit -m \"$@\" && git push; ); } ; f"
+	convertGitRepoToSubmodule = "!f() { if [ \"$#\" = 0 ]; then echo \"Usage: convertGitRepoToSubmodule <submodule_directory...>\" >&2; return 1; fi; cd -- \"${GIT_PREFIX:-.}\"; for i; do origin=\"$(cd \"$i\" && git config --get remote.origin.url)\"; ( set -x; git submodule add \"$origin\" \"$i\"; ); done; }; f"
 [init]
 	defaultBranch = master
 [filter "lfs"]
