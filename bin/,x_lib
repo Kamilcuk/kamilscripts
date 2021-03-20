@@ -131,5 +131,5 @@ set -o pipefail
 	wmctrl -l -G | grep 'panel$'
 }
 
-. ,lib_lib "$BASH_SOURCE" ',x_' "$@"
+. ,lib_lib ',x_' "$@"
 

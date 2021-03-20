@@ -25,5 +25,5 @@ cmd_restore_from_conflict() {
 	fi
 }	
 
-. ,lib_lib "$BASH_SOURCE" 'cmd_' "$@"
+. ,lib_lib 'cmd_' "$@"
 

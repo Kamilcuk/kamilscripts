@@ -45,5 +45,5 @@
 		cut -d ' ' -f 5-
 }
 
-. ,lib_lib "$BASH_SOURCE" ',pacman_' "$@"
+. ,lib_lib ',pacman_' "$@"
 

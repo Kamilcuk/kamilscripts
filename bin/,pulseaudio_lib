@@ -198,5 +198,5 @@ EOF
 	,pulseaudio_filter_1 "$1" '' "$2" "$3"
 }
 
-. ,lib_lib "$BASH_SOURCE" ',pulseaudio_' "$@"
+. ,lib_lib ',pulseaudio_' "$@"
 
