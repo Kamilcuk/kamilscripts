@@ -1,0 +1,94 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${GITLAB_URL:="gitlab.com"}"
+: "${GITLAB_API_URL:="https://${GITLAB_URL}/api/v4/"}"
+: "${GITLAB_TOKEN:="pb7HxTThUuZZhQJsM12j"}"
+: "${GITLAB_AUTHORIZATION_HEADER:="Authorization: Bearer ${GITLAB_TOKEN}"}"
+: "${DEBUG:=false}"
+
+run_curl() {
+	local cmd
+	cmd=(curl -sS -iL --header "${GITLAB_AUTHORIZATION_HEADER}" "$@")
+	if "$DEBUG"; then
+		L_log + "${cmd[@]}"
+	fi
+	L_run "${cmd[@]}"
+}
+
+hdr_get_data() { sed '/^\r$/,$!d'; }
+hdr_get_header() { sed '1,/^\r$/!d'; }
+hdr_get_link() {
+	local tmp
+	tmp=$(hdr_get_header | sed -n 's/^link:.* <\([^>]*\)>; rel="next".*/\1/p')
+	printf "%s" "$tmp"
+	[[ -n "$tmp" ]]
+}
+
+get_paginated() {
+	local tmp acc
+	acc=""
+	while true; do
+		tmp=$(run_curl "$@")
+		acc+="$(hdr_get_data <<<"$tmp")"
+		if ! link=$(<<<"$tmp" hdr_get_link) || [[ -z "$link" ]]; then break; fi
+		set -- "$link"
+	done
+	<<<"$acc" jq -s add
+}
+
+C_GET() {
+	local path tmp
+	path=$1
+	shift
+	get_paginated "${GITLAB_API_URL}/$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
+}
+
+C_get_groups() {
+	C_GET /groups
+}
+
+C_get_group_from_name() {
+	C_get_groups | jq --arg name "$1" '.[] | select(.name == $name)'
+}
+
+C_list_projects_in_group() {
+	if (($# != 1)); then L_fatal "Need one argument - group id"; fi
+	C_GET "/groups/$1/projects"
+}
+
+C_list_projects_in_group_name() {
+	if (($# != 1)); then L_fatal "Need one argument - group name"; fi
+	C_list_projects_in_group "$(C_get_group_from_name "$1" | jq -r .id)"
+}
+
+C_project_get_link_to_CI_CD_Settings() {
+	tmp=$(C_GET "/projects/$1" | jq -r .web_url)
+	echo "$tmp/-/settings/ci_cd"
+}
+
+C_list_links_to_CI_CD_Settings_of_all_projects_in_group_name() {
+	C_list_projects_in_group_name "$1" |
+		jq '.[].id' |
+		while IFS= read -r line; do
+			C_project_get_link_to_CI_CD_Settings "$line"
+		done
+}
+
+C_ci_lint() {
+	if (($# != 1)); then L_fatal "Need one argument"; fi
+	if (($# == 0)); then L_usage; L_fatal "Needs file as argument"; fi
+
+	tmp=$(
+		jq --null-input --arg yaml "$(<"$1")" '.content=$yaml' |
+		curl -Ss "https://gitlab.com/api/v4/ci/lint?include_merged_yaml=true" \
+			--header 'Content-Type: application/json' \
+			--data @-
+	) &&
+	jq <<<"$tmp" &&
+	tmp=$(jq .status <<<"$tmp") &&
+	[[ "$tmp" = "valid" ]]
+}
+
+. ,lib_lib C_ "$@"
+
