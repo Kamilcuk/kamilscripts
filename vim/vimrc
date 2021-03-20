@@ -555,6 +555,7 @@ let g:ctrlp_custom_ignore = {
 			\ 'dir':  '\v[\/]\.(git|hg|svn)$',
 			\ 'file': '\v\.(exe|so|dll)$',
 			\ }
+let g:ctrlp_show_hidden = 1
 " https://github.com/FelikZ/ctrlp-py-matcher
 let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 let g:ctrlp_extensions = []
@@ -1079,7 +1080,33 @@ set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 
 if getcwd() =~ "/home/kamil/ncbj/puppet"
+	set errorformat=""
+
+	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl
+	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\,\ line:\ %l\\,\ column:\ %c)%.%#
+	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\,\ line:\ %l)%.%#
+	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\)%.%#
+	"       error during compilation: Parameter source failed on File[Provision /etc/pip.conf configuration]: ....
+	set errorformat+=%E\ \ \ \ \ \ \ error\ during\ compilation:\ %m
+	"       ' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/pip.pp, line: 8)
+	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f\\,\ line:\ %l,\ column:\ %c)%.%#
+	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f\\,\ line:\ %l)%.%#
+	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f)%.%#
+	"       # Set the pip repository to use nexus
+	"       [global]
+	"       index = https://nexus.services.idea.edu.pl/repository/pypi-all/pypi
+	"       index-url = https://nexus.services.idea.edu.pl/repository/pypi-all/simple
+	set errorformat+=%C\ \ \ \ \ \ \ %m
+	set errorformat+=%C " just an empty line..
+
+	set errorformat+=pdk\ %m\ (%f:%l:%c)
+	set errorformat+=pdk\ %m\ (%f:%l)
+	set errorformat+=pdk\ %m\ (%f)
+
 	let &makeprg="p=$(git rev-parse --show-toplevel) && time { set -x && cd \"$p\" && pdk validate -a && pdk test unit ;}"
+	if hostname() == "leonidas"
+		let g:dispatch_quickfix_height=36
+	endif
 endif
 
 " }}}

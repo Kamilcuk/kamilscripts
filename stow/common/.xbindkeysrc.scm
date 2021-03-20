@@ -220,7 +220,7 @@
 (Xbindkey '(Mod4 a) "geany")
 (Xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
 (Xbindkey '(Mod4 t) "todoist" "firefox --new-window 'https://todoist.com/app/#project%2F2252640035'")
-(Xbindkey '(Mod4 s) "subl")
+;(Xbindkey '(Mod4 s) "subl")
 (Xbindkey '(Mod4 f) "soffice --calc")
 (Xbindkey '(Mod4 c) "terminal"
 	(string-append "xfce4-terminal "
@@ -240,6 +240,7 @@
 		(xbindkey '(Mod4 "3") ",leonidas_toggle_hdmi_mute.sh")
 		(xbindkey '(Mod4 "4") ",xrandr_change_brightness.sh -0.1")
 		(xbindkey '(Mod4 "5") ",xrandr_change_brightness.sh +0.1")
+		(xbindkey '(Mod2 F12) ",leonidas_toggle_hdmi_mute.sh")
 	)
   	(else
 		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
@@ -259,13 +260,17 @@
 (Xbindkey '(XF86Search) "xfce4-appfinder")
 (Xbindkey '(XF86HomePage) "browser" "firefox")
 (Xbindkey '(XF86ScreenSaver) "xflock4")
+(Xbindkey '(XF86Calculator) "xfce4-terminal -e \"bash -c \\\"echo Running bc calculator; bc\\\"\"")
+(Xbindkey '(XF86Tools) "firefox https://open.fm/stacja/alt-pl https://open.spotify.com/search")
 (Xbindkey '(Print)  "printscreen" "xfce4-screenshooter --fullscreen")
 (Xbindkey '(Mod4 n) "browser" "firefox")
 (Xbindkey '(Mod4 e) "File Explorer" "xdg-open ~")
 (Xbindkey '(XF86Mail) "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
 (Xbindkey '(Mod4 m)   "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
+(Xbindkey '(Mod4 w)   "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
 
 (Xbindkey '(Mod4 d) ",slack_toggle.sh")
+(Xbindkey '(Mod4 s) ",slack_toggle.sh")
 
 (Xbindkey '(Alt F3) "xfce4-appfinder")
 (Xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
