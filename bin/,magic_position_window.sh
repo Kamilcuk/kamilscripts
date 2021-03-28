@@ -109,6 +109,7 @@ wmove() {
 	wmctrl -i -r $id -b remove,maximized_vert
 	wmctrl -i -r $id -b remove,maximized_horz
     # double resizing seem to be correcting strange behavior
+	sleep 0.1
     wmctrl -i -r $id -e 0,$x,$y,$((width-bleft-bright)),$((height-btop-bbottom))
 }
 

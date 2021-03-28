@@ -1,0 +1,73 @@
+#!/bin/bash
+
+name=,cmake-preset
+
+presetfile=$PWD/CMakePresets.json
+
+do_envsubst() {
+	envsubst '$presetName $sourceDir $binaryDir'
+}
+
+output() {
+	printf "%q\n" "$@" | paste -sd' '
+}
+
+fatal() {
+	echo "$name:" "ERROR" "$@" >&2
+	exit 1
+}
+
+c_get() {
+	config=$(
+		jq --arg name "$1" '
+			def _get_in(input; n):
+				(input[] | select(.name == n)) |
+				(if .inherits then .inherits as $n | _get_in(input; $n) else {} end) * .;
+			def get(name):
+				.configurePresets as $input | _get_in($input; name);
+			get($name)
+		' "$presetfile"
+	)
+	presetName=$(jq -r .name <<<"$config")
+	export presetName
+	sourceDir="$PWD" sourceParentDir="${PWD%/**}" sourceDirName="${PWD##*/}"
+	export sourceDir sourceParentDir sourceDirName
+	generator=$(<<<"$config" jq -r .generator)
+	export generator
+	dollar='$'
+	export dollar
+	binaryDir=$(jq -r .binaryDir <<<"$config" | do_envsubst)
+	export binaryDir
+
+	printf "%s\n" "$config"
+}
+
+c_config() {
+	c_get "$1" >/dev/null
+	shift
+	args=(cmake)
+	args+=(-S"$sourceDir" -B"$binaryDir" -G"$generator")
+	tmp=$(jq -r '.cacheVariables | to_entries | .[] | ("-D" + .key + "=" + .value) | @base64' <<<"$config")
+	while IFS= read -r line; do
+		tmp=$(<<<"$line" base64 -d | do_envsubst)
+		args+=("$tmp")
+	done <<<"$tmp"
+	output "${args[@]}" "$@"
+}
+
+c_build() {
+	c_get "$1" >/dev/null
+	shift
+	args=()
+	args+=(--build "$binaryDir")
+	output "${args[@]}" "$@"
+}
+	
+
+mode=$1
+shift
+case "$mode" in
+(get|config|build) c_"$mode" "$@"; ;;
+*) fatal "Unknown mode: $mode"; ;;
+esac
+

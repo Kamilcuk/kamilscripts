@@ -1,0 +1,11 @@
+# /usr/lib/systemd/system/zpool-scrub@.timer
+[Unit]
+Description=Trim ZFS pool weekly
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+RandomizedDelaySec=8h
+
+[Install]
+WantedBy=timers.target

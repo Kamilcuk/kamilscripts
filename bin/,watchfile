@@ -53,43 +53,48 @@ EOF
 # main ##############################################
 
 args=$(getopt -n "$name" \
-		-o +txhR \
-		-l no-title,exec,help,ignore-resize -- "$@")
+		-o +tbxhR \
+		-l no-title,exec,help,ignore-resize,debug -- "$@")
 eval set -- "$args"
 use_exec=false
 use_beep=false
 use_title=true
 use_winch=true
-while (($#)); do 
+use_debug=false
+while (($#)); do
 	case "$1" in
 	-t|--no-title) use_title=false; ;;
 	-b|--beep) use_beep=true; ;;
 	-x|--exec) use_exec=true; ;;
 	-h|--help) usage; exit; ;;
 	-R|--ignore-resize) use_winch=false; ;;
+	--debug) use_debug=true; ;;
 	--) shift; break; ;;
 	*) fatal "Internal parsing options error"; ;;
 	esac
 	shift
 done
 
-if (($# < 2)); then
-	fatal "Wrong number of arguments. See $name --help"
+if (($# == 0)); then
+	usage
+	fatal "Missing arguments"
+fi
+if (($# == 1)); then
+	set "$1" "$1"
 fi
 
 file="$1"
 shift
+
+if [[ ! -e "$file" ]]; then
+	fatal "file does not exists: $file"
+fi
 
 # duplicate stdin for stty below to know where terminal is
 exec 5<&0
 
 {
 	if "$use_winch"; then
-		# output something on terminal changes
-		# TODO does not work :/
-		: shopt -s checkwinsize
-		: trap 'echo $LINES $COLUMNSWINCH' WINCH
-
 		size_prev=$(stty size <&5)
 		while sleep 0.1; do
 			size=$(stty size <&5)
@@ -104,6 +109,7 @@ exec 5<&0
 	# wathc the file
 	stdbuf -oL inotifywait -q -m -e close_write,move,delete "$file"
 } |
+{ if "$use_debug"; then tee /dev/stderr; else cat; fi; } |
 # rate limit the events - output 0x02 each event
 stdbuf -oL ratelimit.sh -t 1 -l 0 -o '\x02\n' |
 # rate limiting outputs \x02 each period - filter them out and just output something
@@ -114,12 +120,14 @@ while IFS= read -r _; do
 	if [[ ! -e "$file" ]]; then
 		fatal "File does not exists"
 	fi
-	clear
+	if ! "$use_debug"; then
+		clear
+	fi
 	if "$use_title"; then
-		print_left_right "Every $file change: $*" "$HOSTNAME: $(date +'%a %b %d %T %Y')" 
+		print_left_right "Every $file change: $*" "$HOSTNAME: $(date +'%a %b %d %T %Y')"
 		echo
 	fi
-	if ! 
+	if !
 		if "$use_exec"; then
 			"$@"
 		else

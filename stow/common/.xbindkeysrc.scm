@@ -240,7 +240,10 @@
 		(xbindkey '(Mod4 "3") ",leonidas_toggle_hdmi_mute.sh")
 		(xbindkey '(Mod4 "4") ",xrandr_change_brightness.sh -0.1")
 		(xbindkey '(Mod4 "5") ",xrandr_change_brightness.sh +0.1")
-		(xbindkey '(Mod2 F12) ",leonidas_toggle_hdmi_mute.sh")
+		(xbindkey '(Mod4 F9 ) "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
+		(xbindkey '(Mod4 F10) "pactl set-sink-volume @DEFAULT_SINK@ -2%")
+		(xbindkey '(Mod4 F11) "pactl set-sink-volume @DEFAULT_SINK@ +2%")
+		(xbindkey '(Mod4 F12) ",leonidas_toggle_hdmi_mute.sh")
 	)
   	(else
 		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")

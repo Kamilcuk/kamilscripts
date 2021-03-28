@@ -1,0 +1,9 @@
+# /usr/lib/systemd/system/zpool-scrub@.service
+[Unit]
+Description=Trim ZFS Pool
+Requires=zfs.target
+After=zfs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/zpool trim %I

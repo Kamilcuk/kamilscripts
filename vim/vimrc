@@ -559,6 +559,9 @@ let g:ctrlp_show_hidden = 1
 " https://github.com/FelikZ/ctrlp-py-matcher
 let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
 let g:ctrlp_extensions = []
+" Preserve cache
+let g:ctrlp_clear_cache_on_exit = 0
+let g:ctrlp_cache_dir = $HOME.'/.cache/vim/ctrlp'
 " ctrlp oldfiles plugin
 let g:ctrlp_extensions += ['oldfiles']
 let g:ctrlp_working_path_mode = ''
