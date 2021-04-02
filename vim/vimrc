@@ -213,7 +213,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" My Plugins
 	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 	"KcPlug8 'puremourning/vimspector'
-	Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
+	"Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" staging2
 	"Plug 'LucHermitte/lh-vim-lib'
 	"Plug 'LucHermitte/lh-tags'
@@ -248,6 +248,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :Git
 	Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
 	Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
+	Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher 
 	" Languages
 	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
 	KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
@@ -279,7 +280,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
 	Plug 'gyim/vim-boxdraw'
 	" Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
-	Plug 'kamilcuk/vim-template', {'dir': '~/.vim/plug/kamilcuk-vim-template'}
+	Plug 'kamilcuk/vim-template', {'dir': '~/.vim/plugged/kamilcuk-vim-template'}
 	Plug 'junegunn/vim-easy-align' " A Vim alignment plugin.
 	Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
 	Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool

@@ -34,3 +34,8 @@ git_remote_get-url() {
 	git remote -v show | awk 'NR==1{print $2}'
 }
 
+git_autostash_supported() {
+	git --version | awk '{exit !(0+$3>2.6)}'
+}
+
+

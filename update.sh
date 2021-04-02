@@ -4,8 +4,17 @@ set -euo pipefail
 
 log "Updating repository..."
 git_remote_get-url | sed_remote_to_https | xargs -t git remote set-url origin
-autostash=$(git --version | awk '{exit !(0+$3>2.6)}' && printf "%s\n" --autostash ||:)
-runlog git pull --rebase $autostash
+if git_autostash_supported; then
+	runlog git pull --rebase  --autostash
+else
+	if [[ -n "$(git status --porcelain)" ]]; then
+		runlog git stash --include-untracked
+		runlog git pull --rebase
+		runlog git stash apply
+	else
+		runlog git pull --rebase
+	fi
+fi
 git_remote_get-url | sed_remote_to_ssh | xargs -t git remote set-url origin
 
 log "Updating submodules..."

@@ -1,7 +1,3 @@
-[submodule "vim/ebundle/my/vim-dispatch"]
-	path = vim/bundle/vim-dispatch
-	url = git@github.com:kamilcuk/vim-dispatch
-	branch = kamilcuk
 [submodule "third_party/tmux"]
 	path = third_party/tmux
-	url = git@github.com:kamilcuk/.tmux
+	url = https://github.com/gpakosz/.tmux
