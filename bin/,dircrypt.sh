@@ -36,6 +36,7 @@ _tar() {
 C_encrypt() {
 	parse_args "$@"
 	_tar --owner=0 --group=0 -c -v -C "$g_dirdirname" "$g_dirbasename" | super_gpg \
+		--force-mdc \
 		--s2k-cipher-algo AES256 \
 		--s2k-digest-algo SHA512 \
 		--s2k-mode 3 \

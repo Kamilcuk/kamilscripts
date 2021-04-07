@@ -83,13 +83,13 @@ Host chors
 # tunels
 Host leo leonidas tunel_leonidas
 	Hostname 192.168.255.32
-	User root
+	User kamil
 Host gorgo tunel_gorgo
 	Hostname 192.168.255.33
-	User root
+	User kamil
 Host ardalus tunel_ardalus
 	Hostname 192.168.255.35
-	User root
+	User kamil
 Host alpinezfssmb tunel_alpinezfssmb
 	Hostname 192.168.255.36
 	User kamil
@@ -204,8 +204,8 @@ EOF
 cat <<EOF
 
 Host perun
-	#Hostname 2a02:c207:2050:3924::1
-	Hostname 207.180.196.233
+	Hostname karta.dyzio.pl
+	#2a02:c207:2050:3924::1 207.180.196.233
 	User root
 	Port 60022
 
@@ -222,7 +222,7 @@ Host *
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
 	ControlMaster auto
 	ControlPath  ~/.ssh/.socket_%r@%h-%p
-	ControlPersist 600
+	ControlPersist 6000
 
 	ExitOnForwardFailure yes
 

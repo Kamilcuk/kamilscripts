@@ -141,5 +141,7 @@ bind I login on
 bind O login off
 bind } history
 
-term screen
+term "screen-256color"
+encoding UTF-8
+altscreen on
 
