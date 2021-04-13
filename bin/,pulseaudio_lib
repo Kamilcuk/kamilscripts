@@ -118,6 +118,23 @@
 				cur["_description"] = cur[section]
 			}
 		}
+
+		section == "format"{
+			l_i = cur[section]
+			#
+			cur["_format"] = gensub(/^([^,]*),.*$/, "\\1", "1", l_i)
+			gsub(/^[^,]*, */, "", l_i)
+			#
+			while (1) {
+				l_name = gensub(/^([^ ]*).*/, "\\1", "1", l_i)
+				gsub(/^[^=]*= *"?(\\")?/, "", l_i)
+				if (length(l_name) == 0) break
+				cur["_"l_name] = gensub(/^([^\\"]*).*/, "\\1", "1", l_i)
+				gsub(/^[^ ]* */, "", l_i)
+				# print "MARK", l_name" | "cur[l_name]" | "l_i
+			}
+			# print " "
+		}
 		
 		function output( \
 				c, i, val, once, scur) {
