@@ -357,7 +357,7 @@ endif
 "Use 24-bit (true-color) mode in Vim/Neovim when outside tmux.
 "If you're using tmux version 2.2 or later, you can remove the outermost $TMUX check and use tmux's 24-bit color support
 "(see < http://sunaku.github.io/tmux-24bit-color.html#usage > for more information.)
-if empty($TMUX)
+if 0 && empty($TMUX)
 	if has("nvim")
 		"For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
 		let $NVIM_TUI_ENABLE_TRUE_COLOR = 1
@@ -1087,27 +1087,29 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	set errorformat=""
 
 	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl
-	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\,\ line:\ %l\\,\ column:\ %c)%.%#
-	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\,\ line:\ %l)%.%#
-	set errorformat+=\ \ \ \ \ \ \ error\ during\ compilation:\ %m\ (file:\ %f\\)%.%#
+	"let &errorformat.='       error during compilation: %m (file: %f\, line: %l\, column: %c) %.%#'
+	"let &errorformat.=',       error during compilation: %m \(file: %f\, line: %l\) %.%#'
+	let &errorformat.='       error during compilation: %m \(file: %f\, line: %l%.%#'
+	let &errorformat.=',       error during compilation: %m (file: %f) %.%#'
 	"       error during compilation: Parameter source failed on File[Provision /etc/pip.conf configuration]: ....
-	set errorformat+=%E\ \ \ \ \ \ \ error\ during\ compilation:\ %m
+	let &errorformat.=',%E       error during compilation: %m'
 	"       ' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/pip.pp, line: 8)
-	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f\\,\ line:\ %l,\ column:\ %c)%.%#
-	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f\\,\ line:\ %l)%.%#
-	set errorformat+=%Z\ \ \ \ \ \ \ %m\ (file:\ %f)%.%#
+	let &errorformat.=',%Z       %m (file: %f\, line: %l, column: %c)%.%#'
+	let &errorformat.=',%Z       %m (file: %f\, line: %l)%.%#'
+	let &errorformat.=',%Z       %m (file: %f)%.%#'
 	"       # Set the pip repository to use nexus
 	"       [global]
 	"       index = https://nexus.services.idea.edu.pl/repository/pypi-all/pypi
 	"       index-url = https://nexus.services.idea.edu.pl/repository/pypi-all/simple
-	set errorformat+=%C\ \ \ \ \ \ \ %m
-	set errorformat+=%C " just an empty line..
+	let &errorformat.=',%C       %m'
+	let &errorformat.=',%C " just an empty line..'
 
-	set errorformat+=pdk\ %m\ (%f:%l:%c)
-	set errorformat+=pdk\ %m\ (%f:%l)
-	set errorformat+=pdk\ %m\ (%f)
+	let &errorformat.=',pdk %m (%f:%l:%c)'
+	let &errorformat.=',pdk %m (%f:%l)'
+	let &errorformat.=',pdk %m (%f)'
 
-	let &makeprg="p=$(git rev-parse --show-toplevel) && time { set -x && cd \"$p\" && pdk validate -a && pdk test unit ;}"
+	let &makeprg="p=$(git rev-parse --show-toplevel) && time ( set -x && cd \"$p\" && pdk validate -a --parallel && pdk test unit --parallel )"
+	"let &makeprg="cat /tmp/1"
 	if hostname() == "leonidas"
 		let g:dispatch_quickfix_height=36
 	endif

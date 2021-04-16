@@ -1,17 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${GITLAB_URL:="gitlab.com"}"
-: "${GITLAB_API_URL:="https://${GITLAB_URL}/api/v4/"}"
-: "${GITLAB_TOKEN:="pb7HxTThUuZZhQJsM12j"}"
-: "${GITLAB_AUTHORIZATION_HEADER:="Authorization: Bearer ${GITLAB_TOKEN}"}"
-: "${DEBUG:=false}"
-
 run_curl() {
 	local cmd
 	cmd=(curl -sS -iL --header "${GITLAB_AUTHORIZATION_HEADER}" "$@")
 	if "$DEBUG"; then
-		L_log + "${cmd[@]}"
+		L_log + "${cmd[@]@Q}"
 	fi
 	L_run "${cmd[@]}"
 }
@@ -42,6 +36,10 @@ C_GET() {
 	path=$1
 	shift
 	get_paginated "${GITLAB_API_URL}/$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
+}
+
+C_POST() {
+	run_curl -X POST "${GITLAB_API_URL}/$@"
 }
 
 C_get_groups() {
@@ -90,5 +88,56 @@ C_ci_lint() {
 	[[ "$tmp" = "valid" ]]
 }
 
-. ,lib_lib C_ "$@"
+C_list_current_user() {
+	C_GET /user
+}
 
+C_get_current_user_id() {
+	C_GET /user | jq .id
+}
+
+C_repo_create() {
+	if (($# < 1)); then L_fatal "Argument needed"; fi
+	args=$(getopt -n "$L_name" -o d -l description:,public,private,internal,enable-issues::,enable-wiki:: -- "$@")
+	eval set -- "$args"
+	mode=
+	issues=false
+	wiki=false
+	while (($#)); do
+		case "$1" in
+		-d|--description) description=$2; shift; ;;
+		--private|--public|--internal) mode=${1//--/}; ;;
+		--enable-issues) issues=${2:-true}; shift; ;;
+		--enable-wiki) wiki=${2:-true}; shift; ;;
+		--) shift; break; ;;
+		*) L_fatal "Internal error"; ;;
+		esac
+		shift;
+	done
+	if [[ -z "$mode" ]]; then L_fatal "--public --private or --internal argument needed"; fi
+
+	C_POST /projects "$@"
+}
+
+###############################################################################
+
+: "${GITLAB_URL:="gitlab.com"}"
+: "${GITLAB_TOKEN:="pb7HxTThUuZZhQJsM12j"}"
+: "${DEBUG:=false}"
+
+. ,lib_lib -q 
+
+args=$(getopt -n "$L_name" -o +2 -- "$@")
+eval set -- "$args"
+while (($#)); do
+	case "$1" in
+	-2) GITLAB_URL=${GITLAB2_URL:-${GITLAB_URL}} GITLAB_TOKEN=${GITLAB2_TOKEN:-${GITLAB_TOKEN}}; ;;
+	--) shift; break;
+	esac
+	shift
+done
+
+: "${GITLAB_API_URL:="https://${GITLAB_URL}/api/v4/"}"
+: "${GITLAB_AUTHORIZATION_HEADER:="Authorization: Bearer ${GITLAB_TOKEN}"}"
+
+. ,lib_lib C_ "$@"

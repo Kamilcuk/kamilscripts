@@ -118,10 +118,10 @@ Host lenovo
 #	Hostname pecet123.ustronie.ds.pw.edu.pl
 #	Hostname 10.3.254.208
 #	User kamil
-Host ustrotunel
-	Hostname 192.168.255.33
-	User kamil
-	port 4004
+#Host ustrotunel
+#	Hostname 192.168.255.33
+#	User kamil
+#	port 4004
 
 Host aur.archlinux.org
 	IdentityFile ~/.ssh/aur_id_rsa
@@ -164,8 +164,13 @@ Host cis-$1 $1 $1-cis
 	Hostname ${2:-$1.cis.gov.pl}
 	User ${3:-kcukrowski}
 	GSSAPIAuthentication yes
-	GSSAPIDelegateCredentials yes${4:+
-	$4}
+	GSSAPIDelegateCredentials yes
+	${4:+$4}
+Host cis-raw-$1 $1 $1-cis
+	Hostname ${2:-$1.cis.gov.pl}
+	User ${3:-kcukrowski}
+	ControlMaster no
+	${4:+$4}
 '
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
 ncbj leszcz          10.200.4.5
@@ -205,7 +210,7 @@ cat <<EOF
 
 Host perun
 	Hostname karta.dyzio.pl
-	#2a02:c207:2050:3924::1 207.180.196.233
+	# 2a02:c207:2050:3924::1 207.180.196.233
 	User root
 	Port 60022
 
