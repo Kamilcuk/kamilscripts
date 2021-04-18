@@ -8,25 +8,37 @@ tmp=$(,pulseaudio_lib list_2 "_what,_num,_description,mute" | awk -F'\t' -v OFS=
 )
 declare $tmp
 
-muted=$(if [[ "${sink_hdmi_muted,,}" =~ no ]]; then echo true; else echo false; fi)
+if (($# == 0)); then
+	if [[ "${sink_hdmi_muted,,}" =~ no ]]; then
+		set -- unmute_headphones
+	else
+		set -- unmute_hdmi
+	fi
+fi
 
-,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' | xargs -i pactl set-card-profile {} output:analog-stereo
-
-if "$muted"; then
+case "$1" in
+unmute_headphones)
 	pactl set-sink-mute "$sink_hdmi" on
 	pactl set-sink-mute "$sink_builtin" off
-	icon=audio-volume-muted
-	muted="Off"
-else
+	icon=audio-headphones
+	msg="Dźwięk przez słuchawki. Monitor wyciszony"
+	;;
+unmute_hdmi)
 	pactl set-sink-mute "$sink_hdmi" off
 	pactl set-sink-mute "$sink_builtin" on
-	icon=audio-volume-high
-	muted="On"
-fi
+	icon=video-display
+	msg="Dźwięk przez monitor. Słuchawki wyciszone"
+	;;
+*)
+	echo "Invalid command" >&2
+	exit 1
+	;;
+esac
 	
 org.freedesktop.Notifications.Notify.sh "$(basename $0)" 0 "$icon" \
-	"$muted" \
+	"$msg" \
 	"Monitor mute status" "" "" "" /tmp/.notifyval."$(basename $0)" >/dev/null
 
+,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' | xargs -i pactl set-card-profile {} output:analog-stereo
 ,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' | xargs -i pactl set-sink-port {} analog-output-lineout
 

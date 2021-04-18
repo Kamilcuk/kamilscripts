@@ -359,7 +359,7 @@ gcc_version() {
 	echo "$GCC_VERSION"
 }
 
-gcc_try_compile() { (
+compiler_try_compile() { (
 	local tmps tmpo
 	tmps=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.c)
 	tmpo=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.out)
@@ -414,17 +414,21 @@ default_flags_add() {
 
 		local sanitize
 		if awkeval "$ver >= 4.8"; then
-			sanitize+=(-fsanitize=address)
+			sanitize+=(address)
 		fi
 		if awkeval "$ver >= 5"; then
-			sanitize+=(-fsanitize=undefined)
+			sanitize+=(undefined)
 		fi
 		if awkeval "$ver >= 8"; then
-			sanitize+=(-fsanitize=pointer-compare -fsanitize=pointer-subtract)
+			sanitize+=(pointer-compare pointer-subtract)
 		fi
 		local tmp
-		if ((${#sanitize[@]} != 0)) && tmp=$(gcc_try_compile "${sanitize[@]}" 2>&1); then
-			flags+=("${sanitize[@]}")
+		if ((${#sanitize[@]} != 0)); then
+			local flag IFS=,
+			flag=-fsanitize=${sanitize[*]}
+			if tmp=$(compiler_try_compile "$flag" 2>&1); then
+				flags+=("$flag")
+			fi
 		fi
 	fi
 

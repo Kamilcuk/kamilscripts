@@ -19,6 +19,13 @@
 	pacman -Qe | awk '{print $1}' | ,,pacman_list_installed_packages_by_date_helper
 }
 
+,pacman_list_explicitly_installed_packages_by_date_merge() {
+	,pacman_list_explicitly_installed_packages_by_date |
+	awk 'a[$1]=a[$1](length(a[$1])?" ":"")$2
+		END{for (i in a) print i " " a[i]}' |
+	sort -k1,1
+}
+
 ,pacman_list_packages_by_size ()  { 
 	pacman -Qi |
 		awk -F: '/^Name *:/{n=$2} /^Installed Size *:/{print n, $2}' |

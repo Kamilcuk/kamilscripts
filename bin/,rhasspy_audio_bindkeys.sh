@@ -8,8 +8,32 @@ set -euo pipefail
 
 ###############################################################################
 
-notify() {
-	notify-send -u low -t 2000 -i forward rhasspy_bindkeys "$*"
+L_fatal() {
+	notify "$@"
+	L_error "$@"
+	exit 1
+}
+
+notify() { notify-send -u low -t 4000 -i forward rhasspy_bindkeys "$@"; }
+say() { rhasspy_say "$@"; }
+notifysay() { notify "$@"; rhasspy_say "$@"; }
+saynotify() { notifysay "$@"; }
+
+load_user_config() {
+	# Default configuration values
+	RHASSPY_SITE=$HOSTNAME
+	RHASSPY_HTTP_URL="http://localhost:12101"
+	RHASSPY_MQTT_PORT=12183
+	RHASSPY_MQTT_HOST=localhost
+	# Load user config
+	local tmp
+	tmp=$(sed -n 's/^[[:space:]]*#[[:space:]]\+//p' "$RHASSPY_BINDKEYS_CONFIGFILE")
+	L_log "Loading config file: $RHASSPY_BINDKEYS_CONFIGFILE"
+	if ! eval "$tmp"; then
+		L_fatal "Sourcing $RHASSPY_BINDKEYS_CONFIGFILE failed"
+	fi
+	# Load snt lib
+	snt_load_config "$RHASSPY_BINDKEYS_CONFIGFILE"
 }
 
 snt_load_config() {
@@ -22,9 +46,11 @@ snt_load_config() {
 			v=$0
 			gsub(/^[[:space:]]*\[/, "", v)
 			gsub(/\][[:space:]]*$/, "", v)
-			name=v
+			name = v
 			if (length(name) == 0) fatal("Section name is empty: " name)
-			if (name ~ "[[:space:]]") fatal("Section name has spaces")
+			if (name ~ "[[:space:]]") fatal("Section name has spaces: " name)
+			if (name in names) fatal("Section defined twice: " name)
+			names[name]
 		}
 		/^[[:space:]]*#[[:space:]]*!/{
 			#
@@ -42,25 +68,25 @@ snt_load_config() {
 			print cmd
 			print ""
 		}
-		' <<<"$RHASSPY_SENTENCES"
+		' "$1"
 	); then
-		L_fatal "Could not parse RHASSPY_SENTENCES from $RHASSPY_BINDKEYS_CONFIGFILE"
+		L_fatal "Could not parse from $1"
 	fi
 }
 
 snt_parser() {
-	awk "${@:1:$#-1}" '
+	<<<"$g_snt" awk "${@:1:$#-1}" '
 		BEGIN{ RS="\n\n"; FS="\n"; OFS="\n"; ORS="\n"; }
 		{ name=$1; opt=$2; cmd=$3; }
 		'"${*: -1}"
 }
 
 snt_list() {
-	<<<"$g_snt" snt_parser '{print name}' | sort -u
+	snt_parser '{print name}' | sort -u
 }
 
 snt_get() {
-	<<<"$g_snt" snt_parser -v arg="$1" 'arg == name'
+	snt_parser -v arg="$1" 'arg == name'
 }
 
 ###############################################################################
@@ -86,30 +112,48 @@ rhasspy_subscribe() {
 
 rhasspy_say() {
 	local arg
-	arg=$(jq -n --arg a "$*" --arg site "$RHASSPY_SITE" '{"text": $a, "lang": "en-US", "siteId": $site}')
+	arg=$(jq -c -n --arg a "$*" --arg site "$RHASSPY_SITE" '{"text": $a, "lang": "en-US", "siteId": $site}')
 	rhasspy_publish -t hermes/tts/say -m "$arg"
 }
 
-rhasspy_retrain() {
-	curl -X POST "${RHASSPY_HTTP_URL}/api/train" -H  "accept: text/plain" &&
+rhasspy_wait_for_say_finished() {
+	local timeout
+	timeout="${1:-}"
+	${timeout:+timeout $timeout} mosquitto_sub -h "$RHASSPY_MQTT_HOST" -p "$RHASSPY_MQTT_PORT" -t hermes/tts/sayFinished -C 1 ||:
+}
+
+rhasspy_curl() {
+	# shellcheck disable=SC2145
+	curl "${RHASSPY_HTTP_URL}/$@" &&
 	echo
+}
+
+rhasspy_retrain() {
+	rhasspy_curl /api/train -X POST -H "accept: text/plain"
+}
+
+rhasspy_listen_for_command() {
+	rhasspy_curl /api/listen-for-command -X POST -H  "accept: */*"
 }
 
 ###############################################################################
 
+audio_muted=true
 audio_mute() {
-	if "$muted"; then return; fi
-	muted=true
+	if "$audio_muted"; then return; fi
+	audio_muted=true
 	L_log "audio mute"
 	pactl set-sink-mute @DEFAULT_SINK@ 1
 }
 
 audio_unmute() {
-	if ! "$muted"; then return; fi
-	muted=false
+	if ! "$audio_muted"; then return; fi
+	audio_muted=false
 	L_log "audio unmute"
 	pactl set-sink-mute @DEFAULT_SINK@ 0
 }
+
+###############################################################################
 
 job_silence_audio_when_detecting_words() {
 	L_name+=": audiosilencer"
@@ -118,7 +162,6 @@ job_silence_audio_when_detecting_words() {
 	L_log "Starting..."
 	rhasspy_subscribe -v -t hermes/asr/'#' | { 
 		detecting=false
-		muted=true
 		while 
 			IFS=' ' read -r topic payload &&
 			siteid=$(jq -r .siteId <<<"$payload") &&
@@ -150,47 +193,67 @@ job_notify_about_wake_word() {
 
 ###############################################################################
 
+intent_exe() {
+	set +ueo pipefail
+	set +a
+	pushd "$HOME" >/dev/null
+	set -x
+	"$@"
+	set +x
+	popd
+	set -a
+	set -euo pipefail
+}
+
+
 intent_run() {
+	local intent line
 	intent="$1"
 	line="$2"
 
-	tmp=$(snt_get "$intent")
-	if [[ -z "$tmp" ]]; then
-		L_log "Not handled intent: $intent $line"
-		return 1
-	fi
+	local todo
+	# g section is _always_ executing
+	todo=$(snt_get "g" ; snt_get "$intent")
 
 	local opts
 	opts=$(<<<"$line" json_to_opts | paste -sd' ') ||:
+	eval "$opts" ||:
 	L_log "$line"
 	L_log "Handling $intent with $opts"
 
+	local tmp
 	while
 		IFS= read -u10 -r name &&
 		IFS= read -u10 -r opt &&
 		IFS= read -u10 -r cmd
-	do
+	do {
+		export OPT_name=$name
+		export OPT_opt=$opt
+		export OPT_cmd=$cmd
+		L_log "OPT_name=$name OPT_opt=$opt OPT_cmd=$cmd"
 		case "$opt" in
 		say) 
-			(
-				set +ueo pipefail
-				set +a
-				cd
-				tmp=$(envsubst <<<"$cmd")
-				rhasspy_say "$tmp"
-			) ||:
+			tmp=$(envsubst <<<"$cmd")
+			rhasspy_say "$tmp"
+			;;
+		notify)
+			tmp=$(envsubst <<<"$cmd")
+			notify "$tmp"
+			;;
+		saynotify|notifysay)
+			tmp=$(envsubst <<<"$cmd")
+			rhasspy_say "$tmp"
+			notify "$tmp"
 			;;
 		run)
-			(
-				set +ueo pipefail
-				set +a
-				cd
-				notify "$cmd"
-				eval "$cmd" <<<"$line" <&10-
-			) ||:
+			notify "$cmd"
+			intent_exe eval "$cmd" <<<"$line"
+			;;
+		*)
+			notify "Unknown command $opt for $name with $cmd"
 			;;
 		esac
-	done 10<<<"$tmp"
+	} 10<&-; done 10<<<"$todo"
 }
 
 job_handle_intents() {
@@ -204,7 +267,7 @@ job_handle_intents() {
 			IFS= read -u 11 -r line &&
 			intent=$(jq -r .intent.intentName <<<"$line" | sed 's/[[:space:]]/_/g')
 		do
-			( intent_run "$intent" "$line" ) ||:
+			intent_run "$intent" "$line" ||:
 		done
 	} 11<&0 0<&-
 }
@@ -215,9 +278,6 @@ job_retrain() {
 	L_name+=": retrainer"
 	trap 'jobs_kill ; L_log quit' EXIT
 	L_log "Retraining Rhasspy..."
-	if ! cat <<<"$RHASSPY_SENTENCES" >"$RHASSPY_SENTENCES_FILE"; then
-		L_fatal "Could not write into $RHASSPY_SENTENCES_FILE"
-	fi
 	if ! rhasspy_retrain; then
 		L_fatal "Could not retrain Rhasspy"
 	fi
@@ -226,42 +286,7 @@ job_retrain() {
 ###############################################################################
 
 jobs_kill() {
-	local IFS
-	IFS=$' \t\n'
-	for j in $(jobs | awk '{gsub("[^0-9]","",$1);print $1}'); do kill %$j; done
-}
-
-load_user_config() {
-	# Default configuration values
-	RHASSPY_SENTENCES=""
-	RHASSPY_SITE=$HOSTNAME
-	RHASSPY_HTTP_URL="http://localhost:12101"
-	RHASSPY_SENTENCES_FILE="$HOME/.config/rhasspy/profiles/en/intents/rhasspy_bindkeys_sentences.ini"
-	RHASSPY_MQTT_PORT=12183
-	RHASSPY_MQTT_HOST=localhost
-	# Load user config
-	if ! . "$RHASSPY_BINDKEYS_CONFIGFILE"; then
-		L_fatal "Sourcing $RHASSPY_BINDKEYS_CONFIGFILE failed"
-	fi
-	if [[ -z "$RHASSPY_SENTENCES" ]]; then
-		L_fatal "SENTENCES is not set in $RHASSPY_BINDKEYS_CONFIGFILE"
-	fi
-	# Load snt lib
-	snt_load_config <<<"$RHASSPY_SENTENCES"
-}
-
-jobs_run() {
-	trap 'jobs_kill' EXIT
-	jobs_kill
-	wait
-	load_user_config
-	L_log "Running jobs..."
-	if [[ "${1:-}" != "first" ]]; then
-		# Do not retrain on first start
-		job_retrain &
-	fi
-	job_silence_audio_when_detecting_words &
-	job_handle_intents &
+	L_kill_all_jobs
 }
 
 ###############################################################################
@@ -269,22 +294,36 @@ jobs_run() {
 C_say() { rhasspy_say "$@"; }
 C_pub() { rhasspy_publish "$@"; }
 C_sub() { rhasspy_subscribe "$@"; }
-C_run() { trap 'jobs_kill' EXIT; jobs_run "$@"; wait; }
+C_list_actions() { snt_parser '{print name "\t" opt "\t" cmd}'; }
+C_wait_for_say_finished() { rhasspy_wait_for_say_finished "$@"; }
+C_run() {
+	trap 'jobs_kill ; exit 0 ; L_log exiting' EXIT
+	L_log "Running jobs..."
+	if [[ "${1:-}" = "train" ]]; then
+		# Do not retrain on first start
+		job_retrain &
+	fi
+	job_silence_audio_when_detecting_words &
+	job_handle_intents &
+	wait
+}
 C_watcher() {
-	trap 'jobs_kill ; kill 0' EXIT
+	trap 'jobs_kill ; kill 0 ; L_log exiting' EXIT
 	L_log "Starting monitoring of $0 and $RHASSPY_BINDKEYS_CONFIGFILE ..."
 	#
 	inotifywait -m -q -e close_write,moved_to --no-newline --format "%w%f%0" \
 			"$(dirname "$0")" "$(dirname "$RHASSPY_BINDKEYS_CONFIGFILE")" | {
+		trap 'jobs_kill' EXIT
 		# Run initial run.
-		jobs_run first
+		"$0" "$@" run &
 		while IFS= read -r -d '' file; do
 			# L_log "$file"
 			if [[ "$file" = "$0" ]]; then
 				kill -SIGUSR1 $$
 			elif [[ "$file" = "$RHASSPY_BINDKEYS_CONFIGFILE" ]]; then
 				L_log "config refresh event: $RHASSPY_BINDKEYS_CONFIGFILE"
-				jobs_run
+				jobs_kill
+				"$0" "$@" run train &
 			fi 
 		done 
 	} &
@@ -310,7 +349,7 @@ usage_() {
 
 exec 0<&-
 g_verbose=0
-RHASSPY_BINDKEYS_CONFIGFILE="${RHASSPY_BINDKEYS_CONFIGFILE:-"$HOME/.config/rhasspy/rhasspy_bindkeys.conf.sh"}"
+RHASSPY_BINDKEYS_CONFIGFILE="${RHASSPY_BINDKEYS_CONFIGFILE:-"$HOME/.config/rhasspy/profiles/en/intents/rhasspy_bindkeys_sentences.ini"}"
 args=$(getopt -n "$L_name" -o +hvc: -l help,verbose,config: -- "$@")
 eval set -- "$args"
 while (($#)); do

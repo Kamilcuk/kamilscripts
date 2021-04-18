@@ -119,10 +119,35 @@
 			}
 		}
 
-		section == "format"{
+
+		function parse_section_argument(\
+				l_i, l_q, l_nq, l_name, l_val) {
 			l_i = cur[section]
 			#
-			cur["_format"] = gensub(/^([^,]*),.*$/, "\\1", "1", l_i)
+			while (length(l_i) != 0) {
+				l_q  = "^([^=]*)=\"([^\"]*)\" *(.*)$"
+				l_nq = "^([^=]*)=([^ ]*) *(.*)$"
+				if (l_i ~ l_q) {
+					l_name = gensub(l_q, "\\1", "1", l_i)
+					l_val = gensub(l_q, "\\2", "1", l_i)
+					l_i = gensub(l_q, "\\3", "1", l_i)
+				} else if (l_i ~ l_nq) {
+					l_name = gensub(l_nq, "\\1", "1", l_i)
+					l_val = gensub(l_nq, "\\2", "1", l_i)
+					l_i = gensub(l_nq, "\\3", "1", l_i)
+				} else {
+					break
+				}
+				cur["_"section"_"l_name] = l_val
+			}
+		}
+		section == "argument" { parse_section_argument() }
+
+		function parse_section_format(\
+				l_i, l_name) {
+			l_i = cur[section]
+			#
+			cur["_"section] = gensub(/^([^,]*),.*$/, "\\1", "1", l_i)
 			gsub(/^[^,]*, */, "", l_i)
 			#
 			while (1) {
@@ -135,6 +160,7 @@
 			}
 			# print " "
 		}
+		section == "format" { parse_section_format() }
 		
 		function output( \
 				c, i, val, once, scur) {

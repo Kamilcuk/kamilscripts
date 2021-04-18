@@ -1,0 +1,4 @@
+#!/bin/bash
+
+dmesg -wH --color=always > >(grep -Ev $'\\](\033[^m]*m)* (\033[^m]*m)*audit(\033[^m]*m)?: ')
+
