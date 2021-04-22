@@ -1083,6 +1083,10 @@ set errorformat^=../%f:%l:%c:\ %m
 set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 
+if getcwd() =~ "/etc/nginx"
+	let &makeprg="sudo nginx -s reload"
+endif
+
 if getcwd() =~ "/home/kamil/ncbj/puppet"
 	set errorformat=""
 
