@@ -198,6 +198,8 @@ ncbj proxy           dizvm8.cis.gov.pl  root
 ncbj grafana         dizvm9.cis.gov.pl  root
 ncbj smtp2rest       dizvm13.cis.gov.pl root
 ncbj gurobi          dizvm12.cis.gov.pl root
+ncbj tester          dizvm15.cis.gov.pl root
+ncbj squidproxy      dizvm6.cis.gov.pl root
 
 cat <<EOF
 Host code.cis.gov.pl

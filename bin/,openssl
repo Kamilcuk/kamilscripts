@@ -31,11 +31,11 @@ C_check_csr() {
 }
 
 C_check_private_key() {
-	openssl rsa -in "$1" -check
+	openssl rsa -check -in "$1"
 }
 
 C_check_certificate() {
-	openssl x509 -in "$1" -text -noout
+	openssl x509 -text -noout -in "$1"
 }
 
 C_check_pkcs12_file() {

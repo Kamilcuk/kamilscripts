@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euo pipefail
+
+chdirtorepo() {
+	if p=$(git rev-parse --show-toplevel) && [[ "$p" != "$PWD" ]]; then
+		run cd "$p"
+	fi
+}
+
+C_get_module_name() {
+	chdirtorepo
+	jq -r .name metadata.json | sed 's/[^-]*-//'
+}
+
+C_rename_class() {
+	chdirtorepo
+	if (($# != 2)); then fatal "Usage: rename_class <class> <neaname>"; fi
+	oldname=$1
+	newname=$2
+	oldfile=${oldname//::/\/}
+	newfile=${newname//::/\/}
+	modulename=$(C_get_module_name)
+	run L_sed_inplace_show_diff "s/\(#\s*include\s*\|class\s*\)$modulename::$oldname/\1$modulename::$newname/" "manifests/$oldfile.pp"
+	run L_sed_inplace_show_diff "s/\(describe\s*\)'$modulename::$oldname'/\1'$modulename::$newname'/" "spec/classes/${oldfile}_spec.rb"
+	run mkdir -vp "$(dirname "manifests/$newfile")" "$(dirname "spec/classes/${newfile}_spec.rb")"
+	run mv -v "manifests/$oldfile.pp" "manifests/$newfile.pp"
+	run mv -v "spec/classes/${oldfile}_spec.rb" "spec/classes/${newfile}_spec.rb"
+	echo "Moved $oldname to $newname"
+}
+
+C_rename_module() {
+	chdirtorepo
+	if (($# != 2)); then fatal "Usage: rename_module <oldname> <newname>"; fi
+	echo "find . -path ./.git -prune -false -o -type f | xargs -d'\\n' -t sed -i -e 's/$1/$2/'"
+}
+
+C_unit_test() {
+	chdirtorepo
+	run pdk validate -a --parallel
+	run pdk test unit --parallel
+}
+
+. ,lib_lib -L C_ "$@"
+

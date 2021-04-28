@@ -107,12 +107,12 @@ rhasspy_publish() {
 }
 
 rhasspy_subscribe() {
-	stdbuf -oL mosquitto_sub -h "$RHASSPY_MQTT_HOST" -p "$RHASSPY_MQTT_PORT" "$@"
+	L_run stdbuf -oL mosquitto_sub -h "$RHASSPY_MQTT_HOST" -p "$RHASSPY_MQTT_PORT" "$@"
 }
 
 rhasspy_say() {
 	local arg
-	arg=$(jq -c -n --arg a "$*" --arg site "$RHASSPY_SITE" '{"text": $a, "lang": "en-US", "siteId": $site}')
+	arg=$(jq -c -n --arg a "$*" --arg site "$RHASSPY_SITE" '{"text": $a, "siteId": $site}')
 	rhasspy_publish -t hermes/tts/say -m "$arg"
 }
 
@@ -193,12 +193,36 @@ job_notify_about_wake_word() {
 
 ###############################################################################
 
-intent_exe() {
+r_intent_confirmyes() {
+	local IFS=$' \t'
+	read -r cmd <<<"$1"
+	r_c_yes="yes"
+	r_c_todo+=("$cmd")
+}
+
+r_intent_confirm_check() {
+	if [[ "$OPT_intent" == "${r_c_yes:-}" ]]; then
+		for i in "${r_c_todo[@]}"; do
+			r_intent_exe "$i"
+		done
+	fi
+	r_c_todo=
+	r_c_yes=
+}
+
+r_intent_confirm_post() {
+	if [[ -n "${r_c_yes:-}" ]]; then
+		rhasspy_listen_for_command
+	fi
+}
+
+r_intent_exe() {
+	set -- eval "$*"
 	set +ueo pipefail
 	set +a
 	pushd "$HOME" >/dev/null
 	set -x
-	"$@"
+	{ "$@"; } <<<"$OPT_line"
 	set +x
 	popd
 	set -a
@@ -206,68 +230,81 @@ intent_exe() {
 }
 
 
-intent_run() {
-	local intent line
-	intent="$1"
-	line="$2"
+r_intent_run() {
+	local r_intent r_line
+	r_intent="$1"
+	r_line="$2"
 
-	local todo
+	export OPT_intent="$r_intent"
+	OPT_intents=("$r_intent" "${OPT_intents[@]:0:10}")
+	export OPT_line="$r_line"
+
+	local r_todo
 	# g section is _always_ executing
-	todo=$(snt_get "g" ; snt_get "$intent")
+	r_todo=$(snt_get "g" ; snt_get "$r_intent")
 
-	local opts
-	opts=$(<<<"$line" json_to_opts | paste -sd' ') ||:
-	eval "$opts" ||:
-	L_log "$line"
-	L_log "Handling $intent with $opts"
+	local r_opts
+	r_opts=$(<<<"$r_line" json_to_opts | paste -sd' ') ||:
+	eval "$r_opts" ||:
+	L_log "$r_line"
+	L_log "Handling $r_intent with $r_opts"
 
-	local tmp
+	r_intent_confirm_check
+
+	local r_tmp r_name r_opt r_cmd
 	while
-		IFS= read -u10 -r name &&
-		IFS= read -u10 -r opt &&
-		IFS= read -u10 -r cmd
+		IFS= read -u10 -r r_name &&
+		IFS= read -u10 -r r_opt &&
+		IFS= read -u10 -r r_cmd
 	do {
-		export OPT_name=$name
-		export OPT_opt=$opt
-		export OPT_cmd=$cmd
-		L_log "OPT_name=$name OPT_opt=$opt OPT_cmd=$cmd"
-		case "$opt" in
+		export OPT_name=$r_name
+		export OPT_opt=$r_opt
+		export OPT_cmd=$r_cmd
+		L_log "OPT_name=$r_name OPT_opt=$r_opt OPT_cmd=$r_cmd"
+		case "$r_opt" in
 		say) 
-			tmp=$(envsubst <<<"$cmd")
-			rhasspy_say "$tmp"
+			r_tmp=$(envsubst <<<"$r_cmd")
+			rhasspy_say "$r_tmp"
 			;;
 		notify)
-			tmp=$(envsubst <<<"$cmd")
-			notify "$tmp"
+			tmp=$(envsubst <<<"$r_cmd")
+			notify "$r_tmp"
 			;;
 		saynotify|notifysay)
-			tmp=$(envsubst <<<"$cmd")
-			rhasspy_say "$tmp"
-			notify "$tmp"
+			tmp=$(envsubst <<<"$r_cmd")
+			rhasspy_say "$r_tmp"
+			notify "$r_tmp"
+			rhasspy_wait_for_say_finished
 			;;
 		run)
-			notify "$cmd"
-			intent_exe eval "$cmd" <<<"$line"
+			notify "$r_cmd"
+			r_intent_exe "$r_cmd"
+			;;
+		confirmyes)
+			r_intent_confirm "$r_cmd"
 			;;
 		*)
-			notify "Unknown command $opt for $name with $cmd"
+			notify "Unknown command $r_opt for $r_name with $r_cmd"
 			;;
 		esac
-	} 10<&-; done 10<<<"$todo"
+	} 10<&-; done 10<<<"$r_todo"
+
+	r_intent_confirm_post
 }
 
 job_handle_intents() {
 	L_name+=": intenthandler"
 	trap 'jobs_kill ; L_log quit' EXIT
-	local intents
-	intents=$(snt_list | paste -sd' ')
-	L_log "Watching intents: $intents"
+	local r_intents
+	r_intents=$(snt_list | paste -sd' ')
+	L_log "Watching intents: $r_intents"
 	L_run rhasspy_subscribe -t hermes/intent/'#' | {
+		OPT_intents=()
 		while
-			IFS= read -u 11 -r line &&
-			intent=$(jq -r .intent.intentName <<<"$line" | sed 's/[[:space:]]/_/g')
+			IFS= read -u 11 -r r_line &&
+			r_intent=$(jq -r .intent.intentName <<<"$r_line" | sed 's/[[:space:]]/_/g')
 		do
-			intent_run "$intent" "$line" ||:
+			r_intent_run "$r_intent" "$r_line" ||:
 		done
 	} 11<&0 0<&-
 }
@@ -294,6 +331,7 @@ jobs_kill() {
 C_say() { rhasspy_say "$@"; }
 C_pub() { rhasspy_publish "$@"; }
 C_sub() { rhasspy_subscribe "$@"; }
+C_handle_intents() { job_handle_intents "$@"; }
 C_list_actions() { snt_parser '{print name "\t" opt "\t" cmd}'; }
 C_wait_for_say_finished() { rhasspy_wait_for_say_finished "$@"; }
 C_run() {
@@ -349,7 +387,7 @@ usage_() {
 
 exec 0<&-
 g_verbose=0
-RHASSPY_BINDKEYS_CONFIGFILE="${RHASSPY_BINDKEYS_CONFIGFILE:-"$HOME/.config/rhasspy/profiles/en/intents/rhasspy_bindkeys_sentences.ini"}"
+export RHASSPY_BINDKEYS_CONFIGFILE="${RHASSPY_BINDKEYS_CONFIGFILE:-"$HOME/.config/rhasspy/profiles/en/intents/rhasspy_bindkeys_sentences.ini"}"
 args=$(getopt -n "$L_name" -o +hvc: -l help,verbose,config: -- "$@")
 eval set -- "$args"
 while (($#)); do
@@ -360,6 +398,7 @@ while (($#)); do
 	--) shift; break; ;;
 	*)  L_fatal "Error parsign arguments"; ;;
 	esac
+	shift
 done
 
 load_user_config

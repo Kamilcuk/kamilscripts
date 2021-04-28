@@ -1112,7 +1112,7 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	let &errorformat.=',pdk %m (%f:%l)'
 	let &errorformat.=',pdk %m (%f)'
 
-	let &makeprg="p=$(git rev-parse --show-toplevel) && time ( set -x && cd \"$p\" && pdk validate -a --parallel && pdk test unit --parallel )"
+	let &makeprg=",pdk unit_test"
 	"let &makeprg="cat /tmp/1"
 	if hostname() == "leonidas"
 		let g:dispatch_quickfix_height=36

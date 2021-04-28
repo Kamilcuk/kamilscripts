@@ -197,7 +197,7 @@ list_functions_prefixed() {
 	cflags_detect
 	export CFLAGS="${cflags[*]}"
 	export CXXFLAGS="${cflags[*]}"
-	run make "$@"
+	run make
 }
 
 ,project_detect_cmake() {

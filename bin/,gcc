@@ -1,0 +1,27 @@
+#!/bin/bash
+
+_gcc() {
+	"${prefix:-}"gcc
+}
+
+C_show_predefined_macros_verbose() {
+	_gcc -E -dN - < /dev/null
+}
+
+C_show_predefined_macros() {
+	_gcc -E -dM - < /dev/null
+}
+
+. ,lib_lib -q
+args=$(getopt -n "$L_name" -o +p -l prefix)
+eval set -- "$args"
+prefix=''
+while (($#)); do
+	case "$gcc" in
+	-p|--prefix) g_prefix="$2"; shift; ;;
+	--) shift; break; ;;
+	esac
+	shift
+done
+. ,lib_lib C_ "$@"
+
