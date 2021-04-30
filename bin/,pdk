@@ -7,6 +7,19 @@ chdirtorepo() {
 	fi
 }
 
+setclassfiles() {
+	local filepath classname files
+	IFS=' '
+	declare -g $2 $3 $4
+	read -r "$2" <<<"$1"
+	_filepath=${1//::/\/}
+	read -r "$3" <<<"$_filepath"
+	if (($# > 3)); then
+		_files=("manifests/$_filepath.pp" "spec/classes/${_filepath}_spec.rb")
+		declare -g -a "$4=( ${_files[*]} )"
+	fi
+}
+
 C_get_module_name() {
 	chdirtorepo
 	jq -r .name metadata.json | sed 's/[^-]*-//'
@@ -15,10 +28,8 @@ C_get_module_name() {
 C_rename_class() {
 	chdirtorepo
 	if (($# != 2)); then fatal "Usage: rename_class <class> <neaname>"; fi
-	oldname=$1
-	newname=$2
-	oldfile=${oldname//::/\/}
-	newfile=${newname//::/\/}
+	setclassfiles "$1" oldname oldfile oldfiles
+	setclassfiles "$2" newname newfile newfiles
 	modulename=$(C_get_module_name)
 	run L_sed_inplace_show_diff "s/\(#\s*include\s*\|class\s*\)$modulename::$oldname/\1$modulename::$newname/" "manifests/$oldfile.pp"
 	run L_sed_inplace_show_diff "s/\(describe\s*\)'$modulename::$oldname'/\1'$modulename::$newname'/" "spec/classes/${oldfile}_spec.rb"
@@ -32,6 +43,12 @@ C_rename_module() {
 	chdirtorepo
 	if (($# != 2)); then fatal "Usage: rename_module <oldname> <newname>"; fi
 	echo "find . -path ./.git -prune -false -o -type f | xargs -d'\\n' -t sed -i -e 's/$1/$2/'"
+}
+
+C_remove_class() {
+	chdirtorepo
+	setclassfiles "$1" name path files
+	run rm -iv "${files[@]}"
 }
 
 C_unit_test() {

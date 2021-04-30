@@ -106,3 +106,7 @@
 	process = git-lfs filter-process
 [credential]
 	helper = store
+[user]
+	name = Kamil Cukrowski
+	email = kamilcukrowski@gmail.com
+
