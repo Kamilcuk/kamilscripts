@@ -1,0 +1,13 @@
+#!/bin/sh
+cmd=""
+if hash >/dev/null 2>&1 ionice; then
+	cmd="$cmd ionice -c 3"
+fi
+if hash >/dev/null 2>&1 nice; then
+	cmd="$cmd nice -n 20"
+fi
+if hash >/dev/null 2>&1 chrt; then
+	cmd="$cmd chrt -i 0"
+fi
+$cmd "$@"
+
