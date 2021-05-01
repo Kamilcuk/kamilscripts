@@ -1,11 +1,11 @@
 
-image: archlinux/base
+image: library/archlinux:base-devel
 variables:
   PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
 
 .test_setup: &test_setup
   before_script:
-    - pacman -Suy --noconfirm tar python awk grep gettext make diffutils bc 
+    - pacman -Suy --needed --noconfirm tar python awk grep gettext make diffutils bc 
     - echo "$BASH_VERSION" || true
     - export "PATH=$PWD/bin:$PATH"
 
