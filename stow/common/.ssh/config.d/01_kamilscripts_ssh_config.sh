@@ -112,6 +112,11 @@ Host lenovo
 	Hostname 192.168.20.11
 	User henryk
 	$(ProxyJump dyzio)
+Host beta
+	Hostname 192.168.21.101
+	User henryk
+	$(ProxyJump biurek)
+
 
 #Host ustro
 #	Hostname ustropecet.ustronie.ds.pw.edu.pl
