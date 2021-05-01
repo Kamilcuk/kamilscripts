@@ -1,12 +1,20 @@
 
-image: library/archlinux:base-devel
+build:
+  image: docker:19.03.12
+  stage: build
+  services:
+    - docker:19.03.12-dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --pull -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:latest
+
+image: $CI_REGISTRY_IMAGE:latest
 variables:
   PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
 
 .test_setup: &test_setup
   before_script:
-    - pacman -Suy --needed --noconfirm tar python awk grep gettext make diffutils bc 
-    - echo "$BASH_VERSION" || true
     - export "PATH=$PWD/bin:$PATH"
 
 test_install_stow:
