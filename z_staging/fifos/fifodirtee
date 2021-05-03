@@ -1,0 +1,218 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT AND Beerware
+set -euo pipefail
+
+# the name of this script
+NAME=fifodirtee
+
+# functions ##############
+
+usage() {
+	cat <<EOF
+Usage: $NAME [options] <dir>
+
+Forwards stdin to multiple fifos creates inside a directory.
+Scans the directory for creation or removal of fifos.
+Either polls the directory for changes or uses inotifywait.
+If any change is detected, restarts tee with new fifos as arguments.
+Sending SIGUSR1 also restarts tee.
+
+Options:
+   -t <time>  If polling method is used, dir scan interval in seconds.
+   -P         Force using polling method.
+   -v         Print something.
+   -h         Print this help and exit.
+
+Written by Kamil Cukrowski.
+Licensed under MIT License and Beerware License.
+EOF
+}
+
+error() {
+	echo "$NAME:" "$@" >&2
+	exit 2
+}
+
+verbose=false
+log() {
+	if [[ "$verbose" = "true" ]]; then
+		echo "$NAME:" "$@"
+	fi
+}
+
+# fileslist change ###########
+# detect fifos change
+
+fileslist=()
+
+fileslist_refresh() {
+	declare -g -a fileslist
+	readarray -d $'\0' -t fileslist < <(
+		find "$dir" -maxdepth 1 -type p -print0 |
+		sort -z
+	)
+}
+
+fileslist_init() {
+	fileslist_refresh
+}
+
+fileslist_changed() {
+	declare -g -a fileslist 
+	local -a fileslist_old
+	fileslist_old=("${fileslist[@]}")
+	fileslist_refresh
+	if 
+		cmp -s <(
+			printf "%s\0" "${fileslist[@]}"
+		) <(
+			printf "%s\0" "${fileslist_old[@]}"
+		)
+	then
+		log "fileslist not changed"
+		return 1
+	fi
+	log "fileslist changed"
+	return 0
+}
+
+# tee service functions ###############
+
+# hold tee process pid
+teepid=""
+
+tee_init() {
+	# close stdin so that nothing reads from it
+	# redirect to 10 fd
+	# TEE USES 10 FILE DESCIRPTOR !!!!
+	exec 10<&0
+	exec 0<&-
+}
+
+tee_sigchld() {
+	if ! kill -0 "$teepid" 2>/dev/null; then
+		log "trap SIGCHLD"
+		fileslist_refresh
+		tee_restart
+	fi
+}
+
+tee_start() {
+	declare -g "teepid"
+	if (( "${#fileslist[@]}" )); then
+		trap tee_sigchld SIGCHLD
+		# reads from 10th file descriptor
+		exec tee --output-error=warn "${fileslist[@]}" <&10 &
+		teepid=$!
+		log "tee started, pid=$teepid, files=(" "${fileslist[@]}" ")"
+	else
+		log "tee not started - no fifos in directory"
+	fi
+}
+
+tee_stop() {
+	declare -g "teepid"
+	trap '' SIGCHLD
+	if [[ -n "$teepid" ]]; then
+		log "Stopping tee with pid $teepid"
+		kill "$teepid" 2>/dev/null
+		wait "$teepid" ||:
+		teepid=""
+	else
+		log "tee was not running"
+	fi
+}
+
+tee_restart() {
+	tee_stop
+	tee_start
+}
+
+# main ##########################
+
+# parsing arguments
+
+sleeptime=2
+forcepoll=false
+while getopts 't:Pvh' c; do
+	case "$c" in
+	t) sleeptime=$OPTARG; ;;
+	P) forcepoll=true; ;;
+	v) verbose=true; ;;
+	h) usage; exit; ;;
+	?) error "Invalid arg"; ;;
+	esac
+done
+
+shift $((OPTIND - 1))
+if [[ "$#" -eq 0 ]]; then
+	error "Missing dir argument"
+fi
+
+dir=$1
+shift
+
+if [[ "$#" -ne 0 ]]; then
+	error "Too many arguments"
+fi
+
+# setting up
+
+if [[ -e "$dir" ]]; then
+	if [[ ! -d "$dir" ]]; then
+		error "$dir already exists and is not a directory"
+	fi
+	log "Directory $dir already exists"
+else
+	log "Creating $dir"
+	if ! mkdir "$dir"; then
+		error "Creating $dir failed"
+	fi
+fi
+
+trap_exit() {
+	trap '' SIGCHLD
+	log "trap EXIT"
+	tee_stop
+	kill 0
+	wait
+}
+trap trap_exit EXIT
+
+trap_sigint() {
+	trap '' SIGCHLD
+	log "trap SIGINT"
+	exit 130
+}
+trap trap_sigint SIGINT
+
+tee_init
+
+trap tee_restart SIGUSR1
+
+# and doing the work
+
+log "Starting tee"
+fileslist_init
+tee_start
+
+# the loop
+
+if [[ "$forcepoll" = "true" ]] || ! hash inotifywait 2>/dev/null; then
+	wait_for_change() {
+		log "Waiting for $sleeptime"
+		sleep "$sleeptime"
+	}
+else
+	wait_for_change() {
+		log "Waiting upon inotifywait -e create,delete" 
+		inotifywait -q -q -e create,delete "$dir"
+	}
+fi	
+
+while wait_for_change; do
+	if fileslist_changed; then
+		tee_restart
+	fi
+done
+

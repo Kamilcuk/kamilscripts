@@ -1,0 +1,552 @@
+#!/bin/bash
+# shellcheck disable=SC2016
+# SPDX-License-Identifier: MIT AND Beerware
+set -euEo pipefail
+shopt -s nullglob
+
+NAME=simplemsg
+
+usage() {
+	cat <<EOF
+Usage:
+       $NAME [options] <p|put> [dir]
+       $NAME [options] [g|get] <dir>
+       $NAME unittest <dir>
+
+A very simple publish/subscribe messager.
+Two modes are available:
+   - put - Forward stdin to all listeners in dir.
+   - get - Get forwarded messages into directory.
+Inside the directory fifos are created one for each client.
+The directory is removed, when server exits.
+
+Options:
+  -v         - Be verbose.
+  -w <time>  - In 'get' mode, time to wait for the <dir>. Default: 0.2
+  -q         - In 'put' mode, don't output the input. 
+  -h         - Print this help and exit.
+
+Written by Kamil Cukrowski.
+Licensed jointly under MIT License and Beerware License.
+EOF
+}
+
+lerr() {
+	echo "$NAME:" "$@" >&2
+}
+
+error() {
+	lerr "$@"
+	exit 2
+}
+
+verbose=false
+log() {
+	if [[ "$verbose" = true ]]; then
+		echo "$NAME:" "$@" >&2
+	fi
+}
+
+assert() {
+	if ! eval "$1"; then
+		error "Assertion '$1' failed." "${@:2}"
+	fi
+}
+
+fd_is_open() {
+	# shellcheck disable=SC2188
+	{ >&"$1"; } 2<> /dev/null
+}
+
+waitfordir() {
+	local waittime dir
+	waittime=$1
+	dir=$2
+	if false && hash inotifywait 2>/dev/null && [[ -d "$(dirname "$dir")" ]]; then
+		timeout "$waittime" sh -c '
+			dir="$1"
+			while inotifywait -q -q "$(dirname "$dir")"; do
+				if [ -d "$dir" ]; then
+					exit 0
+				elif [ -e "$dir" ]; then
+					exit 2
+				fi
+			done
+		' -- "$dir"
+	else
+		timeout "$1" sh -c 'while [ ! -d "$1" ]; do sleep 0.00001; done' -- "$dir"
+	fi
+}
+
+# locking functions ############
+# TAKES 20th FILE DESCRIPTOR!
+
+lock_init() {
+	log " "lock: init "$1"
+	exec 20<"$1"
+}
+
+lock_exclusive() {
+	log " "lock: try lock exclusive
+	assert 'fd_is_open 20'
+	flock 20
+	log " "lock: locked exclusive
+}
+
+lock_shared() {
+	log " "lock: try shared
+	assert 'fd_is_open 20'
+	flock -s 20
+	log " "lock: locked shared
+}
+
+unlock() {
+	log " "lock: unlock
+	assert 'fd_is_open 20'
+	flock -u 20
+}
+
+# tee service functions #########
+# TAKES 10th FILE DESCRIPTOR!
+
+# pid of tee
+teepid=""
+
+tee_init() {
+	# close stdin so that nothing reads from it
+	exec 10<&0
+	exec 0<&-
+}	
+
+tee_start() {
+	log "tee_start list=(" "$dir"/[0-9]* ")"
+	
+	assert 'fd_is_open 10'
+	assert 'fd_is_open 20'
+	assert '[[ "$teepid" = "" ]]' "teepid should be empty in tee_start"
+	assert '[[ -n "$dir" ]]'
+
+	{
+		if [[ "$putquiet" = 'true' ]]; then
+			exec >&-
+		fi
+		list=( "$dir"/[0-9]* )
+		if (( "${#list[@]}" )); then
+			exec tee --output-error=exit "${list[@]}"
+		else
+			# sleep endlesly, so that we can loop on wait
+			exec cat
+		fi
+	# close file descriptor 20, because flock is held on it 
+	} <&10 20<&- &
+	teepid=$!
+}
+
+tee_stop() {
+	log "tee_stop teepid=$teepid"
+	if [[ -n "$teepid" ]]; then
+		kill "$teepid" 2>/dev/null ||:
+		wait "$teepid" ||:
+		teepid=""
+	fi
+}
+
+tee_restart() {
+	tee_stop
+	tee_start
+}
+
+# mode_put ##################################
+
+mode_put_trap_exit() {
+	set +eu
+	local tmp list
+	
+	lock_exclusive
+	# remove SIGUSR1 so that we don't receive it while in here
+	trap '' SIGUSR1
+	
+	log "trap EXIT"
+
+	# if we receive EXIT signal even before
+	# we had the chance to create the directory
+	if [[ ! -d "$dir" ]]; then
+		return
+	fi
+	
+	# send SIGUSR1 to all clients
+	if pushd "$dir" >/dev/null && list=( [0-9]* ) && popd >/dev/null &&
+			(( "${#list[@]}" )); then
+		log "kill -s SIGUSR1" "${list[@]}"
+		kill -s SIGUSR1 "${list[@]}"
+	fi
+		
+	tee_stop
+		
+	# wait for max 2 seconds for all clients to exit
+	printf "%s\0" "${list[@]}" | 
+	timeout 2 xargs -0 -P0 -I{} tail --pid={} -f /dev/null
+	
+	if pushd "$dir" >/dev/null && list=( [0-9]* ) && popd >/dev/null &&
+			(( "${#list[@]}" )); then
+		lerr "There are still some processes that use $dir and didn't exit: ${list[*]}"
+	fi
+	
+	# remove the directory
+	rm -r "$dir"
+	# wait for any child processes
+	pkill -P $$ ||:
+}
+
+
+mode_put_trap_sigusr1() {
+	log "received SIGUSR1"
+	lock_exclusive
+	tee_stop
+}
+
+mode_put() {
+	trap mode_put_trap_exit EXIT
+	
+	if (($#)); then
+		dir="$1"
+		
+		log "Creating directory $dir"
+		if [ -e "$dir" ]; then
+			error "$dir already exists"
+		fi
+			
+		if ! mkdir -p "$dir"; then
+			error "Creating directory $dir failed"
+		fi
+		
+	else
+	
+		if ! dir=$(mktemp -d); then
+			error "mktemp -d failed"
+		fi
+		
+		# if we are run without dir, print it
+		printf "%s\n" "$dir"
+	fi
+	
+	tee_init
+	
+	trap mode_put_trap_sigusr1 SIGUSR1
+		
+	log "Writing $$ to serverpid"
+	echo $$ > "$dir"/serverpid
+	# lock the serverpid file even before clients can send us anything
+	lock_init "$dir"/serverpid
+
+	while true; do
+		lock_exclusive
+		tee_stop
+		tee_start
+		unlock
+		
+		wait "$teepid" && ret=$? || ret=$?
+		log "tee returned with $ret"
+		if ((ret == 0)); then
+			break
+		elif ((ret < 128)); then
+			error "Tee subprocess errored"
+		fi
+	done
+}
+
+# mode_get ##################################
+
+mode_get_trap_sigusr1() {
+	# SIGUSR1 means we should exit
+	# it differs from SIGEXIT with error status
+	log "received SIGUSR1"
+	exit
+}
+
+mode_get_trap_exit() {
+	set +eu
+	log "received EXIT"
+	assert '[[ -n "$fifo" ]]'
+	rm -f "$fifo"
+	# notify server that we are exiting
+	# we could hold the lock here, but we don't care
+	assert '[[ -n "$serverpid" ]]'
+	kill -s SIGUSR1 "$serverpid" 2>/dev/null ||:
+	if [[ -n "$catpid" ]]; then
+		kill "$catpid" 2>/dev/null ||:
+	fi
+	pkill -P $$ ||:
+}
+
+mode_get() {	
+	if [[ -n "$waittime" ]]; then
+		log "waitfordir $waittime $dir"
+		waitfordir "$waittime" "$dir" ||:
+	fi
+	
+	if [[ ! -d "$dir" ]]; then
+		error "$dir: Directory does not exists"
+	fi
+	
+	if ! serverpid=$(<"$dir"/serverpid); then
+		error "Reading $dir/serverpid failed"
+	fi
+
+	log "serverpid=$serverpid"
+	
+	lock_init "$dir"/serverpid
+	
+	fifo="$dir"/$$
+	
+	trap mode_get_trap_sigusr1 SIGUSR1
+	trap mode_get_trap_exit EXIT
+	
+	if ! mkfifo "$fifo"; then
+		error "Problem creating fifo $fifo"
+	fi
+	
+	# lock is held, so to synchronize multiple clients with server
+	# because server hold the lock when restarting the service
+	# no of the clients will be omitted
+	lock_shared
+	# refresh server
+	log "Sending SIGUSR1 to server=$serverpid"
+	kill -s SIGUSR1 "$serverpid"
+	# and just unlock
+	unlock
+	 
+	catpid=""	
+	while :; do
+		if [[ -z "$catpid" ]] || ! kill -0 "$catpid" 2>/dev/null; then
+			cat "$fifo" &
+			catpid=$!
+		fi
+		# wait for signals
+		wait "$catpid" && ret=$? || ret=$?
+		log "cat $fifo returned $ret"
+		if ((ret && ret < 128)); then
+			break
+		fi
+	done
+}
+
+# mode_test ##################
+
+dbg() {
+	sed 's/^/'"$1"': /' >/dev/stderr
+}
+
+# start the server
+test_srv() {
+	assert '[[ -n "$dir" ]]'
+	assert '[[ -x "$exe" ]]'
+	local addargs
+	addargs=()
+	if [[ "$verbose" = "true" ]]; then
+		addargs=(-v)
+	fi
+	"$exe" "${addargs[@]}" put "$dir" 2> >(dbg srvE) | tee >(dbg srvO)
+}
+
+# start the client
+test_cli() {
+	assert '[[ -n "$dir" ]]'
+	assert '[[ -x "$exe" ]]'
+	local addargs
+	addargs=()
+	if [[ "$verbose" = "true" ]]; then
+		addargs=(-v)
+	fi
+	local test_cli_num
+	test_cli_num=$( ( echo -n "$BASHPID" | rev | cut -c-2 | rev ) )
+	"$exe" "${addargs[@]}" get "$dir" 2> >(dbg c"$test_cli_num"E) | tee >(dbg cl"$test_cli_num"O)
+}
+
+test_wait_exit_status() {
+	local pid
+	pid=$1
+	wait "$pid" && ret=0 || ret=$?
+	(( "$2" == ret ))
+}
+
+test_simple() {
+	(
+		if ! out=$( { sleep 0.1; seq 10; } | test_srv); then
+			log "test_simple: srv: nonzero"
+			exit 1
+		fi 
+		assert '[[ "$out" == "$(seq 10)" ]]'
+	) &
+	srvpid=$!
+	(
+		if ! out=$(test_cli); then
+			log "test_simple: cli: nonzer0"
+			exit 1
+		fi
+		assert '[[ "$out" == "$(seq 10)" ]]'
+	) &
+	clipid=$!
+	assert 'wait "$srvpid"'
+	assert 'wait "$clipid"'
+}
+
+mode_test_exiting_server() {
+	local srvpid clipid1 clipid2
+	sleep 2 | test_srv >/dev/null &
+	srvpid=$!
+	test_cli >/dev/null &
+	clipid1=$!
+	test_cli >/dev/null &
+	clipid2=$!
+	sleep 0.1
+	kill "$srvpid"
+	wait "$srvpid" && srvret=$? || srvret=$?
+	wait "$clipid1" && cliret1=$? || cliret1=$?
+	wait "$clipid2" && cliret2=$? || cliret2=$?
+	assert '((srvret == 128 + 15))' "srvret=$srvret"
+	assert '((cliret1 == 0))' "cliret1=$cliret1"
+	assert '((cliret2 == 0))' "cliret2=$cliret2"
+}
+
+mode_test_exiting_clients() {
+	{
+		out=$(
+			{ sleep 0.01; seq 10; } |
+			while IFS= read -r line; do sleep 0.01; echo "$line"; done | 
+			test_srv
+		)
+		[[ "$out" = "$(seq 100)" ]]
+	} &
+	srvpid="$!"
+	{
+		sleep 0.01
+		out=$(test_cli)
+		[[ "$out" = "$(seq 0 100)" ]]
+	} &
+	clipid+=("$!")
+	{
+		sleep 0.11
+		out=$(test_cli)
+		[[ "$out" = "$(seq 10 90)" ]]
+	} &
+	clipid+=("$!")
+	{
+		sleep 0.11
+		out=$(
+			timeout 0.1 bash -c test_cli && ret=$? || ret=$?
+			if ((ret == 124)); then exit 0; fi
+		)
+		[[ "$out" = "$(seq 10 20)" ]]
+	} &
+	clipid+=("$!")
+	{
+		sleep 0.11
+		out=$(
+			timeout 0.1 bash -c test_cli && ret=$? || ret=$?
+			if ((ret == 124)); then exit 0; fi
+		)
+		[[ "$out" = "$(seq 10 20)" ]]
+	} &
+	clipid+=("$!")
+	{
+		sleep 0.21
+		out=$(
+			timeout 0.2 bash -c test_cli && ret=$? || ret=$?
+			if ((ret == 124)); then exit 0; fi
+		)
+		[[ "$out" = "$(seq 20 40)" ]]
+	} &
+	clipid+=("$!")
+	
+	if ! wait "$srvpid"; then
+		return 2
+	fi
+	for i in "${clipid[@]}"; do
+		if ! wait "$i"; then
+			return 2
+		fi
+	done
+}
+
+mode_test_trap_exit() {
+	echo "$NAME: received EXIT" "$@"
+	assert '[[ -n "$dir" ]]'
+	ps=$(ps -e -o pgid,pid,command)
+	echo "$NAME: My processes:"
+	wait
+	<<<"$ps" awk -v p=$$ -v p2=$BASHPID '$1 == p || $1 == p2' | sed 's/^/>> /'
+	sleep 10
+	pkill -P "$$" ||:
+	rm -fr "$dir"
+	echo
+	set -x
+	kill 0
+} 2>&1
+	
+mode_test() {
+	# setup globals
+	NAME=">> test"
+	exe="$0"
+	trap mode_test_trap_exit EXIT
+	
+	# export needed to run `timeout -c bash test_cli`
+	export -f test_srv test_cli assert log dbg error lerr
+	export exe dir verbose NAME
+	
+	echo "$NAME: Testing... <<"
+	
+	local tests test_i
+	tests=(
+		# test_simple
+		mode_test_exiting_server
+		# mode_test_exiting_clients
+	)
+	for test_i in "${tests[@]}"; do
+		echo "$NAME: $test_i -- Running"
+		if ! "$test_i"; then
+			echo "$NAME: $test_i -- failure"
+		else
+			echo "$NAME: $test_i -- Success"
+		fi
+	done
+		
+	echo "$NAME: Testing done <<"
+} 2>&1
+	
+# main #########
+
+trap_err() {
+	echo "ERROR: UNHANDLED ERROR OCCURED ON LINE $1" >&2
+	exit 2
+}
+trap 'trap_err "$LINENO"' ERR
+
+waittime=0.2
+putquiet=false
+while getopts "vw:h" c; do
+	case "$c" in
+	v) verbose=true; ;;
+	w) waittime="$OPTARG"; ;;
+	q) putquiet=true; ;;
+	h) usage; exit; ;;
+	?) error "Unknown option"; ;;
+	esac
+done
+shift $((OPTIND - 1))
+if [[ "$#" -eq 1 ]]; then
+	set -- "get" "$1"
+fi	
+if [[ "$#" -ne 2 ]]; then
+	error "Invalid number of arguments"
+fi
+
+mode="$1"
+dir="$2"
+
+case "$mode" in
+p|put) mode_put "$dir"; ;;
+g|get) mode_get "$dir"; ;;
+unittest) mode_test "$dir"; ;;
+*) error "Invalid mode: $mode"; ;;
+esac
