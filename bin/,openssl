@@ -1,45 +1,55 @@
 #!/bin/bash
 set -euo pipefail
 
-openssl() {
+_openssl() {
 	echo "+" "openssl" "$@" >&2
 	command openssl "$@"
 }
 
 C_generate_new_key_and_csr() {
-	openssl req -out "$1" -new -newkey rsa:4096-nodes -keyout "$2"
+	_openssl req -out "$1" -new -newkey rsa:4096-nodes -keyout "$2"
 }
 
 C_generate_self_signed_certificate() {
-	openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:4096 -keyout "$1" -out "$2"
+	_openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:4096 -keyout "$1" -out "$2"
 }
 
 C_generate_csr_for_key() {
-	openssl req -out CSR.csr -key "$1" -new
+	_openssl req -out CSR.csr -key "$1" -new
 }
 
 C_generate_csr_for_certificate() {
-	openssl x509 -x509toreq -in "$1" -out CSR.csr -signkey "$2" -out "$3"
+	_openssl x509 -x509toreq -in "$1" -out CSR.csr -signkey "$2" -out "$3"
 }
 
 C_remove_passphrase_from_key() {
-	openssl rsa -in "$1" -out "$2"
+	_openssl rsa -in "$1" -out "$2"
 }
 
 C_check_csr() {
-	openssl req -text -noout -verify -in "$1"
+	_openssl req -text -noout -verify -in "$1"
 }
 
 C_check_private_key() {
-	openssl rsa -check -in "$1"
+	_openssl rsa -check -in "$1"
 }
 
 C_check_certificate() {
-	openssl x509 -text -noout -in "$1"
+	_openssl x509 -text -noout -in "$1"
 }
 
 C_check_pkcs12_file() {
-	openssl pkcs12 -info -in "$1"
+	_openssl pkcs12 -info -in "$1"
+}
+
+C_info() { C_check_certificate "$@"; }
+
+C_regenerate_csr() {
+	if (($# != 3)); then
+		echo "Usage: user_previous_certificate_path user_key_path output_csr_path" >&2
+		exit 1
+	fi
+	_openssl x509 -x509toreq -in "$1" -signkey "$2" -out "$3"
 }
 
 . ,lib_lib "C_" "$@"

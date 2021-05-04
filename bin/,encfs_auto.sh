@@ -93,7 +93,7 @@ dounmount() {
 case "$mode" in
 mount)
 	if "$is_mounted"; then
-		log "already mounted: $dir2"
+		log "Already mounted: $dir2"
 	else
 		domount
 	fi
@@ -102,7 +102,7 @@ unmount)
 	if "$is_mounted"; then
 		dounmount
 	else
-		log "Already mounted"
+		log "Already unmounted: $dir2"
 	fi
 	;;
 default)
