@@ -39,4 +39,7 @@ bind C-a send-prefix
 # see kamilscripts/etc/profile.d/terminfo.sh
 set -g default-terminal "tmux-256color"
 
+# https://superuser.com/questions/429558/how-to-switch-between-two-latest-windows-in-tmux
+bind-key C-a last-window
+
 
