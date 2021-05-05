@@ -10,8 +10,14 @@ tmux|tmux terminal multiplexer,
     ritm=\E[23m, rmso=\E[27m, sitm=\E[3m, smso=\E[7m, Ms@,
     use=xterm+tmux, use=screen,
 
+$(
+if { infocmp xterm+256setaf; } 2>/dev/null >&2; then
+	cat <<EOF2
 tmux-256color|tmux with 256 colors,
     use=xterm+256setaf, use=tmux,
+EOF2
+fi
+)
 EOF
 fi
 
