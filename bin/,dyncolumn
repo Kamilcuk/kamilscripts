@@ -1,0 +1,69 @@
+#!/bin/bash
+set -euo pipefail
+
+dir="${BASH_SOURCE%/*}"
+name="${BASH_SOURCE##*/}"
+
+log() {
+	echo "$name:" "$@"
+}
+
+fatal() {
+	echo "$name: ERROR:" "$@" >&2
+	exit 1
+}
+
+int_to_bool() {
+	case "$1" in
+	1) echo true; ;;
+	*) echo false; ;;
+	esac
+}
+
+
+usage() {
+	cat <<EOF
+Usage:
+	$name [OPTIONS]
+
+Dynamically determine column size as the input changes.
+
+Options:
+	-h --help   Print this help and exit.
+	-r --right
+	-l --left
+	--OFS
+	--ORS
+	--FS      
+
+Written by Kamil Cukrowski
+Licensed jointly under MIT License and Beerware License.
+EOF
+}
+
+###############################################################################
+
+args=$(getopt -n "$name" -o hrl -l help,right,left,OFS:,ORS:,FS: -- "$@")
+eval set -- "$args"
+g_just="-"
+g_args=()
+while (($#)); do
+	case "$1" in
+	(-h|--help) usage; exit; ;;
+	(-r|--right) g_just=""; ;;
+	(-l|--left) g_just="-"; ;;
+	(--OFS|--ORS|--FS) g_args+=(-v "${1##--}"="$2"); shift; ;;
+	(--) shift; break; ;;
+	(*) fatal "error when parsing arugment: $1"; ;;
+	esac
+	shift
+done
+
+awk -v g_just="$g_just" "${g_args[@]}" '
+{
+	for (i=1;i<=NF;++i) {
+		if (length($i)>len[i]) len[i]=length($i);
+		printf "%"g_just"*s%s", len[i], $i, i==NF?ORS:OFS;
+	}
+}' "$@"
+
