@@ -2,6 +2,14 @@
 # kamilscripts_ssh_config.sh
 # vim: ft=sshconfig
 
+tab() {
+	echo $'\t'"$*"
+}
+
+hascmd() {
+	hash "$@" >/dev/null 2>&1
+}
+
 ssh_get_version() {
 	if [[ -z "$ssh_version" ]]; then
 		ssh_version=$(
@@ -137,11 +145,13 @@ Host leonidas_borowej_gory
 Host gorgo_borowej_gory
 	Hostname 192.168.0.6
 
-$(if [[ -e ~/.ssh/github_id_rsa ]]; then cat <<END
 Host gitlab.com github.com
-	IdentityFile ~/.ssh/github_id_rsa
-END
-fi; )
+	$([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
+	$([[ $HOSTNAME =~ .*\.cis\.gov\.pl$ ]] && ss -tulw | grep -q 127.0.0.1:60000 &&
+		if hascmd ncat; then
+			echo "ProxyCommand ncat --proxy 127.0.0.1:60000 --proxy-type socks5 %h %p"
+		fi
+	)
 
 # netemera
 Host netemeradocker
