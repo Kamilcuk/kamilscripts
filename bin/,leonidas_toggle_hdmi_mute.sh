@@ -16,6 +16,8 @@ if (($# == 0)); then
 	fi
 fi
 
+pactl set-sink-volume "$sink_hdmi" 100%
+pactl set-sink-volume "$sink_builtin" 100%
 case "$1" in
 unmute_headphones)
 	pactl set-sink-mute "$sink_hdmi" on

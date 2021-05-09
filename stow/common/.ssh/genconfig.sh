@@ -1,5 +1,5 @@
 #!/bin/sh
-# kamilscripts_ssh_config.sh
+# ~/.ssh/genconfig.sh
 # vim: ft=sshconfig
 
 tab() {
@@ -10,19 +10,13 @@ hascmd() {
 	hash "$@" >/dev/null 2>&1
 }
 
-ssh_get_version() {
-	if [[ -z "$ssh_version" ]]; then
-		ssh_version=$(
-			ssh -V 2>&1 |
-			tr '[A-Z]' '[a-z]' |
-			sed 's/^openssh_\([0-9]*\).\([0-9]*\).*/\1.\2/'
-		)
-	fi
-}
-ssh_get_version
+ssh_version=$(
+	ssh -V 2>&1 |
+	tr '[A-Z]' '[a-z]' |
+	sed 's/^openssh_\([0-9]*\).\([0-9]*\).*/\1.\2/'
+)
 
 ssh_check_ver() {
-	local tmp
 	if awk "BEGIN{exit(!($ssh_version $1 $2))}" <&-; then
 		shift 2
 		printf "%s\n" "$@"
@@ -35,7 +29,7 @@ ProxyJump() {
 
 
 # Add a template function with <name> and <content>
-templ() {
+dectempl() {
 	local a
 	# Remove leading and trailing lines with whitespaces.
 	#a=$(sed -Ez 's/^([[:space:]]*\n)*//; s/(\n[[:space:]]*)*\n$//' <<<"$2")
@@ -49,7 +43,21 @@ EOF
 "
 }
 
+is_cis() {
+	[[ "$HOSTNAME" =~ \.cis\.gov\.pl$ ]]
+}
+
 ###############################################################################
+
+cat <<EOF
+Host config rmcontrol
+	Host 255.255.255.255
+	ProxyCommand false
+EOF
+
+###############################################################################
+
+if ! is_cis; then
 
 cat <<EOF
 Host dyzio server
@@ -145,14 +153,6 @@ Host leonidas_borowej_gory
 Host gorgo_borowej_gory
 	Hostname 192.168.0.6
 
-Host gitlab.com github.com
-	$([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
-	$([[ $HOSTNAME =~ .*\.cis\.gov\.pl$ ]] && ss -tulw | grep -q 127.0.0.1:60000 &&
-		if hascmd ncat; then
-			echo "ProxyCommand ncat --proxy 127.0.0.1:60000 --proxy-type socks5 %h %p"
-		fi
-	)
-
 # netemera
 Host netemeradocker
 	Hostname production-0.netemera.com
@@ -160,6 +160,25 @@ Host netemeradocker
 Host netemera
 	Hostname production-0.netemera.com
 	User kcukro
+
+Host perun
+	Hostname karta.dyzio.pl
+	# 2a02:c207:2050:3924::1 207.180.196.233
+	User root
+	Port 60022
+
+EOF
+
+fi # is_cis
+
+###############################################################################
+
+cat <<EOF
+Host gitlab.com github.com
+	$([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
+	$(is_cis && hascmd ncat &&
+			echo "ProxyCommand ncat --proxy 127.0.0.1:60000 --proxy-type socks5 %h %p"
+	)
 EOF
 
 ###############################################################################
@@ -170,20 +189,25 @@ Host *.cis.gov.pl *_cis
 	User kcukrowski
 	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes
-
+	$(is_cis || echo RemoteForward 60000)
+	ExitOnForwardFailure no
 EOF
 
 
-templ ncbj '
+dectempl ncbj '
 Host cis-$1 $1 $1-cis
 	Hostname ${2:-$1.cis.gov.pl}
 	User ${3:-kcukrowski}
 	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes
+	$(is_cis || echo RemoteForward 60000)
+	ExitOnForwardFailure no
 	${4:+$4}
 Host cis-raw-$1 $1 $1-cis
 	Hostname ${2:-$1.cis.gov.pl}
 	User ${3:-kcukrowski}
+	$(is_cis || echo RemoteForward 60000)
+	ExitOnForwardFailure no
 	ControlMaster no
 	${4:+$4}
 '
@@ -195,6 +219,8 @@ ncbj bocian          10.200.4.11
 ncbj dudek           10.200.4.12
 ncbj jenot           10.200.4.13
 ncbj wilga           10.200.4.14
+ncbj kaczor          10.200.4.6
+#
 ncbj usrint2         172.18.0.22
 ncbj interactive0001 172.18.128.2
 ncbj interactive0002 172.18.128.2
@@ -202,6 +228,7 @@ ncbj ui              192.68.51.202      ''   'Port 22222'
 ncbj doc             172.18.128.2
 ncbj cms-vo          ''
 ncbj slimak          10.200.4.20
+#
 ncbj ci              dizvm7.cis.gov.pl  root
 ncbj fb_core         dizvm4.cis.gov.pl  root
 ncbj fmr             dizvm5.cis.gov.pl  root
@@ -219,34 +246,28 @@ ncbj opengrok        dizvm14.cis.gov.pl root
 
 cat <<EOF
 Host code.cis.gov.pl
-	IdentityFile ~/.ssh/cis_code_id_rsa
+	$([[ -e ~/.ssh/cis_code_id_rsa ]] && echo "IdentityFile ~/.ssh/cis_code_id_rsa")
 EOF
 
 ###############################################################################
 
 cat <<EOF
 
-Host perun
-	Hostname karta.dyzio.pl
-	# 2a02:c207:2050:3924::1 207.180.196.233
-	User root
-	Port 60022
-
 Host *
 	# https://www.systutorials.com/improving-sshscp-performance-by-choosing-ciphers/
 	# http://homepages.warwick.ac.uk/staff/E.J.Brambley/sshspeedtest.php
 	$(ssh_check_ver '>=' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com')
 	$(ssh_check_ver '<' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc')
-
+	#
 	Compression yes
-
+	#
 	ServerAliveInterval 60
 	ServerAliveCountMax 20
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
 	ControlMaster auto
 	ControlPath  ~/.ssh/.socket_%r@%h-%p
 	ControlPersist 6000
-
+	#
 	ExitOnForwardFailure yes
 
 EOF

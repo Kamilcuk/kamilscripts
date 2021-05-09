@@ -10,7 +10,7 @@ shopt -s nullglob
 name=$(basename "$0")
 
 error() {
-	echo "$name: ERROR:" "$*" >&2
+	echo "$name: ERROR: $*" >&2
 }
 
 fatal() {
@@ -19,23 +19,16 @@ fatal() {
 }
 
 recreate_config() {
-	if [[ ! -d ~/.ssh/config.d ]]; then return; fi
+	local i files newestf err
 
-	local err
-	err=0
-
-	# Inform about old code removal.
-	if [[ -e ~/.ssh/config.d/kamilscripts.conf ]]; then
-		error "file ~/.ssh/config.d/kamilscripts.conf should be removed"
-		err=1
-	fi
-	if [[ -e ~/.ssh/config.d/kamilscripts || -L ~/.ssh/config.d/kamilscripts ]]; then
-		error "file ~/.ssh/config.d/kamilscripts should be removed"
-		err=1
-	fi
-
+	files=()
 	shopt -s nullglob
-	files=(~/.ssh/config.d/*.sh)
+	for i in ~/.ssh/genconfig.sh ~/.ssh/genconfig.d/*.sh; do
+		if [[ -r "$i" && -x "$i" ]]; then
+			files+=("$i")
+		fi
+	done
+
 
 	# No files to generate the config from.
 	if (("${#files[@]}" == 0)); then return; fi
@@ -43,21 +36,22 @@ recreate_config() {
 	# Find the newest file to generate config from.
 	newestf=""
 	for i in "${files[@]}"; do
-		if [[ ! -e "$i" ]]; then continue; fi
 		if [[ -z "$newestf" || "$newestf" -nt "$i" ]]; then
 			newestf="$i"
 		fi
 	done
 
+	err=0
+
 	# Additional checking is done by checking if the file has our uuidmark.
 	if [[ -e ~/.ssh/config ]] && ! grep -q '# UUIDMARK 6b248e21-6024-4544-8051-35cb3e3d2c4c' ~/.ssh/config; then
-		error '~/.ssh/config does not have uuid mark. Remove ~/.ssh/config to refresh configuration.'
+		error "~/.ssh/config does not have uuid mark. Remove ~/.ssh/config to refresh configuration."
 		err=1
 	fi
 
 	# If the ~/.ssh/config file was edited manually.
 	if [[ -n "$newestf" && ~/.ssh/config -nt "$newestf" ]]; then
-		error '~/.ssh/config is newer then the newest file in ~/.ssh/config.d/*.sh. Remove ~/.ssh/config to refresh configuration.'
+		error "~/.ssh/config is newer then the newest genfile $newestf. Remove ~/.ssh/config to refresh configuration."
 		err=1
 	fi
 
@@ -65,8 +59,8 @@ recreate_config() {
 		exit 2
 	fi
 
-	if [[ ! -e ~/.ssh/config ]] || [[ ~/.ssh/config -ot "$newestf" ]]; then
-		echo "$name: Recreating ~/.ssh/config from ${#files[@]} files"
+	if [[ ! -e ~/.ssh/config || ~/.ssh/config -ot "$newestf" ]]; then
+		echo "$name: Recreating ~/.ssh/config from ${#files[*]} files"
 		tmp=$(
 			cat <<EOF
 # ----- snip ------
@@ -76,16 +70,23 @@ recreate_config() {
 # ----- snip ------
 
 EOF
-			for i in "${files[@]}"; do
-				"$i"
-			done
 		)
+		for i in "${files[@]}"; do
+			tmp+=$'\n'$("$i") ||:
+		done
 		cat <<<"$tmp" > ~/.ssh/config
 		touch --reference="$newestf" ~/.ssh/config
 	fi
 }
 
 recreate_config
+
+if (($# == 1)); then
+	case "$1" in
+	config) exec ${EDITOR:-vim} ~/.ssh/genconfig.sh; ;;
+	rmcontrol) exec rm -vf ~/.ssh/.socket_*; ;;
+	esac
+fi
 
 command ssh "$@"
 
