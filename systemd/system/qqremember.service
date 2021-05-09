@@ -4,7 +4,7 @@ ConditionPathExists=/usr/lib/kamilscripts/etc/qqremember.conf
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/qqremember.sh -c /usr/lib/kamilscripts/etc/qqremember.conf
+ExecStart=/usr/lib/kamilscripts/bin/qqremember.sh -c /usr/lib/kamilscripts/etc/qqremember.conf
 
 [Install]
 WantedBy=multi-user.target
