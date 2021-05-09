@@ -1,51 +1,58 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env python3
 
-# https://sites.google.com/site/dannychouinard/Home/unix-linux-trinkets/little-utilities/base64-and-base85-encoding-awk-scripts
+import base64
+import sys
+import argparse
+import textwrap
 
-function l(){if(++p>72){p=0;print t}}
+def eprint(*args, **kwargs):
+    None
+    #print(*args, file=sys.stderr, **kwargs)
 
-function s(v,b){
- if(v==0) {
-   printf(z);l()
- } else {
-  o=t;for(n=0;n<5;n++){o=o substr(h,(v%g)+1,1);v/=g}
-  while(n>4-b){printf(c,substr(o,n--,1));l()}
- }
-}
+def check_positive(value):
+    ivalue = int(value)
+    if ivalue < 0:
+        raise argparse.ArgumentTypeError("%s is an invalid non-negative int value" % value)
+    return ivalue
 
-function e(){
- printf("<~");
- while("od -vtu1"|getline){
-  for(y=1;y<NF;){i+=($(++y)*m);m/=a;if(++k>3){s(i,k);k=i=0;m=j}}
- }
- if(k) s(i,k);
- p++;l();print "~>"
-}
+parser = argparse.ArgumentParser(description=
+        'Base85 encode or decode FILE, or standard input, to standard output. '
+        'With no FILE, or when FILE is -, read standard input.'
+)
+parser.add_argument('-d', '--decode', action='store_true', help='decode data')
+parser.add_argument('-w', '--wrap', metavar='COLS', type=check_positive, default=76,
+                    help='wrap encoded lines after COLS character (default 76).\nUse 0 to disable line wrapping')
+parser.add_argument('files', metavar='FILE', type=argparse.FileType('rb', 0,  encoding=None, errors=None),
+                    default=[sys.stdin], nargs='*',
+                    help='an integer for the accumulator')
+args = parser.parse_args()
+eprint(args)
+for c in args.files:
+    c = c.read()
+    c = str.encode(c)
+    eprint("input=", c)
+    if (args.decode):
+        c = (c.
+                replace(b' ', b'').
+                replace(b'\t', b'').
+                replace(b'\n', b'').
+                replace(b'\r', b'').
+                replace(b'\v', b''))
+        eprint("c=", c)
+        o = base64.b85decode(c)
+        eprint("o=", o)
+        o = o.decode('utf-8')
+        print(o)
+    else:
+        o = base64.b85encode(c)
+        o = o.decode('utf-8')
+        if (args.wrap):
+            for i in textwrap.wrap(o, width=args.wrap):
+                print(i)
+        else:
+            print(o)
 
-function d(){
- while(!f&&getline<"/dev/stdin"){if(substr($0,1,2)=="<~") f=1}
- while(f){
-  while(++p<=length($0)&&f){
-   n=index(h,substr($0,p,1));if(substr($0,p,2)=="~>") f=0;
-   if(n>g) {
-    printf(c c c c,0,0,0,0)
-   } else {
-    if(n--){
-     q=g*q+n;
-     if(++i>4){
-      while(--i){printf(c,(q/j)%a);q*=a}
-      q=0
-     }
-    }
-   }
-  }
-  p=0;if(!getline<"/dev/stdin") f=0
- }
- if(i) { q=++q*g^(5-i--); while(i--){printf(c,(q/j)%a);q=a*(q-(j*int(q/j)))} }
-}
 
-BEGIN{
- z=h="z";c="%c";a=256;i=g=85;m=j=a^3;p=2;while(i){h=sprintf(c,32+i--) h}
- if(ARGV[1]=="d") d();
- else e()
-}
+
+
+
