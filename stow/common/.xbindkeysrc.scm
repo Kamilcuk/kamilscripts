@@ -294,7 +294,7 @@
   '(Mod4 t)
   (kc-icon-arg "todoist")
   "todoist"
-  "firefox --new-window 'https://todoist.com/app/#project%2F2252640035'")
+  "firefox --new-window 'https://todoist.com/app/'")
 ;(Xbindkey '(Mod4 s) "subl")
 (Xbindkey '(Mod4 f) "soffice --calc")
 (Xbindkey
