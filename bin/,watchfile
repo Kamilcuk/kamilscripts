@@ -86,8 +86,12 @@ fi
 file="$1"
 shift
 
-if [[ ! -e "$file" ]]; then
+if [[ ! -e "$file" ]] || ! file=$(readlink -f "$file"); then
 	fatal "file does not exists: $file"
+fi
+
+if [[ "$file" =~ $'\n' ]]; then
+	fatal "Current version does not support newlines in filenames"
 fi
 
 # duplicate stdin for stty below to know where terminal is
@@ -107,7 +111,8 @@ exec 5<&0
 		trap 'kill "$child" >/dev/null; wait' EXIT
 	fi
 	# wathc the file
-	stdbuf -oL inotifywait -q -m -e close_write,move,delete "$file"
+	stdbuf -oL inotifywait -q -m -e close_write,moved_to --format "%f" "$(dirname "$file")" |
+	grep --line-buffered -x -F "$(basename "$file")"
 } |
 { if "$use_debug"; then tee /dev/stderr; else cat; fi; } |
 # rate limit the events - output 0x02 each event

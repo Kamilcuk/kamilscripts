@@ -166,27 +166,72 @@
 (use-modules (srfi srfi-1))
 
 ; Regex replace
-(define (kc-replace str what for) (regexp-substitute/global #f what str 'pre for 'post))
+(define (kc-replace str what for)
+  (regexp-substitute/global
+    #f
+    what
+    str
+    'pre
+    for
+    'post))
 ; Quote the argument
-(define (kc-shell-quote-in str) (kc-replace str "'" "'\\''"))
-(define (kc-shell-quote . strs) (string-append "'" (string-join (map kc-shell-quote-in strs) "") "'"))
+(define (kc-shell-quote-in str)
+  (kc-replace str "'" "'\\''"))
+(define (kc-shell-quote . strs)
+  (string-append
+    "'"
+    (string-join (map kc-shell-quote-in strs) "")
+    "'"))
+
+; Quote all arguments separate
+(define (kc-quote-in str)
+  (string-append
+    "'"
+    (kc-replace str "'" "'\\''")
+    "'"))
+(define (kc-quote . strs)
+  (string-join (map kc-quote-in strs) " "))
+
 ; Also replace some html characters we  need to
-(define (kc-html-quote arg) 
-	(kc-replace (kc-replace (kc-replace arg
-	"&" "&amp;")
-	"<" "&lt;")
-	">" "&gt;")
-)
+(define (kc-html-quote arg)
+  (kc-replace
+    (kc-replace
+      (kc-replace arg "&" "&amp;")
+      "<"
+      "&lt;")
+    ">"
+    "&gt;"))
+
 ; Display message with notify-send and execute the command
-(define old_E_use_Xbindkey (lambda (text cmd) (string-append 
-	"if hash notify-send 2>/dev/null >&2; then"
-	"   notify-send -u low -t 2000 -i forward xbindkeys " (kc-shell-quote 
-		(if (string-null? text) "" (string-append "<big><b>\t" (kc-html-quote text) "</b></big>\n"))
-		"<small>Running: <tt>" (kc-html-quote cmd) "</tt></small>"
-		) " ;"
-	"fi;"
-	cmd
-)))
+(define old_E_use_Xbindkey
+  (lambda (text cmd)
+    (string-append
+      "if hash notify-send 2>/dev/null >&2; then"
+      "   notify-send -u low -t 2000 -i forward xbindkeys "
+      (kc-shell-quote
+        (if (string-null? text)
+          ""
+          (string-append
+            "<big><b>\t"
+            (kc-html-quote text)
+            "</b></big>\n"))
+        "<small>Running: <tt>"
+        (kc-html-quote cmd)
+        "</tt></small>")
+      " ;"
+      "fi;"
+      cmd)))
+
+; Get path into kamilscripts repository
+(define (kc-dir . args)
+  (string-append
+    (getenv "HOME")
+    "/.config/kamilscripts/kamilscripts/"
+    (string-join args "")))
+(define (kc-dir-has arg) (access? (kc-dir arg)))
+(define (kc-icon-arg name)
+  (let ((d (kc-dir "/icons/" name ".png")))
+    (if (access? d R_OK) (string-append "-i" d))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -196,91 +241,194 @@
 ; Simpler version of notify what is executing
 ; Use (Xbindkey '(Mod4 F1) "Some message" "Some command)
 ; or use (Xbindkey '(Mod4 F1) "Some command)
-(define (Xbindkey_in bind text cmd) (xbindkey bind (E text cmd)))
-(define (Xbindkey bind . args) (xbindkey bind
-	(string-append
-		",xbindkeys-helper.sh "
-		(kc-shell-quote (if (= (length args) 1) "" (first args))) 
-		" "
-		(kc-shell-quote (last args))
-	)
-))
+(define (Xbindkey_in bind text cmd)
+  (xbindkey bind (E text cmd)))
+(define (Xbindkey bind . args)
+  (xbindkey
+    bind
+    (apply kc-quote
+           (append '(",xbindkeys-helper.sh") args))))
+
+; xbindkey multiple keys to one command.
+; Use like the following:
+;     (XbindkeyMultiple
+;        '((Mod4 d) (Mod4 s))
+;        "echo something")
+(define (XbindkeyMultiple bindarr . args)
+  (map (lambda (bind)
+         (apply Xbindkey (append (list bind) args)))
+       bindarr))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(xbindkey '(Mod4 F1) "xdotool getactivewindow set_desktop_for_window 0")
-(xbindkey '(Mod4 F2) "xdotool getactivewindow set_desktop_for_window 1")
-(xbindkey '(Mod4 F3) "xdotool getactivewindow set_desktop_for_window 2")
-(xbindkey '(Mod4 F4) "xdotool getactivewindow set_desktop_for_window 3")
-(xbindkey '(Mod4 F5) "xdotool getactivewindow set_desktop_for_window 4")
-(xbindkey '(Mod4 F6) "xdotool getactivewindow set_desktop_for_window 5")
-(xbindkey '(Mod4 F7) "xdotool getactivewindow set_desktop_for_window 6")
-(xbindkey '(Mod4 F8) "xdotool getactivewindow set_desktop_for_window 7")
+(xbindkey
+  '(Mod4 F1)
+  "xdotool getactivewindow set_desktop_for_window 0")
+(xbindkey
+  '(Mod4 F2)
+  "xdotool getactivewindow set_desktop_for_window 1")
+(xbindkey
+  '(Mod4 F3)
+  "xdotool getactivewindow set_desktop_for_window 2")
+(xbindkey
+  '(Mod4 F4)
+  "xdotool getactivewindow set_desktop_for_window 3")
+(xbindkey
+  '(Mod4 F5)
+  "xdotool getactivewindow set_desktop_for_window 4")
+(xbindkey
+  '(Mod4 F6)
+  "xdotool getactivewindow set_desktop_for_window 5")
+(xbindkey
+  '(Mod4 F7)
+  "xdotool getactivewindow set_desktop_for_window 6")
+(xbindkey
+  '(Mod4 F8)
+  "xdotool getactivewindow set_desktop_for_window 7")
 
-(Xbindkey '(Mod4 a) "geany")
-(Xbindkey '(Mod4 shift A) ",todoist_dodaj_nowe_zadanie.sh")
-(Xbindkey '(Mod4 t) "todoist" "firefox --new-window 'https://todoist.com/app/#project%2F2252640035'")
+;(Xbindkey '(Mod4 a) "geany")
+(Xbindkey
+  '(Mod4 shift A)
+  ",todoist_dodaj_nowe_zadanie.sh")
+(Xbindkey
+  '(Mod4 t)
+  (kc-icon-arg "todoist")
+  "todoist"
+  "firefox --new-window 'https://todoist.com/app/#project%2F2252640035'")
 ;(Xbindkey '(Mod4 s) "subl")
 (Xbindkey '(Mod4 f) "soffice --calc")
-(Xbindkey '(Mod4 c) "terminal"
-	(string-append "xfce4-terminal "
-		(case host 
-			;((leonidas) "--geometry 140x35")
-			((leonidas) "--geometry 157x40")
-			((ardalus)  "--geometry 126x34")
-			((gorgo)    "--geometry 94x22")
-			(else "")
-		)
-	)
-)
+(Xbindkey
+  '(Mod4 c)
+  "-iorg.xfce.terminal"
+  "terminal"
+  (string-append
+    "xfce4-terminal "
+    (case host
+      ((leonidas) "--geometry 157x40")
+      ((ardalus) "--geometry 126x34")
+      ((gorgo) "--geometry 94x22")
+      (else ""))))
 
-(case host (
-	(leonidas)
-		(xbindkey '(Mod4 "=") "soffice --calc /home/moje/zestawienie.ods")
-		(xbindkey '(Mod4 "3") ",leonidas_toggle_hdmi_mute.sh")
-		(xbindkey '(Mod4 "4") ",xrandr_change_brightness.sh -0.1")
-		(xbindkey '(Mod4 "5") ",xrandr_change_brightness.sh +0.1")
-		(xbindkey '(Mod4 F9 ) "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
-		(xbindkey '(Mod4 F10) "pactl set-sink-volume @DEFAULT_SINK@ -2%")
-		(xbindkey '(Mod4 F11) "pactl set-sink-volume @DEFAULT_SINK@ +2%")
-		(xbindkey '(Mod4 F12) ",leonidas_toggle_hdmi_mute.sh")
-	)
-  	(else
-		(xbindkey '(Mod4 "4") "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
-		(xbindkey '(Mod4 "5") "xdotool keyup 5 keyup Super_L key XF86MonBrightnessUp   keydown Super_L")
-	)
-)
+(case host
+  ((leonidas)
+   (xbindkey
+     '(Mod4 equal)
+     "soffice --calc /home/moje/zestawienie.ods")
+   (xbindkey
+     '(Mod4 "3")
+     ",leonidas_toggle_hdmi_mute.sh")
+   (xbindkey
+     '(Mod4 "4")
+     ",xrandr_change_brightness.sh -0.1")
+   (xbindkey
+     '(Mod4 "5")
+     ",xrandr_change_brightness.sh +0.1")
+   (xbindkey
+     '(Mod4 F9)
+     "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
+   (xbindkey
+     '(Mod4 F10)
+     "pactl set-sink-volume @DEFAULT_SINK@ -2%")
+   (xbindkey
+     '(Mod4 F11)
+     "pactl set-sink-volume @DEFAULT_SINK@ +2%")
+   (xbindkey
+     '(Mod4 F12)
+     ",leonidas_toggle_hdmi_mute.sh"))
+  (else
+   (xbindkey
+     '(Mod4 "4")
+     "xdotool keyup 4 keyup Super_L key XF86MonBrightnessDown keydown Super_L")
+   (xbindkey
+     '(Mod4 "5")
+     "xdotool keyup 5 keyup Super_L key XF86MonBrightnessUp   keydown Super_L")))
 
-(xbindkey '(Mod4 grave) "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
-(xbindkey '(Mod4 "1")   "pactl set-sink-volume @DEFAULT_SINK@ -2%")
-(xbindkey '(Mod4 "2")   "pactl set-sink-volume @DEFAULT_SINK@ +2%")
+(xbindkey
+  '(Mod4 grave)
+  "pactl set-sink-mute   @DEFAULT_SINK@ toggle")
+(xbindkey
+  '(Mod4 "1")
+  "pactl set-sink-volume @DEFAULT_SINK@ -2%")
+(xbindkey
+  '(Mod4 "2")
+  "pactl set-sink-volume @DEFAULT_SINK@ +2%")
 
-(xbindkey '(Mod4 Right) ",magic_position_window.sh right")
-(xbindkey '(Mod4 Up)    ",magic_position_window.sh up")
-(xbindkey '(Mod4 Down)  ",magic_position_window.sh down")
-(xbindkey '(Mod4 Left)  ",magic_position_window.sh left")
+(xbindkey
+  '(Mod4 Right)
+  ",magic_position_window.sh right")
+(xbindkey
+  '(Mod4 Up)
+  ",magic_position_window.sh up")
+(xbindkey
+  '(Mod4 Down)
+  ",magic_position_window.sh down")
+(xbindkey
+  '(Mod4 Left)
+  ",magic_position_window.sh left")
 
-(Xbindkey '(XF86Search) "xfce4-appfinder")
-(Xbindkey '(XF86HomePage) "browser" "firefox")
-(Xbindkey '(XF86ScreenSaver) "xflock4")
-(Xbindkey '(XF86Calculator) "xfce4-terminal -e \"bash -c \\\"echo Running bc calculator; bc\\\"\"")
-(Xbindkey '(XF86Tools) "firefox https://open.fm/stacja/alt-pl https://open.spotify.com/search")
-(Xbindkey '(Print)  "printscreen" "xfce4-screenshooter --fullscreen")
-(Xbindkey '(Mod4 n) "browser" "firefox")
-(Xbindkey '(Mod4 e) "File Explorer" "xdg-open ~")
-(Xbindkey '(XF86Mail) "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
-(Xbindkey '(Mod4 m)   "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
-(Xbindkey '(Mod4 w)   "email" "nohup birdtray -t >/dev/null </dev/null 2>&1")
+(Xbindkey
+  '(XF86Search)
+  "-iorg.xfce.appfinder"
+  "xfce4-appfinder")
+(Xbindkey
+  '(XF86HomePage)
+  "-ifirefox"
+  "browser"
+  "firefox")
+(Xbindkey
+  '(XF86ScreenSaver)
+  "-ixfsm-lock"
+  "xflock4")
+(Xbindkey
+  '(XF86Calculator)
+  "-iorg.xfce.terminal"
+  "xfce4-terminal -e \"bash -c \\\"echo Running bc calculator; bc\\\"\"")
+(Xbindkey
+  '(XF86Tools)
+  "-ifirefox"
+  "firefox https://open.fm/stacja/alt-pl https://open.spotify.com/search")
+(Xbindkey
+  '(Print)
+  "-iorg.xfce.screenshooter"
+  "printscreen"
+  "xfce4-screenshooter --fullscreen")
+(Xbindkey
+  '(Mod4 n)
+  "-ifirefox"
+  "browser"
+  "firefox")
+(Xbindkey
+  '(Mod4 e)
+  "-ifolder_open"
+  "File Explorer"
+  "xdg-open ~")
+(XbindkeyMultiple
+  '((Mod4 w) (Mod4 m) (XF86Mail))
+  "-iemblem-mail"
+  "email"
+  "nohup birdtray -t >/dev/null </dev/null 2>&1")
 
-(Xbindkey '(Mod4 d) ",slack_toggle.sh")
-(Xbindkey '(Mod4 s) ",slack_toggle.sh")
+(XbindkeyMultiple
+  '((Mod4 d) (Mod4 s))
+  "-islack"
+  ",slack_toggle.sh")
 
 (Xbindkey '(Alt F3) "xfce4-appfinder")
-(Xbindkey '(Alt F2) "xfce4-appfinder --collapsed")
+(Xbindkey
+  '(Alt F2)
+  "-iorg.xfce.appfinder"
+  "xfce4-appfinder --collapsed")
 
-(Xbindkey '(Control Shift Alt Mod4 Mod5 Control_R) "Suspend" "systemctl suspend")
+(Xbindkey
+  '(Control Shift Alt Mod4 Mod5 Control_R)
+  "-ixfsm-suspend"
+  "Suspend"
+  "systemctl suspend")
 
-(xbindkey '(Control Escape) "xfce4-popup-whiskermenu")
+(Xbindkey
+  '(Control Escape)
+  "-ixfce4-whiskermenu"
+  "xfce4-popup-whiskermenu")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of xbindkeys guile configuration ;;

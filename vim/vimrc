@@ -763,6 +763,14 @@ if kc#plugin#enabled('vim-eunuch')
 	cmap W!! SudoWrite
 endif
 
+if kc#plugin#enabled('neoformat')
+	let g:neoformat_scheme_schemeformat = {
+				\ 'exe': ',scheme-format',
+				\ 'stdin': 1,
+				\ }
+	let g:neoformat_enabled_scheme = ['schemeformat']
+endif
+
 " }}}
 " Custom maps and functions {{{1
 

@@ -1,0 +1,49 @@
+#!/usr/bin/guile \
+--no-auto-compile -s
+!#
+
+; vim: ft=scheme
+; based on https://gist.github.com/ojarjur/6924001
+; based on https://www.reddit.com/r/scheme/comments/1o3kdw/auto_formatter_for_scheme/
+; based on github ojarjur/scmfmt.scm
+; Tried to fix empty lines handling and #!...!# lines handling
+
+(use-modules (ice-9 pretty-print))
+
+;; Helper methods for maintaining comments and whitespace.
+; Copy to output up until a newline, read also the newline.
+(define (copy-line-comment)
+  (let ((char (read-char)))
+    (if (not (eof-object? char))
+      (if (eq? char #\newline)
+        (newline)
+        (begin (write-char char) (copy-line-comment))))))
+; We peeked newline in main loop - read and output it here.
+(define (maintain-empty-lines)
+  (write-char (read-char)))
+; The line started with # character - discard up until '!#'.
+(define (copy-multiline-comment)
+  (let ((char (read-char)) (char2 (peek-char)))
+    (if (not (eof-object? char))
+      (if (and (eq? char #\!) (eq? char2 #\#))
+        (begin (write-char char) (copy-line-comment))
+        (begin
+          (write-char char)
+          (copy-multiline-comment))))))
+; Pass to pretty print the char. If the next char is newline, read the newline.
+(define (handle-pass-to-pretty-print)
+  (begin (pretty-print (read)) (if (eq? (peek-char) #\newline) (read-char))))
+
+;; The main method. This reads from and writes to stdin/stdout.
+(define (scmfmt)
+  (let ((char (peek-char)))
+    (if (not (eof-object? char))
+      (begin
+        (cond ((eq? char #\#) (copy-multiline-comment))
+              ((eq? char #\;) (copy-line-comment))
+              ((eq? char #\newline) (maintain-empty-lines))
+              ((char-whitespace? char) (read-char))
+              (#t (handle-pass-to-pretty-print)))
+        (scmfmt)))))
+(scmfmt)
+
