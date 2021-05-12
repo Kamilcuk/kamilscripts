@@ -49,4 +49,6 @@ alias cd..='cd ..'
 alias beep='echo -en "\007"'
 alias l='command l'
 alias ll='ls -l -F --color -h --group-directories-first'
+alias make='nice make'
+alias cmake='nice cmake'
 

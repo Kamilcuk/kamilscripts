@@ -571,7 +571,7 @@ command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 " https://github.com/ggreer/the_silver_searcher
 if kc#plugin#enabled('ack.vim')
 	if executable('ag')
-		let g:ackprg = 'ag --vimgrep'
+		let g:ackprg = 'ag --vimgrep -u'
 	elseif executable('rg')
 		let g:ackprg = 'rg --vimgrep'
 	else
@@ -1123,7 +1123,7 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	let &makeprg=",pdk unit_test"
 	"let &makeprg="cat /tmp/1"
 	if hostname() == "leonidas"
-		let g:dispatch_quickfix_height=36
+		let g:dispatch_quickfix_height=16
 	endif
 endif
 

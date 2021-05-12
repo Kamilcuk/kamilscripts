@@ -9,15 +9,19 @@ if ((UID)); then
 fi
 
 _archlinux_pacman() {
-	local tmp
+	local tmp sudo
+	sudo=(
+		sudo
+		--preserve-env=no_proxy,http_proxy,https_proxy,ftp_proxy,rsync_proxy,HTTP_PROXY,HTTPS_PROXY,FTP_PROXY,RSYNC_PROXY
+	)
 	if hash yay 2>/dev/null; then
 		if ((UID == 0)) && id kamil 2>/dev/null >&2; then
-			tmp=(sudo -u kamil yay)
+			tmp=("${sudo[@]}" -u kamil yay)
 		else
 			tmp=(yay)
 		fi
 	elif ((UID != 0)); then
-		tmp=(sudo pacman)
+		tmp=("${sudo[@]}" pacman)
 	else
 		tmp=(pacman)
 	fi
