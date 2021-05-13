@@ -775,10 +775,15 @@ endif
 " Custom maps and functions {{{1
 
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+" Map semicolon to colon and double semicolon to semicolon.
 " https://vim.fandom.com/wiki/Map_semicolon_to_colon
 map ; :
 noremap ;; ;
 " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+" Disable entering ex mode
+" https://stackoverflow.com/questions/1269689/to-disable-entering-ex-mode-in-vim
+nnoremap Q <Nop>
 
 " Close quickfix window with ESC
 " https://github.com/mhinz/vim-grepper/issues/117
@@ -1097,7 +1102,7 @@ endif
 
 if getcwd() =~ "/home/kamil/ncbj/puppet"
 	set errorformat=""
-
+	"
 	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl
 	"let &errorformat.='       error during compilation: %m (file: %f\, line: %l\, column: %c) %.%#'
 	"let &errorformat.=',       error during compilation: %m \(file: %f\, line: %l\) %.%#'
