@@ -1,28 +1,19 @@
 #!/bin/bash
 
-cmd=()
-if [[ "${1:-}" != --ok ]]; then
+echo=""
+case "$1" in
+-o|-k|--ok) ;;
+*)
 	cat <<EOF
 Script used to fix permissions when cloning from owncloud.
-Add --ok command line to actually make changes.
+Add -o or -k or --ok command line to actually make changes.
 
 EOF
-	cmd=(echo)
-fi
+	echo=echo
+	;;
+esac
 
-# Fix missing permissions
-git diff | 
-	grep -A1 -B1 'old mode' |
-	grep 'diff --git' |
-	sed 's/.*i\/\([^ ]*\).*/\1/' |
-	{
-		if ! IFS= read -r line; then
-			echo "Nothing to be done..."
-		else
-			{
-				printf "%s\n" "$line"
-				cat
-			} | xargs -- "${cmd[@]}" chmod +x
-		fi
-	}
+git diff --summary |
+	awk '/mode change/{print gensub(/.../,"","1",$3), $6}' |
+	xargs -r -n2 $echo chmod -v
 
