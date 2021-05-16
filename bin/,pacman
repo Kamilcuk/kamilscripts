@@ -1,0 +1,219 @@
+#!/bin/bash
+set -euo pipefail
+
+DEBUG=${DEBUG:-false}
+
+C_logs_with_timestamp() {
+	# Convert old date format to new date format
+	# Convert date to dash separated stamps
+	# Convert RFC to seconds since epoch and prepend to each line.
+	sed -r '
+		s/^\[([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2})\]/\1-\2-\3-\4-\5-00/
+		s/^\[([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})\+([0-9]+)\]/\1-\2-\3-\4-\5-\6/
+		' /var/log/pacman.log |
+		awk '{ $1 = mktime(gensub("-", " ", "g", $1))" "$1 } 1'
+}
+
+C_logs_with_timestamp_since() {
+	if [ $# -lt 1 ]; then
+		cat << EOF
+Usage examples:
+	$0 today
+	$0 yesterday
+	$0 last week
+	$0 last saturday
+	$0 last month
+EOF
+		exit
+	fi
+	since=$(date --date="$*" +%s)
+	C_logs_with_timestamp | awk -v since="$since" '$1 > since'
+}
+
+
+C_list_packages_installed_since() {
+	since=$(date --date="$*" +%s)
+
+	tmp=$(C_logs_with_timestamp_since "$@")
+
+	ins=$(<<<"$tmp" sed -n 's/.* \[ALPM\] installed \(.*\) ([^ ]*.*/\1/p' | sort -u )
+	insexp=$(comm -12 - <<<"$ins" <(pacman -Qqe) )
+	remov=$( comm -23 - <<<"$ins" <(pacman -Qq ) )
+	still=$( comm -12 - <<<"$ins" <(pacman -Qq ) )
+	{
+		echo "date -d \"$*\"# $(date --date="@$since")"
+		echo "Packages explicitly installed# "$insexp
+		echo "Packages installed# "$ins
+		echo "Packages already removed# "$remov
+		echo "Packages still installed# "$still
+	} | column -s'#' -t -o:
+}
+
+C_remove_packages_installed_since() {
+	C_list_packages_installed_since "$@"
+	echo
+	echo "+ pacman --confirm -R "$still
+	pacman --confirm -R $still
+}
+
+C_remove_packages_installed_today() {
+	C_remove_packages_installed_since "today 00:00:00"
+}
+
+C_is_installed() {
+	pacman -Qi "$1" >/dev/null 2>&1
+}
+
+C_package_exists() {
+	pacman -Si "$1" >/dev/null 2>&1
+}
+
+C_move_packages_from_pip() {
+	install_it() {
+		pacman -S --noconfirm python-"$1"
+	}
+
+	version=2
+	echo "version=pip$version"
+
+	pip$version list | awk '{print $1}' |
+	while read -r p; do
+		n="python$version-$p"
+		if ! C_is_installed "$n" && C_package_exists "$n"; then
+			echo "$p"
+			echo "$p will be moved" >&2
+		else
+			echo "$p is fine" >&2
+		fi
+	done |
+	paste -sd' ' |
+	while IFS= read -r l; do
+		echo "sudo pip uninstall -y $l"
+		l=$(<<<"$l" tr ' ' '\n' | xargs -i echo python-{} | paste -sd' ')
+		echo "sudo pacman -S --noconfirm $l"
+	done
+}
+
+C_vimdiff_pacnew() {
+	if (($# != 0)); then
+		cat <<EOF
+Usage: vimdiff_pacnew
+
+For each *.pacnew and *.pacsave file
+run vimdiff and then asks two questions.
+
+Written by Kamil Cukrowski
+EOF
+		exit 1
+	fi
+
+	if [[ "$UID" != 0 ]]; then
+		echo "Running with sudo..."
+		echo "+" "sudo" "$0" vimdiff_pacnew "$@"
+		echo
+		exec sudo "$0" vimdiff_pacnew "$@"
+	fi
+
+	findthem() {
+		grep -aEo "[^ ]*\.$1" /var/log/pacman.log |
+		sort -u |
+		while IFS= read -r line; do
+			if [[ -e "$line" ]]; then
+				printf "%s\n" "$line"
+			fi
+		done
+	}
+
+	tmp=$(findthem pacnew) ||:
+	readarray -t pacnew < <(printf "%s" "$tmp")
+	tmp=$(findthem pacsave) ||:
+	readarray -t pacsave < <(printf "%s" "$tmp")
+
+	printf "%2d .pacnew files found.\n" "${#pacnew[@]}"
+	printf "%2d .pacsave files found.\n" "${#pacsave[@]}"
+	echo
+
+	was_pacsave=false
+	for i in "${pacnew[@]}" "${pacsave[@]}"; do
+		if [[ "$i" =~ \.pacsave$ ]] && ! "$was_pacsave"; then
+			was_pacsave=true
+			echo "Success! There are no *.pacnew files on the system!!!"
+			while true; do
+				read -r -p "Do you want to continue with *.pacsave files? [yes/no] " ans; echo
+				case "$ans" in 
+				yes) break; ;;
+				no) exit; ;;
+				*) echo "Please answer exactly 'yes' or 'no'."; echo; ;;
+				esac
+			done
+		fi
+		now="${i%.pac*}"
+		new="$i"
+		if ! cmp -s "$now" "$new"; then
+			cmd=( vimdiff "$now" "$new" )
+			echo "+" "${cmd[@]}"
+			sleep 1
+			"${cmd[@]}"
+			read -r -n 1 -p "Edit was successfull? [y/n] " ans; echo
+			case "$ans" in [yYtT]) ;; *) exit; ;; esac
+		else
+			echo "Files $now and $new are the same..."
+		fi
+		read -r -n 1 -p "Remove $i? [y/n] " ans; echo
+		case "$ans" in [yYtT]) rm -I -v "$i";; esac
+		echo
+	done
+}
+
+C_list_installed_packages_by_date_filter() {
+	sed 's/.*/[ALPM] installed & /' |
+	grep -Ff - /var/log/pacman.log |
+	sed 's/\[ALPM\] installed //; s/ *(.*)$//; s/\[\([^ ]*\) \([^ ]*\)\]/\[\1T\2:00+0000\]/' |
+	sort -k1,1r |
+	sort -u -k2,2 |
+	sort -k1,1
+}
+
+C_list_installed_packages_by_date() {
+	pacman -Qq | C_list_installed_packages_by_date_filter
+}
+
+C_list_explicitly_installed_packages_by_date() {
+	pacman -Qe | awk '{print $1}' | C_list_installed_packages_by_date_filter
+}
+
+C_list_explicitly_installed_packages_by_date_merge() {
+	C_list_explicitly_installed_packages_by_date |
+	awk 'a[$1]=a[$1](length(a[$1])?" ":"")$2
+		END{for (i in a) print i " " a[i]}' |
+	sort -k1,1
+}
+
+C_list_packages_by_size()  { 
+	pacman -Qi |
+		awk -F: '/^Name *:/{n=$2} /^Installed Size *:/{print n, $2}' |
+		awk '{print $2 gensub("B$", "", "g", $3), $1, $2 $3 }' |
+		numfmt --field 1 --from=auto |
+		sort -k1n
+}
+
+C_list_packages_from_aur() {
+	pacman -Qqem
+}
+
+C_list_installed_optional_dependencies() {
+	comm -13 <(pacman -Qqdt | sort) <(pacman -Qqdtt | sort)
+}
+
+C_list_installed_packages() {
+	pacman -Qqe
+}
+
+C_find_files_not_owned_by_any_packages() {
+	find /etc /usr /opt /var |
+		LC_ALL=C pacman -Qqo - 2>&1 >/dev/null |
+		cut -d ' ' -f 5-
+}
+
+. ,lib_lib C_ "$@"
+

@@ -1,0 +1,60 @@
+#!/bin/bash
+set -euo pipefail
+
+r() {
+	if ((g_dry_run)); then
+		echo -n "DRY_RUN: "
+	fi
+	echo "+ $*" >&2;
+	if ((!g_dry_run)); then
+		"$@"
+	fi
+}
+
+C_get-root() {
+	if [[ -z "${GIT_PREFIX:-}" ]]; then
+		GIT_PREFIX=$(git rev-parse --show-toplevel)
+		export GIT_PREFIX
+	fi
+	printf "%s\n" "$GIT_PREFIX"
+}
+
+C_get-branch() {
+	git rev-parse --abbrev-ref HEAD
+}
+
+C_mergeto() {
+	cur=$(,git get-branch)
+	r git checkout "$1"
+	r git merge "$cur" "$@"
+	r git checkout "$cur"
+}
+
+C_mergetopush() {
+	cur=$(C_get-branch)
+	r git checkout "$1"
+	r git merge "$cur" "$@"
+	r git push
+	r git checkout "$cur"
+}
+
+C_convertGitRepoToSubmodule() {
+	if [ "$#" = 0 ]; then
+		echo "Usage: convertGitRepoToSubmodule <submodule_directory...>" >&2;
+		return 1;
+	fi;
+	cd -- "$(C_get-root)";
+	for i in "$@"; do
+		origin="$(cd "$i" && git config --get remote.origin.url)";
+		r git submodule add "$origin" "$i"
+	done
+}
+
+g_dry_run=0
+if [[ "${1:-}" == -n ]]; then
+	g_dry_run=1
+	shift
+fi
+
+. ,lib_lib C_ "$@"
+
