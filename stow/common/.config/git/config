@@ -1,6 +1,6 @@
 [user]
-	email = kamilcukrowski@gmail.com
 	name = Kamil Cukrowski
+	email = kamilcukrowski@gmail.com
 [push]
 	default = simple
 [github]
@@ -89,16 +89,19 @@
 	s = status
 	lo = log --pretty=format:\"%h %ce %cd %s\" --graph
 	co = checkout
-	ci = commit
-	cm = commit -a -m
-	st = status
-	br = branch
+	#ci = commit
+	#cm = commit -a -m
+	#st = status
+	#br = branch
 	m3 = mergetool -t merge3
-	mt = mergetool
+	#mt = mergetool
+	ac = commit -a -m
 	acp = "! f() { ( set -x ; git commit -a -m \"$*\" && git push; ); } ; f"
 	aacp  = "! f() { ( set -x ; git add -A && git commit -m \"$*\" && git push; ); } ; f"
 	allcp = "! f() { ( set -x ; git add -A && git commit -m \"$*\" && git push; ); } ; f"
-	convertGitRepoToSubmodule = "!f() { if [ \"$#\" = 0 ]; then echo \"Usage: convertGitRepoToSubmodule <submodule_directory...>\" >&2; return 1; fi; cd -- \"${GIT_PREFIX:-.}\"; for i; do origin=\"$(cd \"$i\" && git config --get remote.origin.url)\"; ( set -x; git submodule add \"$origin\" \"$i\"; ); done; }; f"
+	mergeto     = "!f() { : git checkout ; ,git mergeto     \"$@\"; }; f"
+	mergetopush = "!f() { : git checkout ; ,git mergetopush \"$@\"; }; f"
+	convertGitRepoToSubmodule = ",git convertGitRepoToSubmodule"
 [init]
 	defaultBranch = master
 [filter "lfs"]
@@ -108,7 +111,4 @@
 	process = git-lfs filter-process
 [credential]
 	helper = store
-[user]
-	name = Kamil Cukrowski
-	email = kamilcukrowski@gmail.com
 

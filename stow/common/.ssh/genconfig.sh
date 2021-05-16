@@ -247,6 +247,13 @@ ncbj opengrok        dizvm14.cis.gov.pl root
 cat <<EOF
 Host code.cis.gov.pl
 	$([[ -e ~/.ssh/cis_code_id_rsa ]] && echo "IdentityFile ~/.ssh/cis_code_id_rsa")
+
+Match host=*.cis.gov.pl
+	$([[ -e ~/.ssh/id_rsa_zwierzaki ]] && echo "IdentityFile ~/.ssh/id_rsa_zwierzaki")
+
+Match host=*.cis.gov.pl user=root
+	PasswordAuthentication no
+
 EOF
 
 ###############################################################################
@@ -254,6 +261,12 @@ EOF
 cat <<EOF
 
 Host *
+	#$(
+	echo; for i in ~/.ssh/id_rsa*; do
+		[[ ! -e "$i" ]] || ! grep -q "PRIVATE KEY" "$i" && continue
+		tab "IdentityFile $i"
+	done)
+	#
 	# https://www.systutorials.com/improving-sshscp-performance-by-choosing-ciphers/
 	# http://homepages.warwick.ac.uk/staff/E.J.Brambley/sshspeedtest.php
 	$(ssh_check_ver '>=' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com')
