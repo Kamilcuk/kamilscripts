@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+exe=$(which makepkg) &&
+tmpf=$(mktemp) &&
+trap 'rm "$tmpf"' EXIT &&
+sed '/exit $E_ROOT/d' "$exe" > "$tmpf" &&
+bash "$tmpf" "$@"
+

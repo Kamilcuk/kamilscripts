@@ -1096,7 +1096,7 @@ set errorformat^=../%f:%l:%c:\ %m
 set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 
-if getcwd() =~ "/etc/nginx"
+if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 	let &makeprg="sudo nginx -t && sudo nginx -s reload"
 endif
 

@@ -2,8 +2,8 @@
 Description=Run qqremember Daily
 
 [Timer]
-OnCalendar=*-*-* 06:00:00
-AccuracySec=1d
+OnCalendar=*-*-* 13:00:00
+AccuracySec=1h
 Persistent=true
 
 [Install]
