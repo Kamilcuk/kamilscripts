@@ -78,10 +78,10 @@ Host tunel_biurek
 	User kamil
 	Port 4004
 Host kurczak
-	Hostname 192.168.21.21
-	User kamil
+	Hostname 192.168.31.1
+	User root
 	Port 22
-	$(ProxyJump biurek)
+	#$(ProxyJump biurek)
 
 Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
@@ -248,8 +248,11 @@ cat <<EOF
 Host code.cis.gov.pl
 	$([[ -e ~/.ssh/cis_code_id_rsa ]] && echo "IdentityFile ~/.ssh/cis_code_id_rsa")
 
+$([[ -e ~/.ssh/id_rsa_zwierzaki ]] && cat <<EOF2
 Match host=*.cis.gov.pl
-	$([[ -e ~/.ssh/id_rsa_zwierzaki ]] && echo "IdentityFile ~/.ssh/id_rsa_zwierzaki")
+	IdentityFile ~/.ssh/id_rsa_zwierzaki
+EOF2
+)
 
 Match host=*.cis.gov.pl user=root
 	PasswordAuthentication no

@@ -1,0 +1,127 @@
+#!/bin/bash
+
+_usage() {
+	cat <<EOF
+Execute just $L_name to list available commands.
+
+Each command supports the normal find(1) arguments.
+Additionally command with leading two '--' are filtered and parsed:
+	-print0 --print0 --0 --z   - print zero separated stream
+	--c=N --count=N            - output count lines
+	--r --rev                  - reverse output
+	--quiet --q --s --silent   - silence find errors
+
+EOF
+}
+
+_args() {
+	g_zero=0
+	g_count=20
+	g_rev=0
+	g_ignore_find_errors=0
+	g_findargs=()
+	while (($#)); do
+		case "$1" in
+		--help|-h) _usage; ;;
+		-print0|--print0|--0|--z) g_zero=1; ;;
+		--c=*|--count=*) g_count=${1##*=}; ;;
+		--r|--rev) g_rev=1; ;;
+		--quiet|--silent|--s|--q|--i|--ignore-find-errors) g_ignore_find_errors=1; ;;
+		--bash-completion) return; ;;
+		--*) L_fatal "Unknown option: $1" >&2; ;;
+		*) g_findargs+=("$1"); ;;
+		esac
+		shift
+	done
+}
+
+###############################################################################
+
+# Use only zero separated streams here!
+
+_find() {
+	_args "$@"
+	(
+		if ((g_ignore_find_errors)); then
+			exec 2>/dev/null
+		fi
+		find "${g_findargs[@]}"
+	)
+}
+
+_print() {
+	printf -- "$@"
+	printf "\0"
+}
+
+_rev() {
+	if ((g_rev)); then tac -s ''; else cat; fi
+}
+
+C_help() {
+	_usage
+}
+
+_generic_est_files() {
+	txt=$1
+	inputfunc=$2
+	filterfunc=$3
+	shift 3
+	_args "$@"
+	_print "-- $g_count $txt files:"
+	"$inputfunc" -type f "$@" | "$filterfunc" -z -n "$g_count" | _rev
+}
+
+C_oldest_files() {
+	_generic_est_files oldest _sorted_by_modification head "$@"
+}
+
+C_newest_files() {
+	_generic_est_files newest _sorted_by_modification tail "$@"
+}
+
+C_biggest_files() {
+	_generic_est_files biggest _sorted_by_size tail "$@"
+}
+
+C_smallest_files() {
+	_generic_est_files biggest _sorted_by_size head "$@"
+}
+
+_sorted_by_generic_time() {
+	fmt=$1
+	shift
+	_find "$@" -printf "%${fmt}@\t%${fmt}c\t%p\0" | sort -z -k1g | cut -z -f2-
+}
+
+_sorted_by_access() {
+	_sorted_by_generic_time A "$@"
+}
+
+_sorted_by_modification() {
+	_sorted_by_generic_time T "$@"
+}
+
+C_sorted_by_access() { _sorted_by_access "$@" | _rev; }
+C_sorted_by_modification() { _sorted_by_modification "$@" | _rev; }
+
+_sorted_by_size() {
+	_find "$@" -printf "%s\t%p\0" | sort -z -k1n |
+		numfmt -z -d$'\t' --field=1 --from=none --to=iec-i
+}
+
+C_sorted_by_size() {
+	_sorted_by_size "$@" | _rev
+}
+
+###############################################################################
+
+_finish_zerotonl() {
+	if ((g_zero)); then cat; else tr '\0' '\n'; fi
+}
+
+. ,lib_lib -q
+_args "$@"
+L_trap_err() { :; }
+. ,lib_lib C_ "$@" | _finish_zerotonl
+

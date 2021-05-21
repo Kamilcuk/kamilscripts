@@ -71,7 +71,7 @@ _kc_prompt_command() {
 			}"'
 			s@\\@\\\\@g; s@/@\x01$cyan\x02/\x01$blue\x02@g
 		'
-	)\001$reset\002${root+$'\001'$red$bold$'\002'}"
+	)\001$reset\002${root+$'\001'$red$bold$'\002'}\001$reset\002"
 }
 EOF
 )"
