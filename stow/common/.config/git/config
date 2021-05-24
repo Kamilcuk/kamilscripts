@@ -96,9 +96,11 @@
 	m3 = mergetool -t merge3
 	#mt = mergetool
 	ac = commit -a -m
-	acp = "! f() { ( set -x ; git commit -a -m \"$*\" && git push; ); } ; f"
-	aacp  = "! f() { ( set -x ; git add -A && git commit -m \"$*\" && git push; ); } ; f"
-	allcp = "! f() { ( set -x ; git add -A && git commit -m \"$*\" && git push; ); } ; f"
+	acp = "! f() { set -x ; git commit -a -m \"$*\" && git push; } ; f"
+	aacp  = "! f() { set -x ; git add -A && git commit -m \"$*\" && git push; } ; f"
+	allcp = "! f() { set -x ; git add -A && git commit -m \"$*\" && git push; } ; f"
+	qdAddAmendPushForce = "! f() { set -x; git commit -a --amend --no-edit \"$@\" && git push --force-with-lease; }; f"
+	qlAllAddAmendPushForce = "! f() { set -x; git add -A && git commit --amend --no-edit \"$@\" && git push --force-with-lease; }; f"
 	mergeto     = "!f() { : git checkout ; ,git mergeto     \"$@\"; }; f"
 	mergetopush = "!f() { : git checkout ; ,git mergetopush \"$@\"; }; f"
 	convertGitRepoToSubmodule = ",git convertGitRepoToSubmodule"

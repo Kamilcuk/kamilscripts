@@ -1,0 +1,29 @@
+#!/bin/bash
+
+source ,lib_lib -l
+
+usage() {
+	cat <<EOF
+Usage: $L_NAME <source_dir> <dest_dir>
+
+Written by Kamil Cukrowski.
+EOF
+}
+
+if (($# != 2)); then usage; fatal "Invalid count of arguments"; fi
+src=$1
+src="${src%%/}"
+dest=$2
+dest="${dest%%/}"
+
+if [[ ! -d "$src" ]]; then 
+	fatal "$src is not a directory"
+fi
+tmp="$dest"/"$(basename "$src")"
+if [[ -e "$tmp" ]]; then
+	fatal "$tmp directory already exists!"
+fi
+
+set -x
+rsync -aivxAHSX --delete --progress "$src"/ "$dest"/
+

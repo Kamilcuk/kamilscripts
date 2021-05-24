@@ -17,13 +17,14 @@ Options:
 	-s path		set src file location [default: \$(mktemp)]
 			specifing src file location disables autogenerating it
 	-d path		set dest file location [default: \$(ssh remote_host mktemp)]a
-	-S arg		pass additional argument arg to ssh command
-	-C arg		pass additional argument arg to scp command
-	-B arg 		pass additional argument arg to both ssh and scp commands
+	-S arg		Pass additional argument arg to ssh command.
+	-C arg		Pass additional argument arg to scp command.
+	-B arg 		Pass additional argument arg to both ssh and scp commands.
+	-o arg      Pass option '-o arg' to both ssh and scp.
 
 Examples:
 	$name host@hostname 200
-	$name -S -p -C -P -B 10022 -B -o -B ConnectTimeout=4 myuser@myhostname
+	$name -S -p -C -P -B 10022 -o ConnectTimeout=4 myuser@myhostname
 
 Written by Kamil Cukrowski. Jointly under MIT License and Beetware license.
 Based on scp-speed-test.sh from  Alec Jacobson alecjacobsonATgmailDOTcom
@@ -47,7 +48,7 @@ fatal() {
 # main ##########################################
 
 # getopt ##############
-ARGS=$(getopt -n qqscp-speed-test.sh -o hd:s:S:C:B: -- "$@")
+ARGS=$(getopt -n qqscp-speed-test.sh -o hd:s:S:C:B:o: -- "$@")
 eval set -- "$ARGS"
 if [ $# -lt 1 ]; then usage; exit; fi;
 
@@ -61,6 +62,7 @@ while true; do
 		-S) ssh+=( "$2" ); shift; ;;
 		-C) scp+=( "$2" ); shift; ;;
 		-B) ssh+=( "$2" ); scp+=( "$2" ); shift; ;;
+		-o) ssh+=( -o "$2" ); scp+=( -o "$2" ); shift; ;;
 		--) shift; break; ;;
 		*) echo "Internal error" >&2; exit 1; ;;
 	esac
