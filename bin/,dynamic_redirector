@@ -1,0 +1,81 @@
+#!/bin/bash
+
+g_debug() {
+	if ((g_do_debug)); then
+		printf "%s\n" "$*" >&2
+	fi
+}
+
+g_fatal() {
+	echo "$g_name: ERROR: $*" >&2
+	exit 1
+}
+
+g_usage() {
+	cat <<EOF
+Usage: $g_name [options] port command...
+
+When a connection comes to the specified port, the application redirects
+the connection to the place specified by command. Command should output a string
+that is recognizable by socat as the second argument. See examples below.
+
+Options:
+  -h --help   Print this help and exit
+  --g_debug     Enable some debugging
+
+Example:
+    _callback() {
+        # choose a random ssh hosts to redirect connection to
+        hosts=( 192.168.1.1 192.168.2.2 192.168.3.3 )
+        # Choose a random host
+        num=\$(( SRANDOM % \${#hosts[@]} ))
+        # Output a string parsable by socat, see it's documentation.
+        echo "TCP4:\${hosts[num]}:22"
+    }
+    # export callback to a subprocess
+    export -f _callback
+    # And call that script to redirect the connection.
+    $g_name 10000 bash -c _callback
+
+Written by Kamil Cukrowski
+EOF
+}
+
+g_name=${BASH_SOURCE##*/}
+g_args=$(getopt -n "$g_name" -o +h -l help,debug -- "$@")
+eval "set -- $g_args"
+g_do_debug=0
+while (($#)); do
+	case "$1" in
+	-h|--help) g_usage; exit; ;;
+	--debug) g_do_debug=1; ;;
+	--) shift; break;;
+	*) g_fatal "Internal error when parsing arguments"; ;;
+	esac
+	shift
+done
+
+if (($# == 0)); then usage; g_fatal "Missing arguments"; fi
+if (($# < 2)); then g_fatal "Missing command"; fi
+g_listen=$1
+shift
+g_command=$(printf "%q " "$@")
+g_command=${g_command% }
+
+g_con_handler() {
+	g_debug "Executing \`eval \"$g_command\"\` ..."
+	if ! to=$(eval "$g_command") || [[ -z "$to" ]]; then
+		return
+	fi
+	g_debug "Redirection connection from $SOCAT_PEERADDR:$SOCAT_PEERPORT to $to"
+	eval socat - "$to"
+}
+# Export our context to subprocess
+export g_do_debug g_name g_command
+export -f g_con_handler g_debug g_fatal
+
+cmd=(socat tcp-listen:"$g_listen",reuseaddr,fork system:'bash -c g_con_handler _')
+g_debug "Executing ${cmd[*]}"
+echo "Listening on $g_listen..."
+"${cmd[@]}"
+
