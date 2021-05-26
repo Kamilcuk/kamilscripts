@@ -1,16 +1,16 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT AND Beerware
 
-name=$(basename "$0")
+g_name=$(basename "$0")
 
 usage() {
 	cat <<EOF
-Usage: $name <symbol>...
+Usage: $g_name <symbol>...
 
 Options:
   -d <database>   Specify location of the database.
   -r              Force reload of the database.
-  -i              Use in compiler line.
+  -i              Generate compiler options output.
   -q              Be quiet.
   -h              Print this text and exit.
 
@@ -67,25 +67,59 @@ EOF
 }
 
 log() {
-	if ! "${quiet:-false}"; then
-		echo "$name:" "$*"
+	if ! "${g_quiet:-false}"; then
+		echo "$g_name: $*" >&2
 	fi
 }
 
-args=$(getopt -n "$name" -o d:irqh -- "$@")
-eval set -- "$args"
-database=/tmp/database.txt
-include=false
-reload=false
-quiet=false
+fatal() {
+	echo "$g_name: $*" >&2
+	exit 1
+}
+
+searchmode_look() {
+	look -t $'\t' "$1" "$g_database"
+}
+
+searchmode_glob() {
+	if hash ,glob 2>/dev/null 1>&2; then
+		,glob "$1"
+	else
+		while IFS=$'\t' read -r a b; do
+			case "$a" in ($1) printf "%s\t%s\n" "$a" "$b" ;; esac
+		done
+	fi
+}
+
+searchmode_grep() {
+	grep "^$1"$'\t'
+}
+
+searchmode_egrep() {
+	grep -E "^$1"$'\t'
+}
+
+###############################################################################
+
+g_args=$(getopt -n "$g_name" -o d:irqgGEh -l help -- "$@")
+eval set -- "$g_args"
+g_database=/tmp/ld_find_symbol-database.txt
+g_include=false
+g_reload=false
+g_quiet=false
+g_searchmode=look
 while (($#)); do
 	case "$1" in
-	-d) database=$2; shift; ;;
-	-i) include=true; quiet=true; ;;
-	-r) reload=true; ;;
-	-q) quiet=true; ;;
-	-h) usage; exit; ;;
+	-d) g_database=$2; shift; ;;
+	-i) g_include=true; g_quiet=true; ;;
+	-r) g_reload=true; ;;
+	-q) g_quiet=true; ;;
+	-g) g_searchmode=glob; ;;
+	-G) g_searchmode=grep; ;;
+	-E) g_searchmode=egrep; ;;
+	-h|--help) usage; exit; ;;
 	--) shift; break; ;;
+	*) fatal "Invalid option parsing"; ;;
 	esac
 	shift
 done
@@ -93,10 +127,10 @@ if ((!$#)); then usage; exit 1; fi;
 
 exec 3>&1
 
-if [[ -e "$database" ]] && ! "$reload"; then
-	log "Using $database"
+if [[ -e "$g_database" ]] && ! "$g_reload"; then
+	log "Using $g_database"
 else
-	log "Creating $database"
+	log "Creating $g_database"
 
 	# list all ld search paths
 	ld --verbose |
@@ -136,14 +170,14 @@ else
 			}
 		'\''' _ 
 	} |
-	sort -t $'\t' -u -o "$database"
+	sort -t $'\t' -u -o "$g_database"
  
 fi 3>&1
 
 for i in "$@"; do
-	look -t $'\t' "$i" "$database"
+	searchmode_"$g_searchmode" "$i" < "$g_database"
 done |
-if "$include"; then
+if "$g_include"; then
 	cut -f2 |
 	xargs -d '\n' -n1 basename |
 	sed 's/^/-l:/' |

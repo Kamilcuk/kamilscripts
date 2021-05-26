@@ -74,7 +74,13 @@ C_list_links_to_CI_CD_Settings_of_all_projects_in_group_name() {
 }
 
 C_ci_lint() {
-	if (($# != 1)); then L_fatal "Need one argument"; fi
+	if (($# != 1)); then
+		if [[ -r   ./.gitlab-ci.yml ]]; then
+			set -- ./.gitlab-ci.yml
+		else
+			L_fatal "Need one argument"
+		fi
+	fi
 	if (($# == 0)); then L_usage; L_fatal "Needs file as argument"; fi
 
 	tmp=$(
@@ -127,11 +133,12 @@ C_repo_create() {
 
 . ,lib_lib -q 
 
-args=$(getopt -n "$L_name" -o +2 -- "$@")
+args=$(getopt -n "$L_name" -o +2 -l bash-completion -- "$@")
 eval set -- "$args"
 while (($#)); do
 	case "$1" in
 	-2) GITLAB_URL=${GITLAB2_URL:-${GITLAB_URL}} GITLAB_TOKEN=${GITLAB2_TOKEN:-${GITLAB_TOKEN}}; ;;
+	--bash-completion) break; ;;
 	--) shift; break;
 	esac
 	shift

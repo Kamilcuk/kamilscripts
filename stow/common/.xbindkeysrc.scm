@@ -419,8 +419,9 @@
   "-iorg.xfce.appfinder"
   "xfce4-appfinder --collapsed")
 
-(Xbindkey
-  '(Control Shift Alt Mod4 Mod5 Control_R)
+(XbindkeyMultiple
+  '((Control Shift  Alt Mod4 Mod5 Control_R)
+    (Control Shift Mod2 Mod4 Mod5 Control_R))
   "-ixfsm-suspend"
   "Suspend"
   "systemctl suspend")
