@@ -57,6 +57,10 @@ test_rstow:
   <<: *test_setup
   script:
     - bin/,rstow unittest
+test_fnmatch:
+  <<: *test_setup
+  script:
+    - bin/,fnmatch --test
 
 pages:
   stage: deploy
