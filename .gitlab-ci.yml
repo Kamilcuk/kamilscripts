@@ -61,6 +61,10 @@ test_fnmatch:
   <<: *test_setup
   script:
     - bin/,fnmatch --test
+test_lib_lib:
+  <<: *test_setup
+  script:
+    - bin/,lib_lib --test
 
 pages:
   stage: deploy
