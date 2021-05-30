@@ -3,7 +3,7 @@ if [[ $- != *i* ]]; then return; fi
 
 # https://stackoverflow.com/questions/4261876/check-if-bash-script-was-invoked-from-a-shell-or-another-script-application
 # If connected with sudo or as child shell.
-if ! [[ $(ps -o stat= -p $$) =~ s && -t 0 ]]; then return; fi
+if ! [[ $(ps -o stat= -p $$ 2>/dev/null) =~ s && -t 0 ]]; then return; fi
 
 # If not connected via ssh.
 if [[ -z "${SSH_CLIENT:-}" && -z "${SSH_TTY:-}" && -z "${SSH_CONNECTION:-}" ]]; then
