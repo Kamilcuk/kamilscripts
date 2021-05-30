@@ -29,26 +29,21 @@ cmd_restore_from_conflict() {
 }	
 
 _unsync_or_sync_vfs() {
-	g_name="$L_NAME $L_mode"
-	g_args=$(getopt -n "$g_name" -o hnvq -l help,dry-run,verbose,quiet -- "$@")
-	eval "set -- $g_args"
 	g_dry_run=0
 	g_verbose_xargs_arg=
 	g_quiet=0
 	while (($#)); do
 		case "$1" in
-		-h|--help)
-			echo "Usage: $g_name [-h|--help] [-n|--dry-run] [-v|--verbose] [-q|--quiet] paths..."
-			;;
-		-n|--dry-run) g_dry_run=1; ;;
-		-v|verbose) g_verbose_xargs_arg="-t"; ;;
-		-q|quiet) g_quiet=1; ;;
-		--) shift; break; ;;
-		*) L_fatal "Intenral error when parsign arguments"; ;;
+		-n) g_dry_run=1; ;;
+		-v) g_verbose_xargs_arg="-t"; ;;
+		-q) g_quiet=1; ;;
+		*) break; ;;
 		esac
 		shift
 	done
-	if (($# == 0)); then L_fatal "please pass paths as arguments."; fi
+	if (($# == 0)); then
+		L_fatal "please pass paths as arguments."
+	fi
 
 	tmpf=$(mktemp)
 	trap 'rm "$tmpf"' EXIT

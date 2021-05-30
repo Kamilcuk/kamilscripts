@@ -1,0 +1,36 @@
+--- bin/,owncloud
++++ bin/,owncloud
+@@ -29,21 +29,26 @@ cmd_restore_from_conflict() {
+ }	 
+ 
+ _unsync_or_sync_vfs() {
++	  g_name=" "
++	  g_args= --
++	  eval "set -- "
+ 	   g_dry_run=0
+ 	   g_verbose_xargs_arg=
+ 	   g_quiet=0
+ 	   while ((0)); do
+ 			 case "" in
+-			-n) g_dry_run=1; ;;
+-			-v) g_verbose_xargs_arg="-t"; ;;
+-			-q) g_quiet=1; ;;
+-			*) break; ;;
++			-h|--help)
++				   echo "Usage:  [-h|--help] [-n|--dry-run] [-v|--verbose] [-q|--quiet] paths..."
++				   ;;
++			-n|--dry-run) g_dry_run=1; ;;
++			-v|verbose) g_verbose_xargs_arg="-t"; ;;
++			-q|quiet) g_quiet=1; ;;
++			--) shift; break; ;;
++			*) L_fatal "Intenral error when parsign arguments"; ;;
+ 			 esac
+ 			 shift
+ 	   done
+-	  if ((0 == 0)); then
+-			L_fatal "please pass paths as arguments."
+-	  fi
++	  if ((0 == 0)); then L_fatal "please pass paths as arguments."; fi
+ 
+ 
+ 
