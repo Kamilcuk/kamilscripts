@@ -24,18 +24,14 @@ expect {
 		set pass [read [open "~/ncbj/password.txt"]]
 		send -- $pass
 		send -- "\r"
-		interact
-		return
 	}
 	-re "Last login:" {
-		interact
-		return
 	}
 	-re "$ " {
 		interact
-		return
 	}
 }
+return
 # interact
 # expect eof
 EOF
@@ -53,9 +49,9 @@ Host *
 EOF
 }
 
-cis-ssh() { ( _cis_ssh_config; sshpass -f ~/ncbj/password.txt ssh -F "$tmp" "$@"; ); }
+cis-ssh() { ( _cis_ssh_config; ,sshload --i --p ~/ncbj/password.txt -F "$tmp" "$@"; ); }
 . alias_complete.sh cis-ssh ssh
-cis-scp() { ( _cis_ssh_config; _cis_expect scp -F "$tmp" "$@"; ); }
+cis-scp() { ( _cis_ssh_config; sshpass -f ~/ncbj/password.txt scp -F "$tmp" "$@"; ); }
 . alias_complete.sh cis-scp scp
 cis-sshfs() { ( _cis_ssh_config;
 	sshfs -o ssh_command="sshpass -f ~/ncbj/password.txt ssh -F $tmp" "$@";
@@ -65,27 +61,4 @@ cis-rsync() { ( _cis_ssh_config;
 	rsync -e "sshpass -f ~/ncbj/password.txt ssh -F $tmp" "$@";
 ); }
 . alias_complete.sh cis-rsync scp
-
-if false; then
-_cis-ssh-smart() {
-	local args
-	args=$(getopt -o ::46AaCfGgKkMNnqsTtVvXxYyB:b:c:D:E:e:F:I:i:J:L:l:m:O:o:p:Q:R:S:W:w: -- "$@")
-	set -- "$args"
-	args=()
-	while (($#)); do
-		case "$1" in
-		-4|-6|-A|-a|-C|-f|-G|-g|-K|-k|-M|-N|-n|-q|-s|-T|-t|-V|-v|-X|-x|-Y|-y) args+=("$1"); ;;
-		-B|-b|-c|-D|-E|-e|-F|-I|-i|-J|-L|-l|-m|-O|-o|-p|-Q|-R|-S|-W|-w) args+=("$1" "$2"); shift; ;;
-		--) shift; break; ;;
-		*) echo "ERROR" >&2; return 1; ;;
-		esac
-		shift
-	done
-	local server=$1
-	if [[ ! "$server" =~ '@' ]]; then
-		server="kcukrowski@$server"
-	fi
-	ssh "${args[@]}" "$server" "$@"
-}
-fi
 

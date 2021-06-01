@@ -16,6 +16,7 @@ runlog() {
 	log "+ $*"
 	"$@"
 }
+
 sed_remote_to_ssh() {
 	sed -E 's~^(\s*url\s*=\s*)https://github.com/[kK]amilcuk/~\1git@github.com:kamilcuk/~' "$@"
 }

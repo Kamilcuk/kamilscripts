@@ -1,2 +1,81 @@
-#!/bin/sh
-exec ls -alF --color -h --group-directories-first "$@"
+#!/bin/bash
+
+# Old version: exec ls -alF --color -h --group-directories-first "$@"
+
+_ls=(
+	ls -aldFhU --color=auto
+)
+
+findargs=(
+	-mindepth 1 -maxdepth 1 '('
+	'(' -name '.*' '('
+			        '(' -type d -printf "A"
+			')' -o  '(' -type l -printf "B"
+			')' -o  '(' -type p -printf "C"
+			')' -o  '(' -type s -printf "D"
+			')' -o  '(' -type b -printf "E"
+			')' -o  '(' -type c -printf "F"
+			')' -o  '(' -type f -printf "G"
+			')' -o              -printf "H"
+	')' ')' -o      '(' -type d -printf "a"
+			')' -o  '(' -type l -printf "b"
+			')' -o  '(' -type p -printf "c"
+			')' -o  '(' -type s -printf "d"
+			')' -o  '(' -type b -printf "e"
+			')' -o  '(' -type c -printf "f"
+			')' -o  '(' -type f -printf "g"
+			')' -o              -printf "h"
+	')' -printf "%P\0"
+)
+
+dodirlist() {
+	cd "$1"
+	find . "${findargs[@]}" | sort -z > "$tmpf"
+	cut -z -c1 "$tmpf" | tr '\0' '\n' | awk '
+		#BEGIN{
+		#	lower["a"]; lower["b"]; lower["c"]; lower["d"]; lower["e"]; lower["f"]; lower["g"];
+		#	upper["A"]; upper["B"]; upper["C"]; upper["D"]; upper["E"]; upper["F"]; upper["G"];
+		#}
+		#$1 in upper { hidden += $1 }
+		$1 == "a" || $1 == "A" { dirs++;   next }
+		$1 == "g" || $1 == "G" { files++;  next }
+		#$1 == "b" || $1 == "B" { links++   }
+		#$1 == "c" || $1 == "C" { pipes++   }
+		#$1 == "d" || $1 == "D" { sockets++ }
+		#$1 == "e" || $1 == "E" { blocks++  }
+		#$1 == "f" || $1 == "F" { chars++   }
+		{ other++ }
+		END{
+			printf("total %d directories, %d files, %d other\n", dirs, files, other)
+		}'
+	{
+		printf "%s\0" . ..
+		cut -z -c2- "$tmpf"
+	} | xargs -0 -r "${_ls[@]}"
+	cd - >/dev/null
+}
+
+dols() {
+	if [[ -d "$1" ]]; then
+		printf "%q:\n" "$1"
+		dodirlist "$1"
+	else
+		"${_ls[@]}" "$1"
+	fi
+}
+
+tmpf=$(mktemp)
+trap 'rm "$tmpf"' EXIT
+
+if (($# == 0)); then
+	dodirlist .
+else
+	dols "$1"
+	shift
+	for i in "$@"; do
+		echo
+		dols "$i"
+	done
+fi
+
+

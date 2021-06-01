@@ -1,15 +1,4 @@
 #!/bin/bash
-set -euo pipefail
-
-r() {
-	if ((g_dry_run)); then
-		echo -n "DRY_RUN: "
-	fi
-	echo "+ $*" >&2;
-	if ((!g_dry_run)); then
-		"$@"
-	fi
-}
 
 C_get-root() {
 	if [[ -z "${GIT_PREFIX:-}" ]]; then
@@ -25,17 +14,17 @@ C_get-branch() {
 
 C_mergeto() {
 	cur=$(,git get-branch)
-	r git checkout "$1"
-	r git merge "$cur" "$@"
-	r git checkout "$cur"
+	L_run git checkout "$1"
+	L_run git merge "$cur" "$@"
+	L_run git checkout "$cur"
 }
 
 C_mergetopush() {
 	cur=$(C_get-branch)
-	r git checkout "$1"
-	r git merge "$cur" "$@"
-	r git push
-	r git checkout "$cur"
+	L_run git checkout "$1"
+	L_run git merge "$cur" "$@"
+	L_run git push
+	L_run git checkout "$cur"
 }
 
 C_convertGitRepoToSubmodule() {
@@ -46,14 +35,84 @@ C_convertGitRepoToSubmodule() {
 	cd -- "$(C_get-root)";
 	for i in "$@"; do
 		origin="$(cd "$i" && git config --get remote.origin.url)";
-		r git submodule add "$origin" "$i"
+		L_run git submodule add "$origin" "$i"
 	done
 }
 
-g_dry_run=0
+C_sed_remote_to_ssh() {
+	L_assert "(($#))"
+	sed -E 's~https://(git(hub|lab).com)[/:]~git@\1:~' <<<"$*"
+}
+
+C_sed_remote_to_https() {
+	L_assert "(($#))"
+	sed -E 's~git@(git(hub|lab).com)[/:]~https://\1/~' <<<"$*"
+}
+
+C_sed_remote_detect() {
+	sed -E ' \~https://~{ s/.*/https/; q; }; \~git@[^:]*:~{ s/.*/ssh/; q; }; d '
+}
+
+C_remote_get_url() {
+	tmp=$(git remote -v show -n "${1:-origin}" | awk '/URL/{print $3;exit}')
+	# shellcheck disable=SC2016
+	L_assert '[[ -n "$tmp" ]]' "internal error"
+	echo "$tmp"
+}
+
+C_remote_protocol() {
+	C_remote_get_url "$@" | C_sed_remote_detect
+}
+
+C_remote_set_to_https() {
+	cur=$(C_remote_protocol "$@")
+	if [[ "$cur" != "https" ]]; then
+		neww=$(C_sed_remote_to_https "$(C_remote_get_url)")
+		# shellcheck disable=SC2016
+		L_assert '[[ -n "$neww" ]]' "internal error"
+		L_run git remote set-url "${1:-origin}" "$neww"
+	fi
+}
+
+C_remote_set_to_ssh() {
+	cur=$(C_remote_protocol "$@")
+	if [[ "$cur" != "ssh" ]]; then
+		neww=$(C_sed_remote_to_ssh "$(C_remote_get_url)")
+		# shellcheck disable=SC2016
+		L_assert '[[ -n "$neww" ]]' "internal error"
+		L_run git remote set-url "${1:-origin}" "$neww"
+	fi
+}
+
+C_remote_toggle_ssh_https() {
+	cur=$(C_remote_protocol "$@")
+	if [[ "$cur" == "https" ]]; then
+		C_remote_set_to_ssh "$@"
+	elif [[ "$cur" == "ssh" ]]; then
+		C_remote_set_to_https "$@"
+	fi
+}
+
+C_version() {
+	git --version | awk '{gsub(/\./," ",$3);print $3}'
+}
+
+C_autostash_supported() {
+	C_version | awk '{exit !($1 > 2 || ($1 == 2 && $2 >= 6))}'
+}
+
+C_any_changes() {
+	git status --porcelain
+}
+
+L_dryrun=0
 if [[ "${1:-}" == -n ]]; then
-	g_dry_run=1
+	L_dryrun=1
 	shift
+fi
+if (($# >= 2)) && [[ "${2:-}" == -n ]]; then
+	L_dryrun=1
+	set -- "$1" "${@:3}"
 fi
 
 . ,lib_lib C_ "$@"
