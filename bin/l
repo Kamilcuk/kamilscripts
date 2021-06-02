@@ -1,6 +1,35 @@
 #!/bin/bash
 
-# Old version: exec ls -alF --color -h --group-directories-first "$@"
+fallback=0
+if (($# >= 1)) && [[ "${1:0:1}" == "-" ]]; then
+	fallback=1
+elif cut --help | grep -q -- -z; then
+	cut_z_chars() {
+		cut -z -c"$1" "$2"
+	}
+	cut_z_chars_since() {
+		cut -z -c"$1"- "$2"
+	}
+elif awk --version | grep -q 'GNU'; then
+	cut_z_chars() {
+		awk -v N="$1" 'BEGIN{ RS="\0"; ORS="\0"; } {print substr($0,N,1)}' "$2"
+	}
+	cut_z_chars_since() {
+		awk -v N="$1" 'BEGIN{ RS="\0"; ORS="\0"; } {print substr($0,N)}' "$2"
+	}
+else
+	fallback=1
+fi
+
+if ((fallback)); then
+	# In such case we do not have our requirements met, we fall back to the good old ls version
+	exec ls -alFh --color=auto --group-directories-first "$@"
+fi
+
+fatal() {
+	echo "l: error: $*" >&2
+	exit 1
+}
 
 _ls=(
 	ls -aldFhU --color=auto
@@ -29,9 +58,11 @@ findargs=(
 )
 
 dodirlist() {
-	cd "$1"
-	find . "${findargs[@]}" | sort -z > "$tmpf"
-	cut -z -c1 "$tmpf" | tr '\0' '\n' | awk '
+	if ! cd "$1"; then
+		fatal "Could not change directory: $1"
+	fi
+	find . "${findargs[@]}" | sort -z > "$tmpf" ||:
+	cut_z_chars 1 "$tmpf" | tr '\0' '\n' | awk '
 		#BEGIN{
 		#	lower["a"]; lower["b"]; lower["c"]; lower["d"]; lower["e"]; lower["f"]; lower["g"];
 		#	upper["A"]; upper["B"]; upper["C"]; upper["D"]; upper["E"]; upper["F"]; upper["G"];
@@ -48,11 +79,16 @@ dodirlist() {
 		END{
 			printf("total %d directories, %d files, %d other\n", dirs, files, other)
 		}'
-	{
-		printf "%s\0" . ..
-		cut -z -c2- "$tmpf"
-	} | xargs -0 -r "${_ls[@]}"
-	cd - >/dev/null
+	if ! {
+			printf "%s\0" . ..
+			cut_z_chars_since 2 "$tmpf"
+		} | xargs -0 -r "${_ls[@]}"
+	then
+		fatal "ls failed"
+	fi
+	if ! cd - >/dev/null; then
+		fatal "Could not change directory back from: $1"
+	fi
 }
 
 dols() {
@@ -60,7 +96,9 @@ dols() {
 		printf "%q:\n" "$1"
 		dodirlist "$1"
 	else
-		"${_ls[@]}" "$1"
+		if ! "${_ls[@]}" "$1"; then
+			fatal "ls failed"
+		fi
 	fi
 }
 

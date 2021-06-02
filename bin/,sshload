@@ -3,12 +3,8 @@ set -euo pipefail
 
 . ,lib_lib -l
 
-sshload_default_callback() {
-	L_run ssh "${@}"
-}
-
-ssh_expect_old() 
-{ 
+_unused_ssh_expect_old()
+{
     expect -f <(cat <<'EOF'
 # https://askubuntu.com/questions/93848/ssh-shell-launched-using-expect-doesnt-have-full-width-how-can-i-make-fix-it
 # trap sigwinch and pass it to the child we spawned
@@ -33,11 +29,9 @@ expect {
 		send -- "\r"
 		exp_continue
 	}
-	-re "Last login:" {
-		exp_continue
-	}
-	"$ " {}
-	"# " {}
+	# "Last login:" { exp_continue; }
+	"$" {}
+	"#" {}
 }
 
 expect -re $
@@ -56,22 +50,7 @@ EOF
 	) "$@"
 }
 
-sshload_callback_load_configuration_old() {
-	if ((!SSH_INTERACTIVE)); then
-		L_run sshpass -f "$g_passfile" ssh "$@"
-		return "$?"
-	fi
-	if [[ -z "$g_sshload_sh" && -x ~/.config/sshload.sh ]]; then
-		g_sshload_sh=~/.config/sshload.sh
-	fi
-	if [[ -n "$g_sshload_sh" ]]; then
-		cmd=$(L_dryrun=0; L_run "$g_sshload_sh" "$SSH_INTERACTIVE" "$@")
-	fi
-	L_debug "$(declare -p g_sshload_sh cmd g_passfile)"
-	if ((L_dryrun)); then
-		L_run expect -f ... ssh -tt "$@"
-		return
-	fi
+_unused_sshload_callback_load_configuration_old() {
 	set +e
 	ssh_expect "$cmd"$'\n' "$g_passfile" stdbuf -o0 ssh -tt "$@" > >(
 		if L_lmask_isblocked "L_LOG_DEBUG"; then
@@ -91,38 +70,111 @@ sshload_callback_load_configuration_old() {
 	)
 }
 
+bash_interactive_login_shell_startup() {
+	cat <<'EOF'
+if [[ -r /etc/profile ]];then . /etc/profile;fi
+if [[ -r ~/.bash_profile ]];then . ~/.bash_profile
+elif [[ -r ~/.bash_login ]];then . ~/.bash_login
+elif [[ -r  ~/.profile ]];then . ~/.profile;fi
+EOF
+	# for interactive non-login shell:
+	# if [[ -r ~/.bashrc ]]; then . ~/.bashrc; fi'
+}
+
+runssh() {
+	set +e ; trap '' ERR
+	local ssh
+	if [[ -n "$g_passfile" ]]; then
+		ssh=(sshpass -f "$g_passfile" ssh)
+	else
+		ssh=(ssh)
+	fi
+	L_run "${ssh[@]}" "$@"
+}
+
+sshload_run_bash() {
+	cmd=$(printf "%q" "$CMD")
+	cmd2="bash --rcfile <(printf %s $cmd) -i"
+	cmd2=$(printf %q "$cmd2")
+	cmd3="exec bash -lc $cmd2"
+	runssh -tt "$@" "$cmd3"
+}
+
+sshload_run_bashgzip() {
+	cmdgzipxxd=$(gzip <<<"$CMD" | xxd -p | paste -sd '')
+	# shellcheck disable=SC2016
+	L_assert '[[ "$cmdgzipxxd" =~ ^[A-Za-f0-9]+$ ]]' "Output from xxd -p is not only hex characters"
+	#
+	cmd="printf %s $(printf "%q" "$cmd")"
+	cmdgzipxxd="xxd -r -p <<<$cmdgzipxxd|gzip -d"
+	#
+	fq() { printf %q "bash --rcfile <($1) -i"; }
+	cmd=$(fq "$cmd")
+	cmdgzipxxd=$(fq "$cmdgzipxxd")
+	cmdlen=${#cmd}
+	cmdgzipxxdlen=${#cmdgzipxxd}
+	#
+	usegzip=$(( cmdlen > cmdgzipxxdlen ))
+	L_debug "cmdlen=$cmdlen cmdgzipxxdlen=$cmdgzipxxdlen usegzip=$usegzip"
+	if ((usegzip)); then
+		cmd="$cmdgzipxxd"
+	fi
+	#
+	cmd="exec bash -c $cmd"
+	runssh -tt "$@" "$cmd"
+}
+
+sshload_run_mktemp() {
+	cmd=$(printf "%q" "$CMD")
+	cmd2="tmpf=\$(mktemp) && trap 'rm \"\$tmpf\"' EXIT && cat <<<$cmd > \"\$tmpf\" && sh --rcfile \"\$tmpf\" -i"
+	runssh -tt "$@" "$cmd3"
+}
+
+sshload_run_catmktemp() {
+	sshscript=$(cat <<-'EOF'
+		tmpf=$(mktemp) &&
+		trap 'rm "$tmpf"' EXIT &&
+		while IFS= read -r l; do if [[ "$l" == 28126bce-5949-47e9-b37a-6b0c72d97c62 ]]; then break; fi; printf "%s\n" "$l"; done > "$tmpf" &&
+		bash --rcfile "$tmpf" -i
+		EOF
+	)
+	{
+		cat <<<"$CMD"
+		printf "%s\n" 28126bce-5949-47e9-b37a-6b0c72d97c62
+		exec cat
+	} |
+	runssh -tt "$@" "$sshscript"
+}
+
 sshload_callback_load_configuration() {
 	if ((!SSH_INTERACTIVE)); then
-		L_run sshpass -f "$g_passfile" ssh "$@"
+		runssh "$@"
 		return "$?"
 	fi
+	cmd=$(bash_interactive_login_shell_startup)
 	if [[ -z "$g_sshload_sh" && -x ~/.config/sshload.sh ]]; then
 		g_sshload_sh=~/.config/sshload.sh
 	fi
-	cmd='if [[ -r ~/.bashrc ]]; then source ~/.bashrc; fi; '$'\n'
 	if [[ -n "$g_sshload_sh" ]]; then
-		cmd+=$( L_dryrun=0; L_run "$g_sshload_sh" "$SSH_INTERACTIVE" "$@" )
+		if ! cmd+=$'\n'$(L_dryrun=0; L_run "$g_sshload_sh" "$@"); then
+			L_fatal "Running script failed: $g_sshload_sh"
+		fi
 	fi
 	L_debug "$(declare -p g_sshload_sh cmd g_passfile)"
-	if ((L_dryrun)); then
-		L_run expect -f ... ssh -tt "$@"
-		return
-	fi
-	cmd=$(printf "%q" "$cmd")
-	set +e
-	trap '' ERR
-	L_run sshpass -f "$g_passfile" ssh -tt "$@" "bash -c \"bash --rcfile <( printf %s $cmd ) -i\""
+	set -- "$@"
+	CMD="$cmd"
+	sshload_run_bashgzip "$@"
 }
 
 usage() {
 	cat <<EOF
 $ssh_usage
 
-Usage: $L_NAME [all_ssh_options] [LONGOPTIONS] destination [command] 
+Usage: $L_NAME [all_ssh_options] [LONGOPTIONS] destination [command]
 
 Long options:
-	--c --callback <callback>
-	--i --interactiveconfig [config]
+	--b --callback <callback>
+	--c --interactiveconfig <config>
 	--p --passfile <file>
 	--v --verbose
 	--q --quiet
@@ -143,23 +195,24 @@ ssh_opts1=$(
 	sed '/^-/!d' |
 	sed '/-.[^ ]/{ s/-//; }; s/-\(.\) .*/\1:/'
 )
+L_assert '[[ -n "$ssh_opts1" ]]' "Internal error when getting ssh options string"
 ssh_getopts=$(<<<"$ssh_opts1" paste -sd '')
 ssh_opts_noarg=$(<<<"$ssh_opts1" sed '/:/d' | paste -sd '')
 ssh_opts_arg=$(<<<"$ssh_opts1" sed '/:/!d; s/://g' | paste -sd '')
 g_args=$(getopt -n "$L_NAME" -o "+$ssh_getopts" \
-	-l c:,callback:,i::,interactiveconfig::,p:,passfile:,v,verbose,q,quiet,n,dry-run,h,help \
+	-l b:,callback:,c:,interactiveconfig:,p:,passfile:,v,verbose,q,quiet,n,dry-run,h,help \
 	-- "$@") || return 1
 eval "set -- $g_args"
 ssh_args=()
-g_callback="sshload_default_callback"
+g_callback=sshload_callback_load_configuration
 g_sshload_sh=""
 g_passfile=""
 while (($#)); do
 	case "$1" in
 	(-[$ssh_opts_noarg]) ssh_args+=("$1"); ;;
 	(-[$ssh_opts_arg]) ssh_args+=("$1" "$2"); shift; ;;
-	(--C|--callback) g_callback="$2"; shift; ;;
-	(--i|--interactiveconfig) g_callback=sshload_callback_load_configuration; g_sshload_sh="$2"; shift; ;;
+	(--b|--callback) g_callback="$2"; shift; ;;
+	(--c|--interactiveconfig) g_sshload_sh="$2"; shift; ;;
 	(--p|--passfile) g_passfile="$2"; shift; ;;
 	(--v|--verbose) L_lmask_allow "L_LOG_DEBUG"; ;;
 	(--q|--quiet) L_lmask_block "$L_LOG_INFO"; ;;
@@ -172,6 +225,8 @@ while (($#)); do
 done
 if (($# == 0)); then usage; L_fatal "Not enough arguments"; fi
 
-SSH_INTERACTIVE=$(($# == 1)) "$g_callback" "${ssh_args[@]}" -- "$@"
+export SSH_INTERACTIVE=$(($# == 1))
+export SSH_SHELL=bash
+"$g_callback" "${ssh_args[@]}" -- "$@"
 
 
