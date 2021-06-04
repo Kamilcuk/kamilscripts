@@ -51,8 +51,8 @@ EOF
 }
 
 _unused_sshload_callback_load_configuration_old() {
-	set +e
-	ssh_expect "$cmd"$'\n' "$g_passfile" stdbuf -o0 ssh -tt "$@" > >(
+	set +e ; trap '' ERR
+	ssh_expect "$CMD"$'\n' "$g_passfile" stdbuf -o0 ssh -tt "$@" > >(
 		if L_lmask_isblocked "L_LOG_DEBUG"; then
 			output=1
 			while IFS= read -r l; do
@@ -89,7 +89,7 @@ runssh() {
 	else
 		ssh=(ssh)
 	fi
-	L_run "${ssh[@]}" "$@"
+	L_run_log L_LOG_DEBUG "${ssh[@]}" "$@"
 }
 
 sshload_run_bash() {
@@ -147,7 +147,7 @@ sshload_run_catmktemp() {
 }
 
 sshload_callback_load_configuration() {
-	if ((!SSH_INTERACTIVE)); then
+	if ((!SSHLOAD_INTERACTIVE)); then
 		runssh "$@"
 		return "$?"
 	fi
@@ -156,21 +156,25 @@ sshload_callback_load_configuration() {
 		g_sshload_sh=~/.config/sshload.sh
 	fi
 	if [[ -n "$g_sshload_sh" ]]; then
-		if ! cmd+=$'\n'$(L_dryrun=0; L_run "$g_sshload_sh" "$@"); then
+		if ! tmp=$(
+			L_dryrun=0
+			L_run_log L_LOG_DEBUG "$g_sshload_sh" "$@"
+		); then
 			L_fatal "Running script failed: $g_sshload_sh"
 		fi
+		cmd+=$'\n'"$tmp"
+	fi
+	if ! bash -O extglob -n <<<"$cmd"; then
+		L_fatal "Syntax of config file output failed"
 	fi
 	L_debug "$(declare -p g_sshload_sh cmd g_passfile)"
-	set -- "$@"
 	CMD="$cmd"
 	sshload_run_bashgzip "$@"
 }
 
 usage() {
 	cat <<EOF
-$ssh_usage
-
-Usage: $L_NAME [all_ssh_options] [LONGOPTIONS] destination [command]
+Usage: $L_NAME [all_ssh_options] [long_options] destination [command]
 
 Long options:
 	--b --callback <callback>
@@ -225,8 +229,18 @@ while (($#)); do
 done
 if (($# == 0)); then usage; L_fatal "Not enough arguments"; fi
 
-export SSH_INTERACTIVE=$(($# == 1))
-export SSH_SHELL=bash
+SSHLOAD_INTERACTIVE=0
+if (($# == 1)) && [[ -t 0 ]]; then
+	SSHLOAD_INTERACTIVE=1
+fi
+export SSHLOAD_INTERACTIVE
+export SSHLOAD_SHELL=bash
+export SSHLOAD_DESTINATION=$1
+if tmp=$(ssh -G "$SSHLOAD_DESTINATION" 2>/dev/null ||:) && [[ -n "$tmp" ]]; then
+	SSHLOAD_USER="$(sed -n 's/^user *//p' <<<"$tmp")"
+	SSHLOAD_HOSTNAME="$(sed -n 's/^hostname *//p' <<<"$tmp")"
+	export SSHLOAD_USER SSHLOAD_HOSTNAME
+fi
 "$g_callback" "${ssh_args[@]}" -- "$@"
 
 

@@ -79,7 +79,6 @@ _kc_prompt_command() {
 				s/^$'/${one}%reset%${two}$'${one}%bold%${two}/;
 				s/'$/${one}%reset%${two}'/;
 			}
-			"'s@\\@\\\\@g'"
 			s@/@${one}%cyan%${two}/${one}%blue%${two}@g
 		"
 	)"

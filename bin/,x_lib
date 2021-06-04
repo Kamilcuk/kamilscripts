@@ -1,5 +1,5 @@
 #!/bin/bash
-set -o pipefail
+set -euo pipefail
 
 # x-server functions functions
 
@@ -18,13 +18,18 @@ set -o pipefail
 ,x_find_monitor_for_position() {
 	,x_get_monitors |
 	awk -v x="$1" -v y="$2" '
+	function eprint(x) {
+		print x > "/dev/stderr"
+	}
 	{ name=$1; width=$2; height=$3; xoff=$4; yoff=$5; }
-	x >= xoff && y >= yoff && x < xoff + width && y < yoff + height { found=1 }
-	found
-	found { exit }
+	{ windows[NR]=$0 }
+	x >= xoff && y >= yoff && x < xoff + width && y < yoff + height { found=1; print; exit }
 	END {
 		if (!found) {
-			print "Could not find any monitor for the current mouse position" > "/dev/stderr"
+			eprint("Could not find any monitor for given position: " x " " y)
+			for (i in windows) {
+				eprint("Window "i": "windows[i])
+			}
 			exit 1
 		}
 	}
@@ -47,11 +52,11 @@ set -o pipefail
 		s//\1/
 		H
 	}
-	/.*Position: ([0-9]+),([0-9]+).*/{
+	/.*Position: ([^,]*),([^ ]+).*/{
 		s//\1 \2/
 		H
 	}
-	/.*Geometry: ([0-9]+)x([0-9]+).*/{
+	/.*Geometry: ([^x]+)x([^ ]+).*/{
 		s//\1 \2/
 		H
 		g
@@ -62,10 +67,18 @@ set -o pipefail
 	'
 }
 
+,x_get_window_geometry2() {
+	local tmp n a b c d
+	tmp=$(,x_get_window_geometry "$1")
+	IFS=' ' read -r n a b c d <<<"$tmp"
+	printf "%s" "$n "
+	,x_offset_GTK_FRAME_EXTENTS "$1" "$a" "$b" "$c" "$d"
+}
+
 # @return @see ,x_get_monitors
 ,x_get_window_monitor() {
 	local pos
-	pos=$(,x_get_window_geometry "$@" | awk '{print $2,$3}') &&
+	pos=$(,x_get_window_geometry2 "$@" | awk '{print $2,$3}') &&
 	,x_find_monitor_for_position $pos
 }
 
@@ -129,6 +142,24 @@ set -o pipefail
 
 ,x_get_panel() {
 	wmctrl -l -G | grep 'panel$'
+}
+
+
+,x_get_GTK_FRAME_EXTENTS() {
+	local tmp IFS
+	tmp=$(xprop -id "$1" _GTK_FRAME_EXTENTS)
+	if grep -q 'not found' <<<"$tmp"; then
+		echo "0 0 0 0"
+	else
+		echo "$(sed 's/.*=//; s/,/ /g' <<<"$tmp")"
+	fi
+}
+
+,x_offset_GTK_FRAME_EXTENTS() {
+	local tmp
+	tmp=$(,x_get_GTK_FRAME_EXTENTS "$1")
+	IFS=' ' read -r a c b d <<<"$tmp"
+	echo $(($2 + a)) $(($3 + b)) $(($4 - a - c)) $(($5 - b - d))
 }
 
 . ,lib_lib ',x_' "$@"

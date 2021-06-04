@@ -1,28 +1,67 @@
 {
-	"coc.preferences.extensionUpdateCheck": "weekly",
-
-	"diagnostic.signOffset": 2,
-	"diagnostic.errorSign": "×",
-	"diagnostic.warningSign": "»",
-	"diagnostic.infoSign": "ღ",
-	"diagnostic.hintSign": "ஐ",
-	"diagnostic.displayByAle": false,
-	"diagnostic.refreshOnInsertMode": true,
-	"diagnostic.refreshAfterSave": false,
-	"diagnostic.checkCurrentLine": false,
-	"diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
-	"diagnostic.virtualText": true,
-	"codeLens.enable": true,
-
-	"suggest.triggerCompletionWait": 500,
-
-	"clangd.semanticHighlighting":true,
-
+  "coc.preferences.extensionUpdateCheck": "weekly",
+  "diagnostic.signOffset": 2,
+  "diagnostic.errorSign": "✘",
+  "diagnostic.warningSign": "⚠",
+  "diagnostic.infoSign": "🛈",
+  "diagnostic.hintSign": "☡",
+  "diagnostic.displayByAle": false,
+  "diagnostic.refreshOnInsertMode": true,
+  "diagnostic.refreshAfterSave": false,
+  "diagnostic.checkCurrentLine": false,
+  "diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
+  "diagnostic.virtualText": true,
+  "codeLens.enable": true,
+  "suggest.triggerCompletionWait": 500,
+  "clangd.semanticHighlighting": true,
   "python.linting.pylintEnabled": true,
   "python.linting.enabled": true,
-
-	"solargraph.checkGemVersion": false,
-
-	"_comment": ""
+  "solargraph.checkGemVersion": false,
+  "diagnostic-languageserver.mergeConfig": true,
+  "diagnostic-languageserver.filetypes": {
+    "vim": "vint",
+    "email": "languagetool",
+    "markdown": [
+      "write-good",
+      "markdownlint"
+    ],
+    "sh": "shellcheck",
+    "elixir": [
+      "mix_credo",
+      "mix_credo_compile"
+    ],
+    "eelixir": [
+      "mix_credo",
+      "mix_credo_compile"
+    ],
+    "php": [
+      "phpstan",
+      "psalm"
+    ]
+  },
+  "diagnostic-languageserver.formatFiletypes": {
+    "dart": "dartfmt",
+    "elixir": "mix_format",
+    "eelixir": "mix_format",
+    "python": [
+      "black",
+      "isort"
+    ],
+    "lua": "lua-format",
+    "sh": "shfmt",
+    "blade": "blade-formatter"
+  },
+  "diagnostic-languageserver.formatters": {
+    "shfmt": {
+      "command": "shfmt",
+      "args": [
+        "-i",
+        "2",
+        "-bn",
+        "-ci",
+        "-sr"
+      ]
+    }
+  },
+  "_comment": ""
 }
-

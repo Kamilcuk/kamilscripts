@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+. ,lib_lib -q
+
 name=$(basename "$0")
 
 # Events File
@@ -54,7 +56,7 @@ EOF
 
 # functions ###########################################
 
-log() { if "${debug:-false}"; then echo "$name:" "$@"; fi; }
+log() { if "${g_debug:-false}"; then echo "$name:" "$@"; fi; }
 fatal() { echo "$name: error:" "$@" >&2; exit 1; }
 
 notify_msgs=""
@@ -77,7 +79,6 @@ notify() {
 
 getPanelHeight() {
 	# add more panels if needed
-	local w
 	if wmctrl -l -G | awk '$2 == -1 && $8 == "xfce4-panel" && NF == 8{ print $6; exit 1 }'; then
 		fatal "${FUNCNAME[0]} - unknown panel - returning 20" >&2
 	fi
@@ -100,17 +101,31 @@ wmove() {
 	local x y width height id
 	id=$activew
 	x=$1 y=$2 width=$3 height=$4
+	#
+	local bleft bright btop bbottom
+	bleft=0 bright=0 btop=0 bbottom=0
 	tmp=$(getBorderInfo "$id")
 	read -r bleft bright btop bbottom <<<"$tmp"
+	#
+	local gx gy gw gh
+	local xsize ysize
+	tmp=$(,x_lib get_GTK_FRAME_EXTENTS "$id")
+	IFS=' ' read -r gx gw gy gh <<<"$tmp"
+	# Apply fixes
+	x=$(( x - gx ))
+	y=$(( y - gy ))
+	width=$((  width  - bleft - bright  + gx + gw ))
+	height=$(( height - btop  - bbottom + gy + gh ))
+	#
 	# resize and move to specified position
-    wmctrl -i -r $id -e 0,$x,$y,$((width-bleft-bright)),$((height-btop-bbottom))
+    wmctrl -i -r "$id" -e "0,$x,$y,$width,$height"
     # unmaximize
-    wmctrl -i -r $id -b remove,fullscreen
-	wmctrl -i -r $id -b remove,maximized_vert
-	wmctrl -i -r $id -b remove,maximized_horz
+    wmctrl -i -r "$id" -b remove,fullscreen
+	wmctrl -i -r "$id" -b remove,maximized_vert
+	wmctrl -i -r "$id" -b remove,maximized_horz
     # double resizing seem to be correcting strange behavior
 	sleep 0.1
-    wmctrl -i -r $id -e 0,$x,$y,$((width-bleft-bright)),$((height-btop-bbottom))
+    wmctrl -i -r "$id" -e "0,$x,$y,$width,$height"
 }
 
 wtogglefullscreen() {
@@ -118,9 +133,9 @@ wtogglefullscreen() {
 	local id
 	id=$activew
 	notify "$activewname" "Toggle maximized"
-	wmctrl -i -r $id -b toggle,maximized_vert
-	wmctrl -i -r $id -b toggle,maximized_horz
-	# wmctrl -i -r $id -b toggle,fullscreen #,maximized_vert,maximized_horz
+	wmctrl -i -r "$id" -b toggle,maximized_vert
+	wmctrl -i -r "$id" -b toggle,maximized_horz
+	# wmctrl -i -r "$id" -b toggle,fullscreen #,maximized_vert,maximized_horz
 }
 
 action() {
@@ -128,12 +143,12 @@ action() {
 	events=$1
 
 	local activew activewname
-	activew=$(xdotool getactivewindow)
-	activewname=$(xdotool getactivewindow getwindowname)
+	activew=${ACTIVEWINDOW:-$(xdotool getactivewindow)}
+	activewname=$(xdotool getwindowname "$activew")
 
 	# ignore moving windows not attached to desktop
 	local activedesktop
-	activedesktop=$(xdotool getactivewindow get_desktop_for_window)
+	activedesktop=$(xdotool get_desktop_for_window "$activew")
 	if ((activedesktop < 0)); then return; fi
 
 	local mx my tmp
@@ -141,7 +156,7 @@ action() {
 	read -r mx my <<<"$tmp" # Monitor X, Monitor Y
 
 	tmp=$(,x_lib get_xfce4_panel_info)
-	read -r _ _ _ _ panelheight hiding <<<"$tmp"
+	IFS=' ' read -r _ _ _ _ panelheight hiding <<<"$tmp"
 	if ((!hiding)); then
 		my=$((my - panelheight))
 	fi
@@ -157,16 +172,16 @@ action() {
 	esac
 
 	case "$events" in
-	up)         wmove 0    0    $mx  $myh; ;;
-	down)       wmove 0    $myh $mx  $myh; ;;
-	left)       wmove 0    0    $mxh $my ; ;;
-	right)      wmove $mxh 0    $mxh $my ; ;;
-	right+up)   wmove $mxh 0    $mxh $myh; ;;
-	left+up)    wmove 0    0    $mxh $myh; ;;
-	down+right) wmove $mxh $myh $mxh $myh; ;;
-	down+left)  wmove 0    $myh $mxh $myh; ;;
+	up)         wmove 0      0      "$mx"  "$myh" ; ;;
+	down)       wmove 0      "$myh" "$mx"  "$myh" ; ;;
+	left)       wmove 0      0      "$mxh" "$my"  ; ;;
+	right)      wmove "$mxh" 0      "$mxh" "$my"  ; ;;
+	right+up)   wmove "$mxh" 0      "$mxh" "$myh" ; ;;
+	left+up)    wmove 0      0      "$mxh" "$myh" ; ;;
+	down+right) wmove "$mxh" "$myh" "$mxh" "$myh" ; ;;
+	down+left)  wmove 0      "$myh" "$mxh" "$myh" ; ;;
 	left+right) wtogglefullscreen; ;;
-	down+up) wmove $((mxh/2)) $((myh/2)) $mxh $myh; ;;
+	down+up) wmove "$((mxh/2))" "$((myh/2))" "$mxh" "$myh" ; ;;
 	*) notify "Unknown events: $events"; ;;
 	esac
 }
@@ -220,21 +235,29 @@ server() {
 
 # main #################################################
 
-args=$(getopt -n "$name" -o ht: -l help,timeout:,debug -- "$@")
-eval set -- "$args"
+args=$(getopt -n "$name" -o ht:fw: -l help,timeout:,debug,foreground,window: -- "$@")
+eval "set -- $args"
 server_timeout=0.1
-debug=false
+g_debug=false
+g_foreground=0
 while (($#)); do
 	case "$1" in
 	-h|--help) usage; exit; ;;
 	-t|--timeout) server_timeout=$2; shift; ;;
-	--debug) debug=true; ;;
+	-f|--foreground) g_foreground=1; ;;
+	-w|--window) ACTIVEWINDOW="$2"; shift; ;;
+	--debug) g_debug=true; ;;
 	--) shift; break; ;;
 	esac
 	shift
 done
 
 if (($# < 1)); then fatal "Wrong number of arguments, see $name --help"; fi
+
+if ((g_foreground)); then
+	action "$@"
+	exit
+fi
 
 # check if fifo exists
 # if it does, that means we are only a client, if it doesn't

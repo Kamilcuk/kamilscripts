@@ -468,6 +468,7 @@ if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
 		\ "ruby",
 		\ "java",
 		\ "html",
+		\ "sh",
 		\ ]}
 endif
 
@@ -890,6 +891,7 @@ let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
 let g:coc_global_extensions	= [
 			\ 'coc-highlight',
 			\ 'coc-yank',
+			\ 'coc-diagnostic',
 			\ ]
 " Dynamically installed coc extension depending on filetype.
 let g:coc_global_extensions_dynamics = {
