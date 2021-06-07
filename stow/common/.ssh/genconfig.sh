@@ -230,6 +230,7 @@ ncbj cms-vo          ''
 ncbj slimak          10.200.4.20
 #
 ncbj ci              dizvm7.cis.gov.pl  root
+ncbj cicd            dizvm7.cis.gov.pl  root
 ncbj fb_core         dizvm4.cis.gov.pl  root
 ncbj fmr             dizvm5.cis.gov.pl  root
 ncbj jenkins         dizvm2.cis.gov.pl  root

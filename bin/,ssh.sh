@@ -60,7 +60,7 @@ recreate_config() {
 	fi
 
 	if [[ ! -e ~/.ssh/config || ~/.ssh/config -ot "$newestf" ]]; then
-		echo "$name: Recreating ~/.ssh/config from ${#files[*]} files"
+		echo "$name: Recreating ~/.ssh/config from: ${files[*]}"
 		tmp=$(
 			cat <<EOF
 # ----- snip ------
