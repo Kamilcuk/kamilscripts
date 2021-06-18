@@ -1,0 +1,148 @@
+#!/bin/bash
+set -euo pipefail
+
+L_NAME=${BASH_SOURCE##*/}
+
+L_err() {
+	echo "$L_NAME: ERROR: $*" >&2
+}
+
+L_trap_err_small() {
+	L_err "fatal error on $(caller)"
+}
+
+trap L_trap_err_small ERR
+
+L_fatal() {
+	L_err "$@"
+	exit 1
+}
+
+L_run() {
+	echo "$L_NAME: + $*" >&2
+	"$@"
+}
+
+get_partition_id() {
+	local tmp
+	tmp=$(
+		sfdisk -d "$1" |
+		awk -v place="$1$2" '$1 == place' |
+		sed 's/.*, Id=\([^ ,]*\).*/\1/'
+	)
+}
+
+confirm() {
+	echo -n "$1 [y/n] "
+	unset IFS
+	local ans
+	read -r ans
+	case "$ans" in
+	y) ;;
+	*) echo "Quitting..."; exit 1 ;;
+	esac
+}
+
+askcheck() {
+	local _tmp
+	_tmp=$(
+		var=$1
+		fcheck=$2
+		msg=$3
+		default=${4:-}
+		while :; do
+			if ! read -r -p "$msg" tmp; then 
+				L_fatal "Error reading!"
+			fi
+			if (($# >= 4)) && [[ -z "$tmp" ]]; then
+				tmp="$default"
+			fi
+			if ! "$fcheck" "$tmp"; then
+				continue;
+			fi
+			printf %s "$tmp"
+			break
+		done
+	)
+	echo "  Chosen: $_tmp"
+	printf -v "$1" "%s" "$_tmp"
+}
+
+###############################################################################
+
+exec 3>&1
+
+check_is_partition() {
+	if [[ ! -e "$1" ]]; then L_err "Path $1 does not exists"; return 1; fi
+	if [[ ! -b "$1" ]]; then L_err "Path $1 is not a block special file"; return 1; fi
+	local i
+	i=$(stat -L -c %t "$1")
+	if [[ "$i" != 8 ]]; then L_err "Major of device $1 is not 8"; return 1; fi
+	i=$(stat -L -c %T "$1")
+	if [[ "$i" == 0 ]]; then L_err "Minot of device $1 is 0!"; return 1; fi
+}
+guess_disc=$(lsblk -I 8 -d -n -o name | head -n1)
+guess_partition=/dev/$(lsblk "/dev/$guess_disc" | grep -ow "$guess_disc"[0-9] | tail -n1)
+L_run lsblk
+askcheck partition check_is_partition \
+	"Select partition to resize [$guess_partition]: " "$guess_partition"
+disc=${partition%%[0-9]*}
+g_npart=${partition##*[^0-9]}
+echo "Selected: partition=$partition disc=$disc partition_number=$g_npart"
+
+partition="$disc$g_npart"
+now=$(fdisk -l "$disc")
+id=$(get_partition_id "$disc" "$g_npart")
+
+echo "$now"
+echo "--- resizing disc"
+twoecho() {
+	echo "$@"
+	echo "$@" >&3
+}
+{
+	twoecho d
+	twoecho "$g_npart"
+
+	twoecho n
+	twoecho p
+	twoecho "$g_npart"
+	twoecho
+	twoecho
+
+	twoecho t
+	twoecho "$g_npart"
+	twoecho "$id"
+
+	twoecho p
+	echo >&2
+	echo "All ok?" >&2
+	twoecho w
+} | L_run fdisk "$disc"
+
+L_run partprobe
+L_run pvresize "$partition"
+L_run pvs
+L_run lvs
+
+check_is_lvpath() {
+	if [[ ! -e "$1" ]]; then L_err "Path $1 does not exists"; return 1; fi
+	if [[ ! -b "$1" ]]; then L_err "Path $1 is not a block special file"; return 1; fi
+	local i
+	i=$(stat -L -c %t "$1")
+	if [[ "$i" != fd ]]; then L_err "Major of device $1 is not fd"; return 1; fi
+}
+guess_lvpath=$(lvs | awk 'NR==2{print "/dev/"$2"/"$1}')\
+askcheck lvpath check_is_lvpath "Select lvm partition [$guess_lvpath]: " "$guess_lvpath"
+
+L_run lvextend -l +100%FREE "$lvpath"
+L_run lvs
+confirm "All ok?" >&2
+fstype=$(lsblk -no FSTYPE "$lvpath")
+case "$fstype" in
+xfs) xfs_growfs -d "$lvpath"; ;;
+ext*) resize2fs "$lvpath"; ;;
+*) L_fatal "Do not know how to resize $fstype partition on $lvpath"; ;;
+esac
+
+

@@ -49,7 +49,7 @@ Host *
 EOF
 }
 
-cis-ssh() { ( _cis_ssh_config; ,sshload --i --p ~/ncbj/password.txt -F "$tmp" "$@"; ); }
+cis-ssh() { ( _cis_ssh_config; sshpass -f ~/ncbj/password.txt ssh -F "$tmp" "$@"; ); }
 . alias_complete.sh cis-ssh ssh
 cis-scp() { ( _cis_ssh_config; sshpass -f ~/ncbj/password.txt scp -F "$tmp" "$@"; ); }
 . alias_complete.sh cis-scp scp

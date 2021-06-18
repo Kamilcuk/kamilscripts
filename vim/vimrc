@@ -862,7 +862,7 @@ augroup Code Comments
 				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
-	autocmd FileType python,perl,ruby,sh,zsh,conf,bash
+	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml
 				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 augroup END
 
@@ -1121,11 +1121,18 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	"       index = https://nexus.services.idea.edu.pl/repository/pypi-all/pypi
 	"       index-url = https://nexus.services.idea.edu.pl/repository/pypi-all/simple
 	let &errorformat.=',%C       %m'
-	let &errorformat.=',%C " just an empty line..'
+	let &errorformat.=',%C      ' " just an empty line..
 
 	let &errorformat.=',pdk %m (%f:%l:%c)'
 	let &errorformat.=',pdk %m (%f:%l)'
 	let &errorformat.=',pdk %m (%f)'
+	" rspec ./spec/classes/zwierzak/limits_spec.rb:10 # diz_domain::zwierzak::limits on centos-7-x86_64 is expected to compile into a catalogue without dependency cycles
+	let &errorformat.=',rspec %f:%l # %m'
+	" Match directory that ,pdk changes to when unit testing
+	" ,pdk: info: + 'cd' '/home/kamil/ncbj/puppet/diz_domain'
+	let &errorformat.=',%D\,pdk: info: + ''cd'' ''%f'''
+	" pdk (INFO): Validator 'puppet-epp' skipped for '/home/kamil/ncbj/puppet/diz_domain'. No files matching '["**/*.epp"]' found to validate.
+	let &errorformat.=',%Dpdk (INFO): Validator ''%.%#'' skipped for ''%f''%.%#'
 
 	let &makeprg=",pdk unit_test"
 	"let &makeprg="cat /tmp/1"

@@ -8,6 +8,7 @@ appendpath () {
 }
 
 appendpath "$HOME"/bin
+appendpath "$HOME"/.local/bin
 appendpath "${XDG_CONFIG_HOME:-"$HOME"/.config}"/bin
 appendpath "$KCDIR"/bin
 appendpath /usr/local/sbin
@@ -25,6 +26,9 @@ if command -v nvim >/dev/null 2>&1; then
 elif command -v vim >/dev/null 2>&1; then
 	export EDITOR=vim
 	export VISUAL=vim
+elif command -v vi >/dev/null 2>&1; then
+	export EDITOR=vi
+	export VISUAL=vi
 fi
 export TMPDIR=/tmp
 export COUNTRY=PL

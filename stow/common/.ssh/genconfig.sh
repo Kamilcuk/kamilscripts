@@ -189,8 +189,6 @@ Host *.cis.gov.pl *_cis
 	User kcukrowski
 	GSSAPIAuthentication yes
 	GSSAPIDelegateCredentials yes
-	$(is_cis || echo RemoteForward 60000)
-	ExitOnForwardFailure no
 EOF
 
 
@@ -231,6 +229,7 @@ ncbj slimak          10.200.4.20
 #
 ncbj ci              dizvm7.cis.gov.pl  root
 ncbj cicd            dizvm7.cis.gov.pl  root
+ncbj deploycicd      dizvm18.cis.gov.pl  root
 ncbj fb_core         dizvm4.cis.gov.pl  root
 ncbj fmr             dizvm5.cis.gov.pl  root
 ncbj jenkins         dizvm2.cis.gov.pl  root
@@ -258,6 +257,16 @@ EOF2
 Match host=*.cis.gov.pl user=root
 	PasswordAuthentication no
 
+Host zwierzakauto
+	Hostname proxy.services.idea.edu.pl
+	Port 10022
+	StrictHostKeyChecking no
+	UserKnownHostsFile  ~/.ssh/zwierzakauto_known_hosts
+	ControlMaster auto
+	ControlPath  ~/.ssh/.socket_%r@%h-%p
+	ControlPersist 1w
+	User kcukrowski
+
 EOF
 
 ###############################################################################
@@ -281,7 +290,7 @@ Host *
 	ServerAliveInterval 60
 	ServerAliveCountMax 20
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
-	ControlMaster auto
+	ControlMaster no
 	ControlPath  ~/.ssh/.socket_%r@%h-%p
 	ControlPersist 6000
 	#

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT+Beerware
 set -euo pipefail
 
-name=$(basename "$0")
+g_name=${BASH_SOURCE##*/}
 
 print_left_right() {
 	local left right leftlen rightlen columns
@@ -23,15 +23,15 @@ print_left_right() {
 }
 
 fatal() {
-	echo "$name Error:" "$*" >&2
+	echo "$g_name Error:" "$*" >&2
 	exit 2
 }
 
 usage() {
 	cat <<EOF
-Usage: $name [options] file command [args...]
+Usage: $g_name [options] file command [args...]
 
-Each the file changes, $name runs the _command_ displaying its output.
+Each the file changes, $g_name runs the _command_ displaying its output.
 It allows to execute a command on each file change.
 
 Options:
@@ -39,10 +39,10 @@ Options:
   -b --beep      Beep if command has a non-zero exit.
   -x --exec      Pass command to exec instead of sh -c.
   -h --help      Print this help and exit.
-  -R --ignore-resize   Do not re-run on terminal resize events.
+  -k --killonchange  Kill the current process if file changes.
 
 Examples:
-  $name src.c 'gcc src.c && ./a.out'
+  $g_name src.c 'gcc src.c && ./a.out'
       Watch src.c file and compile and execute it every time it changes.
 
 Written by Kamil Cukrowski 2020
@@ -52,22 +52,22 @@ EOF
 
 # main ##############################################
 
-args=$(getopt -n "$name" \
-		-o +tbxhR \
-		-l no-title,exec,help,ignore-resize,debug -- "$@")
+args=$(getopt -n "$g_name" \
+		-o +tbxhRk \
+		-l no-title,exec,help,ignore-resize,killonchange,debug -- "$@")
 eval set -- "$args"
 use_exec=false
 use_beep=false
 use_title=true
-use_winch=true
 use_debug=false
+use_killonchange=false
 while (($#)); do
 	case "$1" in
 	-t|--no-title) use_title=false; ;;
 	-b|--beep) use_beep=true; ;;
 	-x|--exec) use_exec=true; ;;
 	-h|--help) usage; exit; ;;
-	-R|--ignore-resize) use_winch=false; ;;
+	-k|--killonchange) use_killonchange=true; ;;
 	--debug) use_debug=true; ;;
 	--) shift; break; ;;
 	*) fatal "Internal parsing options error"; ;;
@@ -83,67 +83,71 @@ if (($# == 1)); then
 	set "$1" "$1"
 fi
 
-file="$1"
+g_file="$1"
 shift
 
-if [[ ! -e "$file" ]] || ! file=$(readlink -f "$file"); then
-	fatal "file does not exists: $file"
+if [[ ! -e "$g_file" ]] || ! file=$(readlink -f "$g_file"); then
+	fatal "file does not exists: $g_file"
 fi
 
-if [[ "$file" =~ $'\n' ]]; then
+if [[ "$g_file" =~ $'\n' ]]; then
 	fatal "Current version does not support newlines in filenames"
 fi
 
-# duplicate stdin for stty below to know where terminal is
-exec 5<&0
+filebase=${file##*/}
 
+if ! "$use_exec"; then
+	set -- sh -c "$*"
+fi
+
+inotifywait -q -m -e close_write,moved_to --format "%f" "$(dirname "$g_file")" |
 {
-	if "$use_winch"; then
-		size_prev=$(stty size <&5)
-		while sleep 0.1; do
-			size=$(stty size <&5)
-			if [[ "$size" != "$size_prev" ]]; then
-				echo event
-				size_prev=$size;
+	trap_exit() {
+		if [[ -n "${g_pid:-}" ]]; then
+			kill "$g_pid"
+		fi
+	}
+	trap trap_exit EXIT
+
+	while true; do
+		if [[ ! -e "$g_file" ]]; then
+			fatal "File does not exists"
+		fi
+		if ! "$use_debug"; then
+			clear
+		fi
+		if "$use_title"; then
+			print_left_right "Every $g_file change: $*" "$HOSTNAME: $(date +'%a %b %d %T %Y')"
+			echo
+		fi
+		"$@" &
+		g_pid=$!
+		g_ret=0
+		g_event=false
+		if ! "$use_killonchange"; then
+			wait "$g_pid" || g_ret=$?
+			unset g_pid
+		fi
+		# Eat stdin events.
+		while IFS= read -r -t 0.1 _; do
+			g_event=true
+		done
+		while ! "$g_event"; do
+			if ! IFS= read -r line; then
+				fatal "inotifywait failed"
 			fi
-		done &
-		child=$!
-		trap 'kill "$child" >/dev/null; wait' EXIT
-	fi
-	# wathc the file
-	stdbuf -oL inotifywait -q -m -e close_write,moved_to --format "%f" "$(dirname "$file")" |
-	grep --line-buffered -x -F "$(basename "$file")"
-} |
-{ if "$use_debug"; then tee /dev/stderr; else cat; fi; } |
-# rate limit the events - output 0x02 each event
-stdbuf -oL ratelimit.sh -t 1 -l 0 -o '\x02\n' |
-# rate limiting outputs \x02 each period - filter them out and just output something
-stdbuf -oL sed -u '/\x02/!d; s/.*/event/' |
-# initial start - make sure run at the start
-{ echo nothing; stdbuf -oL cat; } |
-while IFS= read -r _; do
-	if [[ ! -e "$file" ]]; then
-		fatal "File does not exists"
-	fi
-	if ! "$use_debug"; then
-		clear
-	fi
-	if "$use_title"; then
-		print_left_right "Every $file change: $*" "$HOSTNAME: $(date +'%a %b %d %T %Y')"
-		echo
-	fi
-	if !
-		if "$use_exec"; then
-			"$@"
-		else
-			sh -c "$*"
+			if [[ "$line" = "$filebase" ]]; then
+				g_event=true
+			fi
+		done
+		if "$use_killonchange"; then
+			kill "$g_pid" ||:
+			wait "$g_pid" || g_ret=$?
+			unset g_pid
 		fi
-	then
-		if "$use_beep"; then
-			echo -n '\007'
+		if ((!g_ret)) && "$use_beep"; then
+			printf '\007'
 		fi
-	fi
-done
-
-
+	done
+}
 

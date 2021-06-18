@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+
+. ,lib_lib -q
+
+###############################################################################
+
+ffmpeg_generic() {
+	L_run ffmpeg -i "$1" -codec copy -movflags +faststart "$2"
+}
+C_wmv_to_mp4() { ffmpeg_generic "$@"; }
+C_mkv_to_mp4() { ffmpeg_generic "$@"; }
+
+###############################################################################
+
+if (($# == 0)); then cat <<EOF
+Usage: $L_NAME file1 file2
+
+EOF
+fi
+if (($# < 2)); then L_fatal "Not enough arguments"; fi
+if (($# > 2)); then L_fatal "Too many arguments"; fi
+
+from=$1
+fromext=${from##*.}
+to="$2"
+toext=${to##*.}
+
+f=C_"$fromext"_to_"$toext";
+if ! L_fn_exists "$f"; then
+	L_fatal "Do not know how to convert $fromext to $toext"
+fi
+"$f" "$from" "$to"
+

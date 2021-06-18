@@ -1,16 +1,22 @@
 #!/bin/bash
+# Written by Kamil Cukrowski 14.cze.2021
+# SPDX-License-Identifier: MIT + Beerware
+# Licensed jointly under MIT License and Beerware License
 
 fallback=0
 if (($# >= 1)) && [[ "${1:0:1}" == "-" ]]; then
+	# If any options are passed, fallback to ls.
 	fallback=1
-elif cut --help | grep -q -- -z; then
+elif tmp=$(cut --help 2>&1) && [[ "$tmp" == *"-z"* ]]; then
+	# We need cut -z to operate.
 	cut_z_chars() {
 		cut -z -c"$1" "$2"
 	}
 	cut_z_chars_since() {
 		cut -z -c"$1"- "$2"
 	}
-elif awk --version | grep -q 'GNU'; then
+elif tmp=$(awk --version 2>&1) && [[ "$tmp" == *"GNU"* ]]; then
+	# Use GNU awk if available.
 	cut_z_chars() {
 		awk -v N="$1" 'BEGIN{ RS="\0"; ORS="\0"; } {print substr($0,N,1)}' "$2"
 	}
@@ -24,6 +30,15 @@ fi
 if ((fallback)); then
 	# In such case we do not have our requirements met, we fall back to the good old ls version
 	exec ls -alFh --color=auto --group-directories-first "$@"
+fi
+
+# We are meant to be run in an interactive session - speed up find if possible.
+if [[ -t 1 ]]; then
+	if hash ionice; then
+		ionice -c 1 -P $$ ||
+		ionice -c 2 -n 0 -P $$ ||
+		:
+	fi 2>/dev/null >&2
 fi
 
 fatal() {
@@ -62,6 +77,7 @@ dodirlist() {
 		fatal "Could not change directory: $1"
 	fi
 	find . "${findargs[@]}" | sort -z > "$tmpf" ||:
+	# Print "total ..." summary line:
 	cut_z_chars 1 "$tmpf" | tr '\0' '\n' | awk '
 		#BEGIN{
 		#	lower["a"]; lower["b"]; lower["c"]; lower["d"]; lower["e"]; lower["f"]; lower["g"];
@@ -79,6 +95,7 @@ dodirlist() {
 		END{
 			printf("total %d directories, %d files, %d other\n", dirs, files, other)
 		}'
+	# Actually call ls to do the printing.
 	if ! {
 			printf "%s\0" . ..
 			cut_z_chars_since 2 "$tmpf"
@@ -103,7 +120,10 @@ dols() {
 }
 
 tmpf=$(mktemp)
-trap 'rm "$tmpf"' EXIT
+trap_exit() {
+	rm "$tmpf"
+}
+trap trap_exit EXIT
 
 if (($# == 0)); then
 	dodirlist .

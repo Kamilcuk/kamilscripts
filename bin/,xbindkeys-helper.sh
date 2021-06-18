@@ -76,5 +76,5 @@ EOF
 )"
 fi
 
-bash -x -c "$*"
+exec bash -x -c "$*"
 

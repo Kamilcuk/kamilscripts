@@ -1,0 +1,4 @@
+#!/bin/sh
+set -x
+pdfjam --fitpaper true --trim "-0.4cm -1.3cm -0.4cm -0.3cm" "$1" -o "${2:-$1}"
+

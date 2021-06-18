@@ -3,11 +3,16 @@ set -euo pipefail
 
 run_curl() {
 	local cmd
-	cmd=(curl -sS -iL --header "${GITLAB_AUTHORIZATION_HEADER}" "$@")
+	cmd=(curl -sS -iL --header "Authorization: *****" "$@")
+	L_info + "${cmd[@]}"
+	if [[ -z "${GITLAB_TOKEN:-}" ]]; then
+		L_fatal "GITLAB_TOKEN variable is empty!"
+	fi
+	cmd=(curl -sSLH "Authorization: Bearer ${GITLAB_TOKEN}" "$@")
 	if "$DEBUG"; then
 		L_log + "${cmd[@]@Q}"
 	fi
-	L_run "${cmd[@]}"
+	"${cmd[@]}"
 }
 
 hdr_get_data() { sed '/^\r$/,$!d'; }
@@ -23,12 +28,20 @@ get_paginated() {
 	local tmp acc
 	acc=""
 	while true; do
-		tmp=$(run_curl "$@")
+		tmp=$(run_curl -i "$@")
 		acc+="$(hdr_get_data <<<"$tmp")"
 		if ! link=$(<<<"$tmp" hdr_get_link) || [[ -z "$link" ]]; then break; fi
 		set -- "$link"
 	done
 	<<<"$acc" jq -s add
+}
+
+###############################################################################`
+
+# shellcheck disable=2145
+C_GETRAW() {
+	run_curl "${GITLAB_API_URL}/$@"
+	echo
 }
 
 C_GET() {
@@ -38,6 +51,7 @@ C_GET() {
 	get_paginated "${GITLAB_API_URL}/$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
 }
 
+# shellcheck disable=2145
 C_POST() {
 	run_curl -X POST "${GITLAB_API_URL}/$@"
 }
@@ -102,6 +116,36 @@ C_get_current_user_id() {
 	C_GET /user | jq .id
 }
 
+C_search_projects() {
+	C_GETRAW "/search?scope=projects&search=$@"
+}
+
+C_search_project_id() {
+	C_search_projects "$@" | jq -r '.[] | "\(.path_with_namespace)\t\(.id)"'
+}
+
+C_get_project_id() {
+	C_search_project_id "$@" | {
+		IFS=$'\t'
+		read -r path id
+		if ! read -r path2 id2; then
+			printf "%s\n" "$id"
+		else
+			L_warn "Multiple projects found for this search query: $1"
+			printf "%s\n" "$path" "$id"
+			printf "%s\t%s\n" "$path2" "$id2"
+			cat
+			exit 1
+		fi
+	}
+}
+
+C_get_project_tags() {
+	local id
+	id=$(C_get_project_id "$@")
+	C_GETRAW "/projects/$id/repository/tags"
+}
+
 C_repo_create() {
 	if (($# < 1)); then L_fatal "Argument needed"; fi
 	args=$(getopt -n "$L_name" -o d -l description:,public,private,internal,enable-issues::,enable-wiki:: -- "$@")
@@ -128,7 +172,7 @@ C_repo_create() {
 ###############################################################################
 
 : "${GITLAB_URL:="gitlab.com"}"
-: "${GITLAB_TOKEN:="pb7HxTThUuZZhQJsM12j"}"
+: "${GITLAB_TOKEN:=}"
 : "${DEBUG:=false}"
 
 . ,lib_lib -q 
@@ -145,6 +189,5 @@ while (($#)); do
 done
 
 : "${GITLAB_API_URL:="https://${GITLAB_URL}/api/v4/"}"
-: "${GITLAB_AUTHORIZATION_HEADER:="Authorization: Bearer ${GITLAB_TOKEN}"}"
 
 . ,lib_lib C_ "$@"

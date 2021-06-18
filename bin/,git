@@ -94,11 +94,11 @@ C_remote_toggle_ssh_https() {
 }
 
 C_version() {
-	git --version | awk '{gsub(/\./," ",$3);print $3}'
+	git --version | awk '{ split($3,a,"."); printf "%d%03d%03d\n", a[1], a[2], a[3] }'
 }
 
 C_autostash_supported() {
-	C_version | awk '{exit !($1 > 2 || ($1 == 2 && $2 >= 6))}'
+	C_version | awk '{exit !($1 >= 2006000)}'
 }
 
 C_any_changes() {

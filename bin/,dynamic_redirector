@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 g_debug() {
 	if ((g_do_debug)); then
@@ -13,7 +14,9 @@ g_fatal() {
 
 g_usage() {
 	cat <<EOF
-Usage: $g_name [options] port command...
+Usage:
+	$g_name [options] <port> <socat_address>...
+	$g_name [options] -x <port> <command>...
 
 When a connection comes to the specified port, the application redirects
 the connection to the place specified by command. Command should output a string
@@ -21,9 +24,14 @@ that is recognizable by socat as the second argument. See examples below.
 
 Options:
   -h --help   Print this help and exit
-  --g_debug     Enable some debugging
+  -e --exec
+  --debug     Enable some debugging
 
 Example:
+	# Connect to a random host from the list. {..,...} is a bash list expansion.
+	$g_name 10000 TCP4:192.168.1.1:22 TCP4:192.168.2.2:22 TCP4:192.168.3.3:22
+
+	# Same code but with a bash callback:
     _callback() {
         # choose a random ssh hosts to redirect connection to
         hosts=( 192.168.1.1 192.168.2.2 192.168.3.3 )
@@ -36,18 +44,24 @@ Example:
     export -f _callback
     # And call that script to redirect the connection.
     $g_name 10000 bash -c _callback
+	# Do _not_ use bash variables starting with g_ - reserved for script.
 
 Written by Kamil Cukrowski
+Licensed jointly under Beerware License and MIT License
 EOF
 }
 
+###############################################################################
+
 g_name=${BASH_SOURCE##*/}
-g_args=$(getopt -n "$g_name" -o +h -l help,debug -- "$@")
+g_args=$(getopt -n "$g_name" -o +he -l help,exec,debug -- "$@")
 eval "set -- $g_args"
 g_do_debug=0
+g_exec=0
 while (($#)); do
 	case "$1" in
 	-h|--help) g_usage; exit; ;;
+	-e|--exec) g_exec=1; ;;
 	--debug) g_do_debug=1; ;;
 	--) shift; break;;
 	*) g_fatal "Internal error when parsing arguments"; ;;
@@ -55,27 +69,41 @@ while (($#)); do
 	shift
 done
 
-if (($# == 0)); then usage; g_fatal "Missing arguments"; fi
-if (($# < 2)); then g_fatal "Missing command"; fi
+if (($# == 0)); then g_usage; g_fatal "Missing arguments"; fi
+if (($# < 1)); then g_fatal "Missing first argument - port number"; fi
 g_listen=$1
 shift
-g_command=$(printf "%q " "$@")
-g_command=${g_command% }
+if ((g_exec)); then
+	if (($# < 1)); then g_fatal "Missing command to execute"; fi
+else
+	if (($# < 1)); then g_fatal "Elements to redirect socat to"; fi
+fi
+g_data=$(printf "%q " "$@")
+g_data=${g_data% }
 
 g_con_handler() {
-	g_debug "Executing \`eval \"$g_command\"\` ..."
-	if ! to=$(eval "$g_command") || [[ -z "$to" ]]; then
-		return
+	eval "set -- $g_data"
+	if ((g_exec)); then
+		g_debug "Executing \`eval $*\`"
+		if ! to=$(eval "$@") || [[ -z "$to" ]]; then
+			return
+		fi
+	else
+		g_debug "Choosing from: $*"
+		to=$(( SRANDOM % $# + 1 ))
+		to="${!to}"
 	fi
 	g_debug "Redirection connection from $SOCAT_PEERADDR:$SOCAT_PEERPORT to $to"
 	eval socat - "$to"
 }
 # Export our context to subprocess
-export g_do_debug g_name g_command
+export g_do_debug g_name g_data g_exec
 export -f g_con_handler g_debug g_fatal
 
-cmd=(socat tcp-listen:"$g_listen",reuseaddr,fork system:'bash -c g_con_handler _')
+# shellcheck disable=2054
+cmd=( socat tcp-listen:"$g_listen",reuseaddr,fork system:'bash -c g_con_handler' )
 g_debug "Executing ${cmd[*]}"
 echo "Listening on $g_listen..."
 "${cmd[@]}"
+
 

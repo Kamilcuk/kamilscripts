@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+L_trap_err() { :; }
+
 chdirtorepo() {
 	if p=$(git rev-parse --show-toplevel) && [[ "$p" != "$PWD" ]]; then
 		run cd "$p"
@@ -8,16 +10,26 @@ chdirtorepo() {
 }
 
 setclassfiles() {
-	local filepath classname files
-	IFS=' '
-	declare -g $2 $3 $4
-	read -r "$2" <<<"$1"
-	_filepath=${1//::/\/}
-	read -r "$3" <<<"$_filepath"
-	if (($# > 3)); then
-		_files=("manifests/$_filepath.pp" "spec/classes/${_filepath}_spec.rb")
-		declare -g -a "$4=( ${_files[*]} )"
-	fi
+	local _aUtO_TmP
+	_aUtO_TmP=$(
+		IFS=' '
+		path=$1
+		path=${path//::/\/}
+		path=${path%.pp}
+		name=${path//\//::}
+		echo "$name"
+		echo "$path"
+		echo "manifests/${path}.pp"
+		echo "spec/classes/${path}_spec.rb"
+	)
+	{
+		local IFS=$'\n'
+		read -r "$2"
+		read -r "$3"
+		if (($# > 3)); then
+			readarray -t "$4"
+		fi
+	} <<<"$_aUtO_TmP"
 }
 
 C_get_module_name() {
@@ -51,10 +63,51 @@ C_remove_class() {
 	run rm -iv "${files[@]}"
 }
 
-C_unit_test() {
-	chdirtorepo
+C_unit_test_seq() {
+ 	chdirtorepo
 	run pdk validate -a --parallel
 	run pdk test unit --parallel
+}
+
+mktemp_auto() {
+	local _aUtO_TmP
+	_aUtO_TmP=$(mktemp "${@:2}") &&
+	printf -v "$1" %s "$_aUtO_TmP" &&
+	printf -v _aUtO_TmP %q "$_aUtO_TmP" &&
+	L_trapchain "rm $_aUtO_TmP" EXIT
+}
+
+mkfifo_auto() {
+	local _aUtO_TmP
+	_aUtO_TmP=${2:-$(mktemp -u)} &&
+	mkfifo "$_aUtO_TmP" &&
+	printf -v "$1" %s "$_aUtO_TmP" &&
+	printf -v _aUtO_TmP %q "$_aUtO_TmP" &&
+	L_trapchain "rm $_aUtO_TmP" EXIT
+}
+
+# shellcheck disable=SC2016
+C_unit_test() {
+	chdirtorepo
+	#
+	tmpf2='' ; mktemp_auto tmpf2
+	L_trapchain L_kill_all_jobs EXIT
+	#
+	cmd2=(pdk test unit --parallel)
+	"${cmd2[@]}" >"$tmpf2" 2>&1 &
+	child2=$!
+	#
+	cmd1=(pdk validate -a --parallel)
+	L_info "+" "${cmd1[@]@Q}"
+	if "${cmd1[@]}" | cat; then :; else
+		exit "$?"
+	fi
+	#
+	L_info "+" "${cmd2[@]@Q}"
+	tail -f -n +1 "$tmpf2" &
+	if wait "$child2"; then :; else
+		exit "$?"
+	fi
 }
 
 . ,lib_lib -L C_ "$@"

@@ -179,7 +179,7 @@ Usage: $L_NAME [all_ssh_options] [long_options] destination [command]
 Long options:
 	--b --callback <callback>
 	--c --interactiveconfig <config>
-	--p --passfile <file>
+	--f --passfile <file>
 	--v --verbose
 	--q --quiet
 	--n --dry-run
@@ -204,7 +204,7 @@ ssh_getopts=$(<<<"$ssh_opts1" paste -sd '')
 ssh_opts_noarg=$(<<<"$ssh_opts1" sed '/:/d' | paste -sd '')
 ssh_opts_arg=$(<<<"$ssh_opts1" sed '/:/!d; s/://g' | paste -sd '')
 g_args=$(getopt -n "$L_NAME" -o "+$ssh_getopts" \
-	-l b:,callback:,c:,interactiveconfig:,p:,passfile:,v,verbose,q,quiet,n,dry-run,h,help \
+	-l b:,callback:,c:,interactiveconfig:,f:,passfile:,v,verbose,q,quiet,n,dry-run,h,help \
 	-- "$@") || return 1
 eval "set -- $g_args"
 ssh_args=()
@@ -217,7 +217,7 @@ while (($#)); do
 	(-[$ssh_opts_arg]) ssh_args+=("$1" "$2"); shift; ;;
 	(--b|--callback) g_callback="$2"; shift; ;;
 	(--c|--interactiveconfig) g_sshload_sh="$2"; shift; ;;
-	(--p|--passfile) g_passfile="$2"; shift; ;;
+	(--f|--passfile) g_passfile="$2"; shift; ;;
 	(--v|--verbose) L_lmask_allow "L_LOG_DEBUG"; ;;
 	(--q|--quiet) L_lmask_block "$L_LOG_INFO"; ;;
 	(--n|--dry-run) L_dryrun=1; ;;
