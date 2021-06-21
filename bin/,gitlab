@@ -1,5 +1,16 @@
 #!/bin/bash
 set -euo pipefail
+shopt -s extglob nullglob
+
+g_refresh_gitlab_vars() {
+	GITLAB_API_URL="https://${GITLAB_URL}/api/v4/"
+}
+
+g_use_gitlab2() {
+	GITLAB_URL=${GITLAB2_URL:-${GITLAB_URL}}
+	GITLAB_TOKEN=${GITLAB2_TOKEN:-${GITLAB_TOKEN}}
+	g_refresh_gitlab_vars
+}
 
 run_curl() {
 	local cmd
@@ -12,7 +23,7 @@ run_curl() {
 	if "$DEBUG"; then
 		L_log + "${cmd[@]@Q}"
 	fi
-	"${cmd[@]}"
+	"${cmd[@]}" || true
 }
 
 hdr_get_data() { sed '/^\r$/,$!d'; }
@@ -40,15 +51,20 @@ get_paginated() {
 
 # shellcheck disable=2145
 C_GETRAW() {
-	run_curl "${GITLAB_API_URL}/$@"
+	local path
+	path="${GITLAB_API_URL}/$1"
+	shift
+	path=${path//\/+(\/)/\/}
+	run_curl "$path" "$@"
 	echo
 }
 
 C_GET() {
 	local path tmp
-	path=$1
+	path="${GITLAB_API_URL}/$path"
 	shift
-	get_paginated "${GITLAB_API_URL}/$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
+	path=${path//\/+(\/)/\/}
+	get_paginated "$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
 }
 
 # shellcheck disable=2145
@@ -97,15 +113,33 @@ C_ci_lint() {
 	fi
 	if (($# == 0)); then L_usage; L_fatal "Needs file as argument"; fi
 
-	tmp=$(
-		jq --null-input --arg yaml "$(<"$1")" '.content=$yaml' |
-		curl -Ss "https://gitlab.com/api/v4/ci/lint?include_merged_yaml=true" \
-			--header 'Content-Type: application/json' \
-			--data @-
-	) &&
-	jq <<<"$tmp" &&
-	tmp=$(jq .status <<<"$tmp") &&
-	[[ "$tmp" = "valid" ]]
+	local path url status data
+	url="ci/lint"
+	if C_git_project_namespace_path path; then
+		url="projects/$path/ci/lint"
+	fi
+
+	local errors i data valid
+	errors=0
+	for i in "$@"; do
+		# https://about.gitlab.com/blog/2021/04/21/devops-workflows-json-format-jq-ci-cd-lint/
+		data=$(jq --null-input --arg yaml "$(<"$i")" '.content=$yaml')
+		tmp=$(C_GETRAW "$url?include_merged_yaml=true" \
+				--header 'Content-Type: application/json' \
+				--data @<(cat <<<"$data")
+		)
+		tmp=$(jq <<<"$tmp")
+		if ! valid=$(jq -r '.valid' <<<"$tmp") || 
+				[[ "$valid" != "true" ]]; then
+			cat <<<"$tmp"
+			((errors++)) ||:
+		else
+			jq -r '.merged_yaml' <<<"$tmp"
+			L_log "ALL FINE!"
+		fi
+	done
+	L_trap_err_disable
+	exit $((!!errors))
 }
 
 C_list_current_user() {
@@ -116,18 +150,30 @@ C_get_current_user_id() {
 	C_GET /user | jq .id
 }
 
+# shellcheck disable=2001
+g_urlescape() {
+	sed 's~/~%2F~g' <<<"$*"
+}
+
 C_search_projects() {
-	C_GETRAW "/search?scope=projects&search=$@"
+	local search
+	search=$(g_urlescape "$1")
+	shift
+	C_GETRAW "/search?scope=projects&search=$search" "$@"
 }
 
 C_search_project_id() {
 	C_search_projects "$@" | jq -r '.[] | "\(.path_with_namespace)\t\(.id)"'
 }
 
-C_get_project_id() {
+C_search_project_id_first() {
+	L_trap_err_disable
 	C_search_project_id "$@" | {
 		IFS=$'\t'
-		read -r path id
+		if ! read -r path id; then
+			L_warn "Could not find any projects"
+			exit 1
+		fi
 		if ! read -r path2 id2; then
 			printf "%s\n" "$id"
 		else
@@ -138,6 +184,31 @@ C_get_project_id() {
 			exit 1
 		fi
 	}
+}
+
+C_git_project_namespace_path() {
+	local _tmp
+	if _tmp=$(git remote -v get-url origin 2>/dev/null); then
+		_tmp=$(sed -E 's~(http|ssh)://~~; s~git@~~; s~[:/]~ ~; s/\.[^\.]*$//; s~/~%2F~' <<<"$_tmp")
+		local _url _path
+		if read -r _url _path <<<"$_tmp"; then
+			if [[ "$_url" != "$GITLAB_URL" && "$_url" == "$GITLAB2_URL" ]]; then
+				g_use_gitlab2
+			fi
+		fi
+		printf -v "$1" "%s" "$_path"
+		return 0;
+	fi
+	return 1;
+}
+
+C_get_project_id() {
+	local path
+	if C_git_project_namespace_path path; then
+		C_GETRAW "projects/$path" | jq '.id'
+		exit
+	fi
+	C_search_project_id_first "$@"
 }
 
 C_get_project_tags() {
@@ -174,6 +245,7 @@ C_repo_create() {
 : "${GITLAB_URL:="gitlab.com"}"
 : "${GITLAB_TOKEN:=}"
 : "${DEBUG:=false}"
+g_refresh_gitlab_vars
 
 . ,lib_lib -q 
 
@@ -181,13 +253,11 @@ args=$(getopt -n "$L_name" -o +2 -l bash-completion -- "$@")
 eval set -- "$args"
 while (($#)); do
 	case "$1" in
-	-2) GITLAB_URL=${GITLAB2_URL:-${GITLAB_URL}} GITLAB_TOKEN=${GITLAB2_TOKEN:-${GITLAB_TOKEN}}; ;;
+	-2) g_use_gitlab2; ;;
 	--bash-completion) break; ;;
 	--) shift; break;
 	esac
 	shift
 done
-
-: "${GITLAB_API_URL:="https://${GITLAB_URL}/api/v4/"}"
 
 . ,lib_lib C_ "$@"
