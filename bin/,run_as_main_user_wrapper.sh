@@ -35,6 +35,9 @@ if [[ -z "$PULSE_RUNTIME_PATH" ]]; then
 fi
 HOME="$(getent passwd "$uid" | cut -d: -f6)"
 export HOME
+if [[ -e "/run/user/$uid/bus" ]]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus"
+fi
 
 if [[ "${1:-}" == "--debug" ]]; then
 	declare -p uid DISPLAY PULSE_RUNTIME_PATH HOME

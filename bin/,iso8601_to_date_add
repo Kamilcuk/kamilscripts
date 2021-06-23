@@ -1,0 +1,192 @@
+#!/bin/bash
+set -euo pipefail
+
+# https://stackoverflow.com/questions/58209182/trying-to-convert-iso-8601-duration-format-to-add-to-date-in-bash
+dur_to_dateadd() {
+    # https://en.wikipedia.org/wiki/ISO_8601#Durations
+    # We support formats:
+    # PnYnMnDTnHnMnS
+    # PnW
+    # PYYYYMMDDThhmmss 
+    # PYYYY-MM-DDThh:mm:ss
+	remove_zeros='s/( \+ )0*([0-9]{1,2} [^ ]*)$/\1\2/'
+    sed -E '
+        # it has to start with p
+        /^[pP]/!{
+            s/.*/ERROR: Invalid input - it has to start with P: "&"/
+            q1
+        }
+        s///
+
+        # add an unredable 0x01 on the end
+        # it serves as our "line separator"
+        s/$/\x01/
+
+        # handle PnW format
+        /^([0-9]*([,.][0-9]*)?)?[wW](.*)/{
+            s//\3 + \1 week/
+            b FINISH
+        }
+
+        # PnYnMnDTnHnMnS format
+        # parse from the beginning, add to the end after \x01
+		/[yYmMdDyYhHsS]/{
+        	s/^([0-9]*([,.][0-9]*)?)?[yY](.*)/\3 + \1 year/
+			'"$remove_zeros"'
+			s/^([0-9]*([,.][0-9]*)?)?[mM](.*)/\3 + \1 month/
+			'"$remove_zeros"'
+			s/^([0-9]*([,.][0-9]*)?)?[dD](.*)/\3 + \1 day/
+			'"$remove_zeros"'
+			s/^[tT]//
+			s/^([0-9]*([,.][0-9]*)?)?[hH](.*)/\3 + \1 hour/
+			'"$remove_zeros"'
+			s/^([0-9]*([,.][0-9]*)?)?[mM](.*)/\3 + \1 minute/
+			'"$remove_zeros"'
+			s/^([0-9]*([,.][0-9]*)?)?[sS](.*)/\3 + \1 second/
+			'"$remove_zeros"'
+			b FINISH
+		}
+
+		# handle PYYYY-MM-DDThh:mm:ss format
+        # handle PYYYYMMDDThhmmss format
+		# handle PYYYY(-?MM(-?DD([tT]?(hh(:?mm(:?ss)?)?)?)?)? format
+		/^([0-9]{1,4})-?(.*)/{
+			s//\2 + \1 year/
+			'"$remove_zeros"'
+			#
+			/^([0-9]{1,2})?-?(.*)/{
+				s//\2 + \1 month/
+				'"$remove_zeros"'
+				/^([0-9]{1,2})?-?(.*)/{
+					s//\2 + \1 day/
+					'"$remove_zeros"'
+				}
+			}
+			# In ISO 8601:2004 it was permitted to omit the "T" character by mutual agreement,
+			# but this provision was removed in ISO 8601-1:2019.
+			s/^[tT]//
+			/^([0-9]{1,2})?:?(.*)/{
+				s//\2 + \1 hour/
+				'"$remove_zeros"'
+				/^([0-9]{1,2})?:?(.*)/{
+					s//\2 + \1 minute/
+					'"$remove_zeros"'
+					/^([0-9]{1,2})?:?(.*)/{
+						s//\2 + \1 second/
+						'"$remove_zeros"'
+					}
+				}
+			}
+            b FINISH
+        }
+
+
+        : FINISH
+
+        # we should have parsed it all
+        # so our separator \x01 has to be the first cahracter
+        /^\x01/!{
+          # there is something unparsed in the input
+            s/\x01.*//
+            s/.*/ERROR: Unparsable input: "&"/
+            q1
+        }
+        # remove the \x01
+        s///
+
+        # just convert , to . in case of floats
+        s/,/./g
+
+		# Remove leading space
+		s/^ *//;
+
+		# Remove + 0 stuff
+		s/ ?\+ 0* [^ ]*//g
+    '
+}
+
+if (($# == 0)); then
+	echo "Give arguments, like P3Y6M4DT12H30M5S"
+	exit 0
+fi
+if [[ "$1" == "--test" ]]; then
+	testout() { echo "+" "$@" >&2; "$0" "$@"; }
+
+	testout "P3Y6M4DT12H30M5S"
+	testout "P23DT23H"
+	testout "P4Y"
+	testout "PT0S"
+	testout "P0D"
+	testout "P1M"
+	testout "PT1M"
+	testout "P0,5Y"
+	testout "P0.5Y"
+	testout "PT36H"
+	testout "P1DT12H"
+	testout "invalid" || echo error
+	testout "P1Dinvalid" || echo error
+	testout "PinvalidDT" || echo error
+
+	error=0
+	RED=$'\E[1m\E[31m'
+	GREEN=$'\E[1m\E[32m'
+	RESET=$'\E[m'
+	testerr() {
+		echo "$RED""ERROR - $*""$RESET" >&2
+		error=1
+	}
+	test() {
+		printf "%20s =? %-s\t" "$1" "$2" >&2;
+		if ! r=$("$0" "$1"); then
+			testerr 'ERROR - command failed'
+			return
+		fi
+		if ! date1=$(date -d "0 $r" +%s); then
+			testerr "date -d '0 $r' failed"
+			return
+		fi
+		date1str=$(date -d "0 $r")
+		date2=$(date -d "0 $2" +%s)
+		date2str=$(date -d "0 $2")
+		diff=$((date1 - date2))
+		#if [[ "$r" != "$2" ]]; then
+		if ((diff != 0)); then
+			testerr "date1str=$date1str date2str=$date2str res=$r"
+			error=1
+		else
+			echo "$GREEN""OK""$RESET"; >&2
+		fi
+	}
+	test P0M ''
+	test PT0M ''
+	test P2007-04-05T14:30 '+ 2007 year + 4 month + 5 day + 14 hour + 30 minute'
+	test P200704051430 '+ 2007 year + 4 month + 5 day + 14 hour + 30 minute'
+	test P0 ''
+	test P00 ''
+	test P2007-04-05T12:30 "+ 2007 year + 4 month + 5 day + 12 hour + 30 minute"
+	test P3Y6M4DT12H30M5S "+ 3 year + 6 month + 4 day + 12 hour + 30 minute + 5 second"
+	test P23DT23H "+ 23 day + 23 hour"
+	test P4Y "+ 4 year"
+	test PT0S ""
+	test P0D ""
+	test P1M '+ 1 month'
+	test PT1M '+ 1 minute'
+	test PT36H '+ 36 hour'
+	test P1DT12H '+ 1 day + 12 hour'
+	test P0003-06-04T12:30:05 '+ 3 year + 6 month + 4 day + 12 hour + 30 minute + 5 second'
+	test P0003--04T12:30:05 '+ 3 year + 4 day + 12 hour + 30 minute + 5 second'
+	test P0003--T::05 '+ 3 year + 5 second'
+
+	exit "$error"
+fi
+
+for i in "$@"; do
+	# If command fails, send it's output to stderr.
+	if tmp=$(dur_to_dateadd <<<"$i"); then
+		printf "%s\n" "$tmp"
+	else
+		printf "%s\n" "$tmp" >&2
+		exit 1
+	fi
+done
+

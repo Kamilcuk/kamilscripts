@@ -34,8 +34,8 @@ $(_usage_listconfig)
   b_*           - Are shortcuts to background_*.
   f8#RGB        - 8-bit RGB code for foreground. Values must be within 0-5 range
   b8#RGB        - 8-bit RGB code for background.
-  f26#RRGGBB    - 24-bit RGB code for foreground.
-  b26#RRGGBB    - 24-bit RGB code for background.
+  f24#RRGGBB    - 24-bit RGB code for foreground.
+  b24#RRGGBB    - 24-bit RGB code for background.
   RRGGBB        - Same as f#RRGGBB.
   f#RRGGBB      - Uses 8-bit or 24-bit colors for foreground.
   b#RRGGBB      - Uses 8-bit or 24-bit colors for background.
@@ -74,7 +74,7 @@ while (($#)); do
 	-q|--quoted) g_quoted=true; ;;
 	--separator) g_separator="$2"; shift; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
-	--test) unittest "$2"; exit; ;;
+	--test) for i in "" 1 256; do a=("$0" test$i); echo "+" "${a[@]}"; "${a[@]}"; done; exit; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
@@ -678,6 +678,7 @@ function str_to_24_bit(output, str, \
 }
 
 function print_ansi_8_bit(fgnum, num) {
+	if (fgnum == "f") fgnum = 3; if (fgnum == "b") fgnum = 4
 	if (fgnum != 3 && fgnum != 4) fatal("print_ansi_8_bit: fgnum="fgnum)
 	if (num < 0) fatal("print_ansi_8_bit: smaller then 0: num="num)
 	if (num > 255) fatal("print_ansi_8_bit: greater then 255: num="num)
@@ -685,6 +686,7 @@ function print_ansi_8_bit(fgnum, num) {
 }
 
 function print_ansi_24_bit(fgnum, r, g, b) {
+	if (fgnum == "f") fgnum = 3; if (fgnum == "b") fgnum = 4
 	if (fgnum != 3 && fgnum != 4) fatal("print_ansi_24_bit: fgnum="fgnum)
 	if (r < 0) fatal("Color red "r" must be greater or equal 0.")
 	if (r > 256) fatal("Color red "r" must be lower or equal 256.")
@@ -697,19 +699,19 @@ function print_ansi_24_bit(fgnum, r, g, b) {
 
 function disp_fb_8(fg, str, \
 		num, tmp) {
-	print_ansi_8_bit(fg_to_num(fg), calc_8_bit(str))
+	print_ansi_8_bit(fg, calc_8_bit(str))
 }
 
 function disp_fb_24_to_8_in(fg, c) {
 	for (i in c) {
 		c[i] = int(c[i] * 5 / 256);
 	}
-	print_ansi_8_bit(fg_to_num(fg), cube_to_216_colors(c[1], c[2], c[3]))
+	print_ansi_8_bit(fg, cube_to_216_colors(c[1], c[2], c[3]))
 }
 
 function disp_fb_24_in(fg, c) {
 	if (g_colors >= 256) {
-		print_ansi_24_bit(fg_to_num(fg), c[1], c[2], c[3])
+		print_ansi_24_bit(fg, c[1], c[2], c[3])
 	} else {
 		disp_fb_24_to_8_in(fg, c)
 	}
@@ -900,6 +902,20 @@ function mode_test1() {
 	printf("%s\n", t_reset())
 }
 
+function mode_test256() {
+	inc = 16
+	for (r = 0; r < 256; r += inc) {
+		for (g = 0; g < 256; g += inc) {
+			for (b = 0; b < 256; b += inc) {
+				print_ansi_24_bit("f", r, g, b)
+				printf("1")
+			}
+			if (g == 128 - inc) { printf("\n"); }
+		}
+		printf("\n")
+	}
+}
+
 function mode_echo() {
 	print Getline()
 }
@@ -1031,6 +1047,7 @@ function mode_nl() {
 function load_modes() {
 	modes["test"]="|Print all testing styles and various data"
 	modes["test1"]="|Print 8-bit background and foreground pallete"
+	modes["test256"]="|Print 24-bit colors"
 	modes["echo"]="TEXT|Print argument with newline"
 	modes["print"]="TEXT|Print argument without a newline"
 	modes["charrainbow"]="RRGGBB RRGGBB TEXT|Print each character using a rainbow from one color to another"
@@ -1051,6 +1068,7 @@ function load_modes() {
 function choose_mode(mode) {
 	if (mode == "test") mode_test(); else
 	if (mode == "test1") mode_test1(); else
+	if (mode == "test256") mode_test256(); else
 	if (mode == "echo") mode_echo(); else
 	if (mode == "print") mode_print(); else
 	if (mode == "charrainbow") mode_charrainbow(); else

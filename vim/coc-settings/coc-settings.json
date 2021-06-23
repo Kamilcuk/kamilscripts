@@ -37,6 +37,9 @@
     "php": [
       "phpstan",
       "psalm"
+    ],
+    "yaml": [
+      "yamllint"
     ]
   },
   "diagnostic-languageserver.formatFiletypes": {

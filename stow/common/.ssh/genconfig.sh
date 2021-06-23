@@ -243,6 +243,7 @@ ncbj gurobi          dizvm12.cis.gov.pl root
 ncbj tester          dizvm15.cis.gov.pl root
 ncbj squidproxy      dizvm6.cis.gov.pl root
 ncbj opengrok        dizvm14.cis.gov.pl root
+ncbj minio           dizvm13.cis.gov.pl root
 
 cat <<EOF
 Host code.cis.gov.pl
