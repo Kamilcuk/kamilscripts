@@ -7,8 +7,10 @@ Conflicts=shutdown.target reboot.target halt.target
 [Service]
 Type=simple
 WorkingDirectory=%I
-ExecStart=/usr/bin/docker-compose start
+ExecStartPre=/usr/bin/docker-compose start
+ExecStart=/bin/bash -c 'exec docker wait $(docker-compose ps -q)'
 ExecStop=/usr/bin/docker-compose stop
+RemainAfterExit=true
 StandardOutput=null
 
 [Install]
