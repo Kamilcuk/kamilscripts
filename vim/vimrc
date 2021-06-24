@@ -56,6 +56,7 @@ filetype plugin indent on
 syntax enable
 set encoding=UTF-8
 set nofoldenable
+set modeline
 
 set tabstop=4      " The width of a hard tabstop measured in spaces -- effectively the (maximum) width of an actual tab character.
 set shiftwidth=4   " The size of an indent. It's also measured in spaces, so if your code base indents with tab characters then you want shiftwidth to equal the number of tab characters times tabstop. This is also used by things like the =, > and < commands.
