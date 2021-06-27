@@ -232,6 +232,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 	endif
 	Plug 'honza/vim-snippets' " vim-snipmate default snippets
+	if exists('languagetool')
+		Plug 'dpelle/vim-LanguageTool'
+	endif
 	" Utilities
 	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
 	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp

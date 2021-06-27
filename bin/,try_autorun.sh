@@ -35,7 +35,7 @@ parse_arguments() {
 	g_timeout=
 
 	local o
-	while getopts ":e:pT:SVnh" o; do
+	while getopts ":e:pT:SVnhD" o; do
 		case "$o" in
 		e) ;;
 		p) g_use_project=true; ;;
@@ -44,6 +44,7 @@ parse_arguments() {
 		V) g_syncoutput=true; g_removecolors=true; ;;
 		n) g_dryrun=true; ;;
 		h) usage; exit 0; ;;
+		D) set -x; ;;
 		*) fatal "Invalid argument: -$OPTARG"; ;;
 		esac
 	done
@@ -93,8 +94,8 @@ be_nice() {
 	if [[ -z "${TRY_AUTORUN_IS_NICE:-}" ]]; then
 		local ionice
 		ionice=()
-		if { ionice -V 2>&1 | grep -q util-linux; } 2>/dev/null; then
-			ionice=(ionice --)
+		if hash ionice >/dev/null 2>&1; then
+			ionice=(ionice -c3  --)
 		fi
 		exec nice -n 20 "${ionice[@]}" env TRY_AUTORUN_IS_NICE=true "$0" "$@"
 	fi
@@ -189,47 +190,57 @@ list_functions_prefixed() {
 	declare -F | sed "/^declare -f $1/!d; s///"
 }
 
-,project_detect_make() {
+project_detect_make() {
 	[[ -e 'Makefile' ]]
 }
 
-,project_run_make() {
+project_run_make() {
 	cflags_detect
 	export CFLAGS="${cflags[*]}"
 	export CXXFLAGS="${cflags[*]}"
-	run make
+	run make "${@:2}"
 }
 
-,project_detect_cmake() {
+project_detect_cmake() {
 	[[ -e 'CMakeLists.txt' ]] &&
 	grep -q 'cmake_minimum_required\s*(\s*VERSION.*)' 'CMakeLists.txt'
 }
 
-,project_run_cmake() {
+project_run_cmake() {
 	local cdir tmp
 	# Find CMakeCache.txt
 	if
-		tmp=$(timeout 1 find . -mindepth 1 -maxdepth 3 -type f -readable -name 'CMakeCache.txt' -print -quit) &&
-		[[ -r "$tmp" ]]
+		tmp=$(timeout 1 find . -mindepth 1 -maxdepth 3 -type f -readable -name 'CMakeCache.txt' -printf "%h" -quit) &&
+		[[ -r "$tmp" && -d "$tmp" ]]
 	then
-		cdir=${tmp%/*}
+		cdir="$tmp"
 	else
-		cdir=_build
-		local args
+		cdir=./_build
+	fi
+
+	if [[ "${2:-}" == "cl"* && "$cdir" == */"_build" ]]; then
+		echo "+ rm $cdir" >&2
+		rm -Ir --one-file-system --preserve-root=all "$cdir"
+		return "$?"
+	fi
+	if [[ "${2:-}" == "c"* || ! -e "$cdir/CMakeCache.txt" ]]; then
+		local args cflags
 		args=()
 		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
 		cflags_detect
-		run cmake -S. -B"$cdir" \
-			-DCMAKE_VERBOSE_MAKEFILE=yes \
-			-DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
-			-DCMAKE_C_FLAGS="${cflags[*]}" \
-			-DCMAKE_CXX_FLAGS="${cflags[*]}" \
-			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$PWD"/_build/bin \
-			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$PWD"/_build/lib \
-			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="$PWD"/_build/lib \
-			"${args[@]}"
+		args=(
+			-S. -B"$cdir"
+			-DCMAKE_VERBOSE_MAKEFILE=yes
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
+			-DCMAKE_C_FLAGS="${cflags[*]}"
+			-DCMAKE_CXX_FLAGS="${cflags[*]}"
+			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$cdir"/bin
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$cdir"/lib
+			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="$cdir"/lib
+		)
+		run cmake "${args[@]}"
 	fi &&
-	run cmake --build "$cdir" &&
+	run cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
 		( runeval "cd $(printf "%q" "$cdir") && ctest" )
 	fi
@@ -242,59 +253,65 @@ be_unbuffered "$@"
 
 parse_arguments "$@"
 shift "$((OPTIND-1))"
-if (($# != 1)); then usage; fatal "Invalid count of arguments: $#"; fi
-file=$1
-shift
+if (($# == 0)); then
+	set -- .
+fi
+g_path=$1
 
-if "$g_use_project"; then
-	for i in $(list_functions_prefixed ,project_detect_); do
-		if ,project_detect_"$i"; then
-			,project_run_"$i" "$file"
+if [[ -d "$g_path" ]] || "$g_use_project"; then
+	for i in $(list_functions_prefixed project_detect_); do
+		if project_detect_"$i"; then
+			project_run_"$i" "$@"
 			exit
 		fi
 	done
 fi
 
-ext=${file,,}
-ext=${file##*.}
-case "$ext" in
-c|cpp|cxx|cc|c++)
+if [[ -f "$g_path" ]]; then
+	file="$g_path"
+	ext=${file,,}
+	ext=${file##*.}
 	case "$ext" in
-	c) : "${ccompiler:=gcc}"; run=,ccrun; ;;
-	*) : "${ccompiler:=g++}"; run=,c++run; ;;
-	esac
+	c|cpp|cxx|cc|c++)
+		case "$ext" in
+		c) : "${ccompiler:=gcc}"; run=,ccrun; ;;
+		*) : "${ccompiler:=g++}"; run=,c++run; ;;
+		esac
 
-	if hash "$run" 2>/dev/null >&2; then
-		cmd=("$run" +n +v "$file" ${1:+--} "$@")
+		if hash "$run" 2>/dev/null >&2; then
+			cmd=("$run" +n +v "$file" ${1:+--} "$@")
+			runexec "${cmd[@]}"
+		fi
+
+		if [[ -z "$ccompiler" ]] || ! hash "$ccompiler" 2>/dev/null; then
+			fatal "Compiler could not be found: $ccompiler"
+		fi
+		cflags_detect
+		tmp=$(mktemp --suffix='.out')
+		trap 'rm "$tmp"' EXIT
+		{
+			logrun "$ccompiler" "${cflags[@]}" "$@" "$file"
+			"$ccompiler" "${cflags[@]}" "$@" -o "$tmp" "$file"
+			runexec "$tmp"
+		}
+		# tmp removed on EXIT
+		exit
+		;;
+	py)
+		cmd=(python "$@" "$file")
+		logrun "${cmd[@]}"
 		runexec "${cmd[@]}"
-	fi
+		exit
+		;;
+	sh|bash|bashrc)
+		cmd=(bash "$@" "$file")
+		logrun "${cmd[@]}"
+		runexec "${cmd[@]}"
+		exit
+		;;
+	esac
+fi
 
-	if [[ -z "$ccompiler" ]] || ! hash "$ccompiler" 2>/dev/null; then
-		fatal "Compiler could not be found: $ccompiler"
-	fi
-	cflags_detect
-	tmp=$(mktemp --suffix='.out')
-	trap 'rm "$tmp"' EXIT
-	{
-		logrun "$ccompiler" "${cflags[@]}" "$@" "$file"
-		"$ccompiler" "${cflags[@]}" "$@" -o "$tmp" "$file"
-		runexec "$tmp"
-	}
-	# tmp removed on EXIT
-	;;
-py)
-	cmd=(python "$@" "$file")
-	logrun "${cmd[@]}"
-	runexec "${cmd[@]}"
-	;;
-sh|bash|bashrc)
-	cmd=(bash "$@" "$file")
-	logrun "${cmd[@]}"
-	runexec "${cmd[@]}"
-	;;
-*)
-	fatal "Don't know how to build $file"
-esac
-
+fatal "Don't know how to build $file"
 
 

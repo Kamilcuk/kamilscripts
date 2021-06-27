@@ -1,5 +1,7 @@
 {
   "coc.preferences.extensionUpdateCheck": "weekly",
+  "coc.preferences.formatOnType": false,
+  "coc.preferences.formatOnSaveFiletypes": [],
   "diagnostic.signOffset": 2,
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
@@ -11,12 +13,18 @@
   "diagnostic.checkCurrentLine": false,
   "diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
   "diagnostic.virtualText": true,
-  "codeLens.enable": true,
   "suggest.triggerCompletionWait": 500,
+  "codeLens.enable": true,
+  "solargraph.checkGemVersion": false,
   "clangd.semanticHighlighting": true,
+  "clangd.enabled": true,
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy",
+    "-j=3"
+  ],
   "python.linting.pylintEnabled": true,
   "python.linting.enabled": true,
-  "solargraph.checkGemVersion": false,
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.filetypes": {
     "vim": "vint",
@@ -65,6 +73,5 @@
         "-sr"
       ]
     }
-  },
-  "_comment": ""
+  }
 }

@@ -63,6 +63,10 @@ _xfconf-query() {
 	)
 }
 
+is_hostname() {
+	[[ "$HOSTNAME" == "$*" ]]
+}
+
 ###############################################################################
 
 autostart_log "begin"
@@ -101,7 +105,7 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 		# https://forum.xfce.org/viewtopic.php?id=12082
 		__xfconf-query -c xfce4-panel -p "$pulseaudioplug"/volume-step --create -t int -s 2
 	fi
-	if hash fc-list 2>/dev/null >/dev/null && [[ -n "$(fc-list 'LiterationMono Nerd Font')" ]]; then
+	if is_hostname leonidas && hash fc-list 2>/dev/null >/dev/null && [[ -n "$(fc-list 'LiterationMono Nerd Font')" ]]; then
 		_xfconf-query -c xfwm4           -p /general/title_font                      -s 'LiterationSans Nerd Font Bold 9'
 		_xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'LiterationSans Nerd Font 10'
 		_xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'LiterationMono Nerd Font 10'
