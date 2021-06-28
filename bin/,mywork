@@ -1,0 +1,26 @@
+#!/bin/bash
+
+c_on() (
+	set -x
+	nmcli c u "NCBJ CIS ca.cis.gov.pl" &
+	slack &
+	teams &
+)
+
+c_off() (
+	set -x
+	nmcli c d "NCBJ CIS ca.cis.gov.pl"
+	killall slack
+	killall teams
+)
+
+c_cron_on() {
+	 ,run_as_main_user_wrapper.sh >/dev/null 2>&1 "$0" on
+}
+
+c_cron_off() {
+	,run_as_main_user_wrapper.sh >/dev/null 2>&1 "$0" off
+}
+
+. ,lib_lib c_ "$@"
+
