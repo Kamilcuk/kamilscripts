@@ -13,6 +13,7 @@ C_get-branch() {
 }
 
 C_mergeto() {
+	if (($# != 1)); then L_fatal "Needs one argument: branch name to merge to"; fi
 	cur=$(,git get-branch)
 	L_run git checkout "$1"
 	L_run git merge "$cur" "$@"
@@ -20,6 +21,7 @@ C_mergeto() {
 }
 
 C_mergetopush() {
+	if (($# != 1)); then L_fatal "Needs one argument: branch name to merge to"; fi
 	cur=$(C_get-branch)
 	L_run git checkout "$1"
 	L_run git merge "$cur" "$@"
@@ -97,12 +99,48 @@ C_version() {
 	git --version | awk '{ split($3,a,"."); printf "%d%03d%03d\n", a[1], a[2], a[3] }'
 }
 
+C_version_gt() {
+	C_version |
+		if [[ "$1" =~ ^([0-9]*)\.([0-9]*)(\.([0-9]*))?$ ]]; then
+			awk \
+				-v "a=${BASH_REMATCH[1]}" \
+				-v "b=${BASH_REMATCH[2]}" \
+				-v "c=${BASH_REMATCH[4]}" \
+				'{exit !($1 >= (a * 1000 + b) * 1000 + c)}'
+		else
+			awk -v num="$1" '{exit !($1 >= num)}'
+		fi
+}	
+
 C_autostash_supported() {
-	C_version | awk '{exit !($1 >= 2006000)}'
+	C_version_gt 2.6.0
 }
 
 C_any_changes() {
 	git status --porcelain
+}
+
+C_push_force_with_lease_supported() {
+	C_version_gt 1.8.5
+}
+
+C_push_force_with_lease() {
+	if C_push_force_with_lease_supported; then
+		L_run git push --force-with-lease "$@"
+	else
+		L_run git push --force "$@"
+	fi
+}
+
+C_qdAddAmendPushForce() {
+	L_run git commit -a --amend --no-edit "$@"
+	C_push_force_with_lease
+}
+
+C_qlAllAddAmendPushForce() {
+	L_run git add -A
+	L_run git commit --amend --no-edit "$@"
+	C_push_force_with_lease
 }
 
 L_dryrun=0
