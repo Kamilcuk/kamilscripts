@@ -200,13 +200,8 @@ Host cis-$1 $1 $1-cis
 	GSSAPIDelegateCredentials yes
 	$(is_cis || echo RemoteForward 60000)
 	ExitOnForwardFailure no
-	${4:+$4}
-Host cis-raw-$1 $1 $1-cis
-	Hostname ${2:-$1.cis.gov.pl}
-	User ${3:-kcukrowski}
-	$(is_cis || echo RemoteForward 60000)
-	ExitOnForwardFailure no
-	ControlMaster no
+	ForwardX11 yes
+	ForwardX11Trusted yes
 	${4:+$4}
 '
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
@@ -247,6 +242,7 @@ ncbj minio           dizvm13.cis.gov.pl root
 
 cat <<EOF
 Host code.cis.gov.pl
+	User git
 	$([[ -e ~/.ssh/cis_code_id_rsa ]] && echo "IdentityFile ~/.ssh/cis_code_id_rsa")
 
 $([[ -e ~/.ssh/id_rsa_zwierzaki ]] && cat <<EOF2
