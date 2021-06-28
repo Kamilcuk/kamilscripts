@@ -58,7 +58,7 @@ yayn() { yay --noconfirm "$@"; }
 pacman_autoremove() {
 	local tmp
 	while tmp=$(pacman --query --deps --unrequired --quiet) && [[ -n "$tmp" ]]; do
-		p --noconfirm --R $tmp
+		p --noconfirm -R $tmp
 	done
 }
 
