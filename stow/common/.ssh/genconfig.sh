@@ -203,6 +203,7 @@ Host cis-$1 $1 $1-cis
 	ExitOnForwardFailure no
 	ForwardX11 yes
 	ForwardX11Trusted yes
+	StrictHostKeyChecking no
 	${4:+$4}
 '
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
