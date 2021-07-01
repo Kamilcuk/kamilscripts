@@ -175,6 +175,7 @@ fi # is_cis
 
 cat <<EOF
 Host gitlab.com github.com
+	User git
 	$([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
 	$(is_cis && hascmd ncat &&
 			echo "ProxyCommand ncat --proxy 127.0.0.1:60000 --proxy-type socks5 %h %p"

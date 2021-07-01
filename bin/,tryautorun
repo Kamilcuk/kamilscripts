@@ -27,12 +27,13 @@ EOF
 }
 
 parse_arguments() {
-	declare -g file g_use_project g_dryrun g_sync_output
+	declare -g file g_use_project g_dryrun g_sync_output g_runfromvim
 	g_use_project=false
 	g_dryrun=false
 	g_syncoutput=false
 	g_removecolors=false
 	g_timeout=
+	g_runfromvim=false
 
 	local o
 	while getopts ":e:pT:SVnhD" o; do
@@ -41,7 +42,7 @@ parse_arguments() {
 		p) g_use_project=true; ;;
 		T) g_timeout=$OPTARG; ;;
 		S) g_syncoutput=true; ;;
-		V) g_syncoutput=true; g_removecolors=true; ;;
+		V) g_runfromvim=true; g_syncoutput=true; g_removecolors=true; ;;
 		n) g_dryrun=true; ;;
 		h) usage; exit 0; ;;
 		D) set -x; ;;
@@ -217,13 +218,14 @@ project_run_cmake() {
 	else
 		cdir=./_build
 	fi
+	cdir=$(readlink -f "$cdir")
 
 	if [[ "${2:-}" == "cl"* && "$cdir" == */"_build" ]]; then
 		echo "+ rm $cdir" >&2
 		rm -Ir --one-file-system --preserve-root=all "$cdir"
 		return "$?"
 	fi
-	if [[ "${2:-}" == "c"* || ! -e "$cdir/CMakeCache.txt" ]]; then
+	if "$g_runfromvim" || [[ "${2:-}" == "c"* || ! -e "$cdir/CMakeCache.txt" ]]; then
 		local args cflags
 		args=()
 		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
@@ -242,6 +244,7 @@ project_run_cmake() {
 	fi &&
 	run cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
+		env > /tmp/1
 		( runeval "cd $(printf "%q" "$cdir") && ctest" )
 	fi
 }
@@ -249,7 +252,7 @@ project_run_cmake() {
 # main #########################################
 
 be_nice "$@"
-be_unbuffered "$@"
+# be_unbuffered "$@"
 
 parse_arguments "$@"
 shift "$((OPTIND-1))"

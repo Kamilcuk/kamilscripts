@@ -62,3 +62,7 @@ cis-rsync() { ( _cis_ssh_config;
 ); }
 . alias_complete.sh cis-rsync scp
 
+if [[ -e ~/ncbj/gurobi.lic && -z "${GRB_LICENSE_FILE:-}" ]]; then
+	export GRB_LICENSE_FILE=~/ncbj/gurobi.lic
+fi
+

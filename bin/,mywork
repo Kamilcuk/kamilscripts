@@ -1,10 +1,27 @@
 #!/bin/bash
 
+wait_close_window() {
+	local maxtimeout=60
+	local window
+	window=$1
+	while ! wmctrl -l | sed -E 's/([^ ]* *){3}//' | grep -qF "$1"; do
+		if ((maxtimeout-- == 0)); then
+			# timedout
+			return 1
+		fi
+		sleep 1
+	done
+	sleep 1
+	wmctrl -c "$1"
+}
+
 c_on() (
 	set -x
 	nmcli c u "NCBJ CIS ca.cis.gov.pl" &
-	slack &
-	teams &
+	slack >/dev/null 2>&1 &
+	teams >/dev/null 2>&1 &
+	wait_close_window 'Slack |'
+	wait_close_window '| Microsoft Teams'
 )
 
 c_off() (

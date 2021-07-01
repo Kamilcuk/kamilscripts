@@ -1101,6 +1101,8 @@ colorscheme kamilcuk
 set errorformat^=../%f:%l:%c:\ %m
 set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
+" Detect ctest -V errors
+let &errorformat.=',%\d%\+/%\d%\+ Test #%l: %f %[.*]%#Failed  %m'
 
 if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 	let &makeprg="sudo nginx -t && sudo nginx -s reload"

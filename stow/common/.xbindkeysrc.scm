@@ -411,7 +411,7 @@
 (XbindkeyMultiple
   '((Mod4 d) (Mod4 s))
   "-islack"
-  ",slack_toggle.sh")
+  "wmctrl -c 'Slack |' || slack")
 
 (Xbindkey '(Alt F3) "xfce4-appfinder")
 (Xbindkey
@@ -430,6 +430,11 @@
   '(Control Escape)
   "-ixfce4-whiskermenu"
   "xfce4-popup-whiskermenu")
+
+(xbindkey
+  '(Mod4 r)
+  "xdotool click 1")
+  ;"xdotool click --repeat 10 --delay 10 1")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of xbindkeys guile configuration ;;
