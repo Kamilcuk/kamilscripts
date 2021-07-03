@@ -14,7 +14,7 @@ cmd_conflicts_list() {
 cmd_conflicts_remove() {
 	echo "This will remove following files:"
 	cmd_conflicts_list "${1:-.}"
-	read -r -p "Are you sure? [y/n]" ans
+	read -r -p "Are you sure? [y/n] " ans
 	case "$ans" in y) ;; *) exit;; esac
 	cmd_conflicts_list "${1:-.}" -print0 | xargs -0 rm -v
 }
