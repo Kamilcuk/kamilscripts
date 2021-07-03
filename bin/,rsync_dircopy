@@ -15,12 +15,12 @@ src=$1
 src="${src%%/}"
 dest=$2
 dest="${dest%%/}"
-
-if [[ ! -d "$src" ]]; then 
+ 
+if [[ ! "$src" == *":"* && ! -d "$src" ]]; then 
 	fatal "$src is not a directory"
 fi
 tmp="$dest"/"$(basename "$src")"
-if [[ -e "$tmp" ]]; then
+if [[ ! "$tmp" == *":"* && -e "$tmp" ]]; then
 	fatal "$tmp directory already exists!"
 fi
 

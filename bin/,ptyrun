@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# https://unix.stackexchange.com/questions/249723/how-to-trick-a-command-into-thinking-its-output-is-going-to-a-terminal
+
+hascmd() {
+	hash "$1" 2>/dev/null >&2
+}
+
+if hascmd unbuffer; then
+	unbuffer "$@"
+	exit
+fi
+if hascmd gcc; then
+	tmp=$(mktemp)
+	trap 'rm "$tmp"' EXIT
+	echo 'int isatty(int fd) { return 1; }' |
+		gcc -O0 -fpic -shared -ldl -o "$tmp" -xc -
+	LD_PRELOAD="$tmp${LD_PRELOAD:+ $LD_PRELOAD}" "$@"
+	exit
+fi
+if hascmd socat; then
+	printf -v PTYRUN_CMD "%q " "$@"
+	work() {
+		eval "$PTYRUN_CMD"
+	}
+	export -f work
+	export PTYRUN_CMD
+	socat EXEC:"bash -c work",pty,setsid,ctty -
+	exit
+fi
+

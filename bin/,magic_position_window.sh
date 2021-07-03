@@ -237,7 +237,7 @@ server() {
 
 args=$(getopt -n "$name" -o ht:fw: -l help,timeout:,debug,foreground,window: -- "$@")
 eval "set -- $args"
-server_timeout=0.1
+server_timeout=0.2
 g_debug=false
 g_foreground=0
 while (($#)); do

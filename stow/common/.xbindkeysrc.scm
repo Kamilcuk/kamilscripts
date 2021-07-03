@@ -433,7 +433,7 @@
 
 (xbindkey
   '(Mod4 r)
-  "xdotool click 1")
+  "xdotool click --repeat 4 1")
   ;"xdotool click --repeat 10 --delay 10 1")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
