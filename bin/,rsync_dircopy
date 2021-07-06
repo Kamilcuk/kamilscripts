@@ -25,5 +25,5 @@ if [[ ! "$tmp" == *":"* && -e "$tmp" ]]; then
 fi
 
 set -x
-rsync -aivxAHSX --delete --progress "$src"/ "$dest"/
+rsync -aivxAHSX --progress "$src"/ "$dest"/
 

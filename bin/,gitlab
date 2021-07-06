@@ -49,27 +49,34 @@ get_paginated() {
 
 ###############################################################################`
 
+get_parse_args() {
+	local path tmp
+	path="$1"
+	shift
+	# Replaces ////// by /
+	path=${path//\/+(\/)/\/}
+	# Add gitlab-api-url so that remove multiple /
+	path="${GITLAB_API_URL%%/}/${path##/}"
+	# args is global
+	args=("$path" "$@")
+}
+
 # shellcheck disable=2145
 C_GETRAW() {
-	local path
-	path="${GITLAB_API_URL}/$1"
-	shift
-	path=${path//\/+(\/)/\/}
-	run_curl "$path" "$@"
+	local args ; get_parse_args "$@"
+	run_curl "${args[@]}"
 	echo
 }
 
 C_GET() {
-	local path tmp
-	path="${GITLAB_API_URL}/$path"
-	shift
-	path=${path//\/+(\/)/\/}
-	get_paginated "$path?pagination=keyset&per_page=100&order_by=id&sort=asc" "$@"
+	local args ; get_parse_args "$@"
+	get_paginated "${args[0]}?pagination=keyset&per_page=100&order_by=id&sort=asc" "${args[@]:1}"
 }
 
 # shellcheck disable=2145
 C_POST() {
-	run_curl -X POST "${GITLAB_API_URL}/$@"
+	local args ; get_parse_args "$@"
+	run_curl -X POST "${args[@]}"
 }
 
 C_get_groups() {
@@ -78,6 +85,10 @@ C_get_groups() {
 
 C_get_group_from_name() {
 	C_get_groups | jq --arg name "$1" '.[] | select(.name == $name)'
+}
+
+C_get_group_id_from_name() {
+	C_get_group_from_name "$@" | jq -r '.id'
 }
 
 C_list_projects_in_group() {
@@ -217,27 +228,74 @@ C_get_project_tags() {
 	C_GETRAW "/projects/$id/repository/tags"
 }
 
-C_repo_create() {
-	if (($# < 1)); then L_fatal "Argument needed"; fi
-	args=$(getopt -n "$L_name" -o d -l description:,public,private,internal,enable-issues::,enable-wiki:: -- "$@")
+C_create_project() {
+	addarg() {
+		local tmp
+		#tmp="$(g_urlescape "$*")"
+		tmp="$*"
+		curlopts+=(-d "$tmp")
+	}
+	usage() {
+		n=",gitlab create_project"
+		cat <<EOF
+Usage: $n [options] 
+
+Options:
+	--nowiki
+	--name <str>
+	--path <str>
+	--description <str>
+	--namespace <str>
+ 	-a --add <opt>=<val>
+			Takes any option from:
+			https://docs.gitlab.com/ee/api/projects.html#create-project
+
+Example:
+	$n --namespace Kamcuk --name somelib
+
+EOF
+	exit 0
+	}
+	#
+	if (($# == 0)); then usage; fi;
+	args=$(getopt -n "$L_name" \
+		-o a:h \
+		-l nowiki,add:,name:,path:,description:,namespace: -- "$@")
 	eval set -- "$args"
-	mode=
-	issues=false
-	wiki=false
+	curlopts=()
 	while (($#)); do
 		case "$1" in
-		-d|--description) description=$2; shift; ;;
-		--private|--public|--internal) mode=${1//--/}; ;;
-		--enable-issues) issues=${2:-true}; shift; ;;
-		--enable-wiki) wiki=${2:-true}; shift; ;;
+		-h) usage; ;;
+		--nowiki) addarg "wiki_access_level=disabled" ;;
+		--add|--name|--path|--description)
+			addarg "${1#--}=$2"
+			shift
+			;;
+		--namespace)
+			if ! id=$(C_get_group_id_from_name "$2") || [[ -z "$id" ]]; then
+				L_fatal "Could not get id for project $2"
+			fi
+			addarg namespace_id="$id"
+			shift
+			;;
 		--) shift; break; ;;
-		*) L_fatal "Internal error"; ;;
+		*) L_fatal "Internal error: $v"; ;;
 		esac
 		shift;
 	done
-	if [[ -z "$mode" ]]; then L_fatal "--public --private or --internal argument needed"; fi
+	if (($#)); then usage; fi;
 
-	C_POST /projects "$@"
+	if ! tmp=$(C_POST /projects "${curlopts[@]}"); then
+		jq <<<"$tmp"
+		L_fatal "Failure"
+		exit 1
+	fi
+	jq <<<"$tmp"
+	echo "SUCCESS"
+}
+
+C_my_create_project() {
+	C_create_project --namespace Kamcuk --name "$@"
 }
 
 ###############################################################################

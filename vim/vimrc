@@ -880,7 +880,9 @@ nnoremap <leader>s i<CR><Esc>
 
 " Add `:Format` command to format current buffer.
 "command! -nargs=0 Format :call CocAction('format')
-command! -nargs=? Format :Neoformat <args>
+" neoformat/plugin/neoformat.vim
+command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
+            \ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
 
 " https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 command! -nargs=1 -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
