@@ -42,13 +42,18 @@ parse_arguments() {
 		p) g_use_project=true; ;;
 		T) g_timeout=$OPTARG; ;;
 		S) g_syncoutput=true; ;;
-		V) g_runfromvim=true; g_syncoutput=true; g_removecolors=true; ;;
+		V) g_runfromvim=true; ;;
 		n) g_dryrun=true; ;;
 		h) usage; exit 0; ;;
 		D) set -x; ;;
 		*) fatal "Invalid argument: -$OPTARG"; ;;
 		esac
 	done
+
+	if "$g_runfromvim"; then
+		g_syncoutput=true;
+		g_removecolors=true;
+	fi
 
 	if "$g_syncoutput"; then
 		exec 2>&1
@@ -220,15 +225,23 @@ project_run_cmake() {
 	fi
 	cdir=$(readlink -f "$cdir")
 
-	if [[ "${2:-}" == "cl"* && "$cdir" == */"_build" ]]; then
-		echo "+ rm $cdir" >&2
-		rm -Ir --one-file-system --preserve-root=all "$cdir"
-		return "$?"
-	fi
-	if "$g_runfromvim" || [[ "${2:-}" == "c"* || ! -e "$cdir/CMakeCache.txt" ]]; then
+	local runconfig=0
+	shift
+	case "$1" in
+	clean)
+		if [[ "$cdir" == */"_build" ]]; then
+			logrun rm -Ir --one-file-system --preserve-root=all "$cdir"
+			return "$?"
+		fi
+		;;
+	config)
+		runconfig=1
+		shift
+		;;
+	esac
+
+	if "$g_runfromvim" || ((runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
 		local args cflags
-		args=()
-		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
 		cflags_detect
 		args=(
 			-S. -B"$cdir"
@@ -240,7 +253,8 @@ project_run_cmake() {
 			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$cdir"/lib
 			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="$cdir"/lib
 		)
-		run cmake "${args[@]}"
+		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
+		run cmake "${args[@]}" "$@"
 	fi &&
 	run cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
@@ -270,12 +284,25 @@ if [[ -d "$g_path" ]] || "$g_use_project"; then
 	done
 fi
 
+if [[ -x "$g_path" ]]; then
+	"$g_path" "$@"
+	exit
+fi
+
 if [[ -f "$g_path" ]]; then
 	file="$g_path"
 	ext=${file,,}
 	ext=${file##*.}
-	case "$ext" in
-	c|cpp|cxx|cc|c++)
+	case "$g_path" in
+	Makefile|*/Makefile)
+		make "$@"
+		exit
+		;;
+	*/CMakeLists.txt|CMakeLists.txt)
+		project_run_cmake "$@"
+		exit
+		;;
+	*.c|*.cpp|*.cxx|*.cc|*.c++)
 		case "$ext" in
 		c) : "${ccompiler:=gcc}"; run=,ccrun; ;;
 		*) : "${ccompiler:=g++}"; run=,c++run; ;;
@@ -300,21 +327,25 @@ if [[ -f "$g_path" ]]; then
 		# tmp removed on EXIT
 		exit
 		;;
-	py)
-		cmd=(python "$@" "$file")
-		logrun "${cmd[@]}"
-		runexec "${cmd[@]}"
-		exit
+	*.py)
+		cmd=(python "$file" "$@")
 		;;
-	sh|bash|bashrc)
-		cmd=(bash "$@" "$file")
-		logrun "${cmd[@]}"
-		runexec "${cmd[@]}"
-		exit
+	*.sh)
+		cmd=(sh "$file" "$@")
+		;;
+	*.bash|*.bashrc)
+		cmd=(bash "$file" "$@")
+		;;
+	*.zsh)
+		cmd=(zsh "$file" "$@")
 		;;
 	esac
+	if ((${#cmd[@]})); then
+		logrun "${cmd[@]}"
+		runexec "${cmd[@]}"
+		exit
+	fi
 fi
 
 fatal "Don't know how to build $file"
-
 
