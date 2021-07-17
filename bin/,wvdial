@@ -1,0 +1,46 @@
+#!/bin/bash
+
+template() {
+	vars=(modem baud)
+	if [[ "${1:-}" != "ok" ]]; then
+		for i in "${vars[@]}"; do
+			if [[ -z "${!i:-}" ]]; then
+				L_fatal "$i is not set"
+			fi
+		done
+	fi
+	(
+		export "${vars[@]}"
+		envsubst "$(printf '$%s ' "${vars[@]}")"
+	) <<EOF
+[Dialer Defaults]
+Modem = $modem
+Baud = $baud
+
+[Dialer readsms]
+Init1 = AT+CMGF=1
+Init2 = AT+CMGL="ALL"
+Init3 = AT+CMGF=0
+
+[Dialer info-gsm]
+Init1 = AT+COPS?
+
+EOF
+}
+
+w() {
+	local config
+	config=$(template)
+	L_run wvdial -c <(cat <<<"$config") "$L_CMD" "$@"
+}
+
+modes=$(
+	template ok |
+	sed -n 's/^[[:space:]]*\[[[:space:]]*Dialer[[:space:]]*\([^]]*\).*/\1/p' |
+	grep -v 'Defaults'
+)
+for i in $modes; do
+	eval "C_$i() { w \"\$@\"; } "
+done
+
+. ,lib_lib C_ "$@"

@@ -1,0 +1,117 @@
+#!/bin/bash
+set -euo pipefail
+
+
+set_if_not_set() {
+	if [[ -z "${!1:-}" ]]; then
+		declare "$1=$2"
+	fi
+	export "${1?}"
+}
+rootdir="$PWD"
+set_if_not_set ANSIBLE_CONFIG   "$rootdir"/ansible.cfg
+set_if_not_set ANSIBLE_LOG_PATH "$rootdir"/ansible.log
+set_if_not_set ANSIBLE_LIBRARY  "$rootdir"/plugins
+
+is_debug() {
+	[[ -n "${DEBUG:-}" ]]
+}
+
+run_temporary_ansible_playbook() {
+	# Creates a temporary file with the content of first argument
+	# then runs ansible-playbook with it with temporary args
+	if (($# == 0)); then
+		echo "_cis_run_temporary_ansible_playbook: not enough argument" >&2
+		return 2
+	fi
+	(
+		cd "$rootdir"
+		tmp=$(mktemp .ansible-playbook.XXXXXXXXXXX)
+		trap 'rm "$tmp"' EXIT
+		printf "%s\n" "$1" >"$tmp"
+		shift
+		if true || is_debug; then
+			sed 's/^/>> /' "$tmp"
+		fi
+		L_run ansible-playbook "${inventory_args[@]}" -b "$tmp" "$@"
+	)
+}
+
+C_playbook_run() {
+	L_run ansible-playbook "${inventory_args[@]}" -b "$@"	
+}
+
+C_role_run() {
+	if (($# < 2)); then
+	cat <<EOF
+Usage: $L_NAME $L_CMD <role_name> <hostname> [ARGS...]
+EOF
+		exit 2
+	fi
+
+	role="$(basename -- "$1")"
+	hostname=$2
+	shift 2
+	run_temporary_ansible_playbook "
+- name: Run role $role
+  hosts: $hostname
+  gather_facts: 0
+  roles:
+    - role: $role
+" "$@"
+}
+
+C_task_run() {
+	if (($# < 2)); then
+		echo "Usage: $L_NAME $L_CMD <roles_path> <hostname> [ARGS...]" >&2
+		exit 2
+	fi
+
+	task=$(readlink -f "$1")
+	hostname=$2
+	shift 2
+	run_temporary_ansible_playbook "
+- hosts: $hostname
+  gather_facts: ${GATHER_FACTS:-0}
+  tasks:
+    - include: \"$task\"
+" "$@"
+}
+
+C_exec_on_each() {
+	if (($# < 2)); then
+		cat <<EOF
+Usage: $L_NAME $L_CMD <host> <script...>
+EOF
+		exit 2
+	fi
+
+	host=$1
+	shift
+	cmd="$*"
+
+	cd "$rootdir"
+	set -x
+	L_run ansible "${inventory_args[@]}" "$host" -m shell -a "exec 2>&1 ; set -x ; $cmd"
+}
+
+. ,lib_lib -q
+g_args=$(getopt -n "$L_NAME" -o i: -l inventory:,inventory-file: -- "$@")
+inventory_args=()
+eval "set -- $g_args"
+while (($#)); do
+	case "$1" in
+	-i|--inventory|--inventory-file)
+		inventory_args=(-i "$2")
+		shift
+		;;
+	--) shift; break; ;;
+	*) L_fatal "Error parsing arguments: $1"; ;;
+	esac
+	shift
+done
+
+. ,lib_lib C_ "$@"
+
+
+

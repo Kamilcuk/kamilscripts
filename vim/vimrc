@@ -899,6 +899,7 @@ let g:coc_global_extensions	= [
 			\ 'coc-highlight',
 			\ 'coc-yank',
 			\ 'coc-diagnostic',
+			\ 'coc-kite',
 			\ ]
 " Dynamically installed coc extension depending on filetype.
 let g:coc_global_extensions_dynamics = {
@@ -1148,6 +1149,10 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	if hostname() == "leonidas"
 		let g:dispatch_quickfix_height=16
 	endif
+endif
+
+if getcwd() =~ '/home/kamil/myprojects/ckd'
+	let g:coc_start_at_startup=0
 endif
 
 " }}}

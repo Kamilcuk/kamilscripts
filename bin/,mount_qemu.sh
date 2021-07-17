@@ -66,7 +66,7 @@ if [[ $UID -ne 0 ]]; then
 	run exec sudo "$0" "$@"
 fi
 
-args=$(getopt -n "mount_qemu.sh" -o cup:h -l help -- "$@")
+args=$(getopt -n "mount_qemu.sh" -o cump:h -l help -- "$@")
 eval set -- "$args"
 g_mode=mount
 g_partition=1
@@ -75,6 +75,7 @@ while (($#)); do
 	-h) usage; exit; ;;
 	-c) g_mode=command; ;;
 	-u) g_mode=umount; ;;
+	-m) g_mode=mount; ;;
 	-p) g_partition=$2; shift; ;;
 	--) shift; break; ;;
 	*) fatal "unknown option: $1"; ;;
@@ -97,9 +98,12 @@ fi
 #################
 
 if ! lsmod | grep -q '^nbd'; then
-	rmmod nbd ||:
-	modprobe nbd max_part=16 ||:
-	modprobe nbd max_parts=16 ||:
+	( set -x;
+	if rmmod nbd; then
+		modprobe nbd max_part=16 ||
+		modprobe nbd max_parts=16
+	fi
+	) ||:
 fi
 
 m_get_free_nbd() {

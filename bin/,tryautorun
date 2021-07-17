@@ -208,8 +208,7 @@ project_run_make() {
 }
 
 project_detect_cmake() {
-	[[ -e 'CMakeLists.txt' ]] &&
-	grep -q 'cmake_minimum_required\s*(\s*VERSION.*)' 'CMakeLists.txt'
+	[[ -e 'CMakeLists.txt' ]]
 }
 
 project_run_cmake() {
@@ -227,7 +226,7 @@ project_run_cmake() {
 
 	local runconfig=0
 	shift
-	case "$1" in
+	case "${1:-}" in
 	clean)
 		if [[ "$cdir" == */"_build" ]]; then
 			logrun rm -Ir --one-file-system --preserve-root=all "$cdir"
@@ -284,7 +283,7 @@ if [[ -d "$g_path" ]] || "$g_use_project"; then
 	done
 fi
 
-if [[ -x "$g_path" ]]; then
+if [[ ! -d "$g_path" && -x "$g_path" ]]; then
 	"$g_path" "$@"
 	exit
 fi
@@ -347,5 +346,5 @@ if [[ -f "$g_path" ]]; then
 	fi
 fi
 
-fatal "Don't know how to build $file"
+fatal "Don't know how to build $g_path"
 

@@ -1,13 +1,13 @@
 #!/bin/bash
 
-,pulseaudio_list_1() {
-	,pulseaudio_list_2 "_what,_num,_name,_description"
+C_list_1() {
+	C_list_2 "_what,_num,_name,_description"
 }
 
-,pulseaudio_list_2() {
+C_list_2() {
 	if (($# != 1)); then
 		cat <<-EOF
-	Usage:  ,pulseaudio_list_2 <fields> [jsonoutput]
+	Usage:  $L_NAME $L_CMD <fields> [jsonoutput]
 
 	Fields is a comma separated list of lowercase fields.
 	A special value "ALL" makes printing all possible fields.
@@ -21,9 +21,9 @@
 	All other fields that are outputted by pactl list.
 
 	Examples:
-	  ,pulseaudio_list_2 ALL
-	  ,pulseaudio_list_2 JSON
-	  ,pulseaudio_list_2 _what,_num,_name,_description,mute
+	  $L_NAME $L_CMD ALL
+	  $L_NAME $L_CMD JSON
+	  $L_NAME $L_CMD _what,_num,_name,_description,mute
 
 	EOF
 		return
@@ -207,10 +207,10 @@
 	'
 }
 
-,pulseaudio_filter_1() {
+C_filter_1() {
 	if ((!$#)); then
 		cat <<EOF
-Usage: ,pulseaudio_filter_1 <what> <id> <name> <description>
+Usage: $L_NAME $L_CMD <what> <id> <name> <description>
 
 Filter the pactl list output using glob expression on all fields.
 Then output only id number. Empty glob expressions are interpreted
@@ -218,12 +218,12 @@ as a star * - match everything.
 
 Example:
 
-,pulseaudio_lib filter_1 'Sink' '' '' 'Built-in Audio Analog Stereo'
+$L_NAME $L_CMD 'Sink' '' '' 'Built-in Audio Analog Stereo'
 
 EOF
 		return
 	fi
-	,pulseaudio_list_1 |
+	C_list_1 |
 	while IFS=$'\t' read -r a b c d; do
 		case "$a" in (${1:-*})
 		case "$b" in (${2:-*})
@@ -237,9 +237,41 @@ EOF
 	done
 }
 
-,pulseaudio_filter_2() {
-	,pulseaudio_filter_1 "$1" '' "$2" "$3"
+C_filter_2() {
+	C_filter_1 "$1" '' "$2" "$3"
 }
 
-. ,lib_lib ',pulseaudio_' "$@"
+C_record() {
+	if (($# == 0)); then
+		L_fatal "Specify output file, for example: $L_NAME $L_CMD /tmp/file.mp3"
+	fi
+	if (($# > 1)); then 
+		L_fatal "Too many arguments"
+	fi
+	parec | lame -r --quiet -q 3 --lowpass 17 --abr 192 - "$1"
+}
+
+C_hear_microphone() {
+	if C_hear_microphone_isenabled; then
+		C_hear_microphone_disable
+	else
+		C_hear_microphone_enable
+	fi
+}
+
+C_hear_microphone_enable() {
+	L_log "Enabling..."
+	pactl load-module module-loopback latency_msec=1 >/dev/null
+}
+
+C_hear_microphone_isenabled() {
+	pactl list | grep -q module-loopback
+}
+
+C_hear_microphone_disable() {
+	L_log "Disabling..."
+	pactl unload-module module-loopback
+}
+
+. ,lib_lib 'C_' "$@"
 

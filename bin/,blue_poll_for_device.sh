@@ -66,6 +66,10 @@ bl_block_until_line() {
 		printf -v tout "$d.%03d" "$((tout/1000))" "$((tout%1000))"
 		IFS= read -u "$bl_in" ${2:+-t "$tout"} -r bl_line
 	do
+		# Remove color codes.
+		bl_line="${bl_line//$'\E['+([^m])m}"
+		# Remove CR.
+		bl_line="${bl_line//$'\r'}"
 		if [[ "$bl_line" =~ $1 ]]; then
 			return 0
 		fi
@@ -84,13 +88,15 @@ C_poll_for_device() {
 	d=${1:-00:02:00:00:06:29}
 
 	# some default init
-	printf "%s\n" "agent on" "default-agent" "power on" >&"$bl_out"
+	bl_echo "agent on"
+	bl_echo "default-agent"
+	bl_echo "power on"
 
 	while :; do
 		# scan for device and wait
 		L_log "Scanning devices, waiting for $d..."
 		bl_echo "scan on"
-		bl_block_until_line "Device $d"
+		bl_block_until_line "\[CHG\] Device $d RSSI:"
 		bl_echo "scan off"
 		L_log "Device $d discovered, connecting..."
 
@@ -99,10 +105,8 @@ C_poll_for_device() {
 		bl_echo "connect $d"
 
 		# wait for connection
-		ret=0
-
-		bl_block_until_line 'Connection successful|Failed to connect: ' 10000
-		if [[ ! "$bl_line" =~ "Connection successful" ]]; then
+		if ! bl_block_until_line 'Connection successful|Failed to connect: ' 10000 ||
+				[[ ! "$bl_line" =~ "Connection successful" ]]; then
 			L_log "Connecting to $d failed: $bl_line"
 			continue
 		fi
@@ -115,7 +119,7 @@ C_poll_for_device() {
 		# Wait until device is connected
 		bl_block_until_line "Device $d connected: no"
 		L_log "Device $d disconnected."
-	done		
+	done	
 }
 
 

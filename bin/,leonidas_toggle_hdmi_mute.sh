@@ -4,12 +4,16 @@ tmp=$(,pulseaudio_lib list_2 "_what,_num,_description,mute" | awk -F'\t' -v OFS=
 	$1 !~ "Sink"{next}
 	$3 ~ /^GP107GL.*HDMI/{print "sink_hdmi="$2" sink_hdmi_muted="$4}
 	$3 ~ /^Built-in Audio Analog Stereo/{print "sink_builtin="$2" sink_builtin_muted="$4}
+	$3 ~ /^IBH 2100-TI$/{print "bluehead="$2}
 '
 )
 declare $tmp
 
+
 if (($# == 0)); then
-	if [[ "${sink_hdmi_muted,,}" =~ no ]]; then
+	if [[ -n "${bluehead:-}" ]]; then
+		set -- only_bluetooth
+	elif [[ "${sink_hdmi_muted,,}" =~ no ]]; then
 		set -- unmute_headphones
 	else
 		set -- unmute_hdmi
@@ -30,6 +34,14 @@ unmute_hdmi)
 	pactl set-sink-mute "$sink_builtin" on
 	icon=video-display
 	msg="Dźwięk przez monitor. Słuchawki wyciszone"
+	;;
+only_bluetooth)
+	pactl set-sink-mute "$sink_hdmi" on
+	pactl set-sink-mute "$sink_builtin" on
+	pactl set-sink-mute "$bluehead" off
+	pactl set-sink-mute "$bluehead" off
+	icon=blueman
+	msg="Dźwięk przez słuchawki bluetooth."
 	;;
 *)
 	echo "Invalid command" >&2
