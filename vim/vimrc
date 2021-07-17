@@ -92,11 +92,11 @@ unlet tmp
 
 " https://stackoverflow.com/questions/17936130/vim-undo-undo-changes-after-file-write
 if has('persistent_undo')    "check if your vim version supports it
-	set undofile             "turn on the feature  
+	set undofile             "turn on the feature
 	if !has('nvim')
 		set undodir=~/.vim/undo  "directory where the undo files will be stored
 	endif
-endif     
+endif
 
 " https://vim.fandom.com/wiki/Folding
 set foldmethod=syntax
@@ -212,9 +212,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	call plug#begin('~/.vim/plugged')
 
 	" My Plugins
+	" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
+	Plug 'kamilcuk/vim-dispatch'
 	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 	"KcPlug8 'puremourning/vimspector'
-	"Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
+	" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" staging2
 	"Plug 'LucHermitte/lh-vim-lib'
 	"Plug 'LucHermitte/lh-tags'
@@ -232,10 +234,10 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	if exists('hunspell') || exists('aspell')
 		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 	endif
-	Plug 'honza/vim-snippets' " vim-snipmate default snippets
 	if exists('languagetool')
 		Plug 'dpelle/vim-LanguageTool'
 	endif
+	Plug 'honza/vim-snippets' " vim-snipmate default snippets
 	" Utilities
 	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
 	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
@@ -253,7 +255,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :Git
 	Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
 	Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
-	Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher 
 	" Languages
 	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
 	KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
@@ -291,11 +292,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
 	Plug 'terryma/vim-smooth-scroll'
 	Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
-	Plug 'dhruvasagar/vim-table-mode' " 
+	Plug 'dhruvasagar/vim-table-mode' "
 	Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
 	" For vim plugins
 	Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
-	Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins 
+	Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
 	" view
 	"Plug 'wimstefan/Lightning'
 	"Plug 'yankcrime/direwolf'
@@ -734,7 +735,7 @@ function KcDispatchComplete_firstErrorHasValidFile() abort
 	return 0
 endfunction
 function KcDispatchComplete() abort
-	copen
+	Copen
 	if KcDispatchComplete_firstErrorHasValidFile()
 		" If we can navigate to the file with the first error, then
 		" instantaneously navigate to it.
@@ -752,6 +753,7 @@ augroup KcDispatchComplete
 	" DispatchComplete is my patch to vim-dispath
 	autocmd User DispatchComplete call KcDispatchComplete()
 augroup END
+let g:dispatch_quickfix_height = 30
 
 if kc#plugin#enabled('vimwiki')
 	let g:vimwiki_list = [{'path': '~/vimwiki/',

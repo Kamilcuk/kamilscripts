@@ -69,7 +69,7 @@ Host tunel_dyzio
 	User kamcuk
 	Port 4004
 
-Host biurek
+Host biurek gucio
 	Hostname www.biurek.pl
 	User kamil
 	Port 4004
@@ -184,6 +184,8 @@ EOF
 
 ###############################################################################
 
+if [[ "$HOSTNAME" != gucio ]]; then
+
 cat <<EOF
 # NCBJ
 Host *.cis.gov.pl *_cis
@@ -275,6 +277,8 @@ Host kgomulskirpi
 	Hostname 10.135.0.3
 
 EOF
+
+fi
 
 ###############################################################################
 

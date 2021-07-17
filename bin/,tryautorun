@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-name=$(basename "$0")
+L_NAME=,tryautorun
 
 usage() {
 	cat <<EOF
-Usage: $name [options] <file> [tool_specific_arguments...]
+Usage: $L_NAME [options] <file> [tool_specific_arguments...]
 
 Tries to compile and automatically run the file or the project.
 Detects filetype using the extension of the file.
@@ -26,19 +26,31 @@ Licensed jointly under Beerware Licsense and MIT License
 EOF
 }
 
+apply_vim_config() {
+	# Change defaults when run from vim
+	g_syncoutput=true;
+	g_removecolors=true;
+	g_use_project=true;
+	g_timeout=10;
+}
+
 parse_arguments() {
-	declare -g file g_use_project g_dryrun g_sync_output g_runfromvim
+	declare -g file g_filetype g_use_project g_dryrun g_syncoutput g_runfromvim g_timeout
 	g_use_project=false
 	g_dryrun=false
 	g_syncoutput=false
 	g_removecolors=false
 	g_timeout=
 	g_runfromvim=false
+	g_filetype=
+	if [[ -e "${VIMRUNTIME:-}" ]]; then
+		apply_vim_config
+	fi
 
 	local o
 	while getopts ":e:pT:SVnhD" o; do
 		case "$o" in
-		e) ;;
+		e) g_filetype=$OPTARG; ;;
 		p) g_use_project=true; ;;
 		T) g_timeout=$OPTARG; ;;
 		S) g_syncoutput=true; ;;
@@ -51,17 +63,11 @@ parse_arguments() {
 	done
 
 	if "$g_runfromvim"; then
-		g_syncoutput=true;
-		g_removecolors=true;
+		apply_vim_config
 	fi
 
 	if "$g_syncoutput"; then
 		exec 2>&1
-	fi
-
-	if "$g_removecolors"; then
-		exec 1> >(sed 's/\x1b[^m]*m//g')
-		exec 2> >(sed 's/\x1b[^m]*m//g' >&2)
 	fi
 
 	if [[ -n "$g_timeout" ]]; then
@@ -69,73 +75,71 @@ parse_arguments() {
 	fi
 }
 
-run() {
-	printf "+ %s\n" "$*" >&2
-	if ! "$g_dryrun"; then
+f_cmdrun() {
+	if "$g_dryrun"; then
+		return;
+	fi
+	if ! "$g_removecolors"; then
 		"$@"
+	else
+		if "$g_syncoutput"; then
+			"$@" | f_removecolors
+		else
+			"$@" 2> >(f_removecolors >&2) | f_removecolors
+		fi
 	fi
 }
 
-runeval() {
-	printf "+ %s\n" "$*" >&2
-	if ! "$g_dryrun"; then
-		eval "$1"
-	fi
-}
-
-logrun() {
+f_cmdlog() {
 	echo "+" "$@" >&2
 }
 
+
+f_cmdlogrun() {
+	printf "+ %s\n" "$*" >&2
+	f_cmdrun "$@"
+}
+
+f_removecolors() {
+	sed 's/\x1b[^m]*m//g'
+}
+
 fatal() {
-	echo "$name: error:" "$@" >&2
+	echo "$L_NAME: error:" "$@" >&2
 	exit 1
 }
 
-runexec() {
-	exec "$@"
-}
-
 be_nice() {
-	if [[ -z "${TRY_AUTORUN_IS_NICE:-}" ]]; then
-		local ionice
-		ionice=()
-		if hash ionice >/dev/null 2>&1; then
-			ionice=(ionice -c3  --)
-		fi
-		exec nice -n 20 "${ionice[@]}" env TRY_AUTORUN_IS_NICE=true "$0" "$@"
-	fi
+	{
+		renice 20 -p $$
+		ionice -c 3 -p $$ 
+	} >/dev/null
 }
 
-be_unbuffered() {
-	if [[ -z "${TRY_AUTORUN_IS_UNBUFFERED:-}" ]]; then
-		local unbuffer
-		unbuffer=()
-		if hash unbuffer 2>/dev/null >&2; then
-			unbuffer=(unbuffer)
-		elif hash stdbuf 2>/dev/null >&2; then
-			unbuffer=(stdbuf -oL -eL)
-		fi
-		if ((${#unbuffer[@]})); then
-			exec env TRY_AUTORUN_IS_UNBUFFERED=true "${unbuffer[@]}" "$0" "$@"
-		else
-			export TRY_AUTORUN_IS_UNBUFFERED=true
-		fi
+f_get_unbuffer_cmd() {
+	declare -g g_unbuffercmd
+	g_unbuffercmd=()
+	if hash g_unbuffercmd 2>/dev/null >&2; then
+		g_unbuffercmd=(g_unbuffercmd)
+	elif hash stdbuf 2>/dev/null >&2; then
+		g_unbuffercmd=(stdbuf -oL -eL)
 	fi
 }
 
 timeout_watcher() {
 	timeout="$g_timeout"
-	interval=1
 	while ((timeout--)); do
-		sleep 1
-		if ! kill -0 $BASHPID 2>/dev/null >&2; then
-			exit 0
-		fi
+		for ((i = 0; i < 10; ++i)); do
+			sleep 0.1
+			if ! kill -0 "$$"; then
+				exit 0
+			fi
+		done
 	done
 
-	echo "Timeout of 1 second reached - terminating..." >&2
+	echo "Timeout of $g_timeout seconds reached - terminating..." >&2
 	kill -s SIGTERM 0
+	exit 1
 }
 
 gcc_version() {
@@ -204,7 +208,7 @@ project_run_make() {
 	cflags_detect
 	export CFLAGS="${cflags[*]}"
 	export CXXFLAGS="${cflags[*]}"
-	run make "${@:2}"
+	f_cmdlogrun make "${@:2}"
 }
 
 project_detect_cmake() {
@@ -222,14 +226,13 @@ project_run_cmake() {
 	else
 		cdir=./_build
 	fi
-	cdir=$(readlink -f "$cdir")
 
 	local runconfig=0
 	shift
 	case "${1:-}" in
 	clean)
 		if [[ "$cdir" == */"_build" ]]; then
-			logrun rm -Ir --one-file-system --preserve-root=all "$cdir"
+			f_cmdlogrun rm -Ir --one-file-system --preserve-root=all "$cdir"
 			return "$?"
 		fi
 		;;
@@ -253,19 +256,22 @@ project_run_cmake() {
 			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="$cdir"/lib
 		)
 		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
-		run cmake "${args[@]}" "$@"
+		f_cmdlogrun cmake "${args[@]}" "$@"
 	fi &&
-	run cmake --build "$cdir" --parallel --verbose &&
+	f_cmdlogrun cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
 		env > /tmp/1
-		( runeval "cd $(printf "%q" "$cdir") && ctest" )
+		f_cmdlog "cd $cdir && ctest"
+		(
+			cd "$cdir"
+			f_cmdrun ctest
+		)
 	fi
 }
 
 # main #########################################
 
 be_nice "$@"
-# be_unbuffered "$@"
 
 parse_arguments "$@"
 shift "$((OPTIND-1))"
@@ -273,6 +279,7 @@ if (($# == 0)); then
 	set -- .
 fi
 g_path=$1
+shift
 
 if [[ -d "$g_path" ]] || "$g_use_project"; then
 	for i in $(list_functions_prefixed project_detect_); do
@@ -290,58 +297,91 @@ fi
 
 if [[ -f "$g_path" ]]; then
 	file="$g_path"
-	ext=${file,,}
-	ext=${file##*.}
-	case "$g_path" in
-	Makefile|*/Makefile)
+	if [[ -z "$g_filetype" ]]; then
+		# Detect filetype from extension.
+		ext=${file,,}
+		ext=${file##*.}
+		case "$g_path" in
+		Makefile|*/Makefile) g_filetype=make; ;;
+		*/CMakeLists.txt|CMakeLists.txt|*.cmake) g_filetype=cmake; ;;
+		*.c) g_filetype=c; ;;
+		*.cpp|*.cxx|*.cc|*.c++) g_filetype=cpp; ;;
+		*.py) g_filetype=python; ;;
+		*.sh) g_filetype=sh; ;;
+		*.bash|*.bashrc) g_filetype=bash; ;;
+		*.zsh) g_filetype=zsh; ;;
+		*)
+			# Detect filetype from first shebang line.
+			shebang=$(dd if="$file" bs=2 count=1 | xxd -p)
+			if [[ "$shebang" == 2321 ]]; then # that's "#!"
+				fline=$(head -n1 "$file")
+				case "$fline" in
+				*bash*) g_filetype=bash; ;;
+				*python*) g_filetype=bash; ;;
+				*sh*) g_filetype=sh; ;;
+				esac
+			fi
+		esac
+	fi
+
+	case "$g_filetype" in
+	make)
 		make "$@"
 		exit
 		;;
-	*/CMakeLists.txt|CMakeLists.txt)
-		project_run_cmake "$@"
+	cmake)
+		case "$file" in
+		*/CMakeLists.txt|CMakeLists.txt)
+			project_run_cmake "$@"
+			exit
+			;;
+		*)
+			f_cmdlogrun cmake -P "$file" "$@"
+			exit
+			;;
+		esac
 		exit
 		;;
-	*.c|*.cpp|*.cxx|*.cc|*.c++)
-		case "$ext" in
+	c|cpp)
+		case "$g_filetype" in
 		c) : "${ccompiler:=gcc}"; run=,ccrun; ;;
 		*) : "${ccompiler:=g++}"; run=,c++run; ;;
 		esac
 
 		if hash "$run" 2>/dev/null >&2; then
 			cmd=("$run" +n +v "$file" ${1:+--} "$@")
-			runexec "${cmd[@]}"
+			f_cmdrun "${cmd[@]}"
+		else
+			if [[ -z "$ccompiler" ]] || ! hash "$ccompiler" 2>/dev/null; then
+				fatal "Compiler could not be found: $ccompiler"
+			fi
+			cflags_detect
+			tmp=$(mktemp --suffix='.out')
+			trap 'rm "$tmp"' EXIT
+			{
+				f_cmdlog "$ccompiler" "${cflags[@]}" "$@" "$file"
+				f_cmdrun "$ccompiler" "${cflags[@]}" "$@" -o "$tmp" "$file"
+				f_cmdrun "$tmp"
+			}
 		fi
-
-		if [[ -z "$ccompiler" ]] || ! hash "$ccompiler" 2>/dev/null; then
-			fatal "Compiler could not be found: $ccompiler"
-		fi
-		cflags_detect
-		tmp=$(mktemp --suffix='.out')
-		trap 'rm "$tmp"' EXIT
-		{
-			logrun "$ccompiler" "${cflags[@]}" "$@" "$file"
-			"$ccompiler" "${cflags[@]}" "$@" -o "$tmp" "$file"
-			runexec "$tmp"
-		}
 		# tmp removed on EXIT
 		exit
 		;;
-	*.py)
+	python)
 		cmd=(python "$file" "$@")
 		;;
-	*.sh)
+	sh)
 		cmd=(sh "$file" "$@")
 		;;
-	*.bash|*.bashrc)
+	bash)
 		cmd=(bash "$file" "$@")
 		;;
-	*.zsh)
+	zsh)
 		cmd=(zsh "$file" "$@")
 		;;
 	esac
 	if ((${#cmd[@]})); then
-		logrun "${cmd[@]}"
-		runexec "${cmd[@]}"
+		f_cmdlogrun "${cmd[@]}"
 		exit
 	fi
 fi
