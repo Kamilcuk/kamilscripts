@@ -228,7 +228,6 @@ project_run_cmake() {
 	fi
 
 	local runconfig=0
-	shift
 	case "${1:-}" in
 	clean)
 		if [[ "$cdir" == */"_build" ]]; then
@@ -242,7 +241,7 @@ project_run_cmake() {
 		;;
 	esac
 
-	if "$g_runfromvim" || ((runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
+	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
 		local args cflags
 		cflags_detect
 		args=(
@@ -251,9 +250,9 @@ project_run_cmake() {
 			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
 			-DCMAKE_C_FLAGS="${cflags[*]}"
 			-DCMAKE_CXX_FLAGS="${cflags[*]}"
-			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$cdir"/bin
-			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$cdir"/lib
-			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="$cdir"/lib
+			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
+			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
 		)
 		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
 		f_cmdlogrun cmake "${args[@]}" "$@"

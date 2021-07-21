@@ -71,6 +71,9 @@ set backspace=indent,eol,start  " let backspece delete everything in intsert mod
 "set autochdir
 "Messes up any plugin configuration
 
+" https://vi.stackexchange.com/questions/19680/how-can-i-make-vim-not-use-the-entire-screen-for-spelling-suggestions
+set spellsuggest+=10
+
 " Tell vim to remember certain things when we
 let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
 if !isdirectory(fnamemodify(tmp, ':h'))
@@ -753,7 +756,7 @@ augroup KcDispatchComplete
 	" DispatchComplete is my patch to vim-dispath
 	autocmd User DispatchComplete call KcDispatchComplete()
 augroup END
-let g:dispatch_quickfix_height = 30
+let g:dispatch_quickfix_height = &lines / 3
 
 if kc#plugin#enabled('vimwiki')
 	let g:vimwiki_list = [{'path': '~/vimwiki/',
@@ -1148,9 +1151,6 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 
 	let &makeprg=",pdk unit_test"
 	"let &makeprg="cat /tmp/1"
-	if hostname() == "leonidas"
-		let g:dispatch_quickfix_height=16
-	endif
 endif
 
 if getcwd() =~ '/home/kamil/myprojects/ckd'

@@ -95,6 +95,10 @@ EOF
 	L_run ansible "${inventory_args[@]}" "$host" -m shell -a "exec 2>&1 ; set -x ; $cmd"
 }
 
+C_rsh() {
+	echo TODO
+}
+
 . ,lib_lib -q
 g_args=$(getopt -n "$L_NAME" -o i: -l inventory:,inventory-file: -- "$@")
 inventory_args=()

@@ -248,6 +248,7 @@ C_record() {
 	if (($# > 1)); then 
 		L_fatal "Too many arguments"
 	fi
+	L_log "+ parec | lame -r --quiet -q 3 --lowpass 17 --abr 192 - $1"
 	parec | lame -r --quiet -q 3 --lowpass 17 --abr 192 - "$1"
 }
 
@@ -271,6 +272,41 @@ C_hear_microphone_isenabled() {
 C_hear_microphone_disable() {
 	L_log "Disabling..."
 	pactl unload-module module-loopback
+}
+
+C_leonidas_event_deamon() {
+	pactl subscribe |
+	sed -u -r "s/Event '([^']*)' on ([^ ]*) #([0-9])/\1 \2 \3/" |
+	while IFS=' ' read -r what where num; do
+		case "$what $where" in
+		"new source")
+			tmp=$(C_list_1 | awk -F'\t' -v num="$num" '$2 == num && $4 == "IBH 2100-TI"')
+			echo "$tmp"
+			if [[ -n "$tmp" ]]; then
+				L_run pactl set-default-source "$num"
+			fi
+			;;
+		"new source-output")
+			if false; then (
+				sleep 2
+				# Find the playstation eye sink number
+				name=alsa_input.usb-OmniVision_Technologies__Inc._USB_Camera-B4.09.24.1-01.multichannel-input.echo-cancel
+				sink=$(C_list_1 | awk -F'\t' -v name="$name" '$1 == "Source" && $3 == name"{print $2}')
+				if [[ -n "$sink" ]]; then
+					echo "$NAME: Sink with $name not found" >&2
+					return
+				fi
+				# For each skype client in list
+				,pulseaudio_lib list_2 JSON |
+					jq -r 'select(._what == "Source Output") | select(has("properties.application.name")) | select(."properties.application.name" | test("Skype")) | ._num' |
+					while read -r id; do
+						# Move the skype client to the playstation eye sink
+						( set -x; pactl move-source-output "$id" "$sink" ) 2> >(sed "s/^/$NAME: /" >&2) ||:
+					done
+			); fi
+			;;
+		esac
+	done
 }
 
 . ,lib_lib 'C_' "$@"
