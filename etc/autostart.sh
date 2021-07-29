@@ -80,8 +80,8 @@ setxkbmap pl
 
 case "${XDG_CURRENT_DESKTOP,,}" in
 (xfce)
-	_xfconf-query -c keyboard-layout -p /Default/XkbLayout                       -s pl,us
-	_xfconf-query -c keyboard-layout -p /Default/XkbVariant                      -s ,
+	_xfconf-query -c keyboard-layout -p /Default/XkbLayout                       -s pl
+	_xfconf-query -c keyboard-layout -p /Default/XkbVariant                      -s ''
 	_xfconf-query -c keyboards       -p /Default/KeyRepeat                       -s true
 	_xfconf-query -c keyboards       -p /Default/KeyRepeat/Delay                 -s 250
 	_xfconf-query -c keyboards       -p /Default/KeyRepeat/Rate                  -s 30
@@ -105,15 +105,15 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 		# https://forum.xfce.org/viewtopic.php?id=12082
 		__xfconf-query -c xfce4-panel -p "$pulseaudioplug"/volume-step --create -t int -s 2
 	fi
-	if is_hostname leonidas && hash fc-list 2>/dev/null >/dev/null && [[ -n "$(fc-list 'LiterationMono Nerd Font')" ]]; then
-		_xfconf-query -c xfwm4           -p /general/title_font                      -s 'LiterationSans Nerd Font Bold 9'
-		_xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'LiterationSans Nerd Font 10'
-		_xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'LiterationMono Nerd Font 10'
-	else
-		_xfconf-query -c xfwm4           -p /general/title_font                      -s 'Liberation Sans Bold 9'
-		_xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'Liberation Sans 10'
-		_xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'Liberation Mono 10'
-	fi
+	#if is_hostname leonidas && hash fc-list 2>/dev/null >/dev/null && [[ -n "$(fc-list 'LiterationMono Nerd Font')" ]]; then
+		#_xfconf-query -c xfwm4           -p /general/title_font                      -s 'LiterationSans Nerd Font Bold 9'
+		#_xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'LiterationSans Nerd Font 9'
+		#_xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'LiterationMono Nerd Font 9'
+	#else
+		#_xfconf-query -c xfwm4           -p /general/title_font                      -s 'Liberation Sans Bold 9'
+		#_xfconf-query -c xsettings       -p /Gtk/FontName                            -s 'Liberation Sans 9'
+		#_xfconf-query -c xsettings       -p /Gtk/MonospaceFontName                   -s 'Liberation Mono 9'
+	#fi
 	;;
 (*)
 	autostart_log "unknown XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP}"

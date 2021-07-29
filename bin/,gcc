@@ -1,7 +1,7 @@
 #!/bin/bash
 
 _gcc() {
-	"${prefix:-}"gcc
+	"${g_prefix:-}"gcc "$@"
 }
 
 C_show_predefined_macros_verbose() {
@@ -13,13 +13,12 @@ C_show_predefined_macros() {
 }
 
 . ,lib_lib -q
-args=$(getopt -n "$L_name" -o +p -l prefix)
-eval set -- "$args"
-prefix=''
 while (($#)); do
-	case "$gcc" in
+	case "$1" in
+	-a|--arm-none) g_prefix=arm-none-eabi-; ;;
 	-p|--prefix) g_prefix="$2"; shift; ;;
 	--) shift; break; ;;
+	*) break; ;;
 	esac
 	shift
 done

@@ -28,6 +28,7 @@ symlink
 JSON
 NCBJ
 Gitlab
-
 selinux
 bumpversion
+rebase
+wvdial

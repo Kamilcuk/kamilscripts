@@ -246,6 +246,7 @@ project_run_cmake() {
 		cflags_detect
 		args=(
 			-S. -B"$cdir"
+			--no-warn-unused-cli
 			-DCMAKE_VERBOSE_MAKEFILE=yes
 			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
 			-DCMAKE_C_FLAGS="${cflags[*]}"
@@ -260,10 +261,10 @@ project_run_cmake() {
 	f_cmdlogrun cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
 		env > /tmp/1
-		f_cmdlog "cd $cdir && ctest"
+		f_cmdlog "cd $cdir && ctest -V"
 		(
 			cd "$cdir"
-			f_cmdrun ctest
+			f_cmdrun ctest -V
 		)
 	fi
 }

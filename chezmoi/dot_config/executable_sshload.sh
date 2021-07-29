@@ -22,9 +22,17 @@ function $cmd() ("'
 }
 
 KC=~/.config/kamilscripts/kamilscripts/bin
-#'ls -alhF --color=auto --group-directories-first'
-file_cmd l $KC/l 
-cat <<EOF
+kcadd() {
+	file_cmd "$1" "$KC/$1"
+	cat <<EOF
+echo "kc exe $1 loaded" >&2
+EOF
+}
+
+kcadd l
+kcadd ,lvm_resizer
+
+cat <<'EOF'
 if hash nvim 2>/dev/null >/dev/null; then
 	alias vim=nvim
 	export EDITOR=nvim

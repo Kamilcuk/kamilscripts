@@ -221,6 +221,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	"KcPlug8 'puremourning/vimspector'
 	" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" staging2
+	Plug 'ojroques/vim-oscyank'
+	Plug 'subnut/visualstar.vim'
+	Plug 'flwyd/nerdtree-harvest'
+	" Plug 'abdalrahman-ali/vim-remembers' Changes working directory!
+	Plug  'joshzcold/DrawIt'
 	"Plug 'LucHermitte/lh-vim-lib'
 	"Plug 'LucHermitte/lh-tags'
 	"Plug 'LucHermitte/lh-dev'
@@ -313,8 +318,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" zzz_utils
 	"Plug 'thaerkh/vim-workspace'
 	Plug 'kamilcuk/vim-workspace'
-	" Add itself
-	Plug 'junegunn/vim-plug'
 
 	call plug#end()
 	filetype on
@@ -457,6 +460,11 @@ autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 " }}}
 " Plugins configuration {{{1
 
+if kc#plugin#enabled('vim-oscyank')
+	autocmd TextYankPost * if v:event.operator is 'y' && v:event.regname is '' | OSCYankReg " | endif
+endif
+
+
 " Termdebug configuration
 let g:termdebug_use_prompt = 0
 let g:termdebug_wide = 163
@@ -478,6 +486,8 @@ if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
 		\ "java",
 		\ "html",
 		\ "sh",
+		\ "systemd",
+		\ 'json',
 		\ ]}
 endif
 
@@ -562,21 +572,23 @@ if 0
 endif
 
 " ctrlp
-let g:ctrlp_custom_ignore = {
-			\ 'dir':  '\v[\/]\.(git|hg|svn)$',
-			\ 'file': '\v\.(exe|so|dll)$',
-			\ }
-let g:ctrlp_show_hidden = 1
-" https://github.com/FelikZ/ctrlp-py-matcher
-let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
-let g:ctrlp_extensions = []
-" Preserve cache
-let g:ctrlp_clear_cache_on_exit = 1
-let g:ctrlp_cache_dir = $HOME.'/.cache/vim/ctrlp'
-" ctrlp oldfiles plugin
-let g:ctrlp_extensions += ['oldfiles']
-let g:ctrlp_working_path_mode = ''
-command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
+if kc#plugin#enabled('ctrlp.vim')
+	let g:ctrlp_custom_ignore = {
+				\ 'dir':  '\v[\/]\.(git|hg|svn)$',
+				\ 'file': '\v\.(exe|so|dll)$',
+				\ }
+	let g:ctrlp_show_hidden = 1
+	" https://github.com/FelikZ/ctrlp-py-matcher
+	let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
+	let g:ctrlp_extensions = []
+	" Preserve cache
+	let g:ctrlp_clear_cache_on_exit = 1
+	let g:ctrlp_cache_dir = $HOME.'/.cache/vim/ctrlp'
+	" ctrlp oldfiles plugin
+	let g:ctrlp_extensions += ['oldfiles']
+	let g:ctrlp_working_path_mode = ''
+	command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
+endif
 
 " https://github.com/ggreer/the_silver_searcher
 if kc#plugin#enabled('ack.vim')
@@ -1112,6 +1124,9 @@ set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 " Detect ctest -V errors
 let &errorformat.=',%\d%\+/%\d%\+ Test #%l: %f %[.*]%#Failed  %m'
+" Detect AddressSanitizer errors
+" #2 0x555f87c5271d in DataContainer::getName[abi:cxx11]() const /tmp/1.cpp:8
+let &errorformat.=',%+G    #%\d%\+ 0x%[0-9a-fA-F]%\+ in %.%# %f:%l'
 
 if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 	let &makeprg="sudo nginx -t && sudo nginx -s reload"
@@ -1149,12 +1164,16 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 	" pdk (INFO): Validator 'puppet-epp' skipped for '/home/kamil/ncbj/puppet/diz_domain'. No files matching '["**/*.epp"]' found to validate.
 	let &errorformat.=',%Dpdk (INFO): Validator ''%.%#'' skipped for ''%f''%.%#'
 
-	let &makeprg=",pdk unit_test"
+	let &makeprg = ",pdk unit_test"
 	"let &makeprg="cat /tmp/1"
 endif
 
 if getcwd() =~ '/home/kamil/myprojects/ckd'
 	let g:coc_start_at_startup=0
+endif
+
+if getcwd() =~ '/home/kamil/ncbj/chronos-ansible'
+	let &makeprg = 'ansible-playbook site.yml --diff --check'
 endif
 
 " }}}

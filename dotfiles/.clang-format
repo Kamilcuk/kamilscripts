@@ -17,4 +17,7 @@ IndentCaseLabels: false
 
 AlignEscapedNewlines: DontAlign
 AlignTrailingComments: false
+
+AllowShortFunctionsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
 ---

@@ -63,10 +63,15 @@ C_remove_class() {
 	run rm -iv "${files[@]}"
 }
 
+nicelogrun() {
+	L_log "+ $@"
+	nice "$@"
+}
+
 C_unit_test_seq() {
  	chdirtorepo
-	run pdk validate -a --parallel
-	run pdk test unit --parallel
+	nicelogrun pdk validate -a --parallel
+	nicelogrun pdk test unit --parallel
 }
 
 mktemp_auto() {
@@ -108,6 +113,23 @@ C_unit_test() {
 	if wait "$child2"; then :; else
 		exit "$?"
 	fi
+}
+
+C_rake_r10k_solve_dependencies() {
+	docker run -ti --rm -v "$PWD":/work:ro -w /work -v "$HOME"/.ssh/id_rsa:/root/.ssh/id_rsa:ro puppet/puppet-dev-tools bash -xc '
+		echo $1 code.cis.gov.pl >> /etc/hosts &&
+		mkdir -p ~/.ssh &&
+		chmod 700 ~/.ssh &&
+		ssh-keyscan -H code.cis.gov.pl >> ~/.ssh/known_hosts &&
+		cp -r . / &&
+		cd / &&
+		sed -i "s/:control_branch/\x27""$2""\x27/g; s@http://forge.puppetlabs.com@https://forgeapi.puppetlabs.com@g" Puppetfile &&
+		mkdir -p ~/.cache && shift 2 && "$@" || (
+				echo "Failed: $*"
+				bash
+		)
+	' _ "$(getent hosts code.cis.gov.pl | awk '{ print $1 }')" "$(git rev-parse --abbrev-ref HEAD)" \
+		rake r10k:solve_dependencies
 }
 
 . ,lib_lib -L C_ "$@"

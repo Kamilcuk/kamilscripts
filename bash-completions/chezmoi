@@ -1,0 +1,5 @@
+
+if hash chezmoi 2>/dev/null >&2; then
+	eval "$(chezmoi completion bash)"
+fi
+

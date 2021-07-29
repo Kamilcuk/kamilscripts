@@ -196,7 +196,7 @@ EOF
 
 
 dectempl ncbj '
-Host cis-$1 $1 $1-cis
+Host cis-$1 $1 $1-cis $1.cis.gov.pl
 	Hostname ${2:-$1.cis.gov.pl}
 	User ${3:-kcukrowski}
 	GSSAPIAuthentication yes
@@ -209,14 +209,15 @@ Host cis-$1 $1 $1-cis
 	${4:+$4}
 '
 # https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
-ncbj leszcz          10.200.4.5
-ncbj dzik            10.200.4.4
-ncbj kumak           10.200.4.3
-ncbj bocian          10.200.4.11
-ncbj dudek           10.200.4.12
-ncbj jenot           10.200.4.13
-ncbj wilga           10.200.4.14
-ncbj kaczor          10.200.4.6
+ncbj leszcz
+ncbj dzik
+ncbj kumak
+ncbj bocian
+ncbj dudek
+ncbj jenot
+ncbj wilga
+ncbj slimak
+ncbj kaczor
 #
 ncbj usrint2         172.18.0.22
 ncbj interactive0001 172.18.128.2
@@ -224,25 +225,23 @@ ncbj interactive0002 172.18.128.2
 ncbj ui              192.68.51.202      ''   'Port 22222'
 ncbj doc             172.18.128.2
 ncbj cms-vo          ''
-ncbj slimak          10.200.4.20
 #
-ncbj ci              dizvm7.cis.gov.pl  root
-ncbj cicd            dizvm7.cis.gov.pl  root
-ncbj deploycicd      dizvm18.cis.gov.pl  root
+ncbj jenkins         dizvm2.cis.gov.pl  root
+ncbj teptest         dizvm3.cis.gov.pl  root
 ncbj fb_core         dizvm4.cis.gov.pl  root
 ncbj fmr             dizvm5.cis.gov.pl  root
-ncbj jenkins         dizvm2.cis.gov.pl  root
-ncbj nexus           dizvm35.cis.gov.pl root
-ncbj teptest         dizvm3.cis.gov.pl  root
-ncbj zabbixserver    dizvm11.cis.gov.pl root
+ncbj squidproxy      dizvm6.cis.gov.pl  root
+ncbj cicd            dizvm7.cis.gov.pl  root
 ncbj proxy           dizvm8.cis.gov.pl  root
 ncbj grafana         dizvm9.cis.gov.pl  root
-ncbj smtp2rest       dizvm13.cis.gov.pl root
+ncbj zabbixserver    dizvm11.cis.gov.pl root
 ncbj gurobi          dizvm12.cis.gov.pl root
-ncbj tester          dizvm15.cis.gov.pl root
-ncbj squidproxy      dizvm6.cis.gov.pl root
-ncbj opengrok        dizvm14.cis.gov.pl root
 ncbj minio           dizvm13.cis.gov.pl root
+ncbj smtp2rest       dizvm13.cis.gov.pl root
+ncbj opengrok        dizvm14.cis.gov.pl root
+ncbj tester          dizvm15.cis.gov.pl root
+ncbj deploycicd      dizvm18.cis.gov.pl root
+ncbj nexus           dizvm35.cis.gov.pl root
 
 cat <<EOF
 Host code.cis.gov.pl
