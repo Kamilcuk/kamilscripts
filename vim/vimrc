@@ -216,7 +216,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 
 	" My Plugins
 	" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
-	Plug 'kamilcuk/vim-dispatch'
+	Plug 'kamilcuk/vim-dispatch', { 'dir': '~/.vim/plugged/kamilcuk-vim-dispatch' }
 	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 	"KcPlug8 'puremourning/vimspector'
 	" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
@@ -239,10 +239,10 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	Plug 'junegunn/fzf' " fzf.vim needs it
 	Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
 	KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
-	if exists('hunspell') || exists('aspell')
+	if executable('hunspell') || executable('aspell')
 		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 	endif
-	if exists('languagetool')
+	if executable('languagetool')
 		Plug 'dpelle/vim-LanguageTool'
 	endif
 	Plug 'honza/vim-snippets' " vim-snipmate default snippets
