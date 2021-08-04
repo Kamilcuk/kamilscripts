@@ -1,5 +1,10 @@
 #!/bin/bash
 
+gitv() {
+	L_log "git $*"
+	command git "$@"
+}
+
 C_get-root() {
 	if [[ -z "${GIT_PREFIX:-}" ]]; then
 		GIT_PREFIX=$(git rev-parse --show-toplevel)
@@ -14,7 +19,7 @@ C_get-branch() {
 
 C_mergeto() {
 	if (($# != 1)); then L_fatal "Needs one argument: branch name to merge to"; fi
-	cur=$(,git get-branch)
+	cur=$(C_get-branch)
 	L_run git checkout "$1"
 	L_run git merge "$cur" "$@"
 	L_run git checkout "$cur"
@@ -34,7 +39,7 @@ C_convertGitRepoToSubmodule() {
 		echo "Usage: convertGitRepoToSubmodule <submodule_directory...>" >&2;
 		return 1;
 	fi;
-	cd -- "$(C_get-root)";
+	cd -- "$(C_get-root)" || exit 1
 	for i in "$@"; do
 		origin="$(cd "$i" && git config --get remote.origin.url)";
 		L_run git submodule add "$origin" "$i"
@@ -124,6 +129,7 @@ C_push_force_with_lease_supported() {
 	C_version_gt 1.8.5
 }
 
+# shellcheck disable=2120
 C_push_force_with_lease() {
 	if C_push_force_with_lease_supported; then
 		L_run git push --force-with-lease "$@"
@@ -134,14 +140,65 @@ C_push_force_with_lease() {
 
 C_qdAddAmendPushForce() {
 	L_run git commit -a --amend --no-edit "$@"
+	# shellcheck disable=2119
 	C_push_force_with_lease
 }
 
 C_qlAllAddAmendPushForce() {
 	L_run git add -A
 	L_run git commit --amend --no-edit "$@"
+	# shellcheck disable=2119
 	C_push_force_with_lease
 }
+
+C_supersync() {
+	git pull --rebase --autostash &&
+	git add -A &&
+	git commit -m "supersync: $(date -R)" &&
+	git push
+}
+
+C_refresh() {
+	# http://blogs.perl.org/users/ovid/2015/02/git-refresh-automatically-rebase-current-branch-onto-master.html
+	L_trapchain 'L_err "YOU HAVE STASHED CHANGES IN GIT STASH!"' ERR
+	if (($# == 0)); then
+		set -- "master"
+	elif (($# > 1)); then
+		fatal "Too many arguments"
+	fi
+	onto=$1
+	branch=$(git rev-parse --abbrev-ref HEAD)
+	if [[ "$branch" == "$onto" ]]; then
+		echo "Already on $onto. Exiting."
+		exit 0
+	fi
+	if git status --porcelain | grep -qv '^??'; then
+		need_to_stash=true
+	else
+		need_to_stash=false
+	fi
+	if "$need_to_stash"; then
+		gitv stash save --include-untracked "stashed by $L_NAME$L_CMD" 
+		trap trap_stash EXIT
+	fi
+	failed=0
+	if ! ( 
+		gitv checkout "$onto" &&
+			gitv fetch -p &&
+			gitv pull --ff-only &&
+			gitv checkout "$branch" &&
+			gitv rebase "$onto"
+					); then
+					gitv checkout "$branch"
+					failed=1
+	fi
+	if "$need_to_stash"; then
+		gitv stash pop
+		trap '' EXIT
+	fi
+	exit "$failed"
+}
+
 
 L_dryrun=0
 if [[ "${1:-}" == -n ]]; then
@@ -149,6 +206,7 @@ if [[ "${1:-}" == -n ]]; then
 	shift
 fi
 if (($# >= 2)) && [[ "${2:-}" == -n ]]; then
+	# shellcheck disable=2034
 	L_dryrun=1
 	set -- "$1" "${@:3}"
 fi

@@ -46,6 +46,7 @@ QPROF_timestamp() {
 	)" "$@"
 }
 
+# shellcheck disable=2046
 QPROF_end() {
 	unset -f $(compgen -A function | grep '^QPROF_')
 	unset QPROF_is_sourced QPROF_name
@@ -56,6 +57,7 @@ QPROF_end() {
 if (return 0 2>/dev/null); then QPROF_is_sourced=1; else QPROF_is_sourced=0; fi
 export QPROF_OUT=${QPROF_OUT:-/tmp/sample-time.$$.log}
 
+# shellcheck disable=1090
 case "${1:-}" in
 test)
 	if ((QPROF_is_sourced)); then
@@ -88,6 +90,7 @@ case "$1" in
 1stop*)
 	set +x
 	exec 2>&3 3>&-
+	# shellcheck disable=2016
 	timeout 2 bash -c 'while [[ -z "$(head -n1 "$1")" ]]; do sleep 0.01; done' _ "$QPROF_OUT"
 	wait "$(head -n1 "$QPROF_OUT")" 2>/dev/null >/dev/null ||:
 	;;& # test 1stop_auto too!
@@ -137,15 +140,16 @@ elapResetTotal(){ elapGetNow;elapCntTotal;}
 elapResetBoth() { elapGetNow;elapCntBoth;}
 
 # Semi internal functions
-elapShow()      { echo -e "$_elap $@";}
-elapShowTotal() { echo -e "$_elap2 $@";}
-elapShowBoth()  { echo -e "$_elap $_elap2 $@";}
+elapShow()      { echo -e "$_elap $*";}
+elapShowTotal() { echo -e "$_elap2 $*";}
+elapShowBoth()  { echo -e "$_elap $_elap2 $*";}
 
 # Internal functions
 elapCnt()       { _eLast=$_eNow ;}
 elapCntTotal()  { _eLast2=$_eNow;}
 elapCntBoth()   { _eLast=$_eNow ; _eLast2=$_eNow;}
 elapGetNow()    {
+	# shellcheck disable=2162
     read -dk -a_eNow </proc/timer_list;
     _eNow=${_eNow[8]}
 }

@@ -11,7 +11,7 @@ DEBUG=${DEBUG:-false}
 
 debug_decl() {
 	if $DEBUG; then
-		debug() { echo "DEBUG: $@" >&2 ; }
+		debug() { echo "DEBUG: $*" >&2 ; }
 	else
 		debug() { :; }
 	fi
@@ -83,7 +83,7 @@ cronDayCalcNext() {
 		esac
 		# split on '/'
 		local numcron divisor
-		IFS='/' read numcron divisor <<<"$1"
+		IFS='/' read -r numcron divisor <<<"$1"
 		# parse divisor
 		if [ "$divisor" == '*' ]; then
 			divisor=""
@@ -106,7 +106,7 @@ cronDayCalcNext() {
 				case "$i" in
 				[0-9]*-[0-9]*) # numer1-number2 - list of numbers between number1 to number2
 					local start stop
-					IFS='-' read start stop <<<"$i"
+					IFS='-' read -r start stop <<<"$i"
 					start=$((10#$start))
 					stop=$((10#$stop))
 					seq "$start" "$stop"
@@ -152,13 +152,13 @@ cronDayCalcNext() {
 
 	# load input
 	local maxepochtime cron_day cron_month cron_weekday cron_year 
-	read  maxepochtime cron_day cron_month cron_weekday cron_year <<<"$@"
+	read -r maxepochtime cron_day cron_month cron_weekday cron_year <<<"$@"
 	debug "cronDayCalcNext input | ${cron_day}-${cron_month}-${cron_year}-${cron_weekday} ${maxepochtime} "
 
 	# load nexts
 	tmp=$(date "+%s %_Y %_m %_d")
 	local next_sec next_year next_month next_day
-	read  next_sec next_year next_month next_day <<<"$tmp"
+	read -r next_sec next_year next_month next_day <<<"$tmp"
 	debug "cronDayCalcNext nexts | ${next_day}-${next_month}-${next_year} ${next_sec}"
 
 	# parse input values
@@ -214,7 +214,7 @@ cronDayCalcNext() {
   		fi
 
   		tmp=$(date --date="${next_year}-${next_month}-${next_day} ${next_inc}" "+%s %_Y %_m %_d";)
-		read next_sec next_year next_month next_day <<<"$tmp"
+		read -r next_sec next_year next_month next_day <<<"$tmp"
 	done
 }
 
@@ -225,11 +225,11 @@ calcEventTimeDesc() {
 	lat=$((        diff    / (day*365)))
 	miesiecy=$(( ( diff - lat*day*365 )      / (day*60)))
 	dni=$((      ( diff - lat*day*365 -miesiecy*day*60 ) / day ))
-	if [ "$lat" -eq 0 -a "$miesiecy" -eq 0 ]; then
-		if [ "$dni" -eq 0 ]; then
+	if (( lat == 0 && miesiecy == 0 )); then
+		if (( dni == 0 )); then
 			echo -n "Dzisiaj"
 			return
-		elif [ "$dni" -eq 1 ]; then
+		elif (( dni == 1 )); then
 		 	echo -n "Jutro"
 			return
 		fi
@@ -274,7 +274,7 @@ swietaRuchome() {
 	## head -n1 /tmp/1 | tr '\t' '\n' | { read -r empty; read -r empty; i=1; while read -r swieto; do i=$((i+2)); cat /tmp/1 | tail -n +2 | awk '{print $1,"/",$'"$((i+1))"',"/",$'"${i}"'}' | sed -e 's/stycznia/1/' -e 's/lutego/2/' -e 's/marca/3/' -e 's/kwietnia/4/' -e 's/maja/5/' -e 's/czerwca/6/' -e 's/lipca/6/' -e 's/ //g' -e 's/\*//' | while read line; do echo "| $(date --date="$line" +"%F") | $swieto"; done; done; } > /tmp/3
 	## for i in $(seq 1 100); do echo -n "checkCat $((i+2000)) "; cat qqrememberrc | grep "^| 2$(printf %03d $i)" | while read -r event; do eventtime=$(eval "echo \"$(echo "$event" | cut -d'|' -f2)\""); eventepochtime=$(date --date="$eventtime" +%s); echo -n "$eventepochtime "; done; echo; done > /tmp/4
 	## output is | epoch timestamp | description
-	local startsec stopsec untilfromYear curYear names
+	local startsec stopsec names
 	# params
 	startsec=$1
 	stopsec=$2
@@ -294,12 +294,12 @@ Zesłanie Ducha Świętego
 Boże Ciało"
 	
 	{
-		while read YEAR rest; do
+		while read -r YEAR rest; do
 			if (( YEAR > startYear )); then
 				break
 			fi
 		done
-		while read YEAR rest; do
+		while read -r YEAR rest; do
 			if (( YEAR > stopYear )); then
 				break;
 			fi
@@ -412,7 +412,7 @@ EOF
 #######################################
 
 parseEvent() {
-	local event now untilfrom eventepochtime eventtime description tmp tmp2
+	local now untilfrom eventepochtime eventtime description tmp tmp2
 	now=$1
 	untilfrom=$2
 	shift 2
@@ -431,7 +431,7 @@ parseEvent() {
 	fi
 
 	for eventepochtime in $eventepochtimes; do
-		if (( eventepochtime >= now && eventepochtime < $untilfrom )); then
+		if (( eventepochtime >= now && eventepochtime < untilfrom )); then
 			# get description
 			description=$( sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<"$eventdesc" )
 			tmp=$(date --date="@$eventepochtime" +%F)
@@ -535,6 +535,7 @@ while true; do
 	case "$1" in
 	-c) 
 		CONFIG=$2; 
+		# shellcheck disable=2016
 		assert '[ -r "$CONFIG" ]' "Config ${CONFIG} not found or not readable"
 		shift
 		;;
@@ -556,7 +557,8 @@ configcontent=$(grep -v "[[:space:]]*#" "$CONFIG")
 eval "$(grep -v -e "^|" <<<"$configcontent")"
 
 if [ "$#" -ne 0 ]; then
-	if [ "$#" -eq 1 -a "$1" = selftest ]]; then
+	if (( $# == 1 )) && [[ "$1" == selftest ]]; then
+		# shellcheck disable=2046,2086
 		exec time bash $(if $DEBUG;then echo "-x";fi;) $0 -c <($0 -E) -P false -u '2 years'
 		exit
 	fi
@@ -590,7 +592,7 @@ done
 			export -f parseEvent error debug fatal cronDayCalcNext calcEventTimeDesc
 			xargs -L1 -P10 bash -c 'parseEvent "$@"' -- "$startsec" "$stopsec"
 		else
-			while read line; do 
+			while read -r line; do 
 				parseEvent "$startsec" "$stopsec" "$line"; 
 			done
 		fi <<<"$events"
@@ -606,6 +608,7 @@ done
 #fi
 
 ## use command with "lines" as standart input
+# shellcheck disable=2046,2086
 /bin/bash $(if $DEBUG;then echo "-x";fi;) -c "$COMMAND" <<<"$lines"
 
 wait

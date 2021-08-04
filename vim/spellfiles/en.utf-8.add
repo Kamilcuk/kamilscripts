@@ -32,3 +32,5 @@ selinux
 bumpversion
 rebase
 wvdial
+versioning
+LFS

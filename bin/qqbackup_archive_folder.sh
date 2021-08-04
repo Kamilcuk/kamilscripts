@@ -167,11 +167,11 @@ if ! $ONEPATH; then
 				temppaths+=( "$path.tar.bz2" )
 			fi
 		done
-		echo "This will overwrite files: ${temppaths[@]}"
+		echo "This will overwrite files: ${temppaths[*]}"
 	fi
 else
-	paths=( "$(basename $(readlink -f "${paths[0]}") )" )
-	echo "No finding - runniing only for one path: ${paths[@]}"
+	paths=( "$(basename "$(readlink -f "${paths[0]}")" )" )
+	echo "No finding - runniing only for one path: ${paths[*]}"
 
 fi
 echo;

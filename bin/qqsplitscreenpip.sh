@@ -68,10 +68,10 @@ EOF
 
 error() { echo "ERROR: " "$@" >&2; }
 warning() { echo "WARN : " "$@" >&2; }
-fatal() { echo "FATAL: $@" >&2; exit 1; }
+fatal() { echo "FATAL: $*" >&2; exit 1; }
 verbose() { if ${VERBOSE:-false}; then echo "$@"; fi; }
 debug() { if ${DEBUG:-false}; then echo "$@"; fi; }
-verbose_var_column() { verbose $1; verbose "${!1}" | column -t; verbose; }
+verbose_var_column() { verbose "$1"; verbose "${!1}" | column -t; verbose; }
 
 checkUtilities() {
 	for i in sed bc xwininfo wmctrl cut xdotool xargs; do
@@ -79,7 +79,7 @@ checkUtilities() {
 			fatal "${FUNCNAME[0]} - utlity $i not found."
 		fi
 	done
-	if [ ${BASH_VERSION%%.*} -lt 4 ]; then
+	if [ "${BASH_VERSION%%.*}" -lt 4 ]; then
 		fatal "BASH_VERSION is lower then 4"
 	fi
 }
@@ -89,8 +89,8 @@ run_tests() {
 	local t failed=false
 	for t; do
 
-		cmd=$(echo "$t"|cut -d'|' -f1)
-		expected_res=$(echo "$t"|cut -d'|' -f2)
+		cmd=$(<<<"$t" cut -d'|' -f1)
+		expected_res=$(<<<"$t" cut -d'|' -f2)
 
 		res=$(eval "$cmd")
 
@@ -122,15 +122,18 @@ check() {
 }
 
 check_number() { 
+	# shellcheck disable=2016
 	check '[ "${'"$1"'}" -eq "${'"$1"'}" ] 2>/dev/null' "${2:-}"; 
 }
 
 check_number_greater_equal() {
-	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'$2'" ]] 2>/dev/null' "${3:-}"; 
+	# shellcheck disable=2016
+	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'"$2"'" ]] 2>/dev/null' "${3:-}"; 
 }
 
 check_number_range() { 
-	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'$2'" && "${'"$1"'}" -le "'$3'" ]] 2>/dev/null' "${4:-}"; 
+	# shellcheck disable=2016
+	check '[[ "${'"$1"'}" -eq "${'"$1"'}" && "${'"$1"'}" -ge "'"$2"'" && "${'"$1"'}" -le "'"$3"'" ]] 2>/dev/null' "${4:-}"; 
 }
 
 # screen functions ###########################################################################################
@@ -138,7 +141,7 @@ check_number_range() {
 # i think bash is lacking a good utility to do column-based filtering
 
 grepColumn() {
-	local column=$1 match=$2 print=${3:-'$0'}
+	# local column=$1 match=$2 print=${3:-'$0'}
 	awk '{if ( $'"$1"' == "'"$2"'" ) print '"$3"'; }'
 }
 
@@ -182,8 +185,8 @@ getWinsInfoOnCurrentDesktop() {
 	local tmp
 	tmp=$(getCurrentDesktop)
 	tmp=$(wmctrl -l -G | awk -v var="$tmp" '{if ($2 == var) print $0;}')
-	while read wid wscreen wx wy wwidth wheight _; do
-		tmp=$(getBorderInfo $wid)
+	while read -r wid wscreen wx wy wwidth wheight _; do
+		tmp=$(getBorderInfo "$wid")
 		echo "$wid $wx $wy $wwidth $wheight $wscreen $tmp"
 	done <<<"$tmp"
 }
@@ -194,13 +197,13 @@ getWinsInfoOnCurrentDesktop() {
 
 calculateArea() {
 	# arguments: x1 y1 x2 y2
-	echo "$(( ( x2>x1 ? x2-x1 : x1-x2 ) * ( y2>y1 ? y2-y1 : y1-y2 ) ))"
+	echo "$(( ( x2 > x1 ? x2-x1 : x1 - x2 ) * ( y2 > y1 ? y2 - y1 : y1 - y2 ) ))"
 }
 
 caculateCover_2D() {
 	# arguments: x1 x2 X1 X2
 	# arguments: a c A C
-	read a c A C <<<"$@"
+	read -r a c A C <<<"$@"
 	echo "$(( 
 		a<A ?
 			c<A ?
@@ -398,7 +401,7 @@ rerun() {
 	if $TEST; then
 		myargs+=(-t);
 	fi;
-	verbose "+ exec $0 ${myargs[@]} $*"
+	verbose "+ exec $0 ${myargs[*]} $*"
 	exec "$0" "${myargs[@]}" "$@"
 }
 

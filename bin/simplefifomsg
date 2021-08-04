@@ -56,7 +56,7 @@ assert() {
 
 assert_eq() {
 	if [ "$1" != "$2" ]; then
-		error "Assertion '$1 = $2' failed:" "$(diff <(printf "%s\n" "$1") <(printf "%s\n" "$2")) ${@:3}"
+		error "Assertion '$1 = $2' failed:" "$(diff <(printf "%s\n" "$1") <(printf "%s\n" "$2")) ${*:3}"
 	fi
 }
 
@@ -194,7 +194,7 @@ tee_restart() {
 
 mode_put_trap_exit() {
 	set +eu
-	local tmp list
+	local list
 	
 	lock_exclusive
 	# remove SIGUSR1 so that we don't receive it while in here

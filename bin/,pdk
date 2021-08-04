@@ -64,7 +64,7 @@ C_remove_class() {
 }
 
 nicelogrun() {
-	L_log "+ $@"
+	L_log "+ $*"
 	nice "$@"
 }
 

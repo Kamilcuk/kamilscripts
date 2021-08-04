@@ -6,29 +6,30 @@ rep=; key=;
 
 notify() {
 	notify-send -t 1000 "$1"
-	shift; $@
+	shift
+	"$@"
 }
 notifyOnce() {
 	[[ $rep != 00 ]] && return
-	local var="$1"; shift; notify "$var" $@
+	local var="$1"; shift; notify "$var" "$@"
 }
 notifyOmit() {
 	[[ $rep =~ $1 ]] && return
-	shift; local var="$1"; shift; notify "$var" $@
+	shift; local var="$1"; shift; notify "$var" "$@"
 }
 notifyOnly() {
 	[[ $rep =~ $1 ]] || return
-	shift; local var="$1"; shift; notify "$var" $@
+	shift; local var="$1"; shift; notify "$var" "$@"
 }
 
 checkActiveWindowName() {
-	[[ "$(xdotool getwindowname $(xdotool getactivewindow))" =~ .?${1}.? ]] && return 0 || return 1
+	[[ "$(xdotool getwindowname "$(xdotool getactivewindow)")" =~ .?${1}.? ]] && return 0 || return 1
 }
 runIfVlc() {
-	checkActiveWindowName VLC      && { $@; return 0; } || return 1;
+	checkActiveWindowName VLC      && { "$@"; return 0; } || return 1;
 }
 runIfSMPlayer() {
-	checkActiveWindowName SMPlayer && { $@; return 0; } || return 1;
+	checkActiveWindowName SMPlayer && { "$@"; return 0; } || return 1;
 }
 
 program() {
@@ -81,13 +82,13 @@ waitforFile() {
 	local file=$1
 	while [ ! -e "$file" ]
 	do
-	    inotifywait -qqt 2 -e create -e moved_to "$(dirname $file)"
+	    inotifywait -qqt 2 -e create -e moved_to "$(dirname "$file")"
 	done
 }
 
 waitforFile  /var/run/lirc/lircd
-irw | while read but; do
-	program $but
+irw | while read -r but; do
+	program "$but"
 done
 
 

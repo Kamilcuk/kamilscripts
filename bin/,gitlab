@@ -114,6 +114,7 @@ C_list_links_to_CI_CD_Settings_of_all_projects_in_group_name() {
 		done
 }
 
+# shellcheck disable=2001
 C_ci_lint() {
 	if (($# != 1)); then
 		if [[ -r   ./.gitlab-ci.yml ]]; then
@@ -124,13 +125,13 @@ C_ci_lint() {
 	fi
 	if (($# == 0)); then L_usage; L_fatal "Needs file as argument"; fi
 
-	local path url status data
+	local path url data
 	url="ci/lint"
 	if C_git_project_namespace_path path; then
 		url="projects/$path/ci/lint"
 	fi
 
-	local errors i data valid
+	local errors i data l_valid l_warnings l_errors l_mergedyaml
 	errors=0
 	for i in "$@"; do
 		# https://about.gitlab.com/blog/2021/04/21/devops-workflows-json-format-jq-ci-cd-lint/
@@ -140,9 +141,21 @@ C_ci_lint() {
 				--data @<(cat <<<"$data")
 		)
 		tmp=$(jq <<<"$tmp")
-		if ! valid=$(jq -r '.valid' <<<"$tmp") || 
-				[[ "$valid" != "true" ]]; then
-			cat <<<"$tmp"
+		if ! l_valid=$(jq -r '.valid' <<<"$tmp") || [[ "$l_valid" != "true" ]]; then
+			if ! l_mergedyaml=$(jq -r '.merged_yaml' <<<"$tmp"); then
+				cat <<<"$tmp"
+			else
+				cat <<<"$l_mergedyaml"
+				echo
+				if l_warnings=$(jq -r '.warnings[]' <<<"$tmp") && [[ -n "$l_warnings" ]]; then
+					echo "${L_YELLOW}""Warnings:"
+					sed 's/^/\t/; $s/$/'"${L_RESET}"'/' <<<"$l_warnings"
+				fi
+				if l_errors=$(jq -r '.errors[]' <<<"$tmp") && [[ -n "$l_errors" ]]; then
+					echo "${L_RED}""Errors:"
+					sed 's/^/\t/; $s/$/'"${L_RESET}"'/' <<<"$l_errors"
+				fi
+			fi
 			((errors++)) ||:
 		else
 			jq -r '.merged_yaml' <<<"$tmp"

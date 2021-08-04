@@ -1,4 +1,4 @@
-
+---
 build:
   stage: build
   image:
@@ -16,6 +16,15 @@ variables:
 .test_setup: &test_setup
   before_script:
     - export "PATH=$PWD/bin:$PATH"
+
+shellcheck:
+  image: koalaman/shellcheck-alpine:stable
+  allow_failure: true
+  stage: test
+  script:
+    - shellcheck --version
+    - find . -type f '(' -iname '*.sh' -o -iname '*.bash' ')' -print0 > /tmp/files
+    - xargs -0t shellcheck -x < /tmp/files
 
 test_install_stow:
   <<: *test_setup
@@ -77,4 +86,3 @@ pages:
   artifacts:
     paths:
       - public
-

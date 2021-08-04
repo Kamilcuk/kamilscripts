@@ -373,6 +373,7 @@ awkeval() {
 	awk 'BEGIN{exit(!('"$1"'))}' <&-
 }
 
+# shellcheck disable=2054
 default_flags_add() {
 	local flags
 	flags=(
@@ -399,6 +400,7 @@ default_flags_add() {
 		-Wwrite-strings
 		-Wno-unused-function
 		-Wno-unused-parameter
+		-Wno-implicit-function-declaration
 
 		-Wl,-z,defs
 		-Wl,-z,now

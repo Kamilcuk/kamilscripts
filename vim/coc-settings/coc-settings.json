@@ -57,6 +57,29 @@
     "systemd": "systemd-analyze"
   },
   "diagnostic-languageserver.linters": {
+    "yamllint": {
+			"args": [
+				"Set line-length to 120 and also allow yes and no for boolean values for ansible development"
+			],
+      "args": [
+        "-d",
+        "{extends: relaxed, rules: {line-length: {max: 120}}, truthy: allowed-values: [\"yes\", \"true\", \"no\", \"false\"]}",
+        "-f",
+        "parsable",
+        "-"
+      ]
+    },
+    "shellcheck": {
+			"args": [
+				"Add -x to arguments to let shellcheck include other files"
+			],
+      "args": [
+        "-x",
+        "--format",
+        "json1",
+        "-"
+      ]
+    },
     "systemd-analyze": {
       "command": "systemd-analyze",
       "debounce": 100,
@@ -67,7 +90,7 @@
       "isStdout": false,
       "isStderr": true,
       "sourceName": "systemd-analyze",
-			"formatLines": 1,
+      "formatLines": 1,
       "formatPattern": [
         "^[^:]+:((\\d+):)?\\s*(.*)$",
         {
@@ -186,5 +209,8 @@
         "-"
       ]
     }
-  }
+  },
+  "yaml.customTags": [
+    "!reference sequence"
+  ]
 }

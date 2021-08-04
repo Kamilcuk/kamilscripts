@@ -57,6 +57,13 @@ install_chezmoi() {
 	fi
 }
 
+runvs() {
+	log "+ $*"
+	if ! "$@"; then
+		fatal "Command failed: $*"
+	fi
+}
+
 # main ##############################################################################
 
 
@@ -75,10 +82,26 @@ while (($#)); do
 done
 install_chezmoi
 
-if (($#==0)); then usage; fatal "Missing argument"; exit 1; fi
-case "$1" in
-r|restow|u|update|s|stow|i|install) g_addargs+=(apply) ;;
-add) fatal "todo"; ;;
+case "${1:-}" in
+""|r|restow|u|update|s|stow|i|install) g_addargs+=(apply) ;;
+p|push)
+	runvs cd "$dir"
+	runvs git pull --rebase --autostash
+	if ! git diff-index --quiet HEAD --; then
+		runvs git add -A
+		shift
+		runvs git commit -m "${*:-auto: $(date -uIs)}"
+	fi
+	arg=
+	if ((g_dryrun)); then
+		arg=--dry-run
+	fi
+	# shellcheck disable=
+	runvs git push $arg
+	exit
+	;;
+add)
+	fatal "todo"; ;;
 d|delete|uninstall|*)
 	fatal "Unknown mode: $1"; ;;
 esac
@@ -88,4 +111,4 @@ if ((g_dryrun)); then
 fi
 
 # run chezmoi upgrade ||:
-run chezmoi "${g_addargs[@]}" -v -S "$dir/chezmoi"
+runvs chezmoi "${g_addargs[@]}" -v -S "$dir/chezmoi"
