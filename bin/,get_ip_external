@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+shopt -s extglob
 
 name=$(basename -- "$0")
 
@@ -47,9 +48,9 @@ _timeout() {
 	timeout=$1
 	shift
 	if cmdexists timeout; then
-		timeout "$timeout" "$@"
+		{ time timeout "$timeout" "$@" 2>&3 ;} 3>&2 2>&1
 	else
-		"$@"
+		{ time "$@" 2>&3 ;} 3>&2 2>&1
 	fi
 }
 
@@ -150,13 +151,24 @@ work_query_in() {
 		err=0
 		childs=()
 		trap 'kill "${childs[@]}" 2>/dev/null' EXIT
-		while IFS= read -u 3 -r i; do
+		while IFS= read -u 3 -r ii; do
 			(
 				out=""
-				if "$g_header"; then out=$(printf "%-18s" "$i:"); fi
-				ip=$("$i") ||: # we check with regex
-				if tmp=$(echo "$ip" | grep -xE "$rgx"); then
-					out+="$tmp" # make sure there is a newline there
+				if "$g_header"; then
+					out=$(printf "%-20s" "$ii:");
+				fi
+				data=$("$ii" 2>&1) ||: # we check with regex
+				meas=${data##*+($'\n')'real'$'\t'}
+				output=${data%%"$meas"}
+				output=${output%%+($'\n')'real'$'\t'}
+				if "$g_all"; then
+					real=$(<<<"$data" awk '/real/{print $2}')
+					out+="$real  "
+				fi
+				if ip=$(<<<"$output" grep -xE "$rgx"); then
+					out+="$ip"
+				else
+					out+="$output"
 				fi
 				printf "%s\n" "$out"
 			) &
@@ -180,18 +192,28 @@ work_query() {
 	fi
 }
 
+sorter() {
+	if "$g_sort"; then
+		"$@" | sed 's/   */|/g' | sort -t'|' -k2 | column -s '|' -t
+	else
+		"$@"
+	fi
+}
+
 ###############################################################################
 
 g_quiet=false
 g_all=false
 g_header=false
 g_mode=""
-while getopts "46qAHh" opt; do
+g_sort=false
+while getopts "46qASHh" opt; do
 	case "$opt" in
 	4) g_mode+="4"; ;;
 	6) g_mode+="6"; ;;
 	q) g_quiet=true; ;;
 	A) g_all=true; g_header=true; ;;
+	S) g_sort=true; g_all=true; g_header=true; ;;
 	H) g_header=true; ;;
 	h) usage; exit; ;;
 	?) usage; fatal "Inavlid argument"; ;;
@@ -203,8 +225,8 @@ if [ "$#" -ne 0 ]; then
 	fatal "Too many arguments"
 fi
 
-err4=0; work_query 4 "$ipv4_rgx" || err4=$?
-err6=0; work_query 6 "$ipv6_rgx" || err6=$?
+err4=0; sorter work_query 4 "$ipv4_rgx" || err4=$?
+err6=0; sorter work_query 6 "$ipv6_rgx" || err6=$?
 
 if ((err4)); then
 	error "Could not get ipv4 address"

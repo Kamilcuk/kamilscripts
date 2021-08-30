@@ -1123,10 +1123,13 @@ set errorformat^=../%f:%l:%c:\ %m
 set errorformat^=../../%f:%l:%c:\ %m
 set errorformat^=../../../%f:%l:%c:\ %m
 " Detect ctest -V errors
-let &errorformat.=',%\d%\+/%\d%\+ Test #%l: %f %[.*]%#Failed  %m'
+" 1/8 Test #1: kamcuk_libc_kasprintf .............***Failed    0.03 sec
+let &errorformat .= ',%\d%\+/%\d%\+ Test #%l: %f %[.]%#***Failed  %m'
+" 5: /home/kamil/myprojects/kamillibc/libs/libc/src/ringbuffer.c:251:4: runtime error: null ....
+let &errorformat = '%\d%\+: %f:%l:%c: %m,' . &errorformat
 " Detect AddressSanitizer errors
 " #2 0x555f87c5271d in DataContainer::getName[abi:cxx11]() const /tmp/1.cpp:8
-let &errorformat.=',%+G    #%\d%\+ 0x%[0-9a-fA-F]%\+ in %.%# %f:%l'
+let &errorformat .= ',%+G    #%\d%\+ 0x%[0-9a-fA-F]%\+ in %.%# %f:%l'
 
 if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 	let &makeprg="sudo nginx -t && sudo nginx -s reload"

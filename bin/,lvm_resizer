@@ -46,7 +46,6 @@ confirm() {
 askcheck() {
 	local _tmp
 	_tmp=$(
-		var=$1
 		fcheck=$2
 		msg=$3
 		default=${4:-}
@@ -79,7 +78,7 @@ check_is_partition() {
 	i=$(stat -L -c %t "$1")
 	if [[ "$i" != 8 ]]; then L_err "Major of device $1 is not 8"; return 1; fi
 	i=$(stat -L -c %T "$1")
-	if [[ "$i" == 0 ]]; then L_err "Minot of device $1 is 0!"; return 1; fi
+	if [[ "$i" == 0 ]]; then L_err "Minor of device $1 is 0!"; return 1; fi
 }
 guess_disc=$(lsblk -I 8 -d -n -o name | head -n1)
 guess_partition=/dev/$(lsblk "/dev/$guess_disc" | grep -ow "$guess_disc"[0-9] | tail -n1)

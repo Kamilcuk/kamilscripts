@@ -1,2 +1,14 @@
 #!/bin/bash
-awk "$@" "BEGIN{ $(cat); exit; }" <&-
+if ((!$#)); then
+	cat <<EOF
+Usage: ,awkbc [awk options] <awk script>
+
+Examples:
+
+   ,awkbc -v a=1 -v b=2 'printf("%.0f\n", a/b)'
+
+EOF
+	exit 1
+fi
+awk "${@:1:$#-1}" "BEGIN{ ${*:$#}; exit; }" <&-
+

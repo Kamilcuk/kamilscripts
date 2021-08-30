@@ -215,6 +215,21 @@ project_detect_cmake() {
 	[[ -e 'CMakeLists.txt' ]]
 }
 
+project_run_cmake_usage() {
+	cat <<EOF
+Usage: ,try_autorun ... <dir> [options]
+
+Options:
+  -h   Print this help and exit
+  -l   Run cleanup only
+  -c   Run cmake configuration stage
+  -D   Add macro definitions
+  -R   Filter ctest tests
+
+EOF
+	exit 0
+}
+
 project_run_cmake() {
 	local cdir tmp
 	# Find CMakeCache.txt
@@ -227,44 +242,54 @@ project_run_cmake() {
 		cdir=./_build
 	fi
 
-	local runconfig=0
-	case "${1:-}" in
-	clean)
-		if [[ "$cdir" == */"_build" ]]; then
-			f_cmdlogrun rm -Ir --one-file-system --preserve-root=all "$cdir"
-			return "$?"
-		fi
-		;;
-	config)
-		runconfig=1
+	local l_runconfig=0 l_cmakeargs=() l_ctestargs=()
+	local l_args
+	l_args=$(getopt -n "$L_NAME cmake" -o hclD:R: -- "$@")
+	eval "set -- $l_args"
+	while (($#)); do
+		case "$1" in
+		-h) project_run_cmake_usage; ;;
+		-c) l_runconfig=1; ;;
+		-l)
+			if [[ "$cdir" == */"_build" ]]; then
+				f_cmdlogrun rm -Ir --one-file-system --preserve-root=all "$cdir"
+				return "$?"
+			fi
+			;;
+		-D) l_cmakeargs+=(-D "$1"); shift; ;;
+		-R) l_ctestargs+=(-R "$2"); shift; ;;
+		--) shift; break; ;;
+		*) fatal "cmake: Invalid argument"; ;;
+		esac
 		shift
-		;;
-	esac
+	done
 
-	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
-		local args cflags
+	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((l_runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
+		local cflags
 		cflags_detect
-		args=(
-			-S. -B"$cdir"
+		l_cmakeargs=(
+			-S . -B "$cdir"
 			--no-warn-unused-cli
-			-DCMAKE_VERBOSE_MAKEFILE=yes
-			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
-			-DCMAKE_C_FLAGS="${cflags[*]}"
-			-DCMAKE_CXX_FLAGS="${cflags[*]}"
-			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
-			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
-			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
+			-D CMAKE_VERBOSE_MAKEFILE=1
+			-D CMAKE_EXPORT_COMPILE_COMMANDS=1
+			-D CMAKE_C_FLAGS="${cflags[*]}"
+			-D CMAKE_CXX_FLAGS="${cflags[*]}"
+			-D CMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
+			-D CMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
+			-D CMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
+			"${l_cmakeargs[@]}"
 		)
-		if hash ninja 2>/dev/null; then args+=(-GNinja); fi
-		f_cmdlogrun cmake "${args[@]}" "$@"
+		if hash ninja 2>/dev/null; then
+			l_cmakeargs+=(-G Ninja);
+		fi
+		f_cmdlogrun cmake "${l_cmakeargs[@]}" "$@"
 	fi &&
 	f_cmdlogrun cmake --build "$cdir" --parallel --verbose &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
-		env > /tmp/1
-		f_cmdlog "cd $cdir && ctest -V"
+		f_cmdlog "cd $cdir && ctest -V ${l_ctestargs[*]}"
 		(
 			cd "$cdir"
-			f_cmdrun ctest -V
+			f_cmdrun ctest -V "${l_ctestargs[@]}"
 		)
 	fi
 }
