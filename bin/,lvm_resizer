@@ -1,17 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-L_NAME=${BASH_SOURCE##*/}
+L_NAME=,lvm_resizer
 
 L_err() {
 	echo "$L_NAME: ERROR: $*" >&2
 }
 
 L_trap_err_small() {
-	L_err "fatal error on $(caller)"
+	L_err "fatal error $1 on $(caller)"
 }
 
-trap L_trap_err_small ERR
+trap 'L_trap_err_small $?' ERR
 
 L_fatal() {
 	L_err "$@"
@@ -23,22 +23,33 @@ L_run() {
 	"$@"
 }
 
+L_log() {
+	echo "$L_NAME: $*" >&2
+}
+
 get_partition_id() {
 	local tmp
 	tmp=$(
 		sfdisk -d "$1" |
 		awk -v place="$1$2" '$1 == place' |
-		sed 's/.*, Id=\([^ ,]*\).*/\1/'
+		sed 's/.*, Id=\([0-9a-fA-F]\+\).*/\1/'
 	)
+	if [[ -z "$tmp" ]]; then
+		L_fatal "Getting partition id failed: from $1 "$'\n'"$(sfdisk -d "$1")"
+	fi
+	echo "$tmp"
 }
 
 confirm() {
-	echo -n "$1 [y/n] "
+	echo -n "$1 [y/n] ${2:+[$2]}"
 	unset IFS
 	local ans
-	read -r ans
+	if ! read -r ans; then
+		exit 1
+	fi
 	case "$ans" in
 	y) ;;
+	"") if [[ "${2:-}" != "y" ]]; then exit 1; fi; ;;
 	*) echo "Quitting..."; exit 1 ;;
 	esac
 }
@@ -49,6 +60,14 @@ askcheck() {
 		fcheck=$2
 		msg=$3
 		default=${4:-}
+		if ! "$fcheck" "$default"; then
+			default=""
+		fi
+		if [[ -n "$default" ]]; then
+			msg+=" [$default]"
+		fi
+		msg+=": "
+		#
 		while :; do
 			if ! read -r -p "$msg" tmp; then 
 				L_fatal "Error reading!"
@@ -67,81 +86,186 @@ askcheck() {
 	printf -v "$1" "%s" "$_tmp"
 }
 
+close_all_file_descriptors() {
+	for fd in $(ls /proc/$$/fd); do
+		case "$fd" in
+		0|1|2|255) ;;
+		*) eval "exec $fd>&-"; ;;
+		esac
+	done
+}
+
+run_nofd() {
+	# https://bugzilla.redhat.com/show_bug.cgi?id=618995
+	# On invocation, lvm requires that only the standard file
+	# descriptors stdin, stdout and stderr are available.  If others
+	# are found, they get closed and messages are issued warning about
+	# the leak.
+	(
+		tmp=$(mktemp)
+		trap 'rm "$tmp"' EXIT
+		close_all_file_descriptors
+		"$@" >"$tmp" &&
+		cat "$tmp"
+	)
+}
+
+for i in pvs lvs lvextend lvdisplay pvresize; do
+	eval "_$i() { run_nofd $i \"\$@\"; }"
+done
+
+_sfdisk() {
+	# https://askubuntu.com/questions/696274/how-to-keep-sfdisk-working
+	sfdisk -u S -L "$@"
+}
+
+lvpath_to_partition() {
+	local tmp
+	tmp=$(_lvdisplay "$1" | awk '/VG Name/{print $NF}')
+	_pvs | awk -v p="$tmp" '$2 == p{print $1}'
+}
+
+is_one_line() {
+	local tmp
+	tmp=$(printf "%s" "$1" | wc -l)
+	((tmp != 1))
+}
+
+check_is_lvpath() {
+	local err
+	if [[ "$1" == -q ]]; then
+		err=:
+		shift
+	else
+		err=L_err
+	fi
+	#
+	if [[ ! -e "$1" ]]; then "$err" "Path $1 does not exists"; return 1; fi
+	if [[ ! -b "$1" ]]; then "$err" "Path $1 is not a block special file"; return 1; fi
+	local i
+	i=$(stat -L -c %t "$1")
+	if [[ "$i" != fd ]]; then "$err" "Major of device $1 is not fd"; return 1; fi
+}
+
+check_is_partition() {
+	local err
+	if [[ "$1" == -q ]]; then
+		err=:
+		shift
+	else
+		err=L_err
+	fi
+	#
+	if [[ ! -e "$1" ]]; then "$err" "Path $1 does not exists"; return 1; fi
+	if [[ ! -b "$1" ]]; then "$err" "Path $1 is not a block special file"; return 1; fi
+	local i
+	i=$(stat -L -c %t "$1")
+	if [[ "$i" != 8 ]]; then "$err" "Major of device $1 is not 8"; return 1; fi
+	i=$(stat -L -c %T "$1")
+	if [[ "$i" == 0 ]]; then "$err" "Minor of device $1 is 0!"; return 1; fi
+}
+
 ###############################################################################
 
 exec 3>&1
+g_lvpath=""
+g_partition=""
+args=$(getopt -n "$L_NAME" -o h -- "$@")
+eval "set -- $args"
+while (($#)); do
+	case "$1" in
+	-h) usage; ;;
+	--) shift; break; ;;
+	*) L_fatal "Invalid argument: $1"; ;;
+	esac
+	shift
+done
+if (($# > 1)); then usage; L_fatal "Too many arguments"; fi;
+if (($# == 1)); then
+	g_lvpath="$1"
+fi
 
-check_is_partition() {
-	if [[ ! -e "$1" ]]; then L_err "Path $1 does not exists"; return 1; fi
-	if [[ ! -b "$1" ]]; then L_err "Path $1 is not a block special file"; return 1; fi
-	local i
-	i=$(stat -L -c %t "$1")
-	if [[ "$i" != 8 ]]; then L_err "Major of device $1 is not 8"; return 1; fi
-	i=$(stat -L -c %T "$1")
-	if [[ "$i" == 0 ]]; then L_err "Minor of device $1 is 0!"; return 1; fi
+{ # Display some handfull information about discs
+	L_run lsblk
+	echo "+ df -h"
+	df -h | awk 'NR == 1 || /^\//'
 }
-guess_disc=$(lsblk -I 8 -d -n -o name | head -n1)
-guess_partition=/dev/$(lsblk "/dev/$guess_disc" | grep -ow "$guess_disc"[0-9] | tail -n1)
-L_run lsblk
-askcheck partition check_is_partition \
-	"Select partition to resize [$guess_partition]: " "$guess_partition"
-disc=${partition%%[0-9]*}
-g_npart=${partition##*[^0-9]}
-echo "Selected: partition=$partition disc=$disc partition_number=$g_npart"
 
-partition="$disc$g_npart"
-now=$(fdisk -l "$disc")
-id=$(get_partition_id "$disc" "$g_npart")
-
-echo "$now"
-echo "--- resizing disc"
-twoecho() {
-	echo "$@"
-	echo "$@" >&3
+{ # guess lvpath and partition using partition with least percentage of available free space
+	if ! check_is_lvpath -q "$g_lvpath"; then
+		g_lvpath=$(df -h | awk 'NR>1 && /^\//' | sort -k5n | tail -n1 | awk '{print $1}')
+	fi
+	g_partition=$(lvpath_to_partition "$g_lvpath")
 }
+
+{ # assign default to lvpath if not found
+	if ! check_is_lvpath -q "$g_lvpath"; then
+		g_lvpath=$(_lvs | awk 'NR==2{print "/dev/"$2"/"$1}')
+	fi
+}
+askcheck lvpath check_is_lvpath "Select lvm partition" "$g_lvpath"
+
+{ # Assign defaults to partition.
+	if ! check_is_partition -q "$g_partition"; then
+		g_partition=$(
+	 		disc=$(lsblk -I 8 -d -n -o name | head -n1) &&
+			lsblk -ln -o NAME "/dev/$disc" | grep -ow "$disc"[0-9] | tail -n1 | awk -v p="$disc" '{print disc $0}'
+		)
+	fi
+}
+askcheck partition check_is_partition "Select partition to resize" "$g_partition"
+
+disc=$partition disc=${disc%%[0-9]*}
+partnum=$partition partnum=${partnum##*[^0-9]}
+if ! id=$(get_partition_id "$disc" "$partnum") || [[ -z "$id" ]]; then
+	L_fatal "Getting partition id from $disc number $partnum failed"
+fi
+if ! fstype=$(lsblk -no FSTYPE "$lvpath") || [[ -z "$fstype" ]]; then
+	L_fatal "Getting filesystem type from $lvpath failed"
+fi
+cat <<EOF
+Selected:
+	lvpath=$lvpath
+	partition=$partition
+	disc=$disc
+	partition_number=$partnum
+	partition_id=$id
+	fstype=$fstype
+
+EOF
+confirm "Looks ok?" "y"
+
 {
-	twoecho d
-	twoecho "$g_npart"
-
-	twoecho n
-	twoecho p
-	twoecho "$g_npart"
-	twoecho
-	twoecho
-
-	twoecho t
-	twoecho "$g_npart"
-	twoecho "$id"
-
-	twoecho p
-	echo >&2
-	echo "All ok?" >&2
-	twoecho w
-} | L_run fdisk "$disc"
-
-L_run partprobe
-L_run pvresize "$partition"
-L_run pvs
-L_run lvs
-
-check_is_lvpath() {
-	if [[ ! -e "$1" ]]; then L_err "Path $1 does not exists"; return 1; fi
-	if [[ ! -b "$1" ]]; then L_err "Path $1 is not a block special file"; return 1; fi
-	local i
-	i=$(stat -L -c %t "$1")
-	if [[ "$i" != fd ]]; then L_err "Major of device $1 is not fd"; return 1; fi
+	L_log "Resizing partition on the disc"
+	echo "- +" | _sfdisk -n -N "$partnum" "$disc"
+	confirm "Is the new situation above ok?" "y"
+	echo "- +" | _sfdisk --no-reread -N "$partnum" "$disc" ||:
+	L_run partprobe
+	L_run _pvresize "$partition"
+	L_run _pvs
 }
-guess_lvpath=$(lvs | awk 'NR==2{print "/dev/"$2"/"$1}')\
-askcheck lvpath check_is_lvpath "Select lvm partition [$guess_lvpath]: " "$guess_lvpath"
 
-L_run lvextend -l +100%FREE "$lvpath"
-L_run lvs
-confirm "All ok?" >&2
-fstype=$(lsblk -no FSTYPE "$lvpath")
-case "$fstype" in
-xfs) xfs_growfs -d "$lvpath"; ;;
-ext*) resize2fs "$lvpath"; ;;
-*) L_fatal "Do not know how to resize $fstype partition on $lvpath"; ;;
-esac
+{
+	L_log "Resizing the lvm volume..."
+	L_run _lvs
+	# https://bugzilla.redhat.com/show_bug.cgi?id=1365186
+	# Exit status 5 is when it's the same size - ignore that case, it's fine.
+	ret=0; L_run _lvextend -l +100%FREE "$lvpath" || ret=$?
+	if ((ret != 0 && ret != 5)); then
+		L_fatal "lvextend failed with exit status: $ret"
+	fi
+	L_run _lvs
+	confirm "Was it properly resized?" "y" >&2
+}
 
+{
+	L_log "Resizing filesystem..."
+	case "$fstype" in
+	xfs) L_run xfs_growfs -d "$lvpath"; ;;
+	ext*) L_run resize2fs "$lvpath"; ;;
+	*) L_fatal "Do not know how to resize $fstype partition on $lvpath"; ;;
+	esac
+}
+
+echo "Success!"
 

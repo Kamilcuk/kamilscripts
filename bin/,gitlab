@@ -14,8 +14,8 @@ g_use_gitlab2() {
 
 run_curl() {
 	local cmd
-	cmd=(curl -sS -iL --header "Authorization: *****" "$@")
-	L_info + "${cmd[@]}"
+	cmd=(curl -sS -iL --header "Authorization:---" "$@")
+	L_info "+$(printf " %q" "${cmd[@]}")"
 	if [[ -z "${GITLAB_TOKEN:-}" ]]; then
 		L_fatal "GITLAB_TOKEN variable is empty!"
 	fi
@@ -102,7 +102,8 @@ C_list_projects_in_group_name() {
 }
 
 C_project_get_link_to_CI_CD_Settings() {
-	tmp=$(C_GET "/projects/$1" | jq -r .web_url)
+	local tmp
+	tmp=$(get_project_info_cached | jq -r .web_url)
 	echo "$tmp/-/settings/ci_cd"
 }
 
@@ -127,7 +128,7 @@ C_ci_lint() {
 
 	local path url data
 	url="ci/lint"
-	if C_git_project_namespace_path path; then
+	if path=$(C_get_project_namespace_path); then
 		url="projects/$path/ci/lint"
 	fi
 
@@ -163,7 +164,7 @@ C_ci_lint() {
 		fi
 	done
 	L_trap_err_disable
-	exit $((!!errors))
+	return "$((!!errors))"
 }
 
 C_list_current_user() {
@@ -210,26 +211,39 @@ C_search_project_id_first() {
 	}
 }
 
-C_git_project_namespace_path() {
-	local _tmp
-	if _tmp=$(git remote -v get-url origin 2>/dev/null); then
-		_tmp=$(sed -E 's~(http|ssh)://~~; s~git@~~; s~[:/]~ ~; s/\.[^\.]*$//; s~/~%2F~' <<<"$_tmp")
-		local _url _path
-		if read -r _url _path <<<"$_tmp"; then
-			if [[ "$_url" != "$GITLAB_URL" && "$_url" == "$GITLAB2_URL" ]]; then
-				g_use_gitlab2
-			fi
-		fi
-		printf -v "$1" "%s" "$_path"
-		return 0;
+project_info_cachef=/tmp/,gitlab-projinfocache.$$.json
+get_project_info_cached() {
+	if [[ ! -e "$project_info_cachef" ]]; then
+		tmp=$(C_get_project_namespace_path)
+		C_GETRAW "projects/$tmp" > "$project_info_cachef"
 	fi
-	return 1;
+	cat "$project_info_cachef"
+}
+
+C_get_project_info_cached() {
+	get_project_info_cached
+}
+
+C_get_project_namespace_path() {
+	git remote -v get-url origin 2>/dev/null |
+	sed '
+		# remove domain name from url
+		s~^\([^:]*://\)\?\([^@]*@\)\?[^:/]*[:/]~~
+		# Remove trialing git
+		s/\.git$//;
+		# replace slashes
+		s~/~%2F~
+	'
+}
+
+C_get_project_name() {
+	get_project_info_cached | jq '.name'
 }
 
 C_get_project_id() {
-	local path
-	if C_git_project_namespace_path path; then
-		C_GETRAW "projects/$path" | jq '.id'
+	local tmp
+	if tmp=$(get_project_info_cached); then
+		jq '.id' <<<"$tmp"
 		exit
 	fi
 	C_search_project_id_first "$@"
@@ -311,11 +325,212 @@ C_my_create_project() {
 	C_create_project --namespace Kamcuk --name "$@"
 }
 
+C_gitlabciyml-cached() {
+	local namespacepath
+	namespacepath=$(C_get_project_namespace_path)
+	g_cache="/tmp/run-gitlab-ci_${namespacepath}_.gitlab-ci.yml"
+	if [[ ! -e "$g_cache" || .gitlab-ci.yml -nt "$g_cache" ]]; then
+		L_log "Refreshing cache at $g_cache"
+		if ! C_ci_lint > "$g_cache"; then
+			L_fatal ".gitlab-ci.yml is invalid"
+		fi
+	else
+		L_log "Using cache at $g_cache"
+	fi
+	cat "$g_cache"
+}
+
+C_gitlabciyml-list-jobs() {
+	C_gitlabciyml-cached |
+		yq -r 'to_entries[] | select(.value.restricted|not) | .key'
+}
+
+C_run-gitlabci() {
+	#
+	L_name="$L_NAME gitlabci-run"
+	l_usage() {
+		cat <<EOF
+Usage: $L_name <job to run>
+EOF
+	}
+	local args debugme
+	args=$(getopt -n "$L_name" -o hd -- "$@")
+	debugme=0
+	eval "set -- $args"
+	while (($#)); do
+		case "$1" in
+		-h) l_usage; ;;
+		-d) debugme=1; ;;
+		--) shift; break; ;;
+		*) L_fatal "Internal error when parsing args"; ;;
+		esac
+		shift
+	done
+	if (($# == 0)); then l_usage; exit 1; fi
+	if (($# > 1)); then L_fatal "Too many arguments"; fi
+	local job
+	job="$1"
+	#
+	local gitlabciyml
+	gitlabciyml="$(C_gitlabciyml-cached)"
+	#
+	local jobdef
+	# shellcheck disable=2016
+	if ! jobdef=$(<<<"$gitlabciyml" yq --arg job "$job" '.[$job]'); then
+		L_fatal "There is no job named $job in .gitlab-ci.yml"
+	fi
+	if ((debugme)); then
+		echo "--- job definition: ---"
+		yq -y <<<"$jobdef" | sed 's/^/  /'
+		echo
+	fi
+	#
+	local image
+	image=$(jq -r .image <<<"$jobdef")
+	#
+	local g_toexe
+	g_toexe=""
+	toexeadd() {
+		g_toexe+="$*"$'\n'
+	}
+	toexenotify() {
+		toexeadd "printf '%s%s%s\n'$(printf " %q" "${L_GREEN}" "$ ${1%%$'\n'*}" "${L_RESET}")"
+	}
+	toexenotifycyan() {
+		toexeadd "printf '%s%s%s\n'$(printf " %q" "${L_CYAN}" "$ ${1%%$'\n'*}" "${L_RESET}")"
+	}
+	toexeadd "set -euo pipefail"
+	toexenotifycyan "Setuping variables..."
+	#
+	# Add CI_* variables that need to be generated. Mostly TODO
+	# shellcheck disable=2034,2086
+	gen_ci() {
+		unset ${!CI_*} ||:
+		echo 'CI=true'
+
+		CI_COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+		CI_COMMIT_AUTHOR="$(git log -1 --pretty='%an') <$(git log -1 --pretty='%ae')>"
+		gs() {
+			local tmp
+			tmp="$(git log "${3:--1}" --pretty="$2")"
+			printf -v "$1" "%s" "$tmp"
+		}
+		gs CI_COMMIT_DESCRIPTION %B
+		gs CI_COMMIT_MESSAGE %B
+		gs CI_COMMIT_REF_NAME %S
+		gs CI_COMMIT_SHA %H
+		gs CI_COMMIT_SHORT_SHA %h
+		CI_COMMIT_BEFORE_SHA=$(git log -2 --pretty=%H | tail -n1)
+		gs CI_COMMIT_TIMESTAMP %aI
+
+		CI_DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+		CI_JOB_IMAGE="$image"
+		CI_JOB_NAME="$job"
+		CI_JOB_STAGE="$(jq -r '.stage // "test"' <<<"$jobdef")"
+		CI_JOB_STARTED_AT=$(date -Is)
+		CI_JOB_ID=$RANDOM
+
+		CI_PIPELINE_ID=$RANDOM
+		CI_PIPELINE_SOURCE=trigger
+		CI_PIPELINE_TRIGGERED=true
+		CI_PIPELINE_CREATED_AT=$CI_JOB_STARTED_AT
+
+		# Make CI_PROJECT_DIR relative to ~
+		echo "CI_PROJECT_DIR=~/$(printf "%q" CI_PROJECT_NAME)"
+		sinfo() {
+			local tmp
+			tmp=$(get_project_info_cached | jq -r "$2")
+			printf -v "$1" "%s" "$tmp"
+		}
+		sinfo CI_PROJECT_ID .id
+		sinfo CI_PROJECT_NAME '.name'
+		sinfo CI_PROJECT_NAMESPACE '.namespace.path'
+		sinfo CI_PROJECT_PATH '.path_with_namespace'
+		CI_PROJECT_TITLE=$CI_PROJECT_NAME
+		sinfo CI_PROJECT_URL '.web_url'
+		sinfo CI_PROJECT_VISIBILITY '.visibility'
+
+		CI_RUNNER_ID=$RANDOM
+		CI_SERVER_NAME=$HOSTNAME
+
+		declare -p ${!CI_*}
+	}
+	tmp=$(gen_ci)
+	toexeadd "$tmp"
+	#
+	# Add variables from variables: from yaml.
+	toexeadd '# variables from job:'
+	local variablesdef key value
+	variablesdef=$(jq -r '[ .variables // [] | to_entries[] | .key, .value ] | .[] | @base64' <<<"$jobdef")
+	while IFS= read -r key && IFS= read -r value; do
+		key=$(base64 -d <<<"$key")
+		value=$(base64 -d <<<"$value")
+		value=$(printf "%q" "$value")
+		toexeadd "$key=$value"
+	done <<<"$variablesdef"
+	#
+	# Copy the directory with the project to CI_PROJECT_DIR
+	toexenotifycyan "Cloning project..."
+	_setup() {
+		cp -a /orig "$CI_PROJECT_DIR"
+		cd "$CI_PROJECT_DIR"
+	}
+	toexeadd "$(declare -f _setup); _setup"
+	#
+	execscript() {
+		local part script line
+		part=$1
+		script=$(jq -r ".$part // [] | .[] | @base64" <<<"$jobdef") 
+		if [[ -z "$script" ]]; then
+			if [[ "$part" = "script" ]]; then
+				L_fatal "There is no script: section defined for $job"
+			fi
+			return
+		fi
+		toexenotifycyan "Executing $part:"
+		while IFS= read -r line; do
+			if [[ -z "$line" ]]; then continue; fi
+			line=$(base64 -d <<<"$line")
+			toexenotify "$line"
+			toexeadd "$line"
+		done <<<"$script"
+		toexeadd 'CI_JOB_STATUS=$?'
+	}
+	execscript "before_script"
+	execscript "script"
+	execscript "after_script"
+	#
+	if ((debugme)); then
+		echo "--- to execute: ---"
+		sed 's/^/  /' <<<"$g_toexe"
+		echo
+	fi
+	#
+	local ret
+	ret=0
+	L_run docker run -i --rm -v "$PWD:/orig:ro" "$image" bash -s <<<"$g_toexe" || ret=$?
+	L_log "${L_CYAN}Cleanup${L_RESET}"
+	if ((ret == 0)); then
+		L_log "${L_GREEN}job succeeded${L_RESET}"
+	else
+		L_log "${L_RED}${L_BOLD}ERROR: Job failed: exit code $ret${L_RESET}"
+	fi
+}
+
 ###############################################################################
+
+trap 'rm -f "$project_info_cachef"' EXIT
 
 : "${GITLAB_URL:="gitlab.com"}"
 : "${GITLAB_TOKEN:=}"
 : "${DEBUG:=false}"
+# automatically use proper gitlab setting if url matches
+if tmp=$(git remote -v get-url origin 2>/dev/null); then
+	if [[ "$tmp" != *"$GITLAB_URL"* && "$tmp" == *"$GITLAB2_URL"* ]]; then
+		g_use_gitlab2
+	fi
+fi
+#
 g_refresh_gitlab_vars
 
 . ,lib_lib -q 
@@ -332,3 +547,4 @@ while (($#)); do
 done
 
 . ,lib_lib C_ "$@"
+

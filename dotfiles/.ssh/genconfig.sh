@@ -271,9 +271,12 @@ Host lightsail1
 	User kcukrowski
 	Hostname 3.69.31.141
 
-Host kgomulskirpi
-	User kcukrowski
+Host kgomulskirpi rpichronos01
+	User root
 	Hostname 10.135.0.3
+Host rpichronos02
+	User root
+	Hostname 10.135.0.5
 
 EOF
 

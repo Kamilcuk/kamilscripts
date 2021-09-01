@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+dir="${BASH_SOURCE%/*}"
+name="${BASH_SOURCE##*/}"
+
+usage() {
+	cat <<EOF
+Usage: $name [options] host port [ssh options]
+
+Options:
+	-h --help   Print this help and exit.
+
+Written by Kamil Cukrowski
+Licensed jointly under MIT License and Beerware License.
+EOF
+}
+
+log() {
+	echo "$name:" "$@"
+}
+
+fatal() {
+	echo "$name: ERROR:" "$@" >&2
+	exit 1
+}
+
+int_to_bool() {
+	case "$1" in
+	1) echo true; ;;
+	*) echo false; ;;
+	esac
+}
+
+trap_EXIT() {
+	log "Quitting..."
+}
+
+###############################################################################
+
+args=$(getopt -n "$name" -o h -l help -- "$@")
+eval "set -- $args"
+while (($#)); do
+	case "$1" in
+	-h|--help) usage; exit; ;;
+	--) shift; break; ;;
+	*) fatal "error when parsing arugment: $1"; ;;
+	esac
+	shift
+done
+if (($# == 0)); then usage; fatal "Missing arguments"; fi
+if (($# != 2)); then fatal "Wrong number of arguments"; fi
+host=$1
+port=$2
+shift 2
+log "Starting socks proxy on $port to $host"
+trap trap_EXIT EXIT
+cmd=(ssh -D "$port" -q -C -N "$@" "$host")
+echo "+ ${cmd[*]}"
+"${cmd[@]}"
+

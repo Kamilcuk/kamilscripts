@@ -32,6 +32,10 @@ setclassfiles() {
 	} <<<"$_aUtO_TmP"
 }
 
+C_new_class() {
+	run pdk new class "$@"
+}
+
 C_get_module_name() {
 	chdirtorepo
 	jq -r .name metadata.json | sed 's/[^-]*-//'

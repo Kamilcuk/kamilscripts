@@ -28,7 +28,7 @@ cmd_restore_from_conflict() {
 }	
 
 _unsync_or_sync_vfs() {
-	g_name="$L_NAME $L_mode"
+	g_name="$L_NAME $L_CMD"
 	g_args=$(getopt -n "$g_name" -o hnvq -l help,dry-run,verbose,quiet -- "$@")
 	eval "set -- $g_args"
 	g_dry_run=0
