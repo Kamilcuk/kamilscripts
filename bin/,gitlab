@@ -326,12 +326,21 @@ C_my_create_project() {
 }
 
 C_gitlabciyml-cached() {
-	local namespacepath
+	local namespacepath size
 	namespacepath=$(C_get_project_namespace_path)
 	g_cache="/tmp/run-gitlab-ci_${namespacepath}_.gitlab-ci.yml"
-	if [[ ! -e "$g_cache" || .gitlab-ci.yml -nt "$g_cache" ]]; then
+	if
+		[[ ! -e "$g_cache" ]] ||
+		[[ .gitlab-ci.yml -nt "$g_cache" ]] ||
+		(
+			[[ -e "$g_cache" ]] &&
+			size=$(stat -c %s "$g_cache") &&
+			((size < 10))
+		)
+	then
 		L_log "Refreshing cache at $g_cache"
 		if ! C_ci_lint > "$g_cache"; then
+			rm "$g_cache"
 			L_fatal ".gitlab-ci.yml is invalid"
 		fi
 	else
@@ -390,17 +399,24 @@ EOF
 	#
 	local g_toexe
 	g_toexe=""
+	local green reset cyan
+	green=${L_GREEN//$'\E'/'\e'}
+	reset=${L_RESET//$'\E'/'\e'}
+	cyan=${L_CYAN//$'\E'/'\e'}
 	toexeadd() {
 		g_toexe+="$*"$'\n'
 	}
+	toexe_cmsg() {
+		toexeadd "printf" "'$1%s$reset\n'" "$(printf "%q" "$ ${2%%$'\n'*}")"
+	}
 	toexenotify() {
-		toexeadd "printf '%s%s%s\n'$(printf " %q" "${L_GREEN}" "$ ${1%%$'\n'*}" "${L_RESET}")"
+		toexe_cmsg "$green" "$@"
 	}
 	toexenotifycyan() {
-		toexeadd "printf '%s%s%s\n'$(printf " %q" "${L_CYAN}" "$ ${1%%$'\n'*}" "${L_RESET}")"
+		toexe_cmsg "$cyan" "$@"
 	}
 	toexeadd "set -euo pipefail"
-	toexenotifycyan "Setuping variables..."
+	toexenotifycyan "Setuping variables in $image ..."
 	#
 	# Add CI_* variables that need to be generated. Mostly TODO
 	# shellcheck disable=2034,2086
@@ -428,9 +444,9 @@ EOF
 		CI_JOB_NAME="$job"
 		CI_JOB_STAGE="$(jq -r '.stage // "test"' <<<"$jobdef")"
 		CI_JOB_STARTED_AT=$(date -Is)
-		CI_JOB_ID=$RANDOM
+		CI_JOB_ID=$SRANDOM
 
-		CI_PIPELINE_ID=$RANDOM
+		CI_PIPELINE_ID=$SRANDOM
 		CI_PIPELINE_SOURCE=trigger
 		CI_PIPELINE_TRIGGERED=true
 		CI_PIPELINE_CREATED_AT=$CI_JOB_STARTED_AT
@@ -450,10 +466,12 @@ EOF
 		sinfo CI_PROJECT_URL '.web_url'
 		sinfo CI_PROJECT_VISIBILITY '.visibility'
 
-		CI_RUNNER_ID=$RANDOM
+		CI_RUNNER_ID=$SRANDOM
 		CI_SERVER_NAME=$HOSTNAME
 
-		declare -p ${!CI_*}
+		for i in ${!CI_*}; do
+			echo "$i=$(printf "%q" "${!i}")"
+		done
 	}
 	tmp=$(gen_ci)
 	toexeadd "$tmp"
@@ -499,22 +517,90 @@ EOF
 	execscript "before_script"
 	execscript "script"
 	execscript "after_script"
-	#
-	if ((debugme)); then
-		echo "--- to execute: ---"
-		sed 's/^/  /' <<<"$g_toexe"
-		echo
+	# Handle services:
+	local services servicesdef
+	if
+		servicesdef=$(jq -r '.services // [] | .[] | @base64' <<<"$jobdef") &&
+		[[ -n "$servicesdef" ]]
+	then
+		while IFS= read -r line; do
+			if [[ -z "$line" ]]; then conitnue; fi
+			line=$(base64 -d <<<"$line")
+			services+=("$line")
+		done <<<"$servicesdef"
 	fi
+
+	# Run it all in docker-compose in temporary directory
+	(
+		tmpd=$(mktemp --tmpdir -d ,gitlab-run-gitlabci-XXXXXXXXX)
+		trap_exit() {
+			set +euo pipefail
+			L_log "${L_CYAN}Exit cleanup${L_RESET}"
+			if [[ -d "$tmpd" ]]; then
+				docker-compose down -v 2>/dev/null ||:
+				cd /
+				rm -r "$tmpd"
+			fi
+		}
+		trap trap_exit EXIT
+		L_log "${L_CYAN}Setuping docker-compose in $tmpd ...${L_RESET}"
+		#
+		dockercompose=$(jq \
+			--arg image "$image" \
+			--arg PWD "$PWD" \
+			-n '{
+				version: "3",
+				services: { work: { image: $image,
+					volumes: [ "./work.sh:/work.sh:ro", ($PWD + ":/orig:ro") ],
+					command: [ "sh", "-c",
+						"sleep 1 && if hash bash 2>/dev/null; then bash ./work.sh; else sh ./work.sh; fi"
+				] } } }'
+		)
+		for srv in "${services[@]}"; do
+			dockercompose=$(<<<"$dockercompose" jq \
+				--arg srv "${srv%%[:-]*}" --arg image "$srv" '
+				.services += { ($srv): { image: $image, privileged: true, volumes: ["/certs"]
+					#, logging: { driver: "none" }
+				} } |
+				.services.work.volumes_from += [ ("service:" + $srv + ":ro") ] |
+				.services.work.links += [ $srv ] |
+				.services.work.depends_on += [ $srv ]
+			')
+		done
+		#
+		cd "$tmpd"
+		yq -y <<<"$dockercompose" > ./docker-compose.yml
+		if ! docker-compose config; then
+			cat docker-compose.yml
+			L_fatal "Internal error: generated invalid docker-compose"
+		fi
+		cat <<<"$g_toexe" > ./work.sh
+		if ((debugme)); then
+			echo "--- to execute: ---"
+			sed 's/^/  /' ./work.sh
+			echo
+		fi
+		#
+		local ret
+		ret=0
+		for srv in "${services[@]}"; do
+			L_run docker-compose up -d "${srv%%[:-]*}"
+		done
+		L_run docker-compose run work || ret=$?
+		L_log "${L_CYAN}Cleanup${L_RESET}"
+		L_run docker-compose down -v ||:
+		cd /
+		rm -r "$tmpd"
+		if ((ret == 0)); then
+			L_log "${L_GREEN}job succeeded${L_RESET}"
+		else
+			L_log "${L_RED}${L_BOLD}ERROR: Job failed: exit code $ret${L_RESET}"
+		fi
+	)
+	exit
+
 	#
-	local ret
-	ret=0
-	L_run docker run -i --rm -v "$PWD:/orig:ro" "$image" bash -s <<<"$g_toexe" || ret=$?
-	L_log "${L_CYAN}Cleanup${L_RESET}"
-	if ((ret == 0)); then
-		L_log "${L_GREEN}job succeeded${L_RESET}"
-	else
-		L_log "${L_RED}${L_BOLD}ERROR: Job failed: exit code $ret${L_RESET}"
-	fi
+	#
 }
 
 ###############################################################################

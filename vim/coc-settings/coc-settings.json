@@ -58,9 +58,6 @@
   },
   "diagnostic-languageserver.linters": {
     "yamllint": {
-			"args": [
-				"Set line-length to 120 and also allow yes and no for boolean values for ansible development"
-			],
       "args": [
         "-d",
         "{extends: relaxed, rules: {line-length: {max: 120}}, truthy: allowed-values: [\"yes\", \"true\", \"no\", \"false\"]}",
@@ -70,9 +67,6 @@
       ]
     },
     "shellcheck": {
-			"args": [
-				"Add -x to arguments to let shellcheck include other files"
-			],
       "args": [
         "-x",
         "--format",
