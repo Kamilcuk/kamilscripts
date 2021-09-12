@@ -131,7 +131,7 @@ timeout_watcher() {
 	while ((timeout--)); do
 		for ((i = 0; i < 10; ++i)); do
 			sleep 0.1
-			if ! kill -0 "$$"; then
+			if ! kill -0 "$$" 2>/dev/null; then
 				exit 0
 			fi
 		done

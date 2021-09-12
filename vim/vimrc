@@ -1101,6 +1101,7 @@ endif " kc#plugin#enabled('coc.nvim')
 " }}}
 " vimtex Configuration {{{1
 
+let g:vimtex_compiler_progname = 'nvr'  " :help vimtex-faq-neovim
 let g:vimtex_view_method = 'mupdf'
 "let g:livepreview_previewer = 'evince'
 

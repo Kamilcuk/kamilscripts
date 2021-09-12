@@ -34,3 +34,5 @@ rebase
 wvdial
 versioning
 LFS
+Dockerfile
+docker

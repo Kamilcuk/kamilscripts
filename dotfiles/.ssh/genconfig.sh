@@ -241,6 +241,7 @@ ncbj smtp2rest       dizvm13.cis.gov.pl root
 ncbj opengrok        dizvm14.cis.gov.pl root
 ncbj tester          dizvm15.cis.gov.pl root
 ncbj deploycicd      dizvm18.cis.gov.pl root
+ncbj chronoscicd     dizvm20.cis.gov.pl root
 ncbj nexus           dizvm35.cis.gov.pl root
 
 cat <<EOF

@@ -64,6 +64,7 @@ get_parse_args() {
 # shellcheck disable=2145
 C_GETRAW() {
 	local args ; get_parse_args "$@"
+	local tmp
 	run_curl "${args[@]}"
 	echo
 }
@@ -214,8 +215,13 @@ C_search_project_id_first() {
 project_info_cachef=/tmp/,gitlab-projinfocache.$$.json
 get_project_info_cached() {
 	if [[ ! -e "$project_info_cachef" ]]; then
+		local tmp tmp2
 		tmp=$(C_get_project_namespace_path)
-		C_GETRAW "projects/$tmp" > "$project_info_cachef"
+		tmp=$(C_GETRAW "projects/$tmp")
+		if ! tmp2=$(<<<"$tmp" jq -c); then
+			L_fatal "Invalid response from gitlab: $tmp"
+		fi
+		cat <<<"$tmp2" > "$project_info_cachef"
 	fi
 	cat "$project_info_cachef"
 }
@@ -354,12 +360,29 @@ C_gitlabciyml-list-jobs() {
 		yq -r 'to_entries[] | select(.value.restricted|not) | .key'
 }
 
+C_gitlabciyml-list-jobs2() {
+	C_gitlabciyml-list-jobs |
+	grep -vf <(
+		arr=(
+			'^variables$'
+			'-sast$'
+			'^\.'
+			'dependency_scanning$'
+		)
+		printf '%s\n' "${arr[@]}"
+	)
+}
+
 C_run-gitlabci() {
 	#
 	L_name="$L_NAME gitlabci-run"
 	l_usage() {
 		cat <<EOF
 Usage: $L_name <job to run>
+
+Potential job names:
+$(C_gitlabciyml-list-jobs2 | sed 's/^/  /')
+
 EOF
 	}
 	local args debugme
@@ -566,6 +589,15 @@ EOF
 				.services.work.links += [ $srv ] |
 				.services.work.depends_on += [ $srv ]
 			')
+			if [[ "$srv" == "docker"*"dind"* ]]; then
+				dockercompose=$(<<<"$dockercompose" jq '
+					.services.work.environment += [
+						"DOCKER_HOST=tcp://docker:2376",
+						"DOCKER_TLS_CERTDIR=/certs",
+						"DOCKER_TLS_VERIFY=1",
+						"DOCKER_CERT_PATH=/certs/client"
+					]')
+			fi
 		done
 		#
 		cd "$tmpd"
@@ -583,10 +615,12 @@ EOF
 		#
 		local ret
 		ret=0
-		for srv in "${services[@]}"; do
-			L_run docker-compose up -d "${srv%%[:-]*}"
-		done
-		L_run docker-compose run work || ret=$?
+		if (( ${#services[@]} )); then
+			for srv in "${services[@]}"; do
+				L_run docker-compose up -d "${srv%%[:-]*}"
+			done
+		fi
+		L_run docker-compose up work || ret=$?
 		L_log "${L_CYAN}Cleanup${L_RESET}"
 		L_run docker-compose down -v ||:
 		cd /

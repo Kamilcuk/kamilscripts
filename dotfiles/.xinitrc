@@ -39,8 +39,8 @@ fi
 
 set -- startxfce4
 
-echo "::: kamilscripts X session wrapper complete, running session $@"
+echo "::: kamilscripts X session wrapper complete, running session $*"
 
-exec $@
+exec "$@"
 
 

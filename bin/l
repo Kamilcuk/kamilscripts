@@ -76,9 +76,9 @@ dodirlist() {
 	if ! cd "$1"; then
 		fatal "Could not change directory: $1"
 	fi
-	find . "${findargs[@]}" | sort -z > "$tmpf" ||:
+	LC_ALL=C find . "${findargs[@]}" | LC_ALL=C sort -z > "$tmpf" ||:
 	# Print "total ..." summary line:
-	cut_z_chars 1 "$tmpf" | tr '\0' '\n' | awk '
+	cut_z_chars 1 "$tmpf" | LC_ALL=C tr '\0' '\n' | LC_ALL=C awk '
 		#BEGIN{
 		#	lower["a"]; lower["b"]; lower["c"]; lower["d"]; lower["e"]; lower["f"]; lower["g"];
 		#	upper["A"]; upper["B"]; upper["C"]; upper["D"]; upper["E"]; upper["F"]; upper["G"];
