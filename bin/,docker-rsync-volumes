@@ -1,0 +1,229 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -t 1 ]]; then
+	L_CYAN=$'\E[36m'
+	L_RED=$'\E[31m'
+	L_BOLD=$'\E[1m'
+	L_RESET=$'\E[m'
+else
+	L_CYAN=
+	L_RED=
+	L_BOLD=
+	L_RESET=
+fi
+fatal() {
+	echo "$L_RED$L_BOLD""$NAME: ERROR: $*""$L_RESET" >&2
+	exit 1
+}
+log() {
+	if ((!c_quiet)); then
+		echo "$L_CYAN""$NAME: $*""$L_RESET" >&2
+	fi
+}
+runv() {
+	log "$*"
+	"$@"
+}
+run_tests() {
+	n=dockerrsyncvolumetest
+	docker volume create "$n"
+	docker run -i --rm -v "$n":/d -w /d alpine sh -c '
+		echo 0400 > ./test400
+		chmod 0400  ./test400
+		echo 0777 > ./test777
+		chmod 0777  ./test777
+	'
+	"$0" "$n" "$n"tmp
+	exit
+}
+
+###### parse arguments
+
+usage() {
+	cat <<EOF
+Usage: $NAME [options] [-f|--from DOKER_HOST] [-t|--to DOCKER_HOST] from_docker_volume [to_docker_volume]
+
+Copies data from <from_docker_volume> docker volume to <to_docker_volume>.
+When <to_docker_volume> is not specified, <from_docker_volume> name is used.
+
+Options:
+   -h --help              Print this help and exit
+   -q --quiet             Try to be quiet.
+   -d --debug             Debug.
+   -f --from DOCKER_HOST  Specify DOCKER_HOST from which to copy the volume.
+   -t --to DOCKER_HOST    Specify DOCKER_HOST to which copy the volume.
+      --delete            Pass --delete to rsync.
+	  --test              Run tests
+   -a --rsyncarg ARG      Add additional arguments to rsync command line.
+
+
+Examples:
+    $NAME --delete -f ssh://user1@server2 grafana_data -t ssh://user2@server2 grafana_data_backup
+
+Written by Kamil Cukrowski
+Licensed jointly under Beerware Licsense and MIT License.
+EOF
+}
+NAME=,docker-rsync-volumes
+args=$(getopt -n "$NAME" -o hdqf:t:a: -l help,quiet,debug,from:,to:,delete,rsyncarg: -- "$@")
+eval "set -- $args"
+src_docker_host=""
+src_volume=chronos_monitoring_grafana
+dst_docker_host=""
+dst_volume=chronos_monitoring_grafana
+c_debug=0
+c_quiet=0
+rsyncargs=()
+while (($#)); do
+	case "$1" in
+	-h|--help) usage; exit 0; ;;
+	-d|--debug) c_debug=1; ;;
+	-q|--quiet) c_quiet=1; ;;
+	-f|--from) src_docker_host="$2"; shift; ;;
+	-t|--to) dst_docker_host="$2"; shift; ;;
+	--delete) rsyncargs+=(--delete); ;;
+	-a|--rsyncarg) rsyncargs+=("$2"); shift; ;;
+	--test) run_tests; ;;
+	--) shift; break; ;;
+	*) fatal "Could not parse arguments"; ;;
+	esac
+	shift
+done
+
+if (($# == 0)); then usage; fatal "Missing arguments"; fi
+if (($# > 2)); then fatal "Too many arguments. 1 or 2 expected"; fi
+if ((c_debug)); then set -x; fi
+src_volume="$1"
+dst_volume="${2:-$1}"
+
+if [[ -n "$dst_docker_host" ]]; then
+	dst_docker=(env DOCKER_HOST="$dst_docker_host" docker)
+else
+	dst_docker=(docker)
+fi
+dst_docker() { "${dst_docker[@]}" "$@"; }
+if [[ -n "$src_docker_host" ]]; then
+	src_docker=(env DOCKER_HOST="$src_docker_host" docker)
+else
+	src_docker=(docker)
+fi
+src_docker() { "${src_docker[@]}" "$@"; }
+
+######
+
+trap_exit() {
+	log "Exit. Stopping containers."
+	if ((${#childs[@]})); then
+		kill "${childs[@]}" 2>/dev/null ||:
+	fi
+	if [[ -n "${tmpd:-}" ]]; then
+		rm -rf "$tmpd"
+	fi
+	if [[ -n "${src_did:-}" ]]; then
+		"${src_docker[@]}" stop -t 1 "$src_did" >/dev/null ||:
+	fi &
+	if [[ -n "${dst_did:-}" ]]; then
+		"${dst_docker[@]}" stop -t 1 "$dst_did" >/dev/null ||:
+	fi &
+	wait
+}
+tmpd=$(mktemp -d)
+childs=()
+trap trap_exit EXIT
+
+log "Syncing ${src_docker_host:-localhost} at $src_volume -> ${dst_docker_host:-localhost} at $dst_volume"
+
+log "Building docker containers"
+# shellcheck disable=2030
+{
+	# The script wait-for-rsync-listen.sh block the execution until
+	# some process starts listening on rsync port 873.
+	cat > "$tmpd"/Dockerfile <<'EOF'
+FROM alpine:latest
+RUN apk add rsync socat && \
+	printf "$s\n" > /usr/local/bin/wait-for-rsync-listen.sh \
+		'#!/bin/sh' \
+		'' \
+		'for i in $(seq 20); do' \
+		'  sleep 0.1' \
+		'  if netstat -anp tcp | grep -q "0\.0\.0\.0:873 .* LISTEN "; then' \
+		'    exit 0' \
+		'  fi' \
+		'done' \
+		'exit 1'
+EOF
+	src_dcont=$( cd "$tmpd" && src_docker build -q . )
+	if [[ "$src_docker_host" == "$dst_docker_host" ]]; then
+		dst_dcont="$src_dcont"
+	else
+		dst_dcont=$( cd "$tmpd" && dst_docker build -q . )
+	fi
+}
+
+log "Running source and destination containers"
+{
+	# We run them in parallel to save time.
+	src_docker run --rm -d -v "$src_volume":/data:ro -w /data "$src_dcont" sleep infinity > "$tmpd"/src_did &
+	src_pid=$! ; childs+=("$src_pid")
+	dst_docker run --rm -d -v "$dst_volume":/data:rw -w /data "$dst_dcont" sleep infinity > "$tmpd"/dst_did &
+	dst_pid=$! ; childs+=("$dst_pid")
+	#
+	if ! wait "$src_pid"; then
+		fatal "Could not run source container"
+	fi
+	src_did=$(<"$tmpd"/src_did)
+	if ! wait "$dst_pid"; then
+		fatal "Could not run destination container"
+	fi
+	dst_did=$(<"$tmpd"/dst_did)
+}
+
+log "Running rsyncd on destination container"
+{
+	g_password="$RANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM"
+	minus_x=""
+	if ((c_debug)); then
+		minus_x=-x
+	fi
+	#
+	dst_docker exec "$dst_did" sh $minus_x -c "
+		cat <<EOF > /etc/rsyncd.conf &&
+uid = root
+gid = root
+use chroot = no
+max connections = 1
+auth users = root
+secrets file = /etc/rsyncd.secrets
+numeric ids = yes
+reverse lookup = no
+[data]
+path = /data/
+read only = no
+EOF
+		cat <<EOF > /etc/rsyncd.secrets &&
+root:$g_password
+EOF
+		chmod 0600 /etc/rsyncd.secrets &&
+		rsync --daemon &&
+		sh /usr/local/bin/wait-for-rsync-listen.sh		
+	"
+}
+
+log "Setup rsync socat forwarding between containers"
+{
+	coproc { dst_docker exec -i "$dst_did" socat -T 10 - TCP:localhost:rsync,forever; }
+	src_docker exec -i "$src_did" socat -T 10 TCP-LISTEN:rsync,forever,reuseaddr - <&"${COPROC[0]}" >&"${COPROC[1]}"
+} &
+childs+=("$!")
+if ! src_docker exec "$src_did" sh /usr/local/bin/wait-for-rsync-listen.sh; then
+	fatal "Could not setup socat forwarding - socat is not listening!"
+fi
+
+# Finally runnning rsync, that will traver via socat above to rsyncd.
+rsyncargs=(-aivxsAHSX --progress "${rsyncargs[@]}")
+log "Running rsync ${rsyncargs[*]}"
+src_docker exec -e RSYNC_PASSWORD="$g_password" -w /data "$src_did" rsync "${rsyncargs[@]}" /data/ rsync://root@localhost/data
+
+exit
+

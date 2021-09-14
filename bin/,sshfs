@@ -1,0 +1,18 @@
+#!/bin/bash
+# https://superuser.com/questions/344255/faster-way-to-mount-a-remote-file-system-than-sshfs
+opts=(
+	-o Ciphers=aes128-ctr
+	-o Compression=yes
+	-o auto_cache
+	-o cache_timeout=115200
+	-o attr_timeout=115200
+	-o entry_timeout=1200
+	#-o max_readahead=90000
+	#-o large_read
+	#-o big_writes
+	#-o no_remote_lock
+	-o max_conns=10
+)
+set -x
+sshfs "${opts[@]}" "$@"
+

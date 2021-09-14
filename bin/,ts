@@ -1,19 +1,39 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-if hash python 2>/dev/null >/dev/null; then
-	exec python -u -c '
-import sys, datetime;
-for i in sys.stdin:
-	sys.stdout.write(datetime.datetime.now().strftime("%H:%M:%S.%f ") + i)
-'
-elif { awk --version | awk -v ver=4.1 'NR==1{gsub(/\.[^\.]*$/,"",$3); exit !($3 >= ver)}' ;} 2>/dev/null; then
-	exec awk '@load "time"; {
-		v = gettimeofday()
-		t = v - int(v)
-		t = sprintf("%.6f", t)
-		gsub("^0", "", t)
-		print strftime("%H:%M:%S", int(v)) t, $0
-	}'
-else
-	exec awk '{ print strftime("%H:%M:%S"), $0; fflush(); }'
-fi
+import os
+import sys
+import errno
+import datetime
+import select
+
+chunk = 4096
+os.set_blocking(0, False)
+was_newline = True
+while 1:
+    # Read at most chunk data from input.
+    try:
+        bs = os.read(0, chunk)
+    except OSError as err:
+        # If we would block, wait with select and read again.
+        if err.errno == errno.EAGAIN or err.errno == errno.EWOULDBLOCK:
+            select.select([0], [], [])
+            bs = os.read(0, chunk)
+            if not len(bs):
+                break
+        else:
+            raise err
+    # For each newline in outbs, add the datetime.
+    outbs = bytearray()
+    now = None
+    for i in bs:
+        if was_newline:
+            # Cache date - get it only once, per chunk.
+            if now is None:
+                now = str.encode(datetime.datetime.now().strftime("%H:%M:%S.%f "))
+            outbs.extend(now)
+            was_newline = False
+        outbs.append(i)
+        if i == b'\n'[0]:
+            was_newline = True
+    # Finally output.
+    os.write(1, outbs)
