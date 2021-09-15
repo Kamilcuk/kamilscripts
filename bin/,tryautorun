@@ -244,11 +244,11 @@ project_run_cmake() {
 
 	local l_runconfig=0 l_cmakeargs=() l_ctestargs=()
 	local l_args
-	l_args=$(getopt -n "$L_NAME cmake" -o hclD:R: -- "$@")
+	l_args=$(getopt -n "$L_NAME cmake" -o hclD:R: -l help -- "$@")
 	eval "set -- $l_args"
 	while (($#)); do
 		case "$1" in
-		-h) project_run_cmake_usage; ;;
+		-h|--help) project_run_cmake_usage; ;;
 		-c) l_runconfig=1; ;;
 		-l)
 			if [[ "$cdir" == */"_build" ]]; then
