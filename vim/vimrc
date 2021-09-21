@@ -221,6 +221,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	"KcPlug8 'puremourning/vimspector'
 	" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" staging2
+	Plug 'powerman/vim-plugin-AnsiEsc'
 	Plug 'ojroques/vim-oscyank'
 	Plug 'subnut/visualstar.vim'
 	Plug 'flwyd/nerdtree-harvest'
@@ -767,8 +768,11 @@ augroup KcDispatchComplete
 	au!
 	" DispatchComplete is my patch to vim-dispath
 	autocmd User DispatchComplete call KcDispatchComplete()
+	" Put copen window on the lef.
+	autocmd FileType qf wincmd L
 augroup END
 let g:dispatch_quickfix_height = &lines / 3
+
 
 if kc#plugin#enabled('vimwiki')
 	let g:vimwiki_list = [{'path': '~/vimwiki/',

@@ -3,21 +3,18 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 UseTab: Always
-ColumnLimit: 100
+ColumnLimit: 120
 ---
 Language: Cpp
-# Force pointers to the type for C++.
-# A style similar to the Linux Kernel style
-# BasedOnStyle: LLVM
 AccessModifierOffset: -8
 IndentWidth: 8
 UseTab: Always
 AllowShortIfStatementsOnASingleLine: false
 IndentCaseLabels: false
-
 AlignEscapedNewlines: DontAlign
 AlignTrailingComments: false
-
 AllowShortFunctionsOnASingleLine: false
 AllowShortBlocksOnASingleLine: false
+DerivePointerAlignment: true
+PointerAlignment: Left
 ---

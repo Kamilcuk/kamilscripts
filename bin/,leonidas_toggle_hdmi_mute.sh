@@ -25,6 +25,7 @@ pactl set-sink-volume "$sink_builtin" 100%
 case "$1" in
 unmute_headphones)
 	pactl set-sink-mute "$sink_hdmi" on
+	pactl set-sink-port "$sink_builtin" analog-output-lineout
 	pactl set-sink-mute "$sink_builtin" off
 	icon=audio-headphones
 	msg="Dźwięk przez słuchawki. Monitor wyciszony"

@@ -74,7 +74,7 @@ notify() {
 	local n
 	n="$name.${activew:-}"
 	org.freedesktop.Notifications.Notify.sh "$n" 0 "dialog-information" \
-	"$notify_msgs$name" "${title:-$name}" "" "" 500 /tmp/.notifyval."$n" >/dev/null ||:
+	"$notify_msgs$name" "${title:-$name}" "" "" 1000 /tmp/.notifyval."$n" >/dev/null ||:
 }
 
 getPanelHeight() {
@@ -109,22 +109,23 @@ wmove() {
 	#
 	local gx gy gw gh
 	local xsize ysize
-	tmp=$(,x_lib get_GTK_FRAME_EXTENTS "$id")
-	IFS=' ' read -r gx gw gy gh <<<"$tmp"
-	# Apply fixes
-	x=$(( x - gx ))
-	y=$(( y - gy ))
-	width=$((  width  - bleft - bright  + gx + gw ))
-	height=$(( height - btop  - bbottom + gy + gh ))
+	if tmp=$(,x_lib get_GTK_FRAME_EXTENTS "$id") && [[ -n "$tmp" ]]; then
+		IFS=' ' read -r gx gw gy gh <<<"$tmp"
+		# Apply fixes
+		x=$(( x - gx ))
+		y=$(( y - gy ))
+		width=$((  width  - bleft - bright  + gx + gw ))
+		height=$(( height - btop  - bbottom + gy + gh ))
+	fi
 	#
 	# resize and move to specified position
-    wmctrl -i -r "$id" -e "0,$x,$y,$width,$height"
+    # wmctrl -i -r "$id" -e "0,$x,$y,$width,$height"
     # unmaximize
-    wmctrl -i -r "$id" -b remove,fullscreen
-	wmctrl -i -r "$id" -b remove,maximized_vert
-	wmctrl -i -r "$id" -b remove,maximized_horz
+	wmctrl -i -r "$id" -b remove,maximized_horz,fullscreen
+    wmctrl -i -r "$id" -b add,maximized_vert
+    wmctrl -i -r "$id" -b remove,maximized_vert
     # double resizing seem to be correcting strange behavior
-	sleep 0.1
+	# sleep 0.1
     wmctrl -i -r "$id" -e "0,$x,$y,$width,$height"
 }
 
@@ -138,9 +139,36 @@ wtogglefullscreen() {
 	# wmctrl -i -r "$id" -b toggle,fullscreen #,maximized_vert,maximized_horz
 }
 
+kde_shortcut() {
+	notify "Moving $1"
+	qdbus org.kde.kglobalaccel /component/kwin invokeShortcut "$1"
+	exit
+}
+kde_shortcut_tile() {
+	kde_shortcut "Window Quick Tile $1"
+}
+
+kde_action() {
+	case "$1" in
+	up)          kde_shortcut_tile "Top"; ;;
+	down)        kde_shortcut_tile "Bottom"; ;;
+	left)        kde_shortcut_tile "Left"; ;;
+	right)       kde_shortcut_tile "Right"; ;;
+	right+up)    kde_shortcut_tile "Top Right"; ;;
+	left+up)     kde_shortcut_tile "Top Left"; ;;
+	down+right)  kde_shortcut_tile "Bottom Right"; ;;
+	down+left)   kde_shortcut_tile "Bottom Left"; ;;
+	left+right)  kde_shortcut "Window Maximize"; ;;
+	esac
+}
+
 action() {
 	local events
 	events=$1
+
+	if [[ "${XDG_CURRENT_DESKTOP:-}" == "KDE" ]]; then
+		kde_action "$events"
+	fi
 
 	local activew activewname
 	activew=${ACTIVEWINDOW:-$(xdotool getactivewindow)}
@@ -155,9 +183,12 @@ action() {
 	tmp=$(,x_lib get_window_monitor "$activew" | awk '{print $2,$3}')
 	read -r mx my <<<"$tmp" # Monitor X, Monitor Y
 
-	tmp=$(,x_lib get_xfce4_panel_info)
-	IFS=' ' read -r _ _ _ _ panelheight hiding <<<"$tmp"
-	if ((!hiding)); then
+	if tmp=$(,x_lib get_xfce4_panel_info) && [[ -n "$tmp" ]]; then
+		IFS=' ' read -r _ _ _ _ panelheight hiding <<<"$tmp"
+		if ((!hiding)); then
+			my=$((my - panelheight))
+		fi
+	elif panelheight=$(wmctrl -l -G | awk '$2 == -1 && $6 < 40 && /Plazma/{print $6}'); then
 		my=$((my - panelheight))
 	fi
 
@@ -205,7 +236,7 @@ server() {
 	local child
 	child=$!
 	trap_exit() {
-		kill "$child" 2>/dev/null
+		kill "$child" 2>/dev/null ||:
 	}
 	trap trap_exit EXIT
 
@@ -237,7 +268,7 @@ server() {
 
 args=$(getopt -n "$name" -o ht:fw: -l help,timeout:,debug,foreground,window: -- "$@")
 eval "set -- $args"
-server_timeout=0.2
+server_timeout=0.1
 g_debug=false
 g_foreground=0
 while (($#)); do

@@ -37,14 +37,8 @@ if [ -x "$script" -a ! -d "$script" ]; then
     . "$script"
 fi
 
-case "$HOSTNAME" in
-gorgo)
-	# Disable two keycodes on gorgo
-	xmodmap -e 'keycode 166=' -e 'keycode 167='
-	;;
-esac
-
-set -- startxfce4
+# set -- startxfce4
+export DESKTOP_SESSION=plasma ; set -- startplasma-x11
 
 echo "::: kamilscripts X session wrapper complete, running session $*"
 

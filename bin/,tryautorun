@@ -28,10 +28,12 @@ EOF
 
 apply_vim_config() {
 	# Change defaults when run from vim
+	g_runfromvim=true;
 	g_syncoutput=true;
-	g_removecolors=true;
+	g_removecolors=false;
 	g_use_project=true;
 	g_timeout=10;
+	g_maxlines=1000;
 }
 
 parse_arguments() {
@@ -43,12 +45,13 @@ parse_arguments() {
 	g_timeout=
 	g_runfromvim=false
 	g_filetype=
-	if [[ -e "${VIMRUNTIME:-}" ]]; then
-		apply_vim_config
+	g_maxlines=
+	if [[ -n "${VIMRUNTIME:-}" ]]; then
+		g_runfromvim=true
 	fi
 
 	local o
-	while getopts ":e:pT:SVnhD" o; do
+	while getopts ":e:pT:SVnhl:DC" o; do
 		case "$o" in
 		e) g_filetype=$OPTARG; ;;
 		p) g_use_project=true; ;;
@@ -56,8 +59,10 @@ parse_arguments() {
 		S) g_syncoutput=true; ;;
 		V) g_runfromvim=true; ;;
 		n) g_dryrun=true; ;;
+		l) g_maxlines=$OPTARG; ;;
 		h) usage; exit 0; ;;
 		D) set -x; ;;
+		C) g_removecolors=true; ;;
 		*) fatal "Invalid argument: -$OPTARG"; ;;
 		esac
 	done
@@ -73,21 +78,49 @@ parse_arguments() {
 	if [[ -n "$g_timeout" ]]; then
 		timeout_watcher &
 	fi
+
+	f_runhandleoutput=false
+	if [[ -n "$g_maxlines" ]] || "$g_removecolors"; then
+		f_runhandleoutput=true
+	fi
+}
+
+f_limitlines() {
+	local i line
+	i=0
+	while IFS= read -r line; do
+		printf "%s\n" "$line"
+		if ((++i == g_maxlines)); then
+			error "More then $g_maxlines lines of output - too many, terminating..."
+			kill -s SIGTERM 0
+			exit 1
+		fi
+	done
+}
+
+f_handleoutput() {
+	if "$g_removecolors" && [[ -z "$g_maxlines" ]]; then
+		f_removecolors
+	elif ! "$g_removecolors" && [[ -n "$g_maxlines" ]]; then
+		f_limitlines
+	elif "$g_removecolors" && [[ -n "$g_maxlines" ]]; then
+		f_removecolors | f_limitlines
+	else
+		fatal "Internal error: f_handleoutput shouldn't have been called"
+	fi
 }
 
 f_cmdrun() {
 	if "$g_dryrun"; then
 		return;
 	fi
-	if ! "$g_removecolors"; then
-		"$@"
-	else
-		if "$g_syncoutput"; then
-			"$@" | f_removecolors
-		else
-			"$@" 2> >(f_removecolors >&2) | f_removecolors
-		fi
-	fi
+	case "$g_syncoutput $f_runhandleoutput" in
+	(false\ false) "$@"; ;;
+	(true\ false) "$@" 2>&1; ;;
+	(false\ true) "$@" 1> >(f_handleoutput) 2> >(f_handleoutput); ;;
+	(true\ true) "$@" 1> >(f_handleoutput) 2>&1; ;;
+	(*) fatal "Internal error: values are invalid"; ;;
+	esac
 }
 
 f_cmdlog() {
@@ -101,11 +134,19 @@ f_cmdlogrun() {
 }
 
 f_removecolors() {
-	sed 's/\x1b[^m]*m//g'
+	if hash stdbuf 2>/dev/null; then
+		stdbuf -oL sed 's/\x1b[^m]*m//g'
+	else
+		sed 's/\x1b[^m]*m//g'
+	fi
+}
+
+error() {
+	echo "$L_NAME: ERROR: $*" >&2
 }
 
 fatal() {
-	echo "$L_NAME: error:" "$@" >&2
+	error "$*"
 	exit 1
 }
 
@@ -171,6 +212,7 @@ cflags_detect() {
 	base=(
 		-Wall
 		-ggdb3
+		-Wno-unused-function
 	)
 	# global cflags
 	cflags=("${base[@]}")
@@ -307,7 +349,7 @@ g_path=$1
 shift
 
 if [[ -d "$g_path" ]] || "$g_use_project"; then
-	for i in $(list_functions_prefixed project_detect_); do
+	for i in make cmake; do
 		if project_detect_"$i"; then
 			project_run_"$i" "$@"
 			exit
@@ -324,17 +366,17 @@ if [[ -f "$g_path" ]]; then
 	file="$g_path"
 	if [[ -z "$g_filetype" ]]; then
 		# Detect filetype from extension.
-		ext=${file,,}
-		ext=${file##*.}
+		#ext=${file,,}
+		#ext=${file##*.}
 		case "$g_path" in
-		Makefile|*/Makefile) g_filetype=make; ;;
-		*/CMakeLists.txt|CMakeLists.txt|*.cmake) g_filetype=cmake; ;;
-		*.c) g_filetype=c; ;;
-		*.cpp|*.cxx|*.cc|*.c++) g_filetype=cpp; ;;
-		*.py) g_filetype=python; ;;
-		*.sh) g_filetype=sh; ;;
-		*.bash|*.bashrc) g_filetype=bash; ;;
-		*.zsh) g_filetype=zsh; ;;
+		Makefile|*/Makefile) g_filetype='make'; ;;
+		*/CMakeLists.txt|CMakeLists.txt|*.cmake) g_filetype='cmake'; ;;
+		*.c) g_filetype='c'; ;;
+		*.cpp|*.cxx|*.cc|*.c++) g_filetype='cpp'; ;;
+		*.py) g_filetype='python'; ;;
+		*.sh) g_filetype='sh'; ;;
+		*.bash|*.bashrc) g_filetype='bash'; ;;
+		*.zsh) g_filetype='zsh'; ;;
 		*)
 			# Detect filetype from first shebang line.
 			shebang=$(dd if="$file" bs=2 count=1 | xxd -p)

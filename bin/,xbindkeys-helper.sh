@@ -2,7 +2,6 @@
 
 # This is a small helper run from my xbindkeys shortcuts
 
-dir="${BASH_SOURCE%/*}"
 name="${BASH_SOURCE##*/}"
 
 html-quote() {
@@ -46,7 +45,7 @@ int_to_bool() {
 
 ###############################################################################
 
-args=$(getopt -n "$name" -o i:h -l icon:,help -- "$@")
+args=$(getopt -n "$name" -o +i:h -l icon:,help -- "$@")
 eval set -- "$args"
 g_icon=forward;
 while (($#)); do
@@ -74,7 +73,7 @@ ${text:+<big><b>    $(html-quote <<<"$text")</b></big>
 }<small>Running: <tt>$(html-quote <<<"$*")</tt></small>
 EOF
 )"
-fi
+fi &
 
 exec bash -x -c "$*"
 

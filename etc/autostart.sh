@@ -67,6 +67,13 @@ is_hostname() {
 	[[ "$HOSTNAME" == "$*" ]]
 }
 
+kde-no-shadow() {
+	# https://wiki.archlinux.org/title/KDE#Disable_panel_shadow
+	xwininfo -root -tree |
+		sed '/"Pla.ma": ("plasmashell" "plasmashell")/!d; s/^  *\([^ ]*\) .*/\1/g' |
+		xargs -I{} xprop -id {} -remove _KDE_NET_WM_SHADOW
+}
+
 ###############################################################################
 
 autostart_log "begin"
@@ -79,6 +86,9 @@ setxkbmap pl
 )
 
 case "${XDG_CURRENT_DESKTOP,,}" in
+(KDE)
+	kde-no-shadow
+	;;
 (xfce)
 	_xfconf-query -c keyboard-layout -p /Default/XkbLayout                       -s pl
 	_xfconf-query -c keyboard-layout -p /Default/XkbVariant                      -s ''
@@ -123,6 +133,13 @@ esac
 if L_command_exists xbindkeys && ! pgrep xbindkeys >/dev/null; then
 	run xbindkeys -p
 fi
+
+case "$HOSTNAME" in
+gorgo)
+	# Disable two keycodes on gorgo
+	xmodmap -e 'keycode 166=' -e 'keycode 167='
+	;;
+esac
 
 for i in ~/.config/kamilscripts/kamilscripts/etc/autostart/*.sh; do
 	if [[ -e "$i" ]]; then

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+_pactl() {
+	LC_ALL=C pactl "$@"
+}
+
 C_list_1() {
 	C_list_2 "_what,_num,_name,_description"
 }
@@ -18,7 +22,7 @@ C_list_2() {
 	  _name         Smart name, from name or from application.name
 	  _description  Smart description, description or module.description 
 	                or device.description.
-	All other fields that are outputted by pactl list.
+	All other fields that are outputted by _pactl list.
 
 	Examples:
 	  $L_NAME $L_CMD ALL
@@ -28,7 +32,7 @@ C_list_2() {
 	EOF
 		return
 	fi
-	pactl list | awk \
+	_pactl list | awk \
 		-v outputmode="$1" \
 	'
 		# props array stores all output globally with comma separated values
@@ -212,7 +216,7 @@ C_filter_1() {
 		cat <<EOF
 Usage: $L_NAME $L_CMD <what> <id> <name> <description>
 
-Filter the pactl list output using glob expression on all fields.
+Filter the _pactl list output using glob expression on all fields.
 Then output only id number. Empty glob expressions are interpreted
 as a star * - match everything.
 
@@ -262,20 +266,20 @@ C_hear_microphone() {
 
 C_hear_microphone_enable() {
 	L_log "Enabling..."
-	pactl load-module module-loopback latency_msec=1 >/dev/null
+	_pactl load-module module-loopback latency_msec=1 >/dev/null
 }
 
 C_hear_microphone_isenabled() {
-	pactl list | grep -q module-loopback
+	_pactl list | grep -q module-loopback
 }
 
 C_hear_microphone_disable() {
 	L_log "Disabling..."
-	pactl unload-module module-loopback
+	_pactl unload-module module-loopback
 }
 
 C_leonidas_event_deamon() {
-	pactl subscribe |
+	_pactl subscribe |
 	sed -u -r "s/Event '([^']*)' on ([^ ]*) #([0-9])/\1 \2 \3/" |
 	while IFS=' ' read -r what where num; do
 		case "$what $where" in
@@ -283,7 +287,7 @@ C_leonidas_event_deamon() {
 			tmp=$(C_list_1 | awk -F'\t' -v num="$num" '$2 == num && $4 == "IBH 2100-TI"')
 			echo "$tmp"
 			if [[ -n "$tmp" ]]; then
-				L_run pactl set-default-source "$num"
+				L_run _pactl set-default-source "$num"
 			fi
 			;;
 		"new source-output")
@@ -301,7 +305,7 @@ C_leonidas_event_deamon() {
 					jq -r 'select(._what == "Source Output") | select(has("properties.application.name")) | select(."properties.application.name" | test("Skype")) | ._num' |
 					while read -r id; do
 						# Move the skype client to the playstation eye sink
-						( set -x; pactl move-source-output "$id" "$sink" ) 2> >(sed "s/^/$NAME: /" >&2) ||:
+						( set -x; _pactl move-source-output "$id" "$sink" ) 2> >(sed "s/^/$NAME: /" >&2) ||:
 					done
 			); fi
 			;;
