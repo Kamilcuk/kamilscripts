@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+Actions=openXfce4terminalHere;
+X-KDE-AuthorizeAction=shell_access
+X-KDE-ServiceTypes=KonqPopupMenu/Plugin,inode/directory
+
+[Desktop Action openXfce4terminalHere]
+Name=Xfce Terminal
+Icon=org.xfce.terminal
+Exec=/usr/bin/xfce4-terminal --working-directory %f
