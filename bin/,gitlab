@@ -246,6 +246,10 @@ C_get_project_name() {
 	get_project_info_cached | jq '.name'
 }
 
+C_open-url() {
+	,gitlab get_project_info_cached | jq -r '.web_url' | xargs xdg-open
+}
+
 C_get_project_id() {
 	local tmp
 	if tmp=$(get_project_info_cached); then
