@@ -26,6 +26,13 @@ shellcheck:
     - find . -type f '(' -iname '*.sh' -o -iname '*.bash' ')' -print0 > /tmp/files
     - xargs -0t shellcheck -x < /tmp/files
 
+test_docker-rsync-volumes:
+  <<: *test_setup
+  services:
+    - docker:dind
+  script:
+    - bin/,docker-rsync-volumes --test
+
 test_install_stow:
   <<: *test_setup
   script:

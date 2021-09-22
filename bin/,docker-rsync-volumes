@@ -26,15 +26,20 @@ runv() {
 	"$@"
 }
 run_tests() {
-	n=dockerrsyncvolumetest
-	docker volume create "$n"
-	docker run -i --rm -v "$n":/d -w /d alpine sh -c '
+	echo "Setuping temporary directory"
+	tmpd=$(mktemp -d)
+	trap 'cd / ; rm -fr "$tmpd"' EXIT
+	cd "$tmpd"
+	mkdir ./src
+	docker run -i --rm -v "$tmpd"/src:/d -w /d alpine sh -c '
 		echo 0400 > ./test400
 		chmod 0400  ./test400
 		echo 0777 > ./test777
 		chmod 0777  ./test777
+		echo root:root > testrootroot
+		chown root:root testrootroot
 	'
-	"$0" "$n" "$n"tmp
+	time "$0" --time "$tmpd"/src "$tmpd"/dst
 	exit
 }
 
@@ -54,9 +59,9 @@ Options:
    -f --from DOCKER_HOST  Specify DOCKER_HOST from which to copy the volume.
    -t --to DOCKER_HOST    Specify DOCKER_HOST to which copy the volume.
       --delete            Pass --delete to rsync.
-	  --test              Run tests
    -a --rsyncarg ARG      Add additional arguments to rsync command line.
-
+	  --test              Run tests
+	  --time              Time it
 
 Examples:
     $NAME --delete -f ssh://user1@server2 grafana_data -t ssh://user2@server2 grafana_data_backup
@@ -65,8 +70,13 @@ Written by Kamil Cukrowski
 Licensed jointly under Beerware Licsense and MIT License.
 EOF
 }
+
 NAME=,docker-rsync-volumes
-args=$(getopt -n "$NAME" -o hdqf:t:a: -l help,quiet,debug,from:,to:,delete,rsyncarg: -- "$@")
+args=$(getopt -n "$NAME" \
+	-o hdqf:t:a: \
+	-l help,quiet,debug,from:,to:,delete,rsyncarg:,test,time \
+	-- "$@"
+)
 eval "set -- $args"
 src_docker_host=""
 src_volume=chronos_monitoring_grafana
@@ -74,6 +84,7 @@ dst_docker_host=""
 dst_volume=chronos_monitoring_grafana
 c_debug=0
 c_quiet=0
+c_time=0
 rsyncargs=()
 while (($#)); do
 	case "$1" in
@@ -84,7 +95,8 @@ while (($#)); do
 	-t|--to) dst_docker_host="$2"; shift; ;;
 	--delete) rsyncargs+=(--delete); ;;
 	-a|--rsyncarg) rsyncargs+=("$2"); shift; ;;
-	--test) run_tests; ;;
+	--test) run_tests; exit; ;;
+	--time) c_time=1; ;;
 	--) shift; break; ;;
 	*) fatal "Could not parse arguments"; ;;
 	esac
@@ -97,6 +109,20 @@ if ((c_debug)); then set -x; fi
 src_volume="$1"
 dst_volume="${2:-$1}"
 
+for i in "$src_volume" "$dst_volume"; do
+	if [[ "$i" == *'/'* && ! "$i" == '/'* ]]; then
+		fatal "If you use paths they have to be absolute: ${i}"
+	fi
+done
+
+if ((c_time)); then
+	docker() {
+		{ time command docker "$@"; } 2> >(
+			cat >&2
+			echo "+ ^^ time docker $*" >&2
+		)
+	}
+fi
 if [[ -n "$dst_docker_host" ]]; then
 	dst_docker=(env DOCKER_HOST="$dst_docker_host" docker)
 else
@@ -132,7 +158,7 @@ tmpd=$(mktemp -d)
 childs=()
 trap trap_exit EXIT
 
-log "Syncing ${src_docker_host:-localhost} at $src_volume -> ${dst_docker_host:-localhost} at $dst_volume"
+log "Syncing ${src_docker_host:-localhost}:$src_volume -> ${dst_docker_host:-localhost}:$dst_volume"
 
 log "Building docker containers"
 # shellcheck disable=2030
@@ -163,20 +189,13 @@ EOF
 
 log "Running source and destination containers"
 {
-	# We run them in parallel to save time.
+	# Start source container in the background - we will need to wait for it later.
 	src_docker run --rm -d -v "$src_volume":/data:ro -w /data "$src_dcont" sleep infinity > "$tmpd"/src_did &
 	src_pid=$! ; childs+=("$src_pid")
-	dst_docker run --rm -d -v "$dst_volume":/data:rw -w /data "$dst_dcont" sleep infinity > "$tmpd"/dst_did &
-	dst_pid=$! ; childs+=("$dst_pid")
 	#
-	if ! wait "$src_pid"; then
-		fatal "Could not run source container"
-	fi
-	src_did=$(<"$tmpd"/src_did)
-	if ! wait "$dst_pid"; then
+	if ! dst_did=$(dst_docker run --rm -d -v "$dst_volume":/data:rw -w /data "$dst_dcont" sleep infinity); then
 		fatal "Could not run destination container"
 	fi
-	dst_did=$(<"$tmpd"/dst_did)
 }
 
 log "Running rsyncd on destination container"
@@ -193,7 +212,7 @@ uid = root
 gid = root
 use chroot = no
 max connections = 1
-auth users = root
+auth users = rsyncuser
 secrets file = /etc/rsyncd.secrets
 numeric ids = yes
 reverse lookup = no
@@ -202,12 +221,20 @@ path = /data/
 read only = no
 EOF
 		cat <<EOF > /etc/rsyncd.secrets &&
-root:$g_password
+rsyncuser:$g_password
 EOF
 		chmod 0600 /etc/rsyncd.secrets &&
 		rsync --daemon &&
 		sh /usr/local/bin/wait-for-rsync-listen.sh		
 	"
+}
+
+{
+	# We need to finally wait for source container to be setup.
+	if ! wait "$src_pid"; then
+		fatal "Could not run source container"
+	fi
+	src_did=$(<"$tmpd"/src_did)
 }
 
 log "Setup rsync socat forwarding between containers"
@@ -223,7 +250,7 @@ fi
 # Finally runnning rsync, that will traver via socat above to rsyncd.
 rsyncargs=(-aivxsAHSX --progress "${rsyncargs[@]}")
 log "Running rsync ${rsyncargs[*]}"
-src_docker exec -e RSYNC_PASSWORD="$g_password" -w /data "$src_did" rsync "${rsyncargs[@]}" /data/ rsync://root@localhost/data
+src_docker exec -e RSYNC_PASSWORD="$g_password" -w /data "$src_did" rsync "${rsyncargs[@]}" /data/ rsync://rsyncuser@localhost/data
 
 exit
 
