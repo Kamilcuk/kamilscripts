@@ -32,9 +32,8 @@ runv() {
 run_tests() {
 	echo "Setuping temporary directory"
 	tmpd=$(mktemp -d)
-	trap 'cd / ; rm -fr "$tmpd"' EXIT
-	cd "$tmpd"
-	mkdir ./src
+	trap 'rm -fr "$tmpd"' EXIT
+	mkdir "$tmpd"/src
 	docker run -i --rm -v "$tmpd"/src:/d -w /d alpine sh -c '
 		echo 0400 > ./test400
 		chmod 0400  ./test400
