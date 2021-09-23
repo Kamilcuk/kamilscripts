@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-: ${DEBUG:=false}
+: "${DEBUG:=false}"
 
 usage() {
 	n=$0
@@ -18,7 +18,7 @@ Written by Kamil Cukrowski
 EOF
 }
 
-if [ $# -lt 8 -o $# -gt 9 ]; then
+if (($# < 8 || $# > 9)); then
 	usage >&2
 	echo
 	echo "ERROR: Wrong number of arguments" >&2
@@ -60,7 +60,7 @@ ret=$(
 
 # ret looks like '(uint32_t 250,)'
 ret=$(tr ',' ' ' <<<"$ret")
-read _ ret _ <<<"$ret"
+read -r _ ret _ <<<"$ret"
 if [ "$ret" -ne "$ret" ]; then echo "ERROR: return value is not a number" >&2; exit 1; fi;
 
 
@@ -70,7 +70,7 @@ if [ -n "$tempfile" ]; then
 	sleepval=$sleepval1.$sleepval2
 	( sleep "$sleepval"; rm "$tempfile"; ) &
 	childpid=$!
-	echo "$ret" "$childpid" > $tempfile
+	echo "$ret" "$childpid" >"$tempfile"
 	
 fi
 echo "$ret"

@@ -29,7 +29,7 @@ if [ $# -eq 0 ]; then usage; exit 1; fi;
 skip=0
 args=()
 for arg; do
-	IFS='=' read name val <<<"$arg"
+	IFS='=' read -r name val <<<"$arg"
 	case $name in
 	count)
 		count=$val
@@ -41,6 +41,7 @@ for arg; do
 		skip=$val
 		;;
 	*)
+		# shellcheck disable=2206
 		args+=($arg)
 	esac
 done

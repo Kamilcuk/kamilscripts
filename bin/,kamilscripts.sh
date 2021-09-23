@@ -53,7 +53,7 @@ install_chezmoi() {
 			fatal "To install chezmoi, you must have curl or wget installed."
 		fi
 	else
-		chezmoi=chezmoi
+		chezmoi='chezmoi'
 	fi
 }
 
@@ -111,4 +111,4 @@ if ((g_dryrun)); then
 fi
 
 # run chezmoi upgrade ||:
-runvs chezmoi "${g_addargs[@]}" -v -S "$dir/chezmoi"
+runvs "$chezmoi" "${g_addargs[@]}" -v -S "$dir/chezmoi"

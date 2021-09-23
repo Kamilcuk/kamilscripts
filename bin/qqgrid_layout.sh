@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2086,2206,2162,2016,2207,2034,2059
 # part of qqsplitscreenpip.sh
 # Written by Kamil Cukrowski. Under MIT License.
 set -euo pipefail
@@ -59,20 +60,20 @@ apply1_stdin() {
 	local apply1_stdin_func=$1
 	shift
 	while (( $# )); do
-		$apply1_stdin_func <<<"$1"
+		"$apply1_stdin_func" <<<"$1"
 		shift
 	done
 }
 
-Euclidean_2() { # compute euclidean between two values
-	if [ $2 -eq 0 ]; then
-		echo $1
+Euclidean_2() { # Compute Euclidean between two values.
+	if (($2 == 0)); then
+		echo "$1"
 	else
-		Euclidean $2 $(($1%$2)) 
+		Euclidean "$2" "$(($1%$2))"
 	fi
 }
 
-Euclidean() { # compute equclidean beatween values
+Euclidean() { # Compute euclidean beatween values.
 	foldl Euclidean_2 "$@"
 }
 
@@ -108,20 +109,15 @@ layout_w() {
 
 	# devide via common dividend
 	euclidean=$(Euclidean "$@")
-	if [ $euclidean -ne 1 ]; then
-		tmp=$(for w; do echo $((w/euclidean)); done;)
-		set -- $tmp
-	fi
-
 	for w; do
 		echo -n "$i "
-		((i+=w))
+		(( i += w / euclidean )) ||:
 	done
 	echo "$i"
 }
 
 array_print() {
-	if [ $# -ne 0 ]; then
+	if (($#)); then
 		printf "%s\n" "$@"
 	fi
 }
@@ -130,7 +126,7 @@ array_print() {
 check() { 
 	if eval "$1"; then :; else
 		eval "echo \"ERROR: check: \$1 => $1\"" >&2;
-		echo "ERROR: $2" >&2; 
+		echo "ERROR: $2" >&2;
 		exit 1; 
 	fi; 
 }
@@ -140,11 +136,11 @@ check_number() {
 }
 
 check_number_greater_equal() {
-	check '[[ "$'"$1"'" -eq "$'"$1"'" && "$'"$1"'" -ge "'$2'" ]] 2>/dev/null' "${3:-}"; 
+	check '[[ "$'"$1"'" -eq "$'"$1"'" && "$'"$1"'" -ge "'"$2"'" ]] 2>/dev/null' "${3:-}";
 }
 
-check_number_range() { 
-	check '[[ "$'"$1"'" -eq "$'"$1"'" && "$'"$1"'" -ge "'$2'" && "$'"$1"'" -le "'$3'" ]] 2>/dev/null' "${4:-}"; 
+check_number_range() {
+	check '[[ "$'"$1"'" -eq "$'"$1"'" && "$'"$1"'" -ge "'"$2"'" && "$'"$1"'" -le "'"$3"'" ]] 2>/dev/null' "${4:-}";
 }
 
 grid_layout() {
@@ -161,31 +157,31 @@ grid_layout() {
 	while true; do
 		case "$1" in
 		-r)
-			IFS=x read -a resolution <<<$2;
+			IFS=x read -r -a resolution <<<"$2";
 			check '[ ${#resolution[@]} -eq 2 ]' 'Wrong number of resolution numbers'
-			while read x; do
+			while read -r x; do
 				check_number x "One of -r values =\"$x\" is not a number"
 			done < <(array_print "${resolution[@]}");
 			shift 2; 
 			;;
 		-x)
-			IFS=: read -a xratios <<<$2;
-			while read x; do
+			IFS=: read -r -a xratios <<<"$2";
+			while read -r x; do
 				check_number x "One of -x values =\"$x\" is not a number"
 				check_number_greater_equal x 1 "One of -y values =\"$x\" is lower then 1"
 			done < <(array_print "${xratios[@]}");
 			shift 2;
 			;;
 		-y)
-			IFS=: read -a yratios <<<$2;
-			while read x; do
+			IFS=: read -r -a yratios <<<"$2";
+			while read -r x; do
 				check_number x "One of -y values =\"$x\" is not a number"
 				check_number_greater_equal x 1 "One of -y values =\"$x\" is lower then 1"
 			done < <(array_print "${yratios[@]}")
 			shift 2
 			;;
 		-s) 
-			span+=($2); 
+			span+=($2);
 			shift 2; 
 			;;
 		-A) RELATIVE_END=false; shift; ;;
@@ -237,26 +233,26 @@ grid_layout() {
 		done
 
 		# check for any removed values in the quadrat
-		for iy in $(seq $ypos $yend); do
-			for ix in $(seq $xpos $xend); do
-				tmp=$(ret_idx $ix $iy)
-				IFS=: read x1 y1 x2 y2 <<<${ret[$tmp]}
+		for iy in $(seq "$ypos" "$yend"); do
+			for ix in $(seq "$xpos" "$xend"); do
+				tmp=$(ret_idx "$ix" "$iy")
+				IFS=: read -r x1 y1 x2 y2 <<<"${ret[tmp]}"
 				check '[[ $x1 -eq $ix && $y1 -eq $iy ]]'   'Internal sanity check failed on ret_idx function'
 				check '[[ $x1 -ne $x2 && $y1 -ne $y2 ]]' 'Cell was already removed by another span operation'
 			done
 		done
 
 		# overwrite width and length
-		tmp=$(ret_idx $xpos $ypos)
-		IFS=: read x1 y1   _  _ <<<${ret[$tmp]}
+		tmp=$(ret_idx "$xpos" "$ypos")
+		IFS=: read -r x1 y1   _  _ <<<"${ret[tmp]}"
 		# echo "$x:$y:$x1:$y1:$x2:$y2" >&2
-		ret[$tmp]=$x1:$y1:$((x1+xend-xpos+1)):$((y1+yend-ypos+1))
+		ret[tmp]=$x1:$y1:$((x1+xend-xpos+1)):$((y1+yend-ypos+1))
 
 		# remove all values in the quadrat except the one resized
-		for iy in $(seq $ypos $yend); do
-			for ix in $(seq $xpos $xend); do
+		for iy in $(seq "$ypos" "$yend"); do
+			for ix in $(seq "$xpos" "$xend"); do
 				if [[ $ix -ne $xpos || $iy -ne $ypos ]]; then
-					tmp=$(ret_idx $ix $iy)
+					tmp=$(ret_idx "$ix" "$iy")
 					ret[$tmp]=0:0:0:0
 				fi
 			done

@@ -83,6 +83,7 @@ unittest() {
 	echo "UNITTEST SUCCESS"
 }
 
+# shellcheck disable=2086,2116
 is_stow() {
 	[[ -x "$1" ]] &&
 	g_version=$("$1" --version) 2>/dev/null &&

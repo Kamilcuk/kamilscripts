@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2145,2046,2086,2034,2207,2004
 # file: qqddcci.sh
 # licensed under MIT+Beerware Kamil Cukrowski 
 #
@@ -14,7 +15,8 @@ QUIET=${QUIET:-false}
 # Functions ######################################################################
 
 usage() {
-        local n=$(basename $0)
+        local n
+		n=$(basename "$0")
         cat <<EOF
 Usage: 
 	$n [options] -r VCP
@@ -54,14 +56,14 @@ error() { echo "ERROR: ${FUNCNAME[1]}():" "$@" >&2; }
 fatal() { echo "FATAL: ${FUNCNAME[1]}():" "$@" >&2; exit 1; }
 
 checkVarNotEmpty() {
-	if [ -z "$(eval echo \${$1:-})" ]; then
+	if [ -z "${!1:-}" ]; then
 		error "Variable $1 is empty!"
 		return 1
 	fi
 }
 checkVarIsNumber() { 
-	if [ "$(eval echo \${$1:-})" -ne "$(eval echo \${$1:-})" ]; then
-		error "Variable $1=$(eval echo \$$1) is not a number!"
+	if [ "${!1:-}" -ne "${!1:-}" ]; then
+		error "Variable $1=${!1:-} is not a number!"
 		return 1;
 	fi
 }
@@ -70,12 +72,12 @@ calcCrc() {
 	for i in "$@"; do
 		xor=$(printf "0x%02x" $((xor^i)))
 	done
-	printf "0x%02x" $xor
+	printf "0x%02x" "$xor"
 
 }
 testCalcCrc() {
-	echo "0x35 =? $(calcCrc $(printf "0x%02x" $((0x37<<1))) 0x51 0x84 0x03 0x8d 0x00 0x00)"
-	echo "0x34 =? $(calcCrc $(printf "0x%02x" $((0x37<<1))) 0x51 0x84 0x03 0x8d 0x00 0x01)"
+	echo "0x35 =? $(calcCrc "$(printf "0x%02x" "$((0x37<<1))")" 0x51 0x84 0x03 0x8d 0x00 0x00)"
+	echo "0x34 =? $(calcCrc "$(printf "0x%02x" "$((0x37<<1))")" 0x51 0x84 0x03 0x8d 0x00 0x01)"
 }
 
 ################# ddcci
@@ -92,7 +94,7 @@ declare -A ddcci_res
 
 ## ddcci private
 _ddcci_addCrc() {
-	echo "$@"" $(calcCrc $(printf "0x%02x" $(($1<<1))) $(shift; echo "$@") )"
+	echo "$@" "$(calcCrc "$(printf "0x%02x" $(($1<<1)))" $(shift; echo "$@") )"
 }
 _ddcci_write() {
 	local len
@@ -151,17 +153,17 @@ ddcci_get_vcp() {
 	fi
 	# results returned in "global" variable ddcci_resp
 	local -g ddcci_res
-	ddcci_res["resultcode"]=$(case $(( ${str[3]} )) in
+	ddcci_res["resultcode"]=$(case $(( str[3] )) in
 		0) echo "NoError" ;; 
 		1) echo "Unsupported VCP Code" ;; 
 	esac)
 	ddcci_res["vcp"]=${str[4]}
-	ddcci_res["vcp_type"]=$( case $(( ${str[5]} )) in 
+	ddcci_res["vcp_type"]=$( case $(( str[5] )) in
 		0) echo "Set parameter" ;; 
 		1) echo "Momentary" ;; 
 	esac)
-	ddcci_res["max"]=$(( ${str[6]}<<8 | ${str[7]} ))
-	ddcci_res["present"]=$(( ${str[8]}<<8 | ${str[9]} ))
+	ddcci_res["max"]=$(( str[6]<<8 | str[7] ))
+	ddcci_res["present"]=$(( str[8]<<8 | str[9] ))
 }
 
 ddcci_get_timing() {
@@ -307,14 +309,14 @@ ddcci_translate() {
 ddcci_translate_to_desc() {
 	local tmp
 	tmp=$(ddcci_translate "$@")
-	read _ tmp <<<"$tmp"
+	read -r _ tmp <<<"$tmp"
 	echo "$tmp"
 }
 
 ddcci_translate_to_hex() {
 	local tmp
 	tmp=$(ddcci_translate "$@")
-	read tmp _ <<<"$tmp"
+	read -r tmp _ <<<"$tmp"
 	echo "$tmp"
 }
 
@@ -328,7 +330,10 @@ fi
 
 # Parse Input
 
-[ $# -eq 0 ] && { usage; exit 1; } || true
+if (($# == 0)); then
+	usage
+	exit 1
+fi
 
 I2CBUS=5 # global variable, referenced by ddcci module
 VAL="" VCP="" translate=() capabilities=false donesmth=false
@@ -377,7 +382,7 @@ if [ -n "$VCP" ]; then
 		declare -p ddcci_res | sed 's/^declare -A //'
 	else
 		VAL=$(printf "%u" "$VAL")
-		if [ "$VAL" -lt 0  -o "$VAL" -gt 4096 ]; then
+		if [ "$VAL" -lt 0 ] || [ "$VAL" -gt 4096 ]; then
 			error "Value to write VAL=$VAL must be between <0,4096>"
 			exit 1
 		fi

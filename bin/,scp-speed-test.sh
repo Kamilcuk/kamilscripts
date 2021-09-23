@@ -7,7 +7,7 @@ name=$(basename "$0")
 
 usage() {
 	cat <<EOF
-Usage: $nane [OPTIONS] [user@]hostname [file size in kB]
+Usage: $name [OPTIONS] [user@]hostname [file size in kB]
 
 Tests ssh connection speed by uploading and then downloading a test file
 Default file size is 10000kB
@@ -31,7 +31,7 @@ Based on scp-speed-test.sh from  Alec Jacobson alecjacobsonATgmailDOTcom
 EOF
 }
 
-error() { echo "ERROR: $@" >&2; exit 2; }
+error() { echo "ERROR: $*" >&2; exit 2; }
 trap_exit() {
 	local r=$?
 	if [ "$r" -ne 0 ]; then
@@ -76,14 +76,14 @@ test_size=${2:-10000}
 # generate src_file ######
 if [ -z "$src_file" ]; then
 	src_file=$(mktemp)
-	trap "trap_exit; rm -f \"$src_file\";" EXIT
+	trap 'trap_exit; rm -f "$src_file";' EXIT
 	echo "Generating $test_size kB test file $src_file from urandom..."
 	dd if=/dev/urandom of="$src_file" bs="$(echo "$test_size*1024" | bc)" count=1 &> /dev/null
 else
-	if [ ! -e "$test_file" ]; then
-		error "test_file $test_file does not exists!"
+	if [ ! -e "$src_file" ]; then
+		error "test_file $src_file does not exists!"
 	fi
-	echo "Using specified test file $test_file with size $(echo "$(wc -c <$test_file)/1024"|bs) kB..."
+	echo "Using specified test file $src_file with size $(echo "$(wc -c <"$src_file")/1024" | bs) kB..."
 fi
 
 # generate dst_file ###
@@ -95,8 +95,8 @@ fi
 # some info
 # if $VERBOSE; then
 echo "> Testing transfer \"$ssh_server:$dst_file\" <-> \"$src_file\""
-echo "> ssh command: ${ssh[@]}"
-echo "> scp command: ${scp[@]}"
+echo "> ssh command:" "${ssh[@]}"
+echo "> scp command:" "${scp[@]}"
 # fi
 
 # work ##########################################

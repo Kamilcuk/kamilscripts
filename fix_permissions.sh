@@ -9,7 +9,7 @@ Script used to fix permissions when cloning from owncloud.
 Add -o or -k or --ok command line to actually make changes.
 
 EOF
-	echo=echo
+	echo='echo'
 	;;
 esac
 

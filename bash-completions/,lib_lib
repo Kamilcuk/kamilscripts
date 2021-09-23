@@ -1,2 +1,3 @@
-eval "$("$(basename -- "${BASH_SOURCE}")" --bash-completion)"
+#!/bin/bash
+eval "$("${BASH_SOURCE[0]##*/}" --bash-completion)"
 

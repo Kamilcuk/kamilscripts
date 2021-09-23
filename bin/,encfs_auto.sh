@@ -123,7 +123,7 @@ domount() {
 dounmount() {
 	log "Unmounting $dir2"
 	if ! dry_run encfs "${g_encargs[@]}" -u "$dir2"; then
-		notifyerror "Umounting $dir failed"
+		notifyerror "Umounting $dir2 failed"
 	fi
 }
 

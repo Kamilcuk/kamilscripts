@@ -150,15 +150,15 @@ XID 48: DBE (Double Bit Error) ECC Error
 
 This event is logged when the GPU detects that an uncorrectable error occurs on the GPU. This is also reported back to the user application. A GPU reset or node reboot is needed to clear this error.
 
-The tool nvidia-smi can provide a summary of ECC errors. See “Tools That Provide Additional Information About Xid Errors”.
+The tool nvidia-smi can provide a summary of ECC errors. See "Tools That Provide Additional Information About Xid Errors".
 EOF
 )
 get_common() {
 	awk -v RS='\nXID ' -v num="$1" '$0 ~ "^"num": "{print RS $0}' <<<"$g_common"
 }
 
-c_cross=$'\E[9m'
-c_notcrossed=$'\E[0m'
+#c_cross=$'\E[9m'
+#c_notcrossed=$'\E[0m'
 c_red=$'\E[91m'
 c_reset=$'\E(B\E[m'
 
@@ -176,7 +176,6 @@ run() {
 
 args=$(getopt -n "${BASH_SOURCE###*/}" -o ab:d -- "$@")
 eval set -- "$args"
-g_boot=0
 jbootargs=(-b 0)
 g_usedmesg=false
 while (($#)); do
@@ -211,11 +210,12 @@ input=$(<<<"$input" sed -n 's/^\[\([^]]*\)\].*NVRM: Xid (\(.*\)): \([0-9]*\), \(
 if [[ -z "$input" ]]; then
 	echo "No Xid errors...."
 else
+	# shellcheck disable=2034
 	while IFS=$'\t' read -r date deviceid xid info; do
 		if ! err=$(grep "^$xid" <<<"$g_xids"); then continue; fi
 		IFS=',' read -ra err <<<"$err"
 		desc=${err[1]}
-		unset err[0] err[1]
+		unset 'err[0]' 'err[1]'
 		causes=("${err[@]}")
 
 		output+=$(
@@ -240,7 +240,8 @@ else
 	done <<<"$input"
 fi
 
-<<<"$output" column -ts $'\t' -o ' | ' -N Data,Xid,Failure,"Causes$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset","$c_red$c_reset"
+<<<"$output" column -ts $'\t' -o ' | ' \
+	-N "Data,Xid,Failure,Causes$c_red$c_reset,$c_red$c_reset,$c_red$c_reset,$c_red$c_reset,$c_red$c_reset,$c_red$c_reset"
 
 if ((${#found[@]})); then
 	echo
@@ -253,7 +254,7 @@ exit
 
 exit
 curl -sS 'https://docs.nvidia.com/deploy/xid-errors/index.html#topic_4' > /tmp/1.html
-cat /tmp/1.html | xmllint -html -xpath '//table[@class="table"]' - 2>/dev/null > /tmp/2.html
+</tmp/1.html xmllint -html -xpath '//table[@class="table"]' - 2>/dev/null >/tmp/2.html
 links -width 80 -dump /tmp/2.html > /tmp/3
 
 

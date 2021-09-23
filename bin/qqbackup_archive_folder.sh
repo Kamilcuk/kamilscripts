@@ -75,7 +75,7 @@ test_this_script() {
 	errors=""
 	mkdir /tmp/10
 	cd /tmp/10
-	echo 1123 > 1
+	echo 1123 >'1'
 	mkdir -p 2 3 3/4
 	echo 2123 > 2/5
 	echo 314142 > 3/6
@@ -84,12 +84,12 @@ test_this_script() {
 	for i in 1 2 3; do
 		for j in $i $i.tar.bz2 $i.tar.bz2.info.txt; do
 			if [ -e $j ]; then
-				errors+="$( echo "ERROR: $j not found!!" )"
+				errors+="ERROR: $j not found!!"
 			fi
 		done
 	done
 	if [ ! -e ./qqbackup_archive_folder.sh.log ]; then
-		errors+="$( echo "ERROR: ./qqbackup_archive_folder.sh.log not found!!" )"
+		errors+="ERROR: ./qqbackup_archive_folder.sh.log not found!!"
 	fi
 	echo "$errors"
 }
@@ -146,7 +146,8 @@ if ! $ONEPATH; then
 	echo "Finding paths with function:"
 	declare -f findpaths
 	echo "Finding now..."
-	paths=( $(findpaths) )
+	tmp=$(findpaths)
+	mapfile -t paths <<<"$tmp"
 	echo "Paths found:"
 	for i in "${paths[@]}"; do echo "$i"; done
 	if ! $OVERWRITE; then
@@ -182,7 +183,7 @@ if [ "${#paths[*]}" -eq 0 ]; then
 	exit 3
 fi
 for path in "${paths[@]}"; do
-	if [ $ -e $path ]; then
+	if [ ! -e "$path" ]; then
 		echo "ERROR $path does not exists!"
 	fi
 done

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2016
 set -euo pipefail
 export SHELLOPTS
 
@@ -30,13 +31,13 @@ fatal() {
 
 assert() {
 	if [ -z "$1" ] || ! eval "$1"; then
-		fatal "ERROR: Assertion $1 failed: ${@:2}\n" >&2
+		fatal "ERROR: Assertion $1 failed: ${*:2}\n" >&2
 	fi
 }
 
 verbose() {
 	if [ "${verbose:-false}" = "true" ]; then
-		printf "==> %s %s\n" "$(date +%s.%N) $*" >&2
+		printf "==> %s %s\n" "$(date +%s.%N)" "$*" >&2
 	fi
 }
 
@@ -116,7 +117,6 @@ while (($#)); do
 	-p|--tempdir) tempdir=$2; shift; ;;
 	-e|--exclude) exclude+=("$2"); shift; ;;
 	-h|--help) usage; exit 0; ;;
-	-R|--references) references=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-A|--references-ascend) references_ascend=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-T|--table) table=$(get_bool "$2") || fatal "Error parsing argument: $1$2"; shift; ;;
 	-H|--headregex) headregex="$2"; shift; ;;
@@ -202,7 +202,7 @@ sed -nE '
 
 	if [ -n "$excluderegex" ]; then
 		tmp=$(<<<"$buf" cut -f1,3 | tr '\t' '\n' | sort -u)
-		IFS=$'\n' tmp=($tmp)
+		mapfile -t tmp <<<"$tmp"
 		exclude+=("${tmp[@]}")
 	fi
 

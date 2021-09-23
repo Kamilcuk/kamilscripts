@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ~/.ssh/genconfig.sh
 # vim: ft=sshconfig
 

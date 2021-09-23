@@ -88,26 +88,26 @@ printlines() {
 
 create_axis() {
 	printlines "" env
-	for i in $(seq 2 $(($consolesizecols-3))); do
+	for i in $(seq 2 $((consolesizecols-3))); do
 		if [ $(((i-1)%10)) -eq 0 ]; then
 			matrix_write "$1" "$i,1" $(((i-1)/10%100))
 		else
 			matrix_write "$1" "$i,1" $boxv
 		fi
 	done
-	matrix_write "$1" "$(($consolesizecols-2)),1" "^"
-	matrix_write "$1" "$(($consolesizecols-1)),1" " "
-	matrix_write "$1" "$(($consolesizecols-0)),1" "Y"
-	for i in $(seq 2 $(($consolesizelines-3))); do
+	matrix_write "$1" "$((consolesizecols-2)),1" "^"
+	matrix_write "$1" "$((consolesizecols-1)),1" " "
+	matrix_write "$1" "$((consolesizecols-0)),1" "Y"
+	for i in $(seq 2 $((consolesizelines-3))); do
 		if [ $(((i-1)%10)) -eq 0 ]; then
 			matrix_write "$1" "1,$i" $(((i-1)/10%100))
 		else
 			matrix_write "$1" "1,$i" $boxh
 		fi
 	done
-	matrix_write "$1" "1,$(($consolesizelines-2))" ">"
-	matrix_write "$1" "1,$(($consolesizelines-1))" " "
-	matrix_write "$1" "1,$(($consolesizelines-0))" "X"
+	matrix_write "$1" "1,$((consolesizelines-2))" ">"
+	matrix_write "$1" "1,$((consolesizelines-1))" " "
+	matrix_write "$1" "1,$((consolesizelines-0))" "X"
 	matrix_write "$1" "1,1" $boxur
 }
 

@@ -3,7 +3,9 @@
 DEBUG=${DEBUG:-false}
 $DEBUG && set -x
 
-[ "${FLOCKER:-}" != "$0" ] && exec env FLOCKER="$0" flock -en "$0" "$0" "$@" || :
+if [ "${FLOCKER:-}" != "$0" ]; then
+	exec env FLOCKER="$0" flock -en "$0" "$0" "$@"
+fi
 
 reg=0x8d
 dev=5

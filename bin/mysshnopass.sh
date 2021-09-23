@@ -15,9 +15,9 @@ echo
 echo You need to log through ssh to given host.
 echo Write your password:
 echo
-echo ssh $@
+echo ssh "$*"
 set -x
-cat ~/.ssh/id_rsa.pub | ssh $@ "
+< ~/.ssh/id_rsa.pub ssh "$@" "
 set -x;
 if ! [ -d ~/.ssh ]; then 
 	mkdir -p ~/.ssh ;
@@ -33,6 +33,6 @@ set +x;
 "
 set +x
 echo
-echo Coongrats!. Youve done it!
+echo 'Congrats!. You'\''ve done it!'
 echo
 

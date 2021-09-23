@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2086,2154
 
 tmp=$(,pulseaudio_lib list_2 "_what,_num,_description,mute" | awk -F'\t' -v OFS='\t' '
 	$1 !~ "Sink"{next}
@@ -54,6 +55,6 @@ org.freedesktop.Notifications.Notify.sh "$(basename $0)" 0 "$icon" \
 	"$msg" \
 	"Monitor mute status" "" "" "" /tmp/.notifyval."$(basename $0)" >/dev/null
 
-,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' | xargs -i pactl set-card-profile {} output:analog-stereo
-,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' | xargs -i pactl set-sink-port {} analog-output-lineout
+,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' | xargs -I{} pactl set-card-profile {} output:analog-stereo
+,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' | xargs -I{} pactl set-sink-port {} analog-output-lineout
 

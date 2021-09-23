@@ -18,9 +18,9 @@ Written by Kamil Cukrowski 2017. Under Beerware license.
 EOF
 }
 
-OPTS=$(getopt -n "transpose.sh" -o s:o:hV --long separator,output-separator,help,version -n 'parse-options' -- "$@")
-if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
-eval set -- $OPTS
+opts=$(getopt -n "transpose.sh" -o s:o:hV --long separator,output-separator,help,version -n 'parse-options' -- "$@")
+if (($?)); then echo "Failed parsing options." >&2 ; exit 1 ; fi
+eval "set -- $opts"
 
 while true; do
     case "$1" in

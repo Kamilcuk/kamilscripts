@@ -50,7 +50,7 @@ bl_run() {
 		}
 	fi
 
-	bl_pid="$bluectl_PID"
+	# bl_pid="$bluectl_PID"
 	bl_out=${bluectl[1]}
 	bl_in=${bluectl[0]}
 }
@@ -125,6 +125,8 @@ C_poll_for_device() {
 
 # main ############################################################
 
+a_quiet=0
+a_args=()
 L_argparse prefix=a_ description="
 Uses bluetoothctl tool to scan if a device is available.
 Then connects to the device and wait until the device is disconnected.

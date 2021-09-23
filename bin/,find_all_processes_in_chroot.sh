@@ -13,7 +13,7 @@ if (($# != 1)); then usage; fi
 if ((UID != 0)); then L_fatal "Must be run as root"; fi
 if [[ ! -d "$1" ]]; then fatal "Directory does not exists: $1"; fi
 
-prefix=$(readlink -f $1)
+prefix=$(readlink -f "$1")
 pids=$(
 	for root in /proc/[0-9]*/root; do
 		if link=$(readlink "$root") &&
@@ -27,10 +27,12 @@ pids=$(
 	done
 	wait
 )
-if [[ -z "$pids" ]]; then
+# shellcheck disable=2206
+pids=($pids)
+if ((${#pids[@]} == 0)); then
 	echo "No pids running inside $1"
 else
-	echo "Found $(<<<$pids wc -w) running inside $1"
-	echo $pids
+	echo "Found ${#pids[@]} running inside $1"
+	echo "${pids[*]}"
 fi
 

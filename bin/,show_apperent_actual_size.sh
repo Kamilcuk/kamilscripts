@@ -1,7 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-
-
+name=${BASH_SOURCE[0]##*/}
 usage() {
 cat <<EOF 
 Usage: $name [options] paths...

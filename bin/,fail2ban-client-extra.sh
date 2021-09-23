@@ -15,10 +15,10 @@ cmds=$(compgen -A function | sed '/^fail2ban_/!d; s///')
 
 usage() {
 	cat <<EOF
-Usage: $(basename $0) command
+Usage: $(basename "$0") command
 
 Commands:
-$(<<<$cmds sed 's/^/\t/')
+$(<<<"$cmds" sed 's/^/\t/')
 
 EOF
 }

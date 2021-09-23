@@ -3,6 +3,8 @@
 
 # Sourced {{{1
 
+# shellcheck disable=1135,2094,1090,1004
+
 # Are we sourced?
 if [[ "${BASH_SOURCE[0]}" != "${0}" || "${BASH_AUTOTRANSLATE_SOURCE:-}" = "true" ]]; then
 
@@ -21,7 +23,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" || "${BASH_AUTOTRANSLATE_SOURCE:-}" = "true"
 			# Then remove temporary directory in trap.
 		) &
 		# Generate translations. Uses TEXTDOMAINDIR and TEXTDOMAIN.
-		if ! "$BASH_SOURCE" "$@" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
+		if ! "${BASH_SOURCE[0]}" "$@" --translate "${BASH_SOURCE[1]}"; then exit 1; fi
 	}
 
 	return
@@ -1121,7 +1123,7 @@ section=(); IFS=$'\x01' read -d '' -r -a section <<<"$tmp" ||:
 if ((${#section} == 0)); then fatal "internal error: failed reading section from parser"; fi
 readarray -t languages < <(printf "%s" "${section[0]}")
 readarray -t marks < <(printf "%s" "${section[1]}")
-unset section[0] section[1]
+unset 'section[0]' 'section[1]'
 section=("${section[@]}")
 sectioncnt=${#languages[@]}
 if ((${#marks[@]} != ${#section[@]} + 1)); then

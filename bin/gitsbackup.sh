@@ -5,10 +5,10 @@
 set -euo pipefail
 
 # priv config
-: ${DEBUG:=false}
-: ${TEST:=false}
-: ${VERBOSE:=true}
-: ${DDOSSLEEP:=0.5}
+: "${DEBUG:=false}"
+: "${TEST:=false}"
+: "${VERBOSE:=true}"
+: "${DDOSSLEEP:=0.5}"
 
 $DEBUG && set -x
 $TEST && git() { echo git "$@"; }
@@ -54,14 +54,14 @@ EOF
 
 debug() { if $DEBUG; then     echo "$@"; fi; }
 verbose() { if $VERBOSE; then echo "$@"; fi; }
-warning() {                   echo "WARN:  ""$@" >&2; }
-error() {                     echo "ERROR: ""$@" >&2; }
-fatal() {                     echo "FATAL: ""$@" >&2; exit 1; }
+warning() {                   echo "WARN: " "$@" >&2; }
+error() {                     echo "ERROR:" "$@" >&2; }
+fatal() {                     echo "FATAL:" "$@" >&2; exit 1; }
 
 if hash jq 2>/dev/null; then
 	_jq_get() { jq -r ".${2:-}[].$1"; }
 else
-	_jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'$1'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
+	_jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
 fi
 jq_get() {
 	local tmp
@@ -108,8 +108,8 @@ reposGet() {
 	shift
 	for r in "${repos_supported[@]}"; do
 		if [ "$r" == "$repo" ]; then
-			debug 'found "$r" == "$repo" '
-			reposGet_${repo} "$@"
+			debug "found \"$r\" == \"$repo\" "
+			reposGet_"${repo}" "$@"
 			return 0
 		fi
 	done
@@ -129,13 +129,13 @@ reposGetCheck() {
 }
 
 reposPrintSupported() {
-	local tmp1 tmp func args desc
+	local tmp func args desc
 	if [ "${#repos_supported[@]}" -eq 0 ]; then
 		echo "No repos supported"
 		return 1;
 	fi
 	tmp=$( paste <(printf "%s\n" "${repos_supported[@]}") <(printf "%s\n" "${repos_supported_info[@]}") )
-	while read func args desc; do
+	while read -r func args desc; do
 		temp+="${func}:${args}#${desc}"$'\n'
 	done <<<"$tmp"
 	column -s'#' -t <<<"$temp"
@@ -194,7 +194,7 @@ reposGet_gitlab.com_v4_token() {
 reposAddSupported aur.archlinux.org_aurjson "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
 reposGet_aur.archlinux.org_aurjson() { 
 	local maintainer=$1
-	curl -s 'https://aur.archlinux.org/rpc/?v=5&type=search&by=maintainer&arg='$maintainer | \
+	curl -s 'https://aur.archlinux.org/rpc/?v=5&type=search&by=maintainer&arg='"$maintainer" | \
 		jq_get Name results | \
 		sed 's;\(.*\);ssh://aur@aur.archlinux.org/\1.git;'
 }
@@ -205,7 +205,7 @@ reposGet_aur.archlinux.org() { reposGet_aur.archlinux.org_aurjson "$@"; }
 reposAddSupported aur.archlinux.org_html "<maintainer>   - backup repos for specified maintainer from aur.archlinux.org"
 reposGet_aut.archlinux.org_html() {
 	local maintainer=$1
-	curl -s 'https://aur.archlinux.org/packages/?SeB=m&K='${maintainer} | \
+	curl -s 'https://aur.archlinux.org/packages/?SeB=m&K='"$maintainer" | \
 		xmllint --html --xpath '//table[@class="results"]//tr/td[1]/a/@href' - | \
   		tr ' ' '\n' | sed -e '/^$/d' -e 's;^href="/packages/;;' -e 's;/"$;;' \
 		sed 's;\(.*\);aur@aur.archlinux.org:/\1.git;'
@@ -249,35 +249,36 @@ OUTPUTDIR="$1"
 shift
 
 # sanity check all repos if such exist
-while IFS=: read -a args; do
+while IFS=: read -r -a args; do
 	if ! reposGetCheck "${args[@]}"; then
-		fatal "Error parsing \"${args[@]}\" argument. Check input arguments."
+		fatal "Error parsing \"${args[*]}\" argument. Check input arguments."
 	fi
-done <<<$(printf "%s\n" "$@")
+done <<<"$(printf "%s\n" "$@")"
 
 # propagate repos list
-repos=""
-while IFS=: read -a args; do
+repos=()
+while IFS=: read -r -a args; do
 
-	verbose "Repos from \"${args[@]}\":"
+	verbose "Repos from \"${args[*]}\":"
 
 	if ! add=$(reposGet "${args[@]}"); then
-		fatal "Error gettting repo from \"${args[@]}\". Check input arguments"
+		fatal "Error gettting repo from \"${args[*]}\". Check input arguments"
 	fi
 	if [ -z "$add" ]; then
-		fatal "Getting repos from \"${args[@]}\" resulted in 0 repos."
+		fatal "Getting repos from \"${args[*]}\" resulted in 0 repos."
 	fi
-	repos+="$add"$'\n'
+	repos+=("$add")
 
 	add=$(<<<"$add" sort)
 	verbose "$add"
 
-done <<<$(printf "%s\n" "$@")
+done <<<"$(printf "%s\n" "$@")"
 
-verbose "Found $(wc -w <<<"$repos") git repos."
+verbose "Found ${#repos[@]} git repos."
 
 # shuffle repos list, to distrubute usage on repos evenly
-repos=$(<<<"$repos" sort -R)
+tmp=$(printf "%s\n" "${repos[@]}" | sort)
+mapfile -t repos <<<"$tmp"
 
 if $testRepos; then
 	backup_repos_check() {
@@ -285,7 +286,7 @@ if $testRepos; then
 		echo "Checking repos validity:"
 		for r; do
 			echo -n "git ls-remote $r -- "
-			if ! git ls-remote $r >/dev/null; then
+			if ! git ls-remote "$r" >/dev/null; then
 				echo
 				fatal "Internal error: $r is not a valid git repository"
 			fi
@@ -301,11 +302,11 @@ if $testRepos; then
 	echo
 	echo "--> Testing repos:"
 	echo "--> Legend: repo_url -> dir_where_repo_will_be_downloaded"
-	backup_repos "$OUTPUTDIR" $repos
-	backup_repos_check $repos
+	backup_repos "$OUTPUTDIR" "${repos[@]}"
+	backup_repos_check "${repos[@]}"
 	echo "--> And all repos are ok"
 else
-	backup_repos "$OUTPUTDIR" $repos
+	backup_repos "$OUTPUTDIR" "${repos[@]}"
 fi
 
 

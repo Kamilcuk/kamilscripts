@@ -161,26 +161,25 @@ job_silence_audio_when_detecting_words() {
 
 	L_log "Starting..."
 	rhasspy_subscribe -v -t hermes/asr/'#' | { 
-		detecting=false
-		while 
+		while
 			IFS=' ' read -r topic payload &&
-			siteid=$(jq -r .siteId <<<"$payload") &&
-			[[ "$siteid" == "$RHASSPY_SITE" ]]
-		do
-			case "$topic" in
-			(hermes/asr/startListening)
-				audio_mute
-				;;
-			(*)
-				audio_unmute
-				;;
-			esac
-			#L_log "Read $line"
-		done
-	}
+				siteid=$(jq -r .siteId <<<"$payload") &&
+				[[ "$siteid" == "$RHASSPY_SITE" ]]
+						do
+							case "$topic" in
+								(hermes/asr/startListening)
+									audio_mute
+									;;
+								(*)
+									audio_unmute
+									;;
+							esac
+							#L_log "Read $line"
+						done
+					}
 
-	exit
-}
+				exit
+			}
 
 ###############################################################################
 
@@ -189,7 +188,7 @@ job_notify_about_wake_word() {
 		while IFS= read -r line; do
 			notify "Wake word detected"
 		done
-}
+	}
 
 ###############################################################################
 
@@ -206,7 +205,7 @@ r_intent_confirm_check() {
 			r_intent_exe "$i"
 		done
 	fi
-	r_c_todo=
+	r_c_todo=()
 	r_c_yes=
 }
 
@@ -223,11 +222,11 @@ r_intent_exe() {
 	pushd "$HOME" >/dev/null
 	set -x
 	{ "$@"; } <<<"$OPT_line"
-	set +x
-	popd
-	set -a
-	set -euo pipefail
-}
+		set +x
+		popd
+		set -a
+		set -euo pipefail
+	}
 
 
 r_intent_run() {
@@ -254,60 +253,60 @@ r_intent_run() {
 	local r_tmp r_name r_opt r_cmd
 	while
 		IFS= read -u10 -r r_name &&
-		IFS= read -u10 -r r_opt &&
-		IFS= read -u10 -r r_cmd
-	do {
-		export OPT_name=$r_name
-		export OPT_opt=$r_opt
-		export OPT_cmd=$r_cmd
-		L_log "OPT_name=$r_name OPT_opt=$r_opt OPT_cmd=$r_cmd"
-		case "$r_opt" in
-		say) 
-			r_tmp=$(envsubst <<<"$r_cmd")
-			rhasspy_say "$r_tmp"
-			;;
-		notify)
-			tmp=$(envsubst <<<"$r_cmd")
-			notify "$r_tmp"
-			;;
-		saynotify|notifysay)
-			tmp=$(envsubst <<<"$r_cmd")
-			rhasspy_say "$r_tmp"
-			notify "$r_tmp"
-			rhasspy_wait_for_say_finished
-			;;
-		run)
-			notify "$r_cmd"
-			r_intent_exe "$r_cmd"
-			;;
-		confirmyes)
-			r_intent_confirm "$r_cmd"
-			;;
-		*)
-			notify "Unknown command $r_opt for $r_name with $r_cmd"
-			;;
-		esac
-	} 10<&-; done 10<<<"$r_todo"
+			IFS= read -u10 -r r_opt &&
+			IFS= read -u10 -r r_cmd
+				do {
+					export OPT_name=$r_name
+					export OPT_opt=$r_opt
+					export OPT_cmd=$r_cmd
+					L_log "OPT_name=$r_name OPT_opt=$r_opt OPT_cmd=$r_cmd"
+					case "$r_opt" in
+						say) 
+							r_tmp=$(envsubst <<<"$r_cmd")
+							rhasspy_say "$r_tmp"
+							;;
+						notify)
+							tmp=$(envsubst <<<"$r_cmd")
+							notify "$r_tmp"
+							;;
+						saynotify|notifysay)
+							tmp=$(envsubst <<<"$r_cmd")
+							rhasspy_say "$r_tmp"
+							notify "$r_tmp"
+							rhasspy_wait_for_say_finished
+							;;
+						run)
+							notify "$r_cmd"
+							r_intent_exe "$r_cmd"
+							;;
+						confirmyes)
+							r_intent_confirm "$r_cmd"
+							;;
+						*)
+							notify "Unknown command $r_opt for $r_name with $r_cmd"
+							;;
+					esac
+				} 10<&-; done 10<<<"$r_todo"
 
-	r_intent_confirm_post
-}
+			r_intent_confirm_post
+		}
 
-job_handle_intents() {
-	L_name+=": intenthandler"
-	trap 'jobs_kill ; L_log quit' EXIT
-	local r_intents
-	r_intents=$(snt_list | paste -sd' ')
-	L_log "Watching intents: $r_intents"
-	L_run rhasspy_subscribe -t hermes/intent/'#' | {
-		OPT_intents=()
-		while
-			IFS= read -u 11 -r r_line &&
-			r_intent=$(jq -r .intent.intentName <<<"$r_line" | sed 's/[[:space:]]/_/g')
-		do
-			r_intent_run "$r_intent" "$r_line" ||:
-		done
-	} 11<&0 0<&-
-}
+	job_handle_intents() {
+		L_name+=": intenthandler"
+		trap 'jobs_kill ; L_log quit' EXIT
+		local r_intents
+		r_intents=$(snt_list | paste -sd' ')
+		L_log "Watching intents: $r_intents"
+		L_run rhasspy_subscribe -t hermes/intent/'#' | {
+			OPT_intents=()
+					while
+						IFS= read -u 11 -r r_line &&
+							r_intent=$(jq -r .intent.intentName <<<"$r_line" | sed 's/[[:space:]]/_/g')
+												do
+													r_intent_run "$r_intent" "$r_line" ||:
+												done
+											} 11<&0 0<&-
+									}
 
 ###############################################################################
 

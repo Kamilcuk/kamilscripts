@@ -73,9 +73,9 @@ g_partition=1
 while (($#)); do
 	case "$1" in
 	-h) usage; exit; ;;
-	-c) g_mode=command; ;;
-	-u) g_mode=umount; ;;
-	-m) g_mode=mount; ;;
+	-c) g_mode='command'; ;;
+	-u) g_mode='umount'; ;;
+	-m) g_mode='mount'; ;;
 	-p) g_partition=$2; shift; ;;
 	--) shift; break; ;;
 	*) fatal "unknown option: $1"; ;;

@@ -28,6 +28,7 @@ verbosed=()
 
 verbosed_on() {
 	for i in "$@"; do
+		# shellcheck disable=2140
 		eval "
 			$i() {
 				log "+" \"$i\" \"\$@\" >&2
@@ -46,7 +47,7 @@ verbosed_off() {
 		for i in "$@"; do
 			for j in "${!verbosed[@]}"; do 
 				if [[ "$i" == "${verbosed[j]}" ]]; then
-					unset verbosed[j]
+					unset "verbosed[j]"
 				fi
 			done
 		done
@@ -144,6 +145,7 @@ esac
 for i in ~/.config/kamilscripts/kamilscripts/etc/autostart/*.sh; do
 	if [[ -e "$i" ]]; then
 		autostart_log "running user script: $i"
+		# shellcheck disable=1090
 		. "$i"
 	fi
 done

@@ -108,7 +108,6 @@ wmove() {
 	read -r bleft bright btop bbottom <<<"$tmp"
 	#
 	local gx gy gw gh
-	local xsize ysize
 	if tmp=$(,x_lib get_GTK_FRAME_EXTENTS "$id") && [[ -n "$tmp" ]]; then
 		IFS=' ' read -r gx gw gy gh <<<"$tmp"
 		# Apply fixes
@@ -243,6 +242,7 @@ server() {
 	# get events
 	local events
 	events=""
+	# shellcheck disable=2094
 	while IFS= read -t "$timeout" -r line; do
 		line="${line,,}" # lowercase
 		case "$line" in

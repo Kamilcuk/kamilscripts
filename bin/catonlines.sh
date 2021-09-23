@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2031,2059
 set -euo pipefail; export SHELLOPTS
 
 # Functions
@@ -37,28 +38,37 @@ EOF
 
 selftest() {
 	f() { 
-		seq "${1:-100}" | xargs -n1 /bin/sh -c "echo ${2:-$BASHPID} \"\$1\"; sleep ${3:-0.1}" -- ;
+		seq "${1:-10}" | xargs -n1 /bin/sh -c "echo ${2:-$BASHPID} \"\$1\"; sleep ${3:-0.1}" -- ;
 	}
-	$0 <(f) <(f) <(f) <(f)
+	"$0" <(f) <(f) <(f) <(f)
+	"$0" -m0 <(f) <(f) <(f) <(f)
+	"$0" -m1 <(f) <(f) <(f) <(f)
+	"$0" -m2 <(f) <(f) <(f) <(f)
+	"$0" -m3 <(f) <(f) <(f) <(f)
 }
 
 # Main
 
-ARGS=$(getopt -n catonlines.sh \
+args=$(getopt -n catonlines.sh \
 	-o r:c:w:fm:hv \
-	-l rows:,max-columns:,wrap-columns:,fullscreen,mode:help,version \
+	-l rows:,max-columns:,wrap-columns:,fullscreen,mode:help,version,test \
 	-- "$@")
-rows=1 wrapcolumns= maxcolumns= fullscreen=false mode=3
-eval set -- "$ARGS"
+rows=1
+wrapcolumns=
+maxcolumns=
+fullscreen=false
+mode=3
+eval set -- "$args"
 while true; do
 	case "$1" in	
 	-r|--rows) rows=$2; shift; ;;
-        -c|--max-columns) maxcolumns=$2; shift; ;;
+	-c|--max-columns) maxcolumns=$2; shift; ;;
 	-w|--warp-columns) wrapcolumns=$2; shift; ;;
-        -f| --fullscreen) fullscreen=true; ;;
+	-f|--fullscreen) fullscreen=true; ;;
 	-m|--mode) mode=$2; shift; ;;
 	-h|--help) usage; exit; ;;
 	-v|--version) version; exit; ;;
+	--test) selftest; ;;
 	--) shift; break; ;;
 	*) echo "ERROR: parsing arguments" >&2; exit 1; ;;
 	esac
@@ -77,18 +87,19 @@ fi
 
 case "$mode" in
 0)
+	# shellcheck disable=2030
 f() {
-	local str
-	str='\033[s\033['"$1"'A\033[2K'"$(seq 2 $rows | xargs -I{} echo -ne '\033[1A\033[2K')"'%s\033[u'
-	${maxcolumns:-cat}${maxcolumns:+stdbuf -oL cut -c 1-$maxcolumns} | \
-	${wrapcolumns:-cat}${wrapcolumns:+stdbuf -oL fold -w $wrapcolumns} | \
+	if [[ -z "$maxcolumns" ]]; then cat; else stdbuf -oL cut -c "1-$maxcolumns"; fi |
+	if [[ -z "$wrapcolumns" ]]; then cat; else tdbuf -oL fold -w "$wrapcolumns"; fi |
 	while IFS='' read -r l; do
 		for (( i = 1; i < rows; ++i)); do
 			IFS='' read -r tmp
 			l+=$'\n'"$tmp"
 		done
 		flock 1
-		printf "$str" "$l"
+		printf \
+			'\033[s\033['"$1"'A\033[2K'"$(seq 2 "$rows" | xargs -I{} echo -ne '\033[1A\033[2K')"'%s\033[u' \
+			"$l"
 		flock -u 1
 	done || :
 }
@@ -103,41 +114,41 @@ wait
 trap '' EXIT SIGCHLD
 ;;
 1)
-printf "$(printf '%d\\000%%s\\000' $(seq 1 $rows $(($#*$rows))))" "$@" \
+printf "$(printf '%d\\000%%s\\000' $(seq 1 "$rows" $(($#*rows))))" "$@" \
 | xargs -0 -n 2 -P 0 bash -c \
 "cat \"\$2\" | $(
 	echo -n "${maxcolumns:+stdbuf -oL cut -c 1-$maxcolumns | }" 
 	echo -n "${wrapcolumns:+stdbuf -oL fold -w $wrapcolumns | }"
-)while IFS='' read -r l1 $(seq 2 $rows | xargs -I{} echo -n "&& { IFS='' read -r l{} || :; }"); do 
+)while IFS='' read -r l1 $(seq 2 "$rows" | xargs -I{} echo -n "&& { IFS='' read -r l{} || :; }"); do 
 	flock 1
-	printf '\\033[s\\033['\"\$1\"'A\\033[2K$(seq 2 $rows | xargs -I{} echo -n '\033[1A\033[2K')%s\\033[u' \"\${l1}$(
-		seq 2 $rows | xargs -I{} echo -n $'\n'"\${l{}}"
+	printf '\\033[s\\033['\"\$1\"'A\\033[2K$(seq 2 "$rows" | xargs -I{} echo -n '\033[1A\033[2K')%s\\033[u' \"\${l1}$(
+		seq 2 "$rows" | xargs -I{} echo -n $'\n'"\${l{}}"
 )\"
 	flock -u 1
 done" --
 ;;
 2)
-printf "$(printf '%d\\000%%s\\000' $(seq 1 $rows $(($#*$rows))))" "$@" \
+printf "$(printf '%d\\000%%s\\000' $(seq 1 "$rows" $(($#*rows))))" "$@" \
 | xargs -0 -n 2 -P 0 sh -c \
 "cat \"\$2\" | $(
         echo -n "${maxcolumns:+stdbuf -oL cut -c 1-$maxcolumns | }" 
         echo -n "${wrapcolumns:+stdbuf -oL fold -w $wrapcolumns | }"
 )awk '{l=\$0;$(
-	seq 2 $rows | xargs -I{} echo -n 'getline t;l=l "\n" t;'
+	seq 2 "$rows" | xargs -I{} echo -n 'getline t;l=l "\n" t;'
 )printf \"\\033[s\\033['\"\$1\"'A\033[2K$(
-	seq 2 $rows | xargs -I{} echo -n '\033[1A\033[2K'
+	seq 2 "$rows" | xargs -I{} echo -n '\033[1A\033[2K'
 )%s\\033[u\",l;fflush();}'" --
 ;;
 3)
-printf "$(printf '%d\\000%%s\\000' $(seq 1 $rows $(($#*$rows))))" "$@" \
+printf "$(printf '%d\\000%%s\\000' $(seq 1 "$rows" $(($#*rows))))" "$@" \
 | xargs -0 -n 2 -P 0 sh -c \
 "cat \"\$2\" | $(
         echo -n "${maxcolumns:+stdbuf -oL cut -c 1-$maxcolumns | }" 
         echo -n "${wrapcolumns:+stdbuf -oL fold -w $wrapcolumns | }"
 )sed 's/^/\c[[s\c[['\"\$1\"'A\c[[2K$(
-	seq 2 $rows | xargs -I{} echo -n '\c[[1A\c[[2K'
+	seq 2 "$rows" | xargs -I{} echo -n '\c[[1A\c[[2K'
 	printf /\;
-	seq 2 $rows | xargs -I{} echo -n N\;
+	seq 2 "$rows" | xargs -I{} echo -n N\;
 )s/$/\c[[u\c[[1A/'" -- 2>/tmp/1
 ;;
 *)

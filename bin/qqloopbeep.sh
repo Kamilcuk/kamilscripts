@@ -24,7 +24,9 @@ EOF
 
 }
 run() {
-	[ $DEBUG -ge 1 ] && echo "+ $@"
+	if ((DEBUG >= 1)); then
+		echo "+ $*"
+	fi
 	"$@"
 }
 
@@ -65,7 +67,7 @@ parse_arguments() {
 		1|2|3|4|5|6|7|8|9) mnoznik=$c; [ $DEBUG -ge 1 ] && echo "+ *$mnoznik"; ;;
 		*) mnoznik=1; ;;
 		esac
-	done <<<"$(echo -n "$@"" ")"
+	done <<<"$(echo -n "$* ")"
 }
 
 beep_args=""

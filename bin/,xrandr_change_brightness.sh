@@ -37,5 +37,5 @@ while read -r name val; do
 	xrandr --output "$name" --brightness "$val"
 	barlen=$(awk -v val="$val" 'BEGIN{print int(val*100)}' <&-)
 done
-org.freedesktop.Notifications.Notify.sh "$name" 0 "dialog-information" "Screen brightness notification" "Screen brightness: $(printf "%-3s" "$barlen")/100" "" "{'value':<${barlen}>}" 2000 /tmp/.notifyval.$name >/dev/null
+org.freedesktop.Notifications.Notify.sh "$name" 0 "dialog-information" "Screen brightness notification" "Screen brightness: $(printf "%-3s" "$barlen")/100" "" "{'value':<${barlen}>}" 2000 /tmp/.notifyval."$name" >/dev/null
 }

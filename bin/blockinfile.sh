@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=2016
 set -euo pipefail
 
 [ "${DEBUG:-false}" = true ] && { set -x; LOGLVL=100; }
@@ -56,7 +57,7 @@ log() {
 		return
 	fi
 	if [ "$1" -gt 1 ]; then
-		printf "%.0s " $(seq $1)
+		printf "%.0s " $(seq "$1")
 	fi
 	shift
 	echo "$@" 
@@ -230,7 +231,9 @@ if ! "$delete"; then
 	assert '[ -n "$block" ]' "block must be specified"
 fi
 
+# shellcheck disable=2059
 begin=$(printf -- "$marker" "$marker_begin")
+# shellcheck disable=2059
 end=$(printf -- "$marker" "$marker_end")
 
 work() {
@@ -254,6 +257,7 @@ work() {
 		log 2 "Beginning $begin found on line number $beginno"
 	fi
 	
+	# shellcheck disable=2034
 	filelen=$(<"$file" wc -l)
 	
 	if ! endno=$(
@@ -288,6 +292,7 @@ work() {
 work
 
 if [ -n "$validate" ]; then
+	# shellcheck disable=2059
 	validate=$(printf -- "$validate" "$file")
 	log 1 "Executing validate script '$validate'"
 	if $validate; then
