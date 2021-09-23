@@ -31,6 +31,7 @@ test_docker-rsync-volumes:
   services:
     - docker:dind
   script:
+    - pacman -S --noconfirm docker
     - bin/,docker-rsync-volumes --test
 
 test_install_stow:

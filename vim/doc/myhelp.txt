@@ -6,6 +6,13 @@ My help *myhelp* *my-help* *my*
 
 My help with vim navigation and usage     *my-navigation* *my-vim*
 
+Last searched:
+
+ctrl+j   jump to next argument
+[g ]g     coc-vim next/prev diagnostic
+
+=======================================================================
+
 Control sequences                       *my-ctrl*
 
 Ctrl+w+o          - Window fullscreen

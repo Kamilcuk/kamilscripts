@@ -12,19 +12,23 @@ else
 	L_BOLD=
 	L_RESET=
 fi
+
 fatal() {
 	echo "$L_RED$L_BOLD""$NAME: ERROR: $*""$L_RESET" >&2
 	exit 1
 }
+
 log() {
 	if ((!c_quiet)); then
 		echo "$L_CYAN""$NAME: $*""$L_RESET" >&2
 	fi
 }
+
 runv() {
 	log "$*"
 	"$@"
 }
+
 run_tests() {
 	echo "Setuping temporary directory"
 	tmpd=$(mktemp -d)
@@ -200,7 +204,7 @@ log "Running source and destination containers"
 
 log "Running rsyncd on destination container"
 {
-	g_password="$RANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM$SRANDOM"
+	g_password="$(dd if=/dev/urandom count=32 bs=1 status=none | od -A n -t x1 | tr -d '[:space:]')"
 	minus_x=""
 	if ((c_debug)); then
 		minus_x=-x
@@ -248,7 +252,7 @@ if ! src_docker exec "$src_did" sh /usr/local/bin/wait-for-rsync-listen.sh; then
 fi
 
 # Finally runnning rsync, that will traver via socat above to rsyncd.
-rsyncargs=(-aivxsAHSX --progress "${rsyncargs[@]}")
+rsyncargs=(-aivxsAHSX --progress "${#rsyncargs[@]:+rsyncargs[@]}")
 log "Running rsync ${rsyncargs[*]}"
 src_docker exec -e RSYNC_PASSWORD="$g_password" -w /data "$src_did" rsync "${rsyncargs[@]}" /data/ rsync://rsyncuser@localhost/data
 
