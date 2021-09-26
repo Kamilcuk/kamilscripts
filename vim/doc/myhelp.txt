@@ -8,8 +8,9 @@ My help with vim navigation and usage     *my-navigation* *my-vim*
 
 Last searched:
 
-ctrl+j   jump to next argument
-[g ]g     coc-vim next/prev diagnostic
+ctrl+j   coc-nvim jump to next argument
+ctrl+k   coc-nvim jump to previous argument
+[g ]g    coc-nvim next/previous diagnostic
 
 =======================================================================
 

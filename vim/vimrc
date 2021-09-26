@@ -18,7 +18,7 @@ if !has('nvim') && filereadable(expand('$VIMRUNTIME/defaults.vim'))
 	source $VIMRUNTIME/defaults.vim
 endif
 
-if 0 && $LC_CTYPE == 'pl_PL.UTF-8'
+if 1 " || $LC_CTYPE == 'pl_PL.UTF-8'
 	source $VIMRUNTIME/delmenu.vim
 	set langmenu=pl_PL.UTF-8
 	language pl_PL.UTF-8
@@ -182,7 +182,7 @@ endif
 
 " }}}
 " Load plugins with vim-plug {{{1
-"
+
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
 		call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
@@ -201,7 +201,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		endif
 	endif
 	function KcUpdate()
-		PlugUpgrade
 		PlugUpdate
 		if exists(':CocUpdate')
 			CocUpdate
@@ -212,113 +211,126 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 
 	filetype off
 	execute 'source ~/.vim/plugged/vim-plug/plug.vim'
-	call plug#begin('~/.vim/plugged')
+	let plugdir = '~/.vim/plugged/'
+	call plug#begin(plugdir)
 
-	" My Plugins
-	" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
-	Plug 'kamilcuk/vim-dispatch', { 'dir': '~/.vim/plugged/kamilcuk-vim-dispatch' }
-	"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
-	"KcPlug8 'puremourning/vimspector'
-	" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
-	" staging2
-	Plug 'powerman/vim-plugin-AnsiEsc'
-	Plug 'ojroques/vim-oscyank'
-	Plug 'subnut/visualstar.vim'
-	Plug 'flwyd/nerdtree-harvest'
-	" Plug 'abdalrahman-ali/vim-remembers' Changes working directory!
-	Plug  'joshzcold/DrawIt'
-	"Plug 'LucHermitte/lh-vim-lib'
-	"Plug 'LucHermitte/lh-tags'
-	"Plug 'LucHermitte/lh-dev'
-	"Plug 'LucHermitte/lh-style'
-	"Plug 'LucHermitte/lh-brackets'
-	"Plug 'LucHermitte/vim-refactor'
-	"Plug '907th/vim-auto-save'
-	Plug 'chr4/nginx.vim'
-	KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
-	" aaa_staging
-	Plug 'junegunn/fzf' " fzf.vim needs it
-	Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
-	KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
-	if executable('hunspell') || executable('aspell')
-		KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
-	endif
-	if executable('languagetool')
-		Plug 'dpelle/vim-LanguageTool'
-	endif
-	Plug 'honza/vim-snippets' " vim-snipmate default snippets
-	" Utilities
-	Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix some stuff
-	Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
-	Plug 'arecarn/vim-crunch'
-	Plug 'sbdchd/neoformat'
-	" Generic
-	Plug 'Konfekt/FastFold'
-	Plug 'vim-scripts/LargeFile'
-	Plug 'wellle/targets.vim'
-	Plug 'airblade/vim-gitgutter'
-	Plug 'mhinz/vim-hugefile'
-	Plug 'tpope/vim-sensible' " Defaults everyone can agree on
-	" Integration
-	Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
-	Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :Git
-	Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
-	Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
-	" Languages
-	KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'}
-	KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
-	KcPlugCoc 'jackguo380/vim-lsp-cxx-highlight', {'for': ['c', 'cpp']}
-	Plug 'vim-syntastic/syntastic'
-	"Plug 'derekwyatt/vim-fswitch'
-	" Puppet https://voxpupuli.org/blog/2019/04/08/puppet-lsp-vim/
-	Plug 'editorconfig/editorconfig-vim'
-	Plug 'mrk21/yaml-vim'
-	Plug 'rodjek/vim-puppet'
-	Plug 'vim-ruby/vim-ruby'
-	Plug 'lingua-pupuli/puppet-vscode'
-	" utils
-	Plug 'vimwiki/vimwiki' " make notes
-	Plug 'sk1418/HowMuch' " calculate stuff
-	Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR
-	Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
-	KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating
-	Plug 'suy/vim-ctrlp-commandline' " Search ctrlp in command line also
-	Plug 'FelikZ/ctrlp-py-matcher' " Faster ctrl-p matcher with python
-	Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
-	Plug 'idbrii/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
-	Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
-	Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
-	Plug 'preservim/nerdtree' " The file browser.
-	Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
-	Plug 'luochen1990/rainbow' " Rainbow Parentheses
-	Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
-	Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
-	Plug 'gyim/vim-boxdraw'
-	" Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
-	Plug 'kamilcuk/vim-template', {'dir': '~/.vim/plugged/kamilcuk-vim-template'}
-	Plug 'junegunn/vim-easy-align' " A Vim alignment plugin.
-	Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
-	Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
-	Plug 'terryma/vim-smooth-scroll'
-	Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
-	Plug 'dhruvasagar/vim-table-mode' "
-	Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
-	" For vim plugins
-	Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
-	Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
-	" view
-	"Plug 'wimstefan/Lightning'
-	"Plug 'yankcrime/direwolf'
-	Plug 'NLKNguyen/papercolor-theme'
-	"Plug 'junegunn/seoul256.vim'
-	KcPlug8 'vim-airline/vim-airline'
-	KcPlug8 'vim-airline/vim-airline-themes'
-	"Plug 'endel/vim-github-colorscheme'
-	"Plug 'jonathanfilip/vim-lucius'
-	"Plug 'rakr/vim-one'
-	" zzz_utils
-	"Plug 'thaerkh/vim-workspace'
-	Plug 'kamilcuk/vim-workspace'
+	" My Plugins {{{2
+		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
+		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
+		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
+		KcPlug8 'puremourning/vimspector'  " Debugger
+		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
+	" }}}
+	" Staging stuff that maybe should be removed maybe not {{{2
+		" Plug 'powerman/vim-plugin-AnsiEsc' " :AsciEsc replaces color codes for real codes
+		" Plug 'ojroques/vim-oscyank' " Copy selected text using special ANSI sequences
+		" Plug 'flwyd/nerdtree-harvest' " Additional mapping on nerdtree
+		" Plug 'abdalrahman-ali/vim-remembers' Changes working directory!
+		"Plug  'joshzcold/DrawIt' " For drawing stuff
+		"Plug 'LucHermitte/lh-vim-lib'
+		"Plug 'LucHermitte/lh-tags'
+		"Plug 'LucHermitte/lh-dev'
+		"Plug 'LucHermitte/lh-style'
+		"Plug 'LucHermitte/lh-brackets'
+		"Plug 'LucHermitte/vim-refactor'
+		"Plug '907th/vim-auto-save'
+		KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
+		if executable('languagetool')
+			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
+		endif
+		Plug 'honza/vim-snippets' " vim-snipmate default snippets
+	" }}}
+	" Generic additional configuration and simplifiers {{{2
+		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
+		"Plug 'vim-scripts/LargeFile' " Edit large files quickly
+		"Plug 'mhinz/vim-hugefile' " Also edit large files quickly
+		Plug 'wellle/targets.vim' " Add additional text objects. ( a ( b ) c ) , place cursor on 'b' and type v2A)
+		Plug 'tpope/vim-sensible' " Defaults everyone can agree on
+		Plug 'subnut/visualstar.vim' " Search stuff selected in visual mode. Select stuff and type *
+	" }}}
+	" Integration with external tools {{{2
+		if executable('hunspell') || executable('aspell')
+			KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
+		endif
+		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
+		Plug 'junegunn/fzf' " fzf.vim needs it
+		Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
+		Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :G
+		Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
+		Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
+	" }}}
+	" Languages syntax support parsing {{{2
+		KcPlugCoc 'neoclide/coc.nvim', { 'branch': 'release' } " coc-nvim, for all
+		KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
+		KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
+		Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
+		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
+		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
+		Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
+		Plug 'lingua-pupuli/puppet-vscode'
+		Plug 'chr4/nginx.vim', { 'for': 'nginx' }
+		KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
+	" }}}
+	" Utilities commands to run and execute {{{2
+		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
+		Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix with newer vim
+		Plug 'arecarn/vim-crunch'  " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
+		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
+		Plug 'vimwiki/vimwiki' " make notes
+		Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
+		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
+		"
+		Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
+		Plug 'suy/vim-ctrlp-commandline' " Search ctrlp in command line also
+		Plug 'FelikZ/ctrlp-py-matcher' " Faster ctrl-p matcher with python
+		Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
+		"
+		Plug 'idbrii/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
+		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
+		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
+		Plug 'preservim/nerdtree', { 'on':  'NERDTreeToggle' } " The file browser.
+		Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
+		Plug 'luochen1990/rainbow' " Rainbow Parentheses
+		Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
+		Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
+		Plug 'gyim/vim-boxdraw' " Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
+		" Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
+		Plug 'kamilcuk/vim-template', { 'dir': plugdir.'kamilcuk-vim-template' }
+		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
+		Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
+		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
+		Plug 'dhruvasagar/vim-table-mode' " print tables in markdown
+		Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
+		" For vim plugins dependencies
+		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
+		Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
+	" }}}
+	" view display things {{{2
+		Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
+		Plug 'airblade/vim-gitgutter' " Show +/- on the left when file changes in git repo
+		Plug 'NLKNguyen/papercolor-theme' " The theme that I use. Actually I modified it that much...
+		KcPlug8 'vim-airline/vim-airline' " The vimline below.
+	" }}}
+	" zzz Utilities that have to be last {{{2
+		Plug 'thaerkh/vim-workspace', { 'dir': plugdir.'vim-workspace' }
+	" }}}
+	" coc plugins {{{2
+		let g:coc_global_extensions	= [
+					\ 'coc-highlight',
+					\ 'coc-yank',
+					\ 'coc-diagnostic',
+					\ 'coc-lists',
+					\ 'coc-snippets',
+					\ 'coc-tabnine',
+					\ 'coc-cmake',
+					\ 'coc-vimlsp',
+					\ 'coc-python',
+					\ 'coc-clangd',
+					\ 'coc-yaml',
+					\ 'coc-vimtex',
+					\ 'coc-solargraph',
+					\ ]
+	" }}}
 
 	call plug#end()
 	filetype on
@@ -507,8 +519,8 @@ if kc#plugin#enabled('rainbow')
 endif
 
 if kc#plugin#enabled('vim-airline')
-	let g:airline#extensions#tabline#enabled = 1
-	let g:airline#extensions#tabline#buffer_nr_show = 1
+	let g:airline#extensions#tabline#enabled = 0
+	let g:airline#extensions#tabline#buffer_nr_show = 0
 endif
 
 if kc#plugin#enabled('vim-workspace')
@@ -724,6 +736,8 @@ endif
 
 if kc#plugin#enabled('vimspector')
 	let g:vimspector_enable_mappings = 'HUMAN'
+	let g:vimspector_install_gadgets=[ 'debugpy', 'vscode-cpptools', 'CodeLLDB' ]
+	let g:vimspector_base_dir = expand('$HOME/.vim/spector-config')
 endif
 
 if kc#plugin#enabled('Colorizer')
@@ -798,6 +812,11 @@ if kc#plugin#enabled('neoformat')
 	let g:neoformat_enabled_scheme = ['schemeformat']
 endif
 
+if kc#plugin#enabled('vim-buftabline')
+	let g:buftabline_indicators = 1
+	let g:buftabline_numbers = 1
+endif
+
 " }}}
 " Custom maps and functions {{{1
 
@@ -814,10 +833,10 @@ nnoremap Q <Nop>
 
 " Close quickfix window with ESC
 " https://github.com/mhinz/vim-grepper/issues/117
-"augroup vimrcQfClose
-"    autocmd!
-"    autocmd FileType qf if mapcheck('<esc>', 'n') ==# '' | nnoremap <buffer><silent> <esc> :cclose<bar>lclose<CR> | endif
-"augroup END
+augroup vimrcQfClose
+	autocmd!
+	autocmd FileType qf if mapcheck('<esc>', 'n') ==# '' | nnoremap <buffer><silent> <esc> :cclose<bar>lclose<CR> | endif
+augroup END
 
 if kc#plugin#enabled('vim-workspace')
 	nnoremap <leader>W :ToggleWorkspace<CR>
@@ -900,11 +919,13 @@ endif
 " https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
 nnoremap <leader>s i<CR><Esc>
 
-" Add `:Format` command to format current buffer.
-"command! -nargs=0 Format :call CocAction('format')
-" neoformat/plugin/neoformat.vim
-command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
-            \ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
+if kc#plugin#enabled('neoformat')
+	" Add `:Format` command to format current buffer.
+	"command! -nargs=0 Format :call CocAction('format')
+	" neoformat/plugin/neoformat.vim
+	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
+				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
+endif
 
 " https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 command! -nargs=1 -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
@@ -915,29 +936,6 @@ command! -nargs=1 -complete=command -bar -range Redir silent call kc#Redir(<q-ar
 if kc#plugin#enabled('coc.nvim')
 
 let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
-
-let g:coc_global_extensions	= [
-			\ 'coc-highlight',
-			\ 'coc-yank',
-			\ 'coc-diagnostic',
-			\ ]
-			"'coc-kite',
-" Dynamically installed coc extension depending on filetype.
-let g:coc_global_extensions_dynamics = {
-			\ 'cmake': ['coc-cmake'],
-			\ 'vim': ['coc-vimlsp'],
-			\ 'python': ['coc-python'],
-			\ 'c': ['coc-clangd'],
-			\ 'cpp': ['coc-clangd'],
-			\ 'yaml': ['coc-yaml'],
-			\ 'tex': ['coc-vimtex'],
-			\ 'pp': ['coc-solargraph'],
-			\ }
-augroup CocGlobalExtensions
-	au!
-	execute 'autocmd FileType '.join(keys(g:coc_global_extensions_dynamics), ',').' '
-				\ .'let g:coc_global_extensions += g:coc_global_extensions_dynamics[&filetype]'
-augroup END
 
 " https://github.com/neoclide/coc-highlight
 autocmd CursorHold ?* silent call CocActionAsync('highlight')
@@ -950,25 +948,26 @@ function! s:check_back_space() abort
   return !col || getline('.')[col - 1]  =~# '\s'
 endfunction
 
-if 0
-" Use tab for trigger completion with characters ahead and navigate.
-" NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
-" other plugin before putting this into your config.
-inoremap <silent><expr> <TAB>
-	  \ pumvisible() ? "\<C-n>" :
-	  \ <SID>check_back_space() ? "\<TAB>" :
-	  \ coc#refresh()
-inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
-else
-" https://github.com/neoclide/coc-snippets
-inoremap <silent><expr> <TAB>
-      \ pumvisible() ? coc#_select_confirm() :
-      \ coc#expandableOrJumpable() ? "\<C-r>=coc#rpc#request('doKeymap', ['snippets-expand-jump',''])\<CR>" :
-      \ <SID>check_back_space() ? "\<TAB>" :
-      \ coc#refresh()
+if 0 " Use tab for trigger completion with characters ahead and navigate.
+	if 0 " coc-snippets disabled
+		" https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
+		" NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
+		" other plugin before putting this into your config.
+		inoremap <silent><expr> <TAB>
+			  \ pumvisible() ? "\<C-n>" :
+			  \ <SID>check_back_space() ? "\<TAB>" :
+			  \ coc#refresh()
+		inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+	else
+		" https://github.com/neoclide/coc-snippets
+		inoremap <silent><expr> <TAB>
+			  \ pumvisible() ? coc#_select_confirm() :
+			  \ coc#expandableOrJumpable() ? "\<C-r>=coc#rpc#request('doKeymap', ['snippets-expand-jump',''])\<CR>" :
+			  \ <SID>check_back_space() ? "\<TAB>" :
+			  \ coc#refresh()
+		let g:coc_snippet_next = '<tab>'
+	endif
 endif
-
-let g:coc_snippet_next = '<tab>'
 
 " Use <c-space> to trigger completion.
 if has('nvim')
@@ -988,13 +987,11 @@ nmap <silent> [g <Plug>(coc-diagnostic-prev)
 nmap <silent> ]g <Plug>(coc-diagnostic-next)
 
 " GoTo code navigation.
-" DIFFERENCE TO ORIGINAL - gr and gd already mean something in vim,
 " map these with leader in front
 nmap <silent> gd <Plug>(coc-definition)
-nmap <silent> <leader>gd <Plug>(coc-definition)
-nmap <silent> <leader>gy <Plug>(coc-type-definition)
-nmap <silent> <leader>gi <Plug>(coc-implementation)
-nmap <silent> <leader>gr <Plug>(coc-references)
+nmap <silent> gy <Plug>(coc-type-definition)
+nmap <silent> gi <Plug>(coc-implementation)
+nmap <silent> gr <Plug>(coc-references)
 
 " Use K to show documentation in preview window.
 nnoremap <silent> <leader>k :call <SID>show_documentation()<CR>
@@ -1048,22 +1045,13 @@ omap ic <Plug>(coc-classobj-i)
 xmap ac <Plug>(coc-classobj-a)
 omap ac <Plug>(coc-classobj-a)
 
-" yay I'm here
-
-if v:version >= 8.2 || has("nvim-0.4.3")
-	" Remap <C-f> and <C-b> for scroll float windows/popups.
-	" Note coc#float#scroll works on neovim >= 0.4.3 or vim >= 8.2.0750
-	nnoremap <nowait><expr> <C-f> coc#float#has_scroll() ? coc#float#scroll(1) : "\<C-f>"
-	nnoremap <nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#scroll(0) : "\<C-b>"
-	inoremap <nowait><expr> <C-f> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(1)\<cr>" : "\<Right>"
-	inoremap <nowait><expr> <C-b> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(0)\<cr>" : "\<Left>"
-
-	" NeoVim-only mapping for visual mode scroll
-	" Useful on signatureHelp after jump placeholder of snippet expansion
-	if has('nvim')
-	  vnoremap <nowait><expr> <C-f> coc#float#has_scroll() ? coc#float#nvim_scroll(1, 1) : "\<C-f>"
-	  vnoremap <nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#nvim_scroll(0, 1) : "\<C-b>"
-	endif
+if has('nvim-0.4.0') || has('patch-8.2.0750')
+  nnoremap <silent><nowait><expr> <C-f> coc#float#has_scroll() ? coc#float#scroll(1) : "\<C-f>"
+  nnoremap <silent><nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#scroll(0) : "\<C-b>"
+  inoremap <silent><nowait><expr> <C-f> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(1)\<cr>" : "\<Right>"
+  inoremap <silent><nowait><expr> <C-b> coc#float#has_scroll() ? "\<c-r>=coc#float#scroll(0)\<cr>" : "\<Left>"
+  vnoremap <silent><nowait><expr> <C-f> coc#float#has_scroll() ? coc#float#scroll(1) : "\<C-f>"
+  vnoremap <silent><nowait><expr> <C-b> coc#float#has_scroll() ? coc#float#scroll(0) : "\<C-b>"
 endif
 
 " Use CTRL-S for selections ranges.
@@ -1196,4 +1184,3 @@ autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 " }}}
 
 " vim: filetype=vim:foldmethod=marker:nofoldenable
-

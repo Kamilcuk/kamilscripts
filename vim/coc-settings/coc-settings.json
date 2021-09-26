@@ -2,6 +2,7 @@
   "coc.preferences.extensionUpdateCheck": "weekly",
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],
+  "coc.preferences.semanticTokensHighlights": false,
   "diagnostic.signOffset": 2,
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
@@ -13,15 +14,20 @@
   "diagnostic.checkCurrentLine": false,
   "diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
   "diagnostic.virtualText": true,
-  "suggest.triggerCompletionWait": 500,
+  "suggest.triggerCompletionWait": 1000,
   "codeLens.enable": true,
   "solargraph.checkGemVersion": false,
   "clangd.semanticHighlighting": true,
   "clangd.enabled": true,
+	"clangd.fallbackFlags": [
+		"-std=c++2a"
+	],
   "clangd.arguments": [
     "--background-index",
     "--clang-tidy",
-    "-j=3"
+    "-j=4",
+    "--completion-style=detailed",
+    "--pch-storage=memory"
   ],
   "python.linting.pylintEnabled": true,
   "python.linting.enabled": true,

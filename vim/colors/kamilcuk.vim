@@ -181,7 +181,7 @@ let g:PaperColor_Theme_Options = {
 			\ }
 
 " https://github.com/NLKNguyen/papercolor-theme
-let g:airline_theme = 'papercolor'
+"let g:airline_theme = 'papercolor'
 runtime colors/PaperColor.vim
 
 " Load all names for xterm256 variables, see autoload

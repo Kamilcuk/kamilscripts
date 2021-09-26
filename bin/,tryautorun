@@ -348,6 +348,10 @@ fi
 g_path=$1
 shift
 
+if [[ "$g_runfromvim" ]] && gitroot=$(git rev-parse --show-toplevel 2>/dev/null); then
+	g_path="$gitroot"
+fi
+
 if [[ -d "$g_path" ]] || "$g_use_project"; then
 	for i in make cmake; do
 		if project_detect_"$i"; then
@@ -379,7 +383,7 @@ if [[ -f "$g_path" ]]; then
 		*.zsh) g_filetype='zsh'; ;;
 		*)
 			# Detect filetype from first shebang line.
-			shebang=$(dd if="$file" bs=2 count=1 | xxd -p)
+			shebang=$(dd if="$file" bs=2 count=1 status=none| xxd -p)
 			if [[ "$shebang" == 2321 ]]; then # that's "#!"
 				fline=$(head -n1 "$file")
 				case "$fline" in
@@ -453,5 +457,5 @@ if [[ -f "$g_path" ]]; then
 	fi
 fi
 
-fatal "Don't know how to build $g_path"
+fatal "Do not know how to build $g_path"
 
