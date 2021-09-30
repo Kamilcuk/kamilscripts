@@ -1,0 +1,12 @@
+#!/bin/bash
+
+L_list-shortcuts() {
+	qdbus org.kde.kglobalaccel /component/kwin shortcutNames |
+	if (($#)); then
+		grep -i "$@"
+	else
+		cat
+	fi
+}
+
+. ,lib_lib L_ "$@"

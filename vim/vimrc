@@ -169,7 +169,7 @@ endif
 if !exists('g:kamilscripts')
 	echoe '~/.vimrc: ERROR: No g:kamilscripts'
 else
-	execute 'set rtp^=' . g:kamilscripts . 'vim'
+	execute 'set rtp^=' . fnameescape(g:kamilscripts) . 'vim'
 	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
 endif
 
@@ -213,12 +213,14 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	execute 'source ~/.vim/plugged/vim-plug/plug.vim'
 	let plugdir = '~/.vim/plugged/'
 	call plug#begin(plugdir)
+	Plug 'junegunn/vim-plug' " Add itself
+	delcommand PlugUpgrade
 
 	" My Plugins {{{2
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
 		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
 		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
-		KcPlug8 'puremourning/vimspector'  " Debugger
+		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{2
@@ -288,7 +290,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'idbrii/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
 		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
 		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
-		Plug 'preservim/nerdtree', { 'on':  'NERDTreeToggle' } " The file browser.
+		Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' } " The file browser.
 		Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
 		Plug 'luochen1990/rainbow' " Rainbow Parentheses
 		Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
@@ -587,7 +589,7 @@ endif
 " ctrlp
 if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_custom_ignore = {
-				\ 'dir':  '\v[\/]\.(git|hg|svn)$',
+				\ 'dir':  '\v[\/]\.(git|hg|svn|cache)$',
 				\ 'file': '\v\.(exe|so|dll)$',
 				\ }
 	let g:ctrlp_show_hidden = 1
@@ -734,10 +736,24 @@ if kc#plugin#enabled('spelunker.vim')
 	let g:enable_spelunker_vim = 0
 endif
 
+nmap <F5> <Plug>VimspectorContinue
 if kc#plugin#enabled('vimspector')
 	let g:vimspector_enable_mappings = 'HUMAN'
-	let g:vimspector_install_gadgets=[ 'debugpy', 'vscode-cpptools', 'CodeLLDB' ]
+	let g:vimspector_install_gadgets = [ 'debugpy', 'vscode-cpptools', 'CodeLLDB' ]
 	let g:vimspector_base_dir = expand('$HOME/.vim/spector-config')
+	if empty(glob(g:vimspector_base_dir.'/configurations')) && isdirectory(g:kamilscripts.'/vim/vimspector')
+		execute '!ln -nvs '.shellescape(g:kamilscripts).'/vim/vimspector '.shellescape(g:vimspector_base_dir).'/configurations'
+	endif
+	" mnemonic 'di' = 'debug inspect' (pick your own, if you prefer!)
+	" for normal mode - the word under the cursor
+	nmap <Leader>di <Plug>VimspectorBalloonEval
+	" for visual mode, the visually selected text
+	xmap <Leader>di <Plug>VimspectorBalloonEval
+	" You may also wish to add mappings for up/down the stack, for example:
+	nmap <LocalLeader><F11> <Plug>VimspectorUpFrame
+	nmap <LocalLeader><F12> <Plug>VimspectorDownFrame
+	" dc = 'Debug Stop'
+	nmap <Leader>dc :VimspectorReset<CR>
 endif
 
 if kc#plugin#enabled('Colorizer')
@@ -867,8 +883,8 @@ if 0
 	nnoremap <leader>fg :call MyCscope("g")<CR>
 endif
 
+nmap <C-n> :NERDTreeToggle<CR>
 if kc#plugin#enabled('nerdtree')
-	nmap <C-n> :NERDTreeToggle<CR>
 	let NERDTreeBookmarksFile = expand('~/.vim/NERDTreeBookmarks')
 	let NERDTreeAutoDeleteBuffer = 1
 	let NERDTreeMinimalUI = 0
@@ -976,10 +992,12 @@ else
   inoremap <silent><expr> <c-@> coc#refresh()
 endif
 
-" Make <CR> auto-select the first completion item and notify coc.nvim to
-" format on enter, <cr> could be remapped by other vim plugin
-inoremap <silent><expr> <cr> pumvisible() ? coc#_select_confirm()
-                              \: "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"
+if 1
+	" Make <CR> auto-select the first completion item and notify coc.nvim to
+	" format on enter, <cr> could be remapped by other vim plugin
+	inoremap <silent><expr> <cr> pumvisible() ? coc#_select_confirm()
+								  \: "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"
+endif
 
 " Use `[g` and `]g` to navigate diagnostics
 " Use `:CocDiagnostics` to get all diagnostics of current buffer in location list.

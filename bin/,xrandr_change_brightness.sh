@@ -25,17 +25,24 @@ if [[ ! "$1" =~ ^[+-]?([0-9]+\.?[0-9]*|[0-9]*\.[0-9]+)$ ]]; then
 fi
 
 xrandr --verbose |
-awk '
+awk -v inc="$1" '
 	$2 ~ "^connected$"{n[i++]=$1}
-	/Brightness/{b[i-1]=gensub(/.*: */, "", "1", $0)}
-	END{for (i in n) print n[i], b[i]}
+	/Brightness:/{
+		b[i-1] = gensub(/.*: */, "", "1", $0)
+	}
+	/Gamma:/{
+		c[i-1] = gensub(/.*Gamma: */, "", "1", $0)
+	}
+	END{
+		for (i in n) {
+			print n[i], (b[i] + inc), c[i]
+		}
+	}
 ' | {
-while read -r name val; do
-	case "${1:0:1}" in
-		[+-]) val=$(awk -v val="$val" -v inc="$1" 'BEGIN{print val + inc}' <&-); ;;
-	esac
-	xrandr --output "$name" --brightness "$val"
-	barlen=$(awk -v val="$val" 'BEGIN{print int(val*100)}' <&-)
+while IFS=' ' read -r name brightness gamma _; do
+	set -x
+	xrandr --output "$name" --gamma "$gamma" --brightness "$brightness"
+	barlen=$(awk -v val="$brightness" 'BEGIN{print int(val*100)}' <&-)
 done
 org.freedesktop.Notifications.Notify.sh "$name" 0 "dialog-information" "Screen brightness notification" "Screen brightness: $(printf "%-3s" "$barlen")/100" "" "{'value':<${barlen}>}" 2000 /tmp/.notifyval."$name" >/dev/null
 }

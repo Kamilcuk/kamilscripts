@@ -33,7 +33,8 @@ setclassfiles() {
 }
 
 C_new_class() {
-	run pdk new class "$@"
+	if (($# != 1)); then L_fatal "Too many arguments"; fi
+	run pdk new class "${1//\//::}"
 }
 
 C_get_module_name() {

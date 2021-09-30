@@ -14,14 +14,10 @@
   "diagnostic.checkCurrentLine": false,
   "diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
   "diagnostic.virtualText": true,
-  "suggest.triggerCompletionWait": 1000,
   "codeLens.enable": true,
   "solargraph.checkGemVersion": false,
   "clangd.semanticHighlighting": true,
   "clangd.enabled": true,
-	"clangd.fallbackFlags": [
-		"-std=c++2a"
-	],
   "clangd.arguments": [
     "--background-index",
     "--clang-tidy",
@@ -60,9 +56,31 @@
       "cmake-lint",
       "cmakelint"
     ],
-    "systemd": "systemd-analyze"
+    "systemd": "systemd-analyze",
+    "_comment_make": "checkmake"
   },
   "diagnostic-languageserver.linters": {
+    "checkmake": {
+      "command": "sh",
+			"_comment": "checkmake output CR characters and 0 lines. Filter them and fix",
+      "args": [
+				"-c",
+				"checkmake --format={{.LineNumber}}@{{.Rule}}:{{.Violation}} \"$0\" | sed 's/^0@/1@/; s/\\r//g'",
+        "%filepath"
+      ],
+      "offsetLine": 0,
+      "offsetColumn": 1,
+      "isStdout": true,
+      "isStderr": false,
+      "sourceName": "checkmake",
+      "formatPattern": [
+        "^(\\d+)@(.*)$",
+        {
+          "line": 1,
+          "message": 2
+        }
+      ]
+    },
     "yamllint": {
       "args": [
         "-d",

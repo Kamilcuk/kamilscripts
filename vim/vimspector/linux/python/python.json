@@ -1,0 +1,18 @@
+{
+  "configurations": {
+    "Python - Launch": {
+      "adapter": "vscode-python",
+      "configuration": {
+        "name": "Python: Launch current file",
+        "type": "python",
+        "request": "launch",
+        "stopOnEntry": true,
+        "stopAtEntry": true,
+        "console": "externalTerminal",
+        "debugOptions": [],
+        "cwd": "${cwd}",
+        "program": "${file}"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "configurations": {
+    "Java - Launch": {
+      "adapter": "vscode-java",
+      "configuration": {
+        "name": "Java: Launch current file",
+        "request": "launch",
+        "mainClass": "com.vimspector.test.TestApplication",
+        "sourcePaths": [
+          "${workspaceRoot}/src/main/java"
+        ],
+        "classPaths": [
+          "${workspaceRoot}/target/classes"
+        ],
+        "args": "hello world!",
+        "stopOnEntry": true,
+        "console": "integratedTerminal"
+      }
+    }
+  }
+}

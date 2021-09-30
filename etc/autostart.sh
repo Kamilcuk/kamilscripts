@@ -89,6 +89,7 @@ setxkbmap pl
 case "${XDG_CURRENT_DESKTOP,,}" in
 (KDE)
 	kde-no-shadow
+	kwriteconfig5 --group RecentDocuments --key MaxEntries 100 --key UseRecent true
 	;;
 (xfce)
 	_xfconf-query -c keyboard-layout -p /Default/XkbLayout                       -s pl

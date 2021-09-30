@@ -11,6 +11,18 @@ endfunction
 
 " Check if the plugin with the name is enabled
 function! kc#plugin#enabled(name) abort
+	if exists('g:plugs')
+		for [key, val] in items(g:plugs)
+			if has_key(val, 'uri')
+				let val = val.uri
+				let val = fnamemodify(val, ':t')
+				let val = fnamemodify(val, ':r')
+				if val =~ a:name
+					return 1
+				endif
+			endif
+		endfor
+	endif
 	for i in kc#plugin#split(&rtp)
 		if fnamemodify(i, ':t') =~ a:name
 			return 1

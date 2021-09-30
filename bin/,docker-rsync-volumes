@@ -251,7 +251,7 @@ if ! src_docker exec "$src_did" sh /usr/local/bin/wait-for-rsync-listen.sh; then
 fi
 
 # Finally runnning rsync, that will traver via socat above to rsyncd.
-rsyncargs=(-aivxsAHSX --progress "${#rsyncargs[@]:+rsyncargs[@]}")
+rsyncargs=( -aivxsAHSX --progress ${rsyncargs[@]+"${rsyncargs[@]}"} )
 log "Running rsync ${rsyncargs[*]}"
 src_docker exec -e RSYNC_PASSWORD="$g_password" -w /data "$src_did" rsync "${rsyncargs[@]}" /data/ rsync://rsyncuser@localhost/data
 

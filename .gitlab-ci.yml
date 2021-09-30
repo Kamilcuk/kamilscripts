@@ -1,4 +1,17 @@
 ---
+include:
+  - template: Security//Dependency-Scanning.gitlab-ci.yml
+  - template: Security//License-Scanning.gitlab-ci.yml
+  - template: Security//SAST.gitlab-ci.yml
+  - template: Security//Secret-Detection.gitlab-ci.yml
+
+variables:
+  PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
+default:
+  image: $CI_REGISTRY_IMAGE:latest
+  before_script:
+    - export "PATH=$PWD/bin:$PATH"
+
 build:
   stage: build
   image:
@@ -8,14 +21,6 @@ build:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
     - /kaniko/executor --force --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:latest
-
-image: $CI_REGISTRY_IMAGE:latest
-variables:
-  PACKAGER: "Kamil Cukrowski <kamilcukrowski@gmail.com> via gitlab"
-
-.test_setup: &test_setup
-  before_script:
-    - export "PATH=$PWD/bin:$PATH"
 
 shellcheck:
   image: koalaman/shellcheck-alpine:stable
@@ -27,7 +32,6 @@ shellcheck:
     - xargs -0t shellcheck -x < /tmp/files
 
 test_docker-rsync-volumes:
-  <<: *test_setup
   services:
     - docker:dind
   variables:
@@ -40,51 +44,40 @@ test_docker-rsync-volumes:
     - bin/,docker-rsync-volumes --test
 
 test_install_stow:
-  <<: *test_setup
   script:
     - bin/,install_stow.sh --unittest
 test_proot:
-  <<: *test_setup
   script:
     - bin/,proot --version
 test_alias_complete:
-  <<: *test_setup
   script:
     - bin/alias_complete.sh --unittest
 test_blockinfile:
-  <<: *test_setup
   script:
     - bin/blockinfile.sh --unittest
 test_,hextodectobin:
-  <<: *test_setup
   script:
     - bin/,hextodectobin --test
 test_bash_autotranslate:
-  <<: *test_setup
   script:
     - echo pl_PL.UTF-8 UTF-8 >> /etc/locale.gen
     - sed -i -e 's/NoExtract/#NoExtract/' /etc/pacman.conf
     - pacman -S --noconfirm glibc
     - bin/,bash_autotranslate.sh --test
 test_lineinfile:
-  <<: *test_setup
   script:
     - bin/lineinfile.sh --unittest
 test_ccrun:
-  <<: *test_setup
   script:
     - pacman -Suy --noconfirm gcc
     - bin/,ccrun +unittest
 test_rstow:
-  <<: *test_setup
   script:
     - bin/,rstow unittest
 test_fnmatch:
-  <<: *test_setup
   script:
     - bin/,fnmatch --test
 test_lib_lib:
-  <<: *test_setup
   script:
     - bin/,lib_lib --test
 
