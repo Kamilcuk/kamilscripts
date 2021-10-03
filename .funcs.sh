@@ -2,7 +2,7 @@
 set -euo pipefail
 
 name=$(basename "$0")
-dir=$(dirname "$0")
+#dir=$(dirname "$0")
 
 exec 10>&1
 log() {

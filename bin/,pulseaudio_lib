@@ -32,6 +32,7 @@ C_list_2() {
 	EOF
 		return
 	fi
+	# shellcheck disable=1004
 	_pactl list | awk \
 		-v outputmode="$1" \
 	'
@@ -227,6 +228,7 @@ $L_NAME $L_CMD 'Sink' '' '' 'Built-in Audio Analog Stereo'
 EOF
 		return
 	fi
+	# shellcheck disable=2254
 	C_list_1 |
 	while IFS=$'\t' read -r a b c d; do
 		case "$a" in (${1:-*})
@@ -297,7 +299,7 @@ C_leonidas_event_deamon() {
 				name=alsa_input.usb-OmniVision_Technologies__Inc._USB_Camera-B4.09.24.1-01.multichannel-input.echo-cancel
 				sink=$(C_list_1 | awk -F'\t' -v name="$name" '$1 == "Source" && $3 == name"{print $2}')
 				if [[ -n "$sink" ]]; then
-					echo "$NAME: Sink with $name not found" >&2
+					echo "$L_NAME: Sink with $name not found" >&2
 					return
 				fi
 				# For each skype client in list
@@ -305,7 +307,7 @@ C_leonidas_event_deamon() {
 					jq -r 'select(._what == "Source Output") | select(has("properties.application.name")) | select(."properties.application.name" | test("Skype")) | ._num' |
 					while read -r id; do
 						# Move the skype client to the playstation eye sink
-						( set -x; _pactl move-source-output "$id" "$sink" ) 2> >(sed "s/^/$NAME: /" >&2) ||:
+						( set -x; _pactl move-source-output "$id" "$sink" ) 2> >(sed "s/^/$L_NAME: /" >&2) ||:
 					done
 			); fi
 			;;

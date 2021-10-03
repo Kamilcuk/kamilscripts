@@ -46,6 +46,6 @@ while (($#)); do
 	shift
 done
 
-if (($# == 0)); then usage; fatal "Missing arguments": fi
+if (($# == 0)); then usage; fatal "Missing arguments"; fi
 if (($# != 1)); then fatal "Wrong number of arguments"; fi
 

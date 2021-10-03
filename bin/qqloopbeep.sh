@@ -49,14 +49,13 @@ fi
 parse_arguments() {
 	local IFS=''
 	local mnoznik=1;
-	local new='';
 	beep_args=""
-	while read -n1 c; do
+	while read -r -n1 c; do
 		if [ -z "$c" ]; then
 			continue;
 		fi
-		[ $DEBUG -ge 2 ] && echo -n "> $mnoznik*\"$c\" - "
-		[ $DEBUG -ge 5 ] && printf "$c" | od -t x1
+		[ "$DEBUG" -ge 2 ] && echo -n "> $mnoznik*\"$c\" - "
+		[ "$DEBUG" -ge 5 ] && printf "%s" "$c" | od -t x1
 		case $c in
 		"-")  beep_args+="$add -f $HIGHFREQ -l $((mnoznik*TIME)) "; add=" --new "; ;;
 		"_")  beep_args+="$add -f $LOWFREQ  -l $((mnoznik*TIME)) "; add=" --new "; ;;
@@ -64,7 +63,7 @@ parse_arguments() {
 		*)    ;;
 		esac
 		case $c in
-		1|2|3|4|5|6|7|8|9) mnoznik=$c; [ $DEBUG -ge 1 ] && echo "+ *$mnoznik"; ;;
+		1|2|3|4|5|6|7|8|9) mnoznik=$c; [ "$DEBUG" -ge 1 ] && echo "+ *$mnoznik"; ;;
 		*) mnoznik=1; ;;
 		esac
 	done <<<"$(echo -n "$* ")"
@@ -74,7 +73,7 @@ beep_args=""
 parse_arguments "$@"
 
 set -e
-beep $beep_args;
+beep "$beep_args";
 while $LOOPVAR; do 
-	beep $beep_args;
+	beep "$beep_args";
 done

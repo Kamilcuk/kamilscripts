@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=2086,2206,2162,2016,2207,2034,2059
+# shellcheck disable=2086,2206,2162,2016,2207,2034,2059,2046
 # part of qqsplitscreenpip.sh
 # Written by Kamil Cukrowski. Under MIT License.
 set -euo pipefail

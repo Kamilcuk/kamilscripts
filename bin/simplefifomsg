@@ -424,6 +424,7 @@ test_mode() {
 
 test_cli() {         test_mode get "${1:-}"; }
 test_cli_timeout() { test_mode get "${2:-}" "$1"; }
+# shellcheck disable=2120
 test_srv() {         test_mode put "${1:-}"; }
 test_srv_timeout() { test_mode put "${2:-}" "$1"; }
 
@@ -450,6 +451,7 @@ mode_test_simple() {
 		fi
 		assert '[[ "$out" == "$(seq 10)" ]]'
 	) &
+	# shellcheck disable=2034
 	clipid=$!
 	assert 'wait "$srvpid"'
 	assert 'wait "$clipid"'

@@ -27,22 +27,22 @@ EOF
 
 printDiff() { 
 	local f="$1"
-	if [ ! -e /${f} ]; then
+	if [ ! -e "/${f}" ]; then
 		echo "/${f}: No such file."
 		return
 	fi
-	if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
-		diff -u --color -- $uniondir/${f} /${f} || true
+	if ! cmp "/${f}" "$uniondir/${f}" >/dev/null 2>&1; then
+		diff -u --color -- "$uniondir/${f}" "/${f}" || true
 	fi
 }
 
 printDiffFilename() { 
 	local f="$1"
-	if [ ! -e /${f} ]; then
+	if [ ! -e "/${f}" ]; then
 		echo "/${f}: No such file."
 		return
 	fi
-	if ! cmp /${f} $uniondir/${f} >/dev/null 2>&1; then
+	if ! cmp "/${f}" "$uniondir/${f}" >/dev/null 2>&1; then
 		echo "$f"
 	fi
 }
@@ -54,15 +54,14 @@ case "${1:--h}" in
 	;;
 -D)
 	for f in $(main_case -P); do
-		printDiff $f
+		printDiff "$f"
 	done
 	;;
 
 -p)
-	files=( $(cd "$(readlink -f $uniondir)" && find -type f | sed 's/^\.\///g' ) )
-	str=""
-	for f in "${files[@]}"; do
-		printDiffFilename $f
+	files=$(cd "$(readlink -f "$uniondir")" && find . -type f | sed 's/^\.\///g' )
+	for f in $files; do
+		printDiffFilename "$f"
 	done
 	;;
 -d)
@@ -80,7 +79,7 @@ esac
 # main ##############################################
 
 #gitdir=$(GIT_DISCOVERY_ACROSS_FILESYSTEM=yes git rev-parse --show-toplevel)
-gitdir="$(dirname $(dirname $(readlink -f "$0")))"
+#gitdir="$(dirname $(dirname $(readlink -f "$0")))"
 uniondir=../resources/
 echo
 

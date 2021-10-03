@@ -4,7 +4,7 @@ export SHELLOPTS
 
 LOGLVL=${LOGLVL:-0}
 TEST=${TEST:-false}
-NAME=$(basename $0)
+NAME=$(basename "$0")
 
 # functions ###################################
 
@@ -32,12 +32,11 @@ EOF
 # overwrite that function in your config file
 
 output() {
-	local mailto unit footer
+	local mailto unit
 	mailto=$1
 	unit=$2 
-	footer=""
 	case "$mailto" in
-	*@*.*) sendmail $mailto; ;;
+	*@*.*) sendmail "$mailto"; ;;
 	stdout|-) cat; ;;
 	stderr) cat >&2; ;;
 	quiet) cat >/dev/null; ;;
@@ -48,10 +47,10 @@ Subject: $(hostname): Unit $unit entered failed state.
 - Unit $unit entered failed state on machine $(hostname)
 - Additional information ----------------------------------------------------
 - systemctl status $unit -l -------------------------------------------------
-$(systemctl status $unit -l --no-pager ||:)
+$(systemctl status "$unit" -l --no-pager ||:)
 
 - journalctl -n -0 -u $unit -n100 -------------------------------------------
-$(journalctl -n -0 -u $unit -n100 ||:)
+$(journalctl -n -0 -u "$unit" -n100 ||:)
 -----------------------------------------------------------------------------
 
 This email is generated automatically by $0 script.
@@ -65,7 +64,7 @@ EOF
 listAlreadyFailed=""
 do_output() {
 	local -g listAlreadyFailed
-	local mailto unit noduplicate tmp
+	local mailto unit noduplicate
 	mailto=$1
 	unit=$2
 	noduplicate=$3

@@ -63,14 +63,14 @@ cdb() {
 		# names is set above
 		rm "${names[@]}"
 		for i in "${names[@]}"; do
-			echo "removed $(basename $i) -> $(readlink -f "$i")"
+			echo "removed ${i##*/} -> $(readlink -f "$i")"
 		done
 		;;
 	-g|--get)
 		# names is set above
-		pushd "$cdb_dir" >/dev/null 
+		pushd "$cdb_dir" >/dev/null || return 1
 		find "${names[@]}" -type l -printf '%f -> %l\n' | sort
-		popd >/dev/null
+		popd >/dev/null || return 1
 		;;
 	-l|--list)
 		if (($# != 1)); then echo "cdb: Wrong number of arguments" >&2; return 2; fi
@@ -135,6 +135,7 @@ EOF
 	esac
 }
 
+# shellcheck disable=2207
 _cdb_completion() {
 	local cdb_dir=${CDB_DIR:-"$HOME/.cache/cdb"}
 	# if ((COMP_CWORD > 2)); then return; fi
@@ -145,9 +146,9 @@ _cdb_completion() {
 			;;
 		*)
 			if [[ ! -e "$cdb_dir" ]]; then return; fi
-			pushd "$cdb_dir" >/dev/null
+			pushd "$cdb_dir" >/dev/null || return
 			COMPREPLY=($(compgen -o dirnames -d -- "${COMP_WORDS[COMP_CWORD]}"))
-			popd >/dev/null
+			popd >/dev/null || return 1
 			if ((!${#COMPREPLY})); then
 				COMPREPLY=($(compgen -W '-m --mark -u --unmark -l --list -h --help' -- "${COMP_WORDS[COMP_CWORD]}"))
 			fi

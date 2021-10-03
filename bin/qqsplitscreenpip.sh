@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1000-SC9999
 # file qqsplitscreenpip.sh
 # Written by Kamil Cukrowski
 set -euo pipefail

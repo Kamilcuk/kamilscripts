@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 
-printf "\n" "" "" "y" "y" | LC_ALL=C pacman -Suy --noconfirm --needed base base-devel git sudo vim bash-completion
+printf "%s\n" "\n" "" "" "y" "y" | LC_ALL=C pacman -Suy --noconfirm --needed base base-devel git sudo vim bash-completion
 
 useradd builder
 passwd -d builder
@@ -15,7 +15,7 @@ pushd pkg/archlinux >/dev/null
 
 sudo -u builder makepkg -f --syncdeps --noconfirm
 
-ls -l *.pkg.tar.*
+ls -l ./*.pkg.tar.*
 
 popd
 

@@ -74,7 +74,7 @@ while (($#)); do
 	-q|--quoted) g_quoted=true; ;;
 	--separator) g_separator="$2"; shift; ;;
 	--bashautocomplete) bashautocomplete; exit; ;;
-	--test) for i in "" 1 256; do a=("$0" test$i); echo "+" "${a[@]}"; "${a[@]}"; done; exit; ;;
+	--test) for i in "" 1 256; do a=("$0" "test$i"); echo "+" "${a[@]}"; "${a[@]}"; done; exit; ;;
 	--) shift; break; ;;
 	*) echo "Internal error" >&2; exit 2;
 	esac
@@ -135,7 +135,7 @@ else
 fi
 
 exit
-
+cat <<'# EOF'
 # vim: filetype=awk
 
 ### AWK SCRIPT STARTS HERE ### b1dbe8d8-d112-4e04-a32f-8b7f901c9580
@@ -1101,3 +1101,4 @@ $0 in modes{ choose_mode($0); Next(); }
 $0 in config{ printf("%s", config_get($0)); Next(); }
 { fatal("Invalid argument nr=" NR " fnr=" FNR " $0=`" $0 "'") }
 
+# EOF

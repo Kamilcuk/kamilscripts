@@ -82,12 +82,12 @@ single|singleone|double)
 	;;
 all|test)
 	# test with $ echo '"'\''\\""' | QQQOUTIFY_MODE=test ./qqqoutify.sh -
-	if [ $QQQOUTIFY_MODE == "test" ]; then
+	if [ "$QQQOUTIFY_MODE" == "test" ]; then
 		test=true
 	else
 		test=false
 	fi
-	while IFS= read line; do
+	while IFS= read -r line; do
 		if $test; then
 			printf "%20s <> %s\n" "Got string" "$line"
 		fi
@@ -96,7 +96,7 @@ all|test)
 			echo "$line" | $i
 			if $test; then
 				$test && printf "%20s <- " "test back -^- "
-				eval echo $(echo "$line" | $i)
+				eval "echo $(echo "$line" | $i)"
 			fi
 		done
 	done

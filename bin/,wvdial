@@ -1,6 +1,8 @@
 #!/bin/bash
 
 template() {
+	modem=""
+	baud=""
 	vars=(modem baud)
 	if [[ "${1:-}" != "ok" ]]; then
 		for i in "${vars[@]}"; do

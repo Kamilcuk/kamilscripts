@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1000-SC9999
 set -euo pipefail
 
 # These are examples of bash module skeleton

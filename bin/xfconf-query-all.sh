@@ -26,6 +26,7 @@ fi
 
 cmd=${1:--m}
 
+# shellcheck disable=2016
 xfconf-query -l |
 tail -n+2 |
 tee >(echo "+ xfconf-query $cmd -c {$(tr -d ' ' | sort | paste -sd,)}" >&2) |

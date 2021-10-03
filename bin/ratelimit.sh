@@ -88,14 +88,8 @@ while (($#)); do
 	case "$1" in
 	-t|--timeout) maxtimeoutsec=$2; shift; ;;
 	-l|--lines) maxlines=$2; shift; ;;
-	-i|--input-separator) 
-		IFS= read -rd '' input_separator < <(printf -- "$2") ||:
-		shift
-		;;
-	-o|--output-separator) 
-		IFS= read -rd '' output_separator < <(printf -- "$2") ||:
-		shift
-		;;
+	-i|--input-separator) input_separator="$2"; shift; ;;
+	-o|--output-separator) output_separator="$2"; shift; ;;
 	--print-empty) print_empty=true; ;;
 	-h|--help) usage; exit 0; ;;
 	--) shift; break; ;;

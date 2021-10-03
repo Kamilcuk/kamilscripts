@@ -67,7 +67,7 @@ coproc gdb {
 in=${gdb[1]}
 out=${gdb[0]}
 
-cat >&$in <<EOF
+cat >&"$in" <<EOF
 set pagination off
 set confirm off
 set prompt
@@ -95,23 +95,23 @@ b ${start_func}
 run
 EOF
 
-if ! a=$(timeout 2 sed -un '/Breakpoint 1,/q' <&$out); then
+if ! a=$(timeout 2 sed -un '/Breakpoint 1,/q' <&"$out"); then
 	printf "%s\n" "$a"
 	fatal "Setting up gdb failed"
 fi
 
 normal_method() {
-	cat >&$in <<EOF
+	cat >&"$in" <<EOF
 do_count &_exit
 printf "$uuid %d\n", \$count
 EOF
 
 	eval "exec $in<&-"
-	sed -u '/'"$uuid "'/{ s//&instruction_count=/; q; }' <&$out
+	sed -u '/'"$uuid "'/{ s//&instruction_count=/; q; }' <&"$out"
 }
 
 btrace_method() {
-	cat >&$in <<EOF
+	cat >&"$in" <<EOF
 record btrace
 info record
 b ${end_func}
@@ -119,10 +119,10 @@ continue
 printf "$uuid\n"
 info record
 EOF
-	sed -un '/^Continuing.$/q' <&$out
+	sed -un '/^Continuing.$/q' <&"$out"
 	eval "exec $in<&-"
-	sed -un '/\(Breakpoint .* _exit \|'"$uuid"'\)/{q};p' <&$out
-	sed -un '/^Recorded /{ s/^/'"$uuid"' /; p; }' <&$out
+	sed -un '/\(Breakpoint .* _exit \|'"$uuid"'\)/{q};p' <&"$out"
+	sed -un '/^Recorded /{ s/^/'"$uuid"' /; p; }' <&"$out"
 }
 
 case "$method" in

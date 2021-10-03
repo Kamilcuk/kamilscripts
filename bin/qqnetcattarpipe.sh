@@ -36,11 +36,12 @@ test() {
 	temp=$(mktemp -d)
 	temp2=$(mktemp -d)
 	trap 'rm -rf $temp $temp2' EXIT
-	echo 123 > $temp/123
-	$0 -s -t -v -n -v in 10000 $temp2 &
-	$0 -s -t -v -n -v out localhost 10000 $temp
+	echo 123 > "$temp"/123
+	$0 -s -t -v -n -v in 10000 "$temp2" &
+	$0 -s -t -v -n -v out localhost 10000 "$temp"
 	wait
-	if [ "$(cat $temp2/123)" != "123" ]; then
+	if [ "$(cat "$temp2"/123)" != "123" ]; then
+		# shellcheck disable=2016
 		error 'Error if [ "$(cat $temp2/$(basename $temp)/123)" != "123" ]; then'
 	fi
 	echo "test end"

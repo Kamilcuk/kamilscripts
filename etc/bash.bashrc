@@ -9,13 +9,13 @@ fi
 
 # re-load profile if not already sourced
 if [[ -z "$KCDIR" ]]; then
-	. "$(dirname "$(readlink -f "$BASH_SOURCE")")"/profile
+	. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/profile
 fi
 
 if [[ $- != *i* ]]; then return; fi
 
 # load bash dropins
-for _i in "$(dirname "$(readlink -f "$BASH_SOURCE")")"/bash.d/*.sh; do
+for _i in "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/bash.d/*.sh; do
 	if [[ -e "$_i" ]]; then
 		. "$_i"
 	fi
@@ -41,6 +41,7 @@ alias ls='ls --color -F'
 alias o='less'
 alias rm='rm --preserve-root -I'
 alias mv='mv -i'
+# shellcheck disable=2285
 alias +='pushd .'
 alias -- -='popd'
 alias ..='cd ..'

@@ -46,7 +46,7 @@ version=$(
 if [[ -z "$version" ]]; then fatal "Problem getting apk-tools-static version"; fi
 
 log "Downloading apk-tools-static utility"
-run curl -sS "$repourl"/apk-tools-static-$version.apk | tar -xzvf - -O sbin/apk.static > apk.static
+run curl -sS "$repourl"/apk-tools-static-"$version".apk | tar -xzvf - -O sbin/apk.static > apk.static
 chmod -v +x apk.static
 
 log "Installing alpine"

@@ -46,11 +46,10 @@ git_repo_remove() {
 }
 
 provision_cfg_files() {
-	local add mark
-	add=${1:-}
+	local mark
 	mark="# %s kamilscript MANAGED BLOCK"
 	export PATH=$PATH:$dir/bin
-	blockinfile.sh $add -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
+	blockinfile.sh "$@" -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
 }
 
 unprovision_cfg_files() {

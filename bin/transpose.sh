@@ -18,8 +18,12 @@ Written by Kamil Cukrowski 2017. Under Beerware license.
 EOF
 }
 
-opts=$(getopt -n "transpose.sh" -o s:o:hV --long separator,output-separator,help,version -n 'parse-options' -- "$@")
-if (($?)); then echo "Failed parsing options." >&2 ; exit 1 ; fi
+if ! opts=$(getopt \
+	-n "transpose.sh" \
+	-o s:o:hV \
+	--long separator,output-separator,help,version \
+	-- "$@"
+); then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval "set -- $opts"
 
 while true; do

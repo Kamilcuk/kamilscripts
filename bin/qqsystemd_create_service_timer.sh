@@ -1,13 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 set -euo pipefail
 
 saddunit=""
 saddservice=""
-saddexecstart=""
+#saddexecstart=""
 
 echo "Please answer the following questions:"
 if [ $# -eq 0 ]; then
-	read -e -p "Timer/service name? " name
+	read -r -e -p "Timer/service name? " name
 	if [ -z "$name" ]; then echo "Error: name is empty! " >&2; exit 1; fi;
 elif [ $# -eq 1 ]; then
 	name=$1
@@ -15,12 +15,12 @@ elif [ $# -eq 1 ]; then
 else
 	echo "ERROR: too many arguments;" >&2; exit 1;
 fi
-d="Run $name";       read -e -p "Service description string? default: '$d' "  ssdesc      ; : ${sdesc:=$d}
-d="/usr/bin/$name";  read -e -p "Service ExecStart? default: '$d' "           sexec       ; : ${sexec:=$d}
-d="Daily";           read -e -p "OnCalendar timer? default: '$d' "            toncalendar ; : ${toncalendar:=$d}
-d="Run $name $toncalendar"; read -e -p "Timer description string? default: '$d' " tdesc   ; : ${tdesc:=$d}
+d="Run $name";       read -r -e -p "Service description string? default: '$d' "  sdesc      ; : "${sdesc:=$d}"
+d="/usr/bin/$name";  read -r -e -p "Service ExecStart? default: '$d' "           sexec       ; : "${sexec:=$d}"
+d="Daily";           read -r -e -p "OnCalendar timer? default: '$d' "            toncalendar ; : "${toncalendar:=$d}"
+d="Run $name $toncalendar"; read -r -e -p "Timer description string? default: '$d' " tdesc   ; : "${tdesc:=$d}"
 
-read -e -p "Add args from config file /etc/$name.conf to service? [y*|*] default: 'no' " ans ; : ${ans:=no}
+read -r -e -p "Add args from config file /etc/$name.conf to service? [y*|*] default: 'no' " ans ; : "${ans:=no}"
 case $ans in 
 	[Yy]*) echo "Adding ConditionPathExists and EnvironmentFile..."; 
 		saddunit+="ConditionPathExists = /etc/$name.conf"$'\n'; 

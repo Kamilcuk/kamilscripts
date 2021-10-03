@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2016
 # ~/.ssh/genconfig.sh
 # vim: ft=sshconfig
 
@@ -11,8 +12,8 @@ hascmd() {
 }
 
 ssh_version=$(
-	ssh -V 2>&1 |
-	tr '[A-Z]' '[a-z]' |
+	LC_ALL=C ssh -V 2>&1 |
+	tr 'A-Z' 'a-z' |
 	sed 's/^openssh_\([0-9]*\).\([0-9]*\).*/\1.\2/'
 )
 

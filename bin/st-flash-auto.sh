@@ -30,7 +30,7 @@ elf)
 	trap 'rm -f $tmp' EXIT
 	arm-none-eabi-objcopy -O ihex "$1" "$tmp"
 	st-flash --format ihex --reset write "$tmp"
-	rm -f $tmp
+	rm -f "$tmp"
 	trap '' EXIT
 	;;
 hex)

@@ -45,6 +45,10 @@ C_get_module_name() {
 C_rename_class() {
 	chdirtorepo
 	if (($# != 2)); then fatal "Usage: rename_class <class> <neaname>"; fi
+	newfile=
+	newname=
+	oldfile=
+	oldname=
 	setclassfiles "$1" oldname oldfile oldfiles
 	setclassfiles "$2" newname newfile newfiles
 	modulename=$(C_get_module_name)
@@ -59,11 +63,12 @@ C_rename_class() {
 C_rename_module() {
 	chdirtorepo
 	if (($# != 2)); then fatal "Usage: rename_module <oldname> <newname>"; fi
-	echo "find . -path ./.git -prune -false -o -type f | xargs -d'\\n' -t sed -i -e 's/$1/$2/'"
+	printf "%s\n" "find . -path ./.git -prune -false -o -type f | xargs -d'\\n' -t sed -i -e 's/$1/$2/'"
 }
 
 C_remove_class() {
 	chdirtorepo
+	files=()
 	setclassfiles "$1" name path files
 	run rm -iv "${files[@]}"
 }

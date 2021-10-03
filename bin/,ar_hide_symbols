@@ -9,6 +9,7 @@ fatal() {
 	exit 2
 }
 
+# shellcheck disable=2120
 usage() {
 	cat <<EOF
 Usage: $NAME [options] interfacesymbols... static.a [object.o...]
@@ -54,13 +55,13 @@ md5() {
 }
 
 log() {
-	if ! ${quiet:-false}; then
+	if ! "${quiet:-false}"; then
 		echo "$NAME:" "$@"
 	fi
 }
 
 trace() {
-	if ${trace:-false}; then
+	if "${trace:-false}"; then
 		echo "$NAME:" "+" "$@"
 	fi
 	"$@"

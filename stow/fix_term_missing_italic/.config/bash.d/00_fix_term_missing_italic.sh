@@ -30,11 +30,11 @@ esac
 if [[ -n "$newterm" && -e "$HOME/.terminfo/${newterm:0:1}/$newterm" ]]; then
 	if ((UID)); then
 		if ! alias su 2>/dev/null >&2; then
-			# shelcheck disable=2139
+			# shellcheck disable=2139
 			alias su="TERM=$TERM su"
 		fi
 		if ! alias sudo 2>/dev/null >&2; then
-			# shelcheck disable=2139
+			# shellcheck disable=2139
 			alias sudo="TERM=$TERM sudo"
 		fi
 	fi

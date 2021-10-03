@@ -14,7 +14,7 @@ get_location() {
 	fi
 }
 logp() {
-	echo "$(readlink -f "$BASH_SOURCE"): $*"
+	echo "$(readlink -f "${BASH_SOURCE[0]}"): $*"
 }
 err() {
 	logp "$*" >&2
@@ -47,7 +47,8 @@ else
 	# Is a symlink -> is it our symlink?
 	v=$(readlink ~/tmp)
 	if [[ "${v##*/}" != "$n" ]]; then
-		err "~/tmp is a symlink but not to where I want, bailing out"
+		# shellcheck disable=2088
+		err '~/tmp is a symlink but not to where I want, bailing out'
 	else
 		# This resolves the symlink!
 		if [[ ! -e ~/tmp ]]; then

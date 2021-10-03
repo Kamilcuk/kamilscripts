@@ -7,7 +7,7 @@ if [[ "$#" = "1" && "${1:-}" = "--bash-completion" ]]; then
 		echo ",hextodectobin: ERROR: --bash-completion but not sourced" >&2
 		set -x
 	fi
-	complete -W "--all --bestonly --binary --caret --float --header --help --string --tab --test" ,hextodectobin "${BASH_SOURCE}"
+	complete -W "--all --bestonly --binary --caret --float --header --help --string --tab --test" ,hextodectobin "${BASH_SOURCE[0]}"
 	return
 	exit
 fi
@@ -256,6 +256,7 @@ opts_getopt_long() {
 	opts_do '/\3/; s/--//; s/$/::/' | paste -sd ,
 }
 opts_init() {
+	o_bestonly=
 	declare -g $(opts_do '/\1=\4 /')
 }
 opts_parse() {
