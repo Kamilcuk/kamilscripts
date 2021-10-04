@@ -1,1 +1,2 @@
-,lib_lib
+#!/bin/bash
+. <(,gitlab bash-completion)

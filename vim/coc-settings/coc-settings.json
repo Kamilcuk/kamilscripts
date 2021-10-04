@@ -27,8 +27,10 @@
     "--completion-style=detailed",
     "--pch-storage=memory"
   ],
-  "python.linting.pylintEnabled": true,
+  "python.linting.pylintEnabled": false,
   "python.linting.enabled": true,
+  "python.jediEnabled": true,
+  "python.jediPath": "/usr/bin/jedi-language-server",
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.filetypes": {
     "vim": "vint",
@@ -58,12 +60,43 @@
       "cmake-lint",
       "cmakelint"
     ],
-    "python": [],
+    "python": [
+      "pylava"
+    ],
     "systemd": "systemd-analyze",
     "_comment_make": "checkmake"
   },
   "diagnostic-languageserver.linters": {
+    "pylava": {
+			"sourceName": "pylava",
+      "command": "pylava",
+      "args": [
+        "-F",
+        "-fparsable",
+				"-lmccabe,pycodestyle,pyflakes",
+        "%filepath"
+      ],
+      "formatPattern": [
+        "^[^:]*:(\\d+?):(\\d+?): \\[(.)\\] (.*)$",
+        {
+          "line": 1,
+          "column": 2,
+          "security": 3,
+          "message": 4
+        }
+      ],
+      "securities": {
+        "I": "hint",
+        "R": "info",
+        "C": "info",
+        "D": "info",
+        "W": "warning",
+        "E": "error",
+        "F": "error"
+      }
+    },
     "checkmake": {
+      "sourceName": "checkmake",
       "command": "sh",
       "_comment": "checkmake output CR characters and 0 lines. Filter them and fix",
       "args": [
@@ -71,7 +104,6 @@
         "checkmake --format={{.LineNumber}}@{{.Rule}}:{{.Violation}} \"$0\" | sed 's/^0@/1@/; s/\\r//g'",
         "%filepath"
       ],
-      "sourceName": "checkmake",
       "formatPattern": [
         "^(\\d+)@(.*)$",
         {
@@ -201,8 +233,7 @@
     "elixir": "mix_format",
     "eelixir": "mix_format",
     "python": [
-      "black",
-      "isort"
+      "black"
     ],
     "lua": "lua-format",
     "sh": "shfmt",

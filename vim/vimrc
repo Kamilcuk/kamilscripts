@@ -221,6 +221,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
 		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
+		"Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{2
@@ -349,7 +350,7 @@ call kc#viewrestore#enable()
 
 " Highlight current line when leaving buffer buffer
 " https://vim.fandom.com/wiki/Highlight_current_line
-if 0 | augroup CursorLine
+if 1 | augroup CursorLine
 	au!
 	au VimEnter,WinEnter,BufWinEnter * setlocal cursorline
 	au WinLeave * setlocal nocursorline
@@ -407,13 +408,13 @@ let g:netrw_nogx = 0
 let g:load_doxygen_syntax=1
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
-augroup vimrc-incsearch-highlight
-	autocmd!
-	if exists('+CmdlineEnter')
+if exists('+CmdlineEnter')
+	augroup vimrc-incsearch-highlight
+		autocmd!
 		autocmd CmdlineEnter [/\?] :set hlsearch
 		autocmd CmdlineLeave [/\?] :set nohlsearch
-	endif
-augroup END
+	augroup END
+endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 " Disable paste
@@ -451,7 +452,7 @@ endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 if has('nvim')
-	augroup nvim
+	augroup vimrc-nvim
 		autocmd!
 		autocmd BufEnter term://* startinsert
 		"Do everything possible to prevent numbers and cursorline in term buffer
@@ -742,6 +743,7 @@ if kc#plugin#enabled('vimspector')
 	let g:vimspector_install_gadgets = [ 'debugpy', 'vscode-cpptools', 'CodeLLDB' ]
 	let g:vimspector_base_dir = expand('$HOME/.vim/spector-config')
 	if empty(glob(g:vimspector_base_dir.'/configurations')) && isdirectory(g:kamilscripts.'/vim/vimspector')
+		call mkdir(g:vimspector_base_dir.'/configurations', 'p')
 		execute '!ln -nvs '.shellescape(g:kamilscripts).'/vim/vimspector '.shellescape(g:vimspector_base_dir).'/configurations'
 	endif
 	" mnemonic 'di' = 'debug inspect' (pick your own, if you prefer!)

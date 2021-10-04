@@ -28,8 +28,13 @@ shellcheck:
   stage: test
   script:
     - shellcheck --version
-    - find . -type f '(' -iname '*.sh' -o -iname '*.bash' ')' -print0 > /tmp/files
-    - xargs -0t shellcheck -x < /tmp/files
+    - find .
+        '(' -path './.git' -o -path './notes' ')' -prune -o
+        -type f
+        '!' -name '=template=*'
+        -exec awk '/^#!.*sh/{print FILENAME};{nextfile}' {} \+ |
+        tr '\n' '\0' |
+        xargs -0t -P$(nproc) -n20 shellcheck -x
 
 test_docker-rsync-volumes:
   services:
@@ -40,7 +45,7 @@ test_docker-rsync-volumes:
     DOCKER_TLS_VERIFY: 1
     DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   script:
-    - pacman -S --noconfirm docker
+    - pacman -Sy --noconfirm docker
     - bin/,docker-rsync-volumes --test
 
 test_install_stow:
