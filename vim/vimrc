@@ -73,6 +73,19 @@ set backspace=indent,eol,start  " let backspece delete everything in intsert mod
 
 " https://vi.stackexchange.com/questions/19680/how-can-i-make-vim-not-use-the-entire-screen-for-spelling-suggestions
 set spellsuggest+=10
+" Include correct word in spellsuggestiong if it is correct. See :h spellsuggest()
+function Kc_spell_suggest_correct_word()
+	if len(spellbadword(v:val)[0])
+		return []
+	endif
+	if v:lang == 'pl_PL.UTF-8'
+		echo 'Słowo "'.v:val.'" jest poprawne.'
+	else
+		echo 'The word "'.v:val.'" is correct.'
+	endif
+	return [[v:val.'_is_correct', 1]]
+endfunction
+set spellsuggest=expr:Kc_spell_suggest_correct_word(),10
 
 " Tell vim to remember certain things when we
 let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')

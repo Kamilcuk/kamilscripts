@@ -23,6 +23,7 @@ import platform
 YELLOW = "\x1b[33m"
 GREEN = "\x1b[32m"
 RED = "\x1b[31m\x1b[1m"
+YELLOW = "\x1b[33m\x1b[1m"
 RESET = "\x1b[0m"
 CYAN = "\x1b[36m"
 NAME = ",gitlab"
@@ -117,6 +118,11 @@ def cd_tempdir():
     with tempdir() as dirpath:
         with cd(dirpath):
             yield dirpath
+
+def open_url(url):
+    cmd = ["xdg-open", url]
+    subprocess.run(cmd)
+    return ["+"] + (cmd)
 
 
 ###############################################################################
@@ -231,12 +237,31 @@ class Globaldata:
     def git_root_dir(self):
         return runcmd(["git", "rev-parse", "--show-toplevel"])
 
+    def git_remote_info(self):
+        dd = self.origin_url()
+        mm = re.match(
+                r'^([^:]*://)?(([^@]*)@)?([^:/]*)(:([0-9]*))?[:/](.*)$',
+                dd)
+        path = re.sub('.git$', '', mm[7])
+        return {
+                'prot': mm[1],
+                'user': mm[3],
+                'server': mm[4],
+                'port': mm[5],
+                'path': path,
+                'urlpath': re.sub('/', '%2F', path),
+                }
+
 
 ###############################################################################
 
 g = Globaldata()
 
 ###############################################################################
+
+
+def C_GET(*args):
+    return g.gl().http_get(*args)
 
 
 def C_get_groups():
@@ -256,20 +281,11 @@ def C_get_group_id_from_name(name):
 
 
 def C_get_project_namespace_path():
-    uu = g.origin_url()
-    # remove domain name from url
-    uu = re.sub("^([^:]*://)?([^@]*@)?[^:/]*[:/]", "", uu)
-    # Remove trialing git
-    uu = re.sub(r"\.git$", "", uu)
-    # replace slashes
-    uu = re.sub("/", "%2F", uu)
-    return uu
+    return g.git_remote_info()['urlpath']
 
 
 def C_get_project_git_server():
-    uu = g.origin_url()
-    uu = re.sub("^([^:]*://)?([^@]*@)?([^:/]*)[:/].*", r"\3", uu)
-    return uu
+    return g.git_remote_info()['server']
 
 
 def get_project_info_nocached():
@@ -284,18 +300,12 @@ def C_get_project_name():
     return C_get_project_info()["name"]
 
 
-def in_open_url(url):
-    cmd = ["xdg-open", url]
-    subprocess.run(cmd)
-    return "+ " + " ".join(cmd)
-
-
 def C_open_project_url():
-    return in_open_url(C_get_project_info()["web_url"])
+    return open_url(C_get_project_info()["web_url"])
 
 
 def C_open_project_pipelines_url():
-    return in_open_url(C_get_project_info()["web_url"] + "/-/pipelines")
+    return open_url(C_get_project_info()["web_url"] + "/-/pipelines")
 
 
 def C_get_project_id():
@@ -496,42 +506,43 @@ class Cirun:
         def addvar(self, var, val):
             self.add(var + '=' + self.quote(val))
 
+        _initscript = textwrap.dedent(r"""
+        set -euo pipefail
+        _runci_error() {
+            printf "\e[31m\e[1m""$*""\e[0m""\n" >&2
+        }
+        if [ "$(pwd)" != "$CI_PROJECT_DIR" ]; then
+            _runci_error 'Internal error: Current working directory is not CI_PROJECT_DIR: $(pwd) != $CI_PROJECT_DIR'
+            exit 1
+        fi
+        if "${runci_dropshell:-false}"; then
+            _runci_trap_exit() {
+                _runci_ret=$?
+                # https://stackoverflow.com/questions/29427364/non-bash-equivalent-to-trap-err
+                if [ "$_runci_ret" -eq 0 ]; then
+                    exit
+                fi
+                _runci_error 'ERROR detected. Dropping to interactive shell.'
+                echo "+ ${SHELL:-sh} -li" >&2
+                ${SHELL:-sh} -li ||:
+                exit "$_runci_ret"
+            }
+            trap _runci_trap_exit EXIT
+        fi
+        # Remove command line arguments
+        set --
+        # Restore saner shell behavior, but still preserve set -e
+        set +uo pipefail
+        set -e
+        """)
+
         def _addinitscript(self):
             with self.comment_section("Initization script"):
                 if g_options.dropshell:
                     self.addvar('runci_dropshell', 'true')
                 if g_options.inplace:
                     self.addvar('runci_inplace', 'true')
-                init = textwrap.dedent(r"""
-                set -euo pipefail
-                _runci_error() {
-                    printf "\e[31m\e[1m""$*""\e[0m""\n" >&2
-                }
-                if [ "$(pwd)" != "$CI_PROJECT_DIR" ]; then
-                    _runci_error 'Internal error: Current working directory is not CI_PROJECT_DIR: $(pwd) != $CI_PROJECT_DIR'
-                    exit 1
-                fi
-                if "${runci_dropshell:-false}"; then
-                    _runci_trap_exit() {
-                        _runci_ret=$?
-                        # https://stackoverflow.com/questions/29427364/non-bash-equivalent-to-trap-err
-                        if [ "$_runci_ret" -eq 0 ]; then
-                            exit
-                        fi
-                        _runci_error 'ERROR detected. Dropping to interactive shell.'
-                        echo "+ ${SHELL:-sh} -li" >&2
-                        ${SHELL:-sh} -li ||:
-                        exit "$_runci_ret"
-                    }
-                    trap _runci_trap_exit EXIT
-                fi
-                # Remove command line arguments
-                set --
-                # Restore saner shell behavior, but still preserve set -e
-                set +uo pipefail
-                set -e
-                """)
-                self.add(init)
+                self.add(self._initscript)
 
         def finish(self, vars):
             cmdsave = copy.deepcopy(self.cmd)
@@ -701,53 +712,67 @@ class Cirun:
                     },
                 ])
 
+            _waitscript = textwrap.dedent(r"""
+            #!/bin/sh
+            set -euo pipefail
+            #
+            # Handle timeout. We take max 60 seconds.
+            maxtimeout=60
+            timeoutstart=$(date +%s)
+            timeoutstop=$((timeoutstart + maxtimeout))
+            have_time() {
+                [ "$timeoutstop" -ge "$(date +%s)" ]
+            }
+            time_passed() {
+                echo "$(( $(date +%s) - timeoutstart ))"
+            }
+            #
+            # Takes ip address and list of ports
+            # Check if we can connect to _any_ of the ports.
+            connect_to_any() {
+                for port in $ports; do
+                    printf "%2d %s\n" "$(time_passed)" "Trying to connect to $name on $ip:$port"
+                    if timeout 1 nc -vz "$ip" "$port"; then
+                        return 0
+                    fi
+                done
+                return 1
+            }
+            #
+            # Parse arguments. Arguments are a list of form:
+            #    name ip port1 [port2]... -- [name2 ip2 port21 [port22]... --]...
+            while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+                name=$1
+                ip=$2
+                shift 2
+                ports=""
+                while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+                    ports="$1 $ports"
+                    shift
+                done
+                shift
+                #
+                echo "Waiting for $name -> $ip:$ports"
+                while ! connect_to_any; do
+                    if ! have_time; then
+                        echo "Could not connect to service $name -> $ip:$ports"
+                        exit 1
+                    fi
+                    sleep 1
+                done
+            done
+            #
+            """)
+
             def handle_waiter(self, tmpd):
-                waitscript = os.path.join(tmpd, 'wait.sh')
-                with open(waitscript, 'w') as f:
-                    f.write(textwrap.dedent(r"""
-                    #!/bin/sh
-                    set -euo pipefail
-
-                    max=60
-                    timeout=0
-
-                    while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
-                        name=$1
-                        ip=$2
-                        shift 2
-                        ports=""
-                        while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
-                            ports="$1 $ports"
-                            shift
-                        done
-                        shift
-
-                        echo "Waiting for $name -> $ip:$ports"
-                        success=false
-                        for curtimeout in $(seq $curtimeout $max); do
-                            for port in $ports; do
-                                if timeout 1 nc -vz "$ip" "$port"; then
-                                    success=true
-                                    break
-                                fi
-                            done
-                            if "$success"; then
-                                break;
-                            fi
-                            sleep 1
-                        done
-                        if ! "$success"; then
-                            echo "Could not connect to service $name -> $ip:$ports"
-                            exit 1
-                        fi
-                    done
-
-                    """))
+                waitscriptloc = os.path.join(tmpd, 'wait.sh')
+                with open(waitscriptloc, 'w') as f:
+                    f.write(self._waitscript)
                 self.dc['__waiter__'] = {
                     'image': 'alpine:latest',
                     'volumes': [{
                         'type': 'bind',
-                        'source': waitscript,
+                        'source': waitscriptloc,
                         'target': '/wait.sh',
                         'read_only': True,
                     }],
@@ -835,7 +860,7 @@ class Cirun:
             return ('', [])
 
         def start_services(self, services):
-            logc(CYAN, 'Wariting for services to start...')
+            logc(CYAN, 'Waiting for services to start...')
             logrun(["docker-compose", "up", "-d"] + [srv['alias'] for srv in services], check=True)
             # For each service create arguments in the form:
             #    servicename ipaddress port1 [port2...] --
@@ -848,8 +873,11 @@ class Cirun:
                 idx = list(data['NetworkSettings']['Networks'])[0]
                 ip = data['NetworkSettings']['Networks'][idx]['IPAddress']
                 ports = data['NetworkSettings']['Ports'].keys()
-                ports = [re.sub('/.*', '', x) for x in ports]
+                # We are interested only in port and only in tcp connections.
+                ports = [x.split('/')[0] for x in ports if x.split('/')[1] == 'tcp']
                 args += [name, ip] + ports + ['--']
+            # Run the waiter to wait for services.
+            logc(CYAN, 'Waiting for services to start...')
             logrun(['docker-compose', 'run', '__waiter__', 'sh', '/wait.sh'] + args)
 
         def prepare(self, srcs, job, gc, var, ex, tmpd):
@@ -888,7 +916,7 @@ class Cirun:
             dcb.add_volumes(tmpd, self.srcs, self.var['CI_PROJECT_DIR'])
             if services:
                 dcb.handle_services(services)
-                dcb.handle_waiter()
+                dcb.handle_waiter(tmpd)
             dockercompose = dcb.finish(self.var)
             dockercompose = yaml.dump(dockercompose, default_flow_style=False)
             #
@@ -1132,6 +1160,66 @@ def C_bash_completion():
     }
     complete -o bashdefault -o default -F __cgitlabci_completion ,gitlab
     """))
+
+
+def ARGS_autowait_for_pipeline_failures(subparser):
+    subparser.add_argument('--num', help='monitor last commit number', default='0')
+    subparser.add_argument('--openfailed', action='store_true', help='open web url also of allowed to fail jobs')
+
+
+def C_autowait_for_pipeline_failures():
+    import time
+
+    path = g.git_remote_info()['path']
+    sha = runcmd(['git', 'rev-parse', 'HEAD~'+str(g_options.num)])
+    project = g.gl().projects.get(path)
+    # Wait for pipelines to spawn.
+    print("Searching for pipeline for commit", sha, "...")
+    while 1:
+        pipelines = project.pipelines.list(sha=sha, all=True)
+        if pipelines:
+            break
+        time.sleep(1)
+    for pipeline in pipelines:
+        print('Monitoring pipeline', pipeline.web_url, "...")
+        handledjobs = set()
+        prevpipelinestatus = ''
+        while 1:
+            pipeline.refresh()
+            # Print the status of the pipeline if it changed.
+            if pipeline.status != prevpipelinestatus:
+                print(pipeline.web_url, ' Pipeline is', pipeline.status)
+                prevpipelinestatus = pipeline.status
+            #
+            for job in pipeline.jobs.list():
+                # Job is handled once.
+                if job.id in handledjobs:
+                    continue
+                msg = job.web_url + '  Job "' + job.name + '" '
+                if job.status == 'failed':
+                    handledjobs.add(job.id)
+                    browser = not job.allow_failure or g_options.openfailed
+                    msg += 'failed.'
+                    if job.allow_failure:
+                        msg = YELLOW + msg
+                        msg += ' It is allowed to fail.'
+                    else:
+                        msg = RED + msg
+                    if browser:
+                        msg += ' Opening browser.'
+                    msg += RESET
+                    print(msg)
+                    if browser:
+                        open_url(job.web_url)
+                    #
+                elif job.status == 'success':
+                    handledjobs.add(job.id)
+                    msg += 'succeeded.'
+                    print(msg)
+            # If pipeline is not running, we end.
+            if pipeline.status not in set(['pending', 'running']):
+                break
+            time.sleep(1)
 
 ###############################################################################
 
