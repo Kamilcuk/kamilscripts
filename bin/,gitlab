@@ -1,674 +1,1211 @@
-#!/bin/bash
-set -euo pipefail
-shopt -s extglob nullglob
+#!/usr/bin/env python3
 
-g_refresh_gitlab_vars() {
-	GITLAB_API_URL="https://${GITLAB_URL}/api/v4/"
-}
-
-g_use_gitlab2() {
-	GITLAB_URL=${GITLAB2_URL:-${GITLAB_URL}}
-	GITLAB_TOKEN=${GITLAB2_TOKEN:-${GITLAB_TOKEN}}
-	g_refresh_gitlab_vars
-}
-
-run_curl() {
-	local cmd
-	cmd=(curl -sS -iL --header "Authorization:---" "$@")
-	L_info "+$(printf " %q" "${cmd[@]}")"
-	if [[ -z "${GITLAB_TOKEN:-}" ]]; then
-		L_fatal "GITLAB_TOKEN variable is empty!"
-	fi
-	cmd=(curl -sSLH "Authorization: Bearer ${GITLAB_TOKEN}" "$@")
-	if "$DEBUG"; then
-		L_log + "${cmd[@]@Q}"
-	fi
-	"${cmd[@]}" || true
-}
-
-hdr_get_data() { sed '/^\r$/,$!d'; }
-hdr_get_header() { sed '1,/^\r$/!d'; }
-hdr_get_link() {
-	local tmp
-	tmp=$(hdr_get_header | sed -n 's/^link:.* <\([^>]*\)>; rel="next".*/\1/p')
-	printf "%s" "$tmp"
-	[[ -n "$tmp" ]]
-}
-
-get_paginated() {
-	local tmp acc
-	acc=""
-	while true; do
-		tmp=$(run_curl -i "$@")
-		acc+="$(hdr_get_data <<<"$tmp")"
-		if ! link=$(<<<"$tmp" hdr_get_link) || [[ -z "$link" ]]; then break; fi
-		set -- "$link"
-	done
-	<<<"$acc" jq -s add
-}
-
-###############################################################################`
-
-get_parse_args() {
-	local path tmp
-	path="$1"
-	shift
-	# Replaces ////// by /
-	path=${path//\/+(\/)/\/}
-	# Add gitlab-api-url so that remove multiple /
-	path="${GITLAB_API_URL%%/}/${path##/}"
-	# args is global
-	args=("$path" "$@")
-}
-
-# shellcheck disable=2145
-C_GETRAW() {
-	local args ; get_parse_args "$@"
-	local tmp
-	run_curl "${args[@]}"
-	echo
-}
-
-C_GET() {
-	local args ; get_parse_args "$@"
-	get_paginated "${args[0]}?pagination=keyset&per_page=100&order_by=id&sort=asc" "${args[@]:1}"
-}
-
-# shellcheck disable=2145
-C_POST() {
-	local args ; get_parse_args "$@"
-	run_curl -X POST "${args[@]}"
-}
-
-C_get_groups() {
-	C_GET /groups
-}
-
-C_get_group_from_name() {
-	C_get_groups | jq --arg name "$1" '.[] | select(.name == $name)'
-}
-
-C_get_group_id_from_name() {
-	C_get_group_from_name "$@" | jq -r '.id'
-}
-
-C_list_projects_in_group() {
-	if (($# != 1)); then L_fatal "Need one argument - group id"; fi
-	C_GET "/groups/$1/projects"
-}
-
-C_list_projects_in_group_name() {
-	if (($# != 1)); then L_fatal "Need one argument - group name"; fi
-	C_list_projects_in_group "$(C_get_group_from_name "$1" | jq -r .id)"
-}
-
-C_project_get_link_to_CI_CD_Settings() {
-	local tmp
-	tmp=$(get_project_info_cached | jq -r .web_url)
-	echo "$tmp/-/settings/ci_cd"
-}
-
-C_list_links_to_CI_CD_Settings_of_all_projects_in_group_name() {
-	C_list_projects_in_group_name "$1" |
-		jq '.[].id' |
-		while IFS= read -r line; do
-			C_project_get_link_to_CI_CD_Settings "$line"
-		done
-}
-
-# shellcheck disable=2001
-C_ci_lint() {
-	if (($# != 1)); then
-		if [[ -r   ./.gitlab-ci.yml ]]; then
-			set -- ./.gitlab-ci.yml
-		else
-			L_fatal "Need one argument"
-		fi
-	fi
-	if (($# == 0)); then L_usage; L_fatal "Needs file as argument"; fi
-
-	local path url data
-	url="ci/lint"
-	if path=$(C_get_project_namespace_path); then
-		url="projects/$path/ci/lint"
-	fi
-
-	local errors i data l_valid l_warnings l_errors l_mergedyaml
-	errors=0
-	for i in "$@"; do
-		# https://about.gitlab.com/blog/2021/04/21/devops-workflows-json-format-jq-ci-cd-lint/
-		data=$(jq --null-input --arg yaml "$(<"$i")" '.content=$yaml')
-		tmp=$(C_GETRAW "$url?include_merged_yaml=true" \
-				--header 'Content-Type: application/json' \
-				--data @<(cat <<<"$data")
-		)
-		tmp=$(jq <<<"$tmp")
-		if ! l_valid=$(jq -r '.valid' <<<"$tmp") || [[ "$l_valid" != "true" ]]; then
-			if ! l_mergedyaml=$(jq -r '.merged_yaml' <<<"$tmp"); then
-				cat <<<"$tmp"
-			else
-				cat <<<"$l_mergedyaml"
-				echo
-				if l_warnings=$(jq -r '.warnings[]' <<<"$tmp") && [[ -n "$l_warnings" ]]; then
-					echo "${L_YELLOW}""Warnings:"
-					sed 's/^/\t/; $s/$/'"${L_RESET}"'/' <<<"$l_warnings"
-				fi
-				if l_errors=$(jq -r '.errors[]' <<<"$tmp") && [[ -n "$l_errors" ]]; then
-					echo "${L_RED}""Errors:"
-					sed 's/^/\t/; $s/$/'"${L_RESET}"'/' <<<"$l_errors"
-				fi
-			fi
-			((errors++)) ||:
-		else
-			jq -r '.merged_yaml' <<<"$tmp"
-			L_log "ALL FINE!"
-		fi
-	done
-	L_trap_err_disable
-	return "$((!!errors))"
-}
-
-C_list_current_user() {
-	C_GET /user
-}
-
-C_get_current_user_id() {
-	C_GET /user | jq .id
-}
-
-# shellcheck disable=2001
-g_urlescape() {
-	sed 's~/~%2F~g' <<<"$*"
-}
-
-C_search_projects() {
-	local search
-	search=$(g_urlescape "$1")
-	shift
-	C_GETRAW "/search?scope=projects&search=$search" "$@"
-}
-
-C_search_project_id() {
-	C_search_projects "$@" | jq -r '.[] | "\(.path_with_namespace)\t\(.id)"'
-}
-
-C_search_project_id_first() {
-	L_trap_err_disable
-	C_search_project_id "$@" | {
-		IFS=$'\t'
-		if ! read -r path id; then
-			L_warn "Could not find any projects"
-			exit 1
-		fi
-		if ! read -r path2 id2; then
-			printf "%s\n" "$id"
-		else
-			L_warn "Multiple projects found for this search query: $1"
-			printf "%s\n" "$path" "$id"
-			printf "%s\t%s\n" "$path2" "$id2"
-			cat
-			exit 1
-		fi
-	}
-}
-
-project_info_cachef=/tmp/,gitlab-projinfocache.$$.json
-get_project_info_cached() {
-	if [[ ! -e "$project_info_cachef" ]]; then
-		local tmp tmp2
-		tmp=$(C_get_project_namespace_path)
-		tmp=$(C_GETRAW "projects/$tmp")
-		if ! tmp2=$(<<<"$tmp" jq -c); then
-			L_fatal "Invalid response from gitlab: $tmp"
-		fi
-		cat <<<"$tmp2" > "$project_info_cachef"
-	fi
-	cat "$project_info_cachef"
-}
-
-C_get_project_info_cached() {
-	get_project_info_cached
-}
-
-C_get_project_namespace_path() {
-	git remote -v get-url origin 2>/dev/null |
-	sed '
-		# remove domain name from url
-		s~^\([^:]*://\)\?\([^@]*@\)\?[^:/]*[:/]~~
-		# Remove trialing git
-		s/\.git$//;
-		# replace slashes
-		s~/~%2F~
-	'
-}
-
-C_get_project_name() {
-	get_project_info_cached | jq '.name'
-}
-
-C_open-url() {
-	,gitlab get_project_info_cached | jq -r '.web_url' | xargs xdg-open
-}
-
-C_get_project_id() {
-	local tmp
-	if tmp=$(get_project_info_cached); then
-		jq '.id' <<<"$tmp"
-		exit
-	fi
-	C_search_project_id_first "$@"
-}
-
-C_get_project_tags() {
-	local id
-	id=$(C_get_project_id "$@")
-	C_GETRAW "/projects/$id/repository/tags"
-}
-
-C_create_project() {
-	addarg() {
-		local tmp
-		#tmp="$(g_urlescape "$*")"
-		tmp="$*"
-		curlopts+=(-d "$tmp")
-	}
-	usage() {
-		n=",gitlab create_project"
-		cat <<EOF
-Usage: $n [options] 
-
-Options:
-	--nowiki
-	--name <str>
-	--path <str>
-	--description <str>
-	--namespace <str>
- 	-a --add <opt>=<val>
-			Takes any option from:
-			https://docs.gitlab.com/ee/api/projects.html#create-project
-
-Example:
-	$n --namespace Kamcuk --name somelib
-
-EOF
-	exit 0
-	}
-	#
-	if (($# == 0)); then usage; fi;
-	args=$(getopt -n "$L_name" \
-		-o a:h \
-		-l nowiki,add:,name:,path:,description:,namespace: -- "$@")
-	eval set -- "$args"
-	curlopts=()
-	while (($#)); do
-		case "$1" in
-		-h) usage; ;;
-		--nowiki) addarg "wiki_access_level=disabled" ;;
-		--add|--name|--path|--description)
-			addarg "${1#--}=$2"
-			shift
-			;;
-		--namespace)
-			if ! id=$(C_get_group_id_from_name "$2") || [[ -z "$id" ]]; then
-				L_fatal "Could not get id for project $2"
-			fi
-			addarg namespace_id="$id"
-			shift
-			;;
-		--) shift; break; ;;
-		*) L_fatal "Internal error: $v"; ;;
-		esac
-		shift;
-	done
-	if (($#)); then usage; fi;
-
-	if ! tmp=$(C_POST /projects "${curlopts[@]}"); then
-		jq <<<"$tmp"
-		L_fatal "Failure"
-		exit 1
-	fi
-	jq <<<"$tmp"
-	echo "SUCCESS"
-}
-
-C_my_create_project() {
-	C_create_project --namespace Kamcuk --name "$@"
-}
-
-C_gitlabciyml-cached() {
-	local namespacepath size
-	namespacepath=$(C_get_project_namespace_path)
-	g_cache="/tmp/run-gitlab-ci_${namespacepath}_.gitlab-ci.yml"
-	if
-		[[ ! -e "$g_cache" ]] ||
-		[[ .gitlab-ci.yml -nt "$g_cache" ]] ||
-		(
-			[[ -e "$g_cache" ]] &&
-			size=$(stat -c %s "$g_cache") &&
-			((size < 10))
-		)
-	then
-		L_log "Refreshing cache at $g_cache"
-		if ! C_ci_lint > "$g_cache"; then
-			rm "$g_cache"
-			L_fatal ".gitlab-ci.yml is invalid"
-		fi
-	else
-		L_log "Using cache at $g_cache"
-	fi
-	cat "$g_cache"
-}
-
-C_gitlabciyml-list-jobs() {
-	C_gitlabciyml-cached |
-		yq -r 'to_entries[] | select(.value.restricted|not) | .key'
-}
-
-C_gitlabciyml-list-jobs2() {
-	C_gitlabciyml-list-jobs |
-	grep -vf <(
-		arr=(
-			'^variables$'
-			'-sast$'
-			'^\.'
-			'dependency_scanning$'
-		)
-		printf '%s\n' "${arr[@]}"
-	)
-}
-
-C_run-gitlabci() {
-	#
-	L_name="$L_NAME gitlabci-run"
-	l_usage() {
-		cat <<EOF
-Usage: $L_name <job to run>
-
-Potential job names:
-$(C_gitlabciyml-list-jobs2 | sed 's/^/  /')
-
-EOF
-	}
-	local args debugme
-	args=$(getopt -n "$L_name" -o hd -- "$@")
-	debugme=0
-	eval "set -- $args"
-	while (($#)); do
-		case "$1" in
-		-h) l_usage; ;;
-		-d) debugme=1; ;;
-		--) shift; break; ;;
-		*) L_fatal "Internal error when parsing args"; ;;
-		esac
-		shift
-	done
-	if (($# == 0)); then l_usage; exit 1; fi
-	if (($# > 1)); then L_fatal "Too many arguments"; fi
-	local job
-	job="$1"
-	#
-	local gitlabciyml
-	gitlabciyml="$(C_gitlabciyml-cached)"
-	#
-	local jobdef
-	# shellcheck disable=2016
-	if ! jobdef=$(<<<"$gitlabciyml" yq --arg job "$job" '.[$job]'); then
-		L_fatal "There is no job named $job in .gitlab-ci.yml"
-	fi
-	if ((debugme)); then
-		echo "--- job definition: ---"
-		yq -y <<<"$jobdef" | sed 's/^/  /'
-		echo
-	fi
-	#
-	local image
-	image=$(jq -r .image <<<"$jobdef")
-	#
-	local g_toexe
-	g_toexe=""
-	local green reset cyan
-	green=${L_GREEN//$'\E'/'\e'}
-	reset=${L_RESET//$'\E'/'\e'}
-	cyan=${L_CYAN//$'\E'/'\e'}
-	toexeadd() {
-		g_toexe+="$*"$'\n'
-	}
-	toexe_cmsg() {
-		toexeadd "printf" "'$1%s$reset\n'" "$(printf "%q" "$ ${2%%$'\n'*}")"
-	}
-	toexenotify() {
-		toexe_cmsg "$green" "$@"
-	}
-	toexenotifycyan() {
-		toexe_cmsg "$cyan" "$@"
-	}
-	toexeadd "set -euo pipefail"
-	toexenotifycyan "Setuping variables in $image ..."
-	#
-	# Add CI_* variables that need to be generated. Mostly TODO
-	# shellcheck disable=2034,2086
-	gen_ci() {
-		unset ${!CI_*} ||:
-		echo 'CI=true'
-
-		CI_COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-		CI_COMMIT_AUTHOR="$(git log -1 --pretty='%an') <$(git log -1 --pretty='%ae')>"
-		gs() {
-			local tmp
-			tmp="$(git log "${3:--1}" --pretty="$2")"
-			printf -v "$1" "%s" "$tmp"
-		}
-		gs CI_COMMIT_DESCRIPTION %B
-		gs CI_COMMIT_MESSAGE %B
-		gs CI_COMMIT_REF_NAME %S
-		gs CI_COMMIT_SHA %H
-		gs CI_COMMIT_SHORT_SHA %h
-		CI_COMMIT_BEFORE_SHA=$(git log -2 --pretty=%H | tail -n1)
-		gs CI_COMMIT_TIMESTAMP %aI
-
-		CI_DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
-		CI_JOB_IMAGE="$image"
-		CI_JOB_NAME="$job"
-		CI_JOB_STAGE="$(jq -r '.stage // "test"' <<<"$jobdef")"
-		CI_JOB_STARTED_AT=$(date -Is)
-		CI_JOB_ID=$SRANDOM
-
-		CI_PIPELINE_ID=$SRANDOM
-		CI_PIPELINE_SOURCE=trigger
-		CI_PIPELINE_TRIGGERED=true
-		CI_PIPELINE_CREATED_AT=$CI_JOB_STARTED_AT
-
-		# Make CI_PROJECT_DIR relative to ~
-		echo "CI_PROJECT_DIR=~/$(printf "%q" CI_PROJECT_NAME)"
-		sinfo() {
-			local tmp
-			tmp=$(get_project_info_cached | jq -r "$2")
-			printf -v "$1" "%s" "$tmp"
-		}
-		sinfo CI_PROJECT_ID .id
-		sinfo CI_PROJECT_NAME '.name'
-		sinfo CI_PROJECT_NAMESPACE '.namespace.path'
-		sinfo CI_PROJECT_PATH '.path_with_namespace'
-		CI_PROJECT_TITLE=$CI_PROJECT_NAME
-		sinfo CI_PROJECT_URL '.web_url'
-		sinfo CI_PROJECT_VISIBILITY '.visibility'
-
-		CI_RUNNER_ID=$SRANDOM
-		CI_SERVER_NAME=$HOSTNAME
-
-		for i in ${!CI_*}; do
-			echo "$i=$(printf "%q" "${!i}")"
-		done
-	}
-	tmp=$(gen_ci)
-	toexeadd "$tmp"
-	#
-	# Add variables from variables: from yaml.
-	toexeadd '# variables from job:'
-	local variablesdef key value
-	variablesdef=$(jq -r '[ .variables // [] | to_entries[] | .key, .value ] | .[] | @base64' <<<"$jobdef")
-	while IFS= read -r key && IFS= read -r value; do
-		key=$(base64 -d <<<"$key")
-		value=$(base64 -d <<<"$value")
-		value=$(printf "%q" "$value")
-		toexeadd "$key=$value"
-	done <<<"$variablesdef"
-	#
-	# Copy the directory with the project to CI_PROJECT_DIR
-	toexenotifycyan "Cloning project..."
-	_setup() {
-		cp -a /orig "$CI_PROJECT_DIR"
-		cd "$CI_PROJECT_DIR"
-	}
-	toexeadd "$(declare -f _setup); _setup"
-	#
-	execscript() {
-		local part script line
-		part=$1
-		script=$(jq -r ".$part // [] | .[] | @base64" <<<"$jobdef") 
-		if [[ -z "$script" ]]; then
-			if [[ "$part" = "script" ]]; then
-				L_fatal "There is no script: section defined for $job"
-			fi
-			return
-		fi
-		toexenotifycyan "Executing $part:"
-		while IFS= read -r line; do
-			if [[ -z "$line" ]]; then continue; fi
-			line=$(base64 -d <<<"$line")
-			toexenotify "$line"
-			toexeadd "$line"
-		done <<<"$script"
-		toexeadd 'CI_JOB_STATUS=$?'
-	}
-	execscript "before_script"
-	execscript "script"
-	execscript "after_script"
-	# Handle services:
-	local services servicesdef
-	if
-		servicesdef=$(jq -r '.services // [] | .[] | @base64' <<<"$jobdef") &&
-		[[ -n "$servicesdef" ]]
-	then
-		while IFS= read -r line; do
-			if [[ -z "$line" ]]; then conitnue; fi
-			line=$(base64 -d <<<"$line")
-			services+=("$line")
-		done <<<"$servicesdef"
-	fi
-
-	# Run it all in docker-compose in temporary directory
-	(
-		tmpd=$(mktemp --tmpdir -d ,gitlab-run-gitlabci-XXXXXXXXX)
-		trap_exit() {
-			set +euo pipefail
-			L_log "${L_CYAN}Exit cleanup${L_RESET}"
-			if [[ -d "$tmpd" ]]; then
-				docker-compose down -v 2>/dev/null ||:
-				cd /
-				rm -r "$tmpd"
-			fi
-		}
-		trap trap_exit EXIT
-		L_log "${L_CYAN}Setuping docker-compose in $tmpd ...${L_RESET}"
-		#
-		dockercompose=$(jq \
-			--arg image "$image" \
-			--arg PWD "$PWD" \
-			-n '{
-				version: "3",
-				services: { work: { image: $image,
-					volumes: [ "./work.sh:/work.sh:ro", ($PWD + ":/orig:ro") ],
-					command: [ "sh", "-c",
-						"sleep 1 && if hash bash 2>/dev/null; then bash ./work.sh; else sh ./work.sh; fi"
-				] } } }'
-		)
-		for srv in "${services[@]}"; do
-			dockercompose=$(<<<"$dockercompose" jq \
-				--arg srv "${srv%%[:-]*}" --arg image "$srv" '
-				.services += { ($srv): { image: $image, privileged: true, volumes: ["/certs"]
-					#, logging: { driver: "none" }
-				} } |
-				.services.work.volumes_from += [ ("service:" + $srv + ":ro") ] |
-				.services.work.links += [ $srv ] |
-				.services.work.depends_on += [ $srv ]
-			')
-			if [[ "$srv" == "docker"*"dind"* ]]; then
-				dockercompose=$(<<<"$dockercompose" jq '
-					.services.work.environment += [
-						"DOCKER_HOST=tcp://docker:2376",
-						"DOCKER_TLS_CERTDIR=/certs",
-						"DOCKER_TLS_VERIFY=1",
-						"DOCKER_CERT_PATH=/certs/client"
-					]')
-			fi
-		done
-		#
-		cd "$tmpd"
-		yq -y <<<"$dockercompose" > ./docker-compose.yml
-		if ! docker-compose config; then
-			cat docker-compose.yml
-			L_fatal "Internal error: generated invalid docker-compose"
-		fi
-		cat <<<"$g_toexe" > ./work.sh
-		if ((debugme)); then
-			echo "--- to execute: ---"
-			sed 's/^/  /' ./work.sh
-			echo
-		fi
-		#
-		local ret
-		ret=0
-		if (( ${#services[@]} )); then
-			for srv in "${services[@]}"; do
-				L_run docker-compose up -d "${srv%%[:-]*}"
-			done
-		fi
-		L_run docker-compose up work || ret=$?
-		L_log "${L_CYAN}Cleanup${L_RESET}"
-		L_run docker-compose down -v ||:
-		cd /
-		rm -r "$tmpd"
-		if ((ret == 0)); then
-			L_log "${L_GREEN}job succeeded${L_RESET}"
-		else
-			L_log "${L_RED}${L_BOLD}ERROR: Job failed: exit code $ret${L_RESET}"
-		fi
-	)
-	exit
-
-	#
-	#
-}
+from __future__ import print_function
+import argparse
+import contextlib
+import copy
+import datetime
+import json
+import os
+import pickle
+import random
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import textwrap
+import yaml
+import platform
 
 ###############################################################################
 
-trap 'rm -f "$project_info_cachef"' EXIT
+YELLOW = "\x1b[33m"
+GREEN = "\x1b[32m"
+RED = "\x1b[31m\x1b[1m"
+RESET = "\x1b[0m"
+CYAN = "\x1b[36m"
+NAME = ",gitlab"
 
-: "${GITLAB_URL:="gitlab.com"}"
-: "${GITLAB_TOKEN:=}"
-: "${DEBUG:=false}"
-# automatically use proper gitlab setting if url matches
-if tmp=$(git remote -v get-url origin 2>/dev/null); then
-	if [[ "$tmp" != *"$GITLAB_URL"* && "$tmp" == *"$GITLAB2_URL"* ]]; then
-		g_use_gitlab2
-	fi
-fi
-#
-g_refresh_gitlab_vars
 
-. ,lib_lib -q 
+def indent(data, ind="  "):
+    return ind + data.replace("\n", "\n" + ind)
 
-args=$(getopt -n "$L_name" -o +2 -l bash-completion -- "$@")
-eval set -- "$args"
-while (($#)); do
-	case "$1" in
-	-2) g_use_gitlab2; ;;
-	--bash-completion) break; ;;
-	--) shift; break;
-	esac
-	shift
-done
 
-. ,lib_lib C_ "$@"
+def eprint(*args, **kwargs):
+    print(NAME, *args, file=sys.stderr, **kwargs)
 
+
+def error(*args, **kwargs):
+    eprint(RED, end="")
+    eprint(*args, end=RESET + "\n", **kwargs)
+
+
+def debug(*args, **kwargs):
+    if g_options.debug:
+        print(NAME, *args, file=sys.stderr, **kwargs)
+
+
+def log(*args, **kwargs):
+    print(NAME, *args, file=sys.stderr, **kwargs)
+
+
+def logc(color, what):
+    log(color + what + RESET)
+
+
+def fatal(*args, **kwargs):
+    sys.exit(*args, **kwargs)
+
+
+def runcmd(args):
+    if isinstance(args, str):
+        args = args.split(" ")
+    return subprocess.check_output(args).decode(sys.stdout.encoding).strip()
+
+
+def srandom():
+    return random.randint(1, 2 ** 32 - 1)
+
+
+def date_iso_8601():
+    return datetime.datetime.now().astimezone().replace(microsecond=0).isoformat()
+
+
+def logrun(cmd, **kwargs):
+    log(CYAN + "+", ' '.join([str(x) for x in cmd]) + RESET)
+    return subprocess.run(cmd, **kwargs)
+
+
+def debugme(desc, data):
+    if g_options.debug:
+        print("--- " + desc + " ---")
+        print(indent(data))
+        print("--- ---")
+
+
+def list_functions_with_prefix(prefix):
+    ret = []
+    for key, value in globals().items():
+        if callable(value) and key.startswith(prefix):
+            ret += [(key, value)]
+    return ret
+
+
+@contextlib.contextmanager
+def cd(newdir, cleanup=lambda: True):
+    prevdir = os.getcwd()
+    os.chdir(os.path.expanduser(newdir))
+    try:
+        yield
+    finally:
+        os.chdir(prevdir)
+        cleanup()
+
+
+@contextlib.contextmanager
+def tempdir():
+    dirpath = tempfile.mkdtemp(prefix=",gitlabci-")
+    try:
+        yield dirpath
+    finally:
+        shutil.rmtree(dirpath)
+
+
+@contextlib.contextmanager
+def cd_tempdir():
+    with tempdir() as dirpath:
+        with cd(dirpath):
+            yield dirpath
+
+
+###############################################################################
+
+
+class Cache:
+    file = "/tmp/,gitlab-file.pickle"
+    loaded = 0
+    data = dict()
+
+    def load(self):
+        if not self.loaded:
+            try:
+                debug("Loading cache from " + self.file)
+                with open(self.file, "rb") as ff:
+                    self.data = pickle.load(ff)
+            except FileNotFoundError:
+                pass
+            except EOFError:
+                pass
+        self.loaded = 1
+
+    def save(self):
+        debug("Saving cache to " + self.file)
+        with open(self.file, "wb") as ff:
+            pickle.dump(self.data, ff)
+
+    def get(self, key, fallback=dict()):
+        self.load()
+        return self.data.get(key, fallback)
+
+    def set(self, key, value):
+        self.data[key] = value
+        self.save()
+
+
+class Lazyinit:
+    obj = None
+
+    def __init__(self, construct):
+        self.construct = construct
+
+    def __call__(self, *argv, **kwargs):
+        if self.obj is None:
+            self.obj = self.construct(*argv, **kwargs)
+        return self.obj
+
+
+def gitlab_construct():
+    import gitlab
+
+    # Choose configuration based on project git server
+    id = g_options.gitlab
+    if not id:
+        import configparser
+        srv = C_get_project_git_server()
+        files = g_options.config_file or gitlab.config._DEFAULT_FILES
+        conf = configparser.ConfigParser()
+        conf.read(files)
+        for i in conf.keys():
+            if 'url' not in conf[i]:
+                continue
+            url = conf[i]['url']
+            url = re.sub('^[^:]*//', '', url)
+            if url == srv:
+                id = i
+                break
+
+    gl = gitlab.Gitlab.from_config(id, g_options.config_file)
+    if g_options.debug:
+        gl.enable_debug()
+    return gl
+
+
+class Globaldata:
+    cache = Cache()
+
+    def key(self):
+        return self.git_root_dir() + " " + self.origin_url()
+
+    def cache_get(self, key, func):
+        if g_options.nocache:
+            return func()
+        bigkey = self.key()
+        cc = self.cache.get(bigkey)
+        if key not in cc:
+            log("Refreshing " + bigkey + "," + key + " in cache")
+            cc[key] = func()
+            self.cache.set(bigkey, cc)
+        return cc[key]
+
+    def cache_put(self, key, value):
+        if g_options.nocache:
+            return value
+        bigkey = self.key()
+        cc = self.cache.get(bigkey)
+        cc[key] = value
+        self.cache.set(bigkey, cc)
+        return value
+
+    lazy_gl = Lazyinit(gitlab_construct)
+
+    def gl(self):
+        return self.lazy_gl()
+
+    configs = json.loads(os.environ.get("CGITLAB_CONFIG", "[]"))
+    config = None
+
+    def origin_url(self):
+        return runcmd(["git", "config", "--get", "remote.origin.url"])
+
+    def git_root_dir(self):
+        return runcmd(["git", "rev-parse", "--show-toplevel"])
+
+
+###############################################################################
+
+g = Globaldata()
+
+###############################################################################
+
+
+def C_get_groups():
+    return [x.attributes for x in g.gl().groups.list(all=True)]
+
+
+def C_get_current_user_id():
+    return g.gl().http_get("/user")["id"]
+
+
+def C_get_group_from_name(name):
+    return [x for x in C_get_groups() if x["name"].casefold() == name.casefold()]
+
+
+def C_get_group_id_from_name(name):
+    return [x["id"] for x in C_get_group_from_name(name)]
+
+
+def C_get_project_namespace_path():
+    uu = g.origin_url()
+    # remove domain name from url
+    uu = re.sub("^([^:]*://)?([^@]*@)?[^:/]*[:/]", "", uu)
+    # Remove trialing git
+    uu = re.sub(r"\.git$", "", uu)
+    # replace slashes
+    uu = re.sub("/", "%2F", uu)
+    return uu
+
+
+def C_get_project_git_server():
+    uu = g.origin_url()
+    uu = re.sub("^([^:]*://)?([^@]*@)?([^:/]*)[:/].*", r"\3", uu)
+    return uu
+
+
+def get_project_info_nocached():
+    return g.gl().http_get("/projects/" + C_get_project_namespace_path())
+
+
+def C_get_project_info():
+    return g.cache_get("poject_info", get_project_info_nocached)
+
+
+def C_get_project_name():
+    return C_get_project_info()["name"]
+
+
+def in_open_url(url):
+    cmd = ["xdg-open", url]
+    subprocess.run(cmd)
+    return "+ " + " ".join(cmd)
+
+
+def C_open_project_url():
+    return in_open_url(C_get_project_info()["web_url"])
+
+
+def C_open_project_pipelines_url():
+    return in_open_url(C_get_project_info()["web_url"] + "/-/pipelines")
+
+
+def C_get_project_id():
+    return C_get_project_info()["id"]
+
+
+def C_search_projects(name):
+    name = re.sub("/", "%2F", name)
+    return g.gl().search("projects", name)
+
+
+def C_search_project_id_first(name):
+    return C_search_projects(name)[0]
+
+
+def C_get_project_tags():
+    return C_get_project_info()["tag_list"]
+
+
+def C_list_projects_in_group(id):
+    return g.gl().http_list("/groups/" + id + "/projects", all=True)
+
+
+def C_list_projects_in_group_name(name):
+    return C_list_projects_in_group(C_get_group_from_name(name)["id"])
+
+
+def C_project_get_link_to_CI_CD_Settings():
+    return C_get_project_info()["web_url"] + "/-/settings/ci_cd"
+
+
+def default_gitlabci():
+    return g.git_root_dir() + "/.gitlab-ci.yml"
+
+
+def gitlabci_get_linted_nocached(gitlabci):
+    url = "/projects/" + C_get_project_namespace_path() + "/ci/lint"
+    with open(gitlabci, "r") as ff:
+        content = ff.read()
+    rr = g.gl().http_post(
+        url, include_merged_yaml="true", post_data={"content": content}
+    )
+    rr["timestamp"] = os.path.getmtime(gitlabci)
+    return rr
+
+
+def C_gitlabci_get_linted(gitlabci=None):
+    gitlabci = gitlabci or default_gitlabci()
+    gitlabci = os.path.abspath(gitlabci)
+    rr = g.cache_get(gitlabci, lambda: gitlabci_get_linted_nocached(gitlabci))
+    if rr["timestamp"] != os.path.getmtime(gitlabci):
+        rr = g.cache_put(gitlabci, gitlabci_get_linted_nocached(gitlabci))
+    return rr
+
+
+def gitlabciyml_list_jobs(gitlabciyml):
+    filters = [
+        r"^variables$",
+        r"-sast$",
+        r"^sast$",
+        r"^\.",
+        r"dependency_scanning$",
+    ]
+    filters = [re.compile(x) for x in filters]
+    return [
+        xx
+        for xx in gitlabciyml.keys()
+        if not any(filter.search(xx) for filter in filters)
+    ]
+
+
+def C_gitlabci_list_keys(gitlabci=None):
+    dd = yaml.safe_load(C_gitlabci_get_linted(gitlabci)["merged_yaml"])
+    return "\n".join(dd.keys())
+
+
+def C_gitlabci_list_jobs(gitlabci=None):
+    dd = yaml.safe_load(C_gitlabci_get_linted(gitlabci)["merged_yaml"])
+    return "\n".join(gitlabciyml_list_jobs(dd))
+
+
+def gitlabci_lint(file):
+    rr = C_gitlabci_get_linted(file)
+    if not rr["valid"]:
+        if "merged_yaml" not in rr:
+            eprint(rr)
+        else:
+            eprint(rr["merged_yaml"])
+            if "warnings" in rr:
+                for ii in rr["warnings"]:
+                    eprint(YELLOW + "Warning: " + ii + RESET)
+            if "errors" in rr:
+                for ii in rr["errors"]:
+                    eprint(RED + "Error: " + ii + RESET)
+        sys.exit(-1)
+    return rr
+
+
+def C_ci_lint(*args):
+    gitlabcis = args
+    if not len(gitlabcis):
+        for dir in [".", g.git_root_dir()]:
+            ff = dir + "/.gitlab-ci.yml"
+            if os.path.exists(ff):
+                gitlabcis = [ff]
+                break
+    if not len(gitlabcis):
+        fatal("No .gitlab-ci not found and no arguments given")
+    for gitlabci in gitlabcis:
+        rr = gitlabci_lint(gitlabci)
+    return rr["merged_yaml"] + '\n\n' + GREEN + "ALL FINE!" + RESET
+
+
+class Cirun:
+    class Variables:
+        variables = dict()
+
+        def __setitem__(self, var, val):
+            assert(isinstance(var, str))
+            self.variables[var] = str(val)
+
+        def __getitem__(self, var):
+            return self.variables[var]
+
+        def items(self):
+            return self.variables.items()
+
+        def add(self, var, val):
+            self.variables[var] = str(val)
+
+        def setdefault(self, var, val):
+            if var not in self.variables:
+                self.add(var, val)
+            return self[var]
+
+        def interpolate(self, val):
+            val = str(val)
+            for vv, ll in self.variables.items():
+                rgx = '(%' + vv + r'%|\${' + vv + r'}|\$' + vv + '([^0-9A-Za-z_]|$))'
+                val = re.compile(rgx).sub(ll + r"\2", val)
+            return val
+
+        def add_interpolate(self, var, val):
+            self.add(var, self.interpolate(val))
+
+        def addvarrun(self, var, *args, **kwargs):
+            self.add(var, runcmd(*args, **kwargs))
+
+        def gitlog(self, map):
+            arg = ""
+            for ii in map.values():
+                arg += ii + "%x00"
+            rr = runcmd(["git", "log", "-1", "--pretty=format:" + arg])
+            rr = rr.split("\x00")[:-1]
+            assert len(rr) == len(map.keys())
+            for ii in zip(map.keys(), rr):
+                self.add(ii[0], ii[1].strip())
+
+        def projinfo(self, var, ii):
+            self.add(var, C_get_project_info()[ii])
+
+        def print(self):
+            for var, val in self.variables.items():
+                print(var + "=" + str(val))
+
+    class Toexe:
+        cmd = ""
+
+        def quote(self, str):
+            import pipes
+
+            return pipes.quote(str)
+
+        def add(self, str):
+            self.cmd += str + "\n"
+
+        def addcmd(self, arr):
+            self.add(" ".join([self.quote(x) for x in arr]))
+
+        def notifycolor(self, color, str):
+            self.addcmd(["printf", "%s%s%s\\n", color, str, RESET])
+
+        def notifycyan(self, str):
+            self.notifycolor(CYAN, str)
+
+        def notifygreen(self, str):
+            self.notifycolor(GREEN, str)
+
+        @contextlib.contextmanager
+        def comment_section(self, str):
+            self.add("# " + str)
+            try:
+                yield
+            finally:
+                self.add("# EOF " + str)
+                self.add("")
+
+        def addvar(self, var, val):
+            self.add(var + '=' + self.quote(val))
+
+        def _addinitscript(self):
+            with self.comment_section("Initization script"):
+                if g_options.dropshell:
+                    self.addvar('runci_dropshell', 'true')
+                if g_options.inplace:
+                    self.addvar('runci_inplace', 'true')
+                init = textwrap.dedent(r"""
+                set -euo pipefail
+                _runci_error() {
+                    printf "\e[31m\e[1m""$*""\e[0m""\n" >&2
+                }
+                if [ "$(pwd)" != "$CI_PROJECT_DIR" ]; then
+                    _runci_error 'Internal error: Current working directory is not CI_PROJECT_DIR: $(pwd) != $CI_PROJECT_DIR'
+                    exit 1
+                fi
+                if "${runci_dropshell:-false}"; then
+                    _runci_trap_exit() {
+                        _runci_ret=$?
+                        # https://stackoverflow.com/questions/29427364/non-bash-equivalent-to-trap-err
+                        if [ "$_runci_ret" -eq 0 ]; then
+                            exit
+                        fi
+                        _runci_error 'ERROR detected. Dropping to interactive shell.'
+                        echo "+ ${SHELL:-sh} -li" >&2
+                        ${SHELL:-sh} -li ||:
+                        exit "$_runci_ret"
+                    }
+                    trap _runci_trap_exit EXIT
+                fi
+                # Remove command line arguments
+                set --
+                # Restore saner shell behavior, but still preserve set -e
+                set +uo pipefail
+                set -e
+                """)
+                self.add(init)
+
+        def finish(self, vars):
+            cmdsave = copy.deepcopy(self.cmd)
+            self.cmd = ""
+            self.add('#!/bin/sh')
+            with self.comment_section("variables"):
+                self.notifygreen("Setuping variables...")
+                for kk, vv in vars.items():
+                    self.addcmd(["export", kk + "=" + vv])
+            self._addinitscript()
+            self.add(cmdsave)
+            return self.cmd
+
+    variables = Variables()
+
+    def variables_prepare(self):
+        url, prot, domain, domainpre, port = re.sub(
+            r'^(([^:]*)://((.*)\.[^\.]*)(:([^/]*))?)/.*$',
+            r'\1 \2 \3 \4 \6',
+            g.gl().api_url,
+        ).split(" ")
+        #
+        v = self.variables
+        v.add("CI", "true")
+        v.addvarrun("CI_COMMIT_BRANCH", "git rev-parse --abbrev-ref HEAD")
+        v.gitlog(
+            {
+                "CI_COMMIT_AUTHOR": "%an   <%ae>",
+                "CI_COMMIT_DESCRIPTION": "%B",
+                "CI_COMMIT_MESSAGE": "%B",
+                "CI_COMMIT_SHA": "%H",
+                "CI_COMMIT_SHORT_SHA": "%h",
+                "CI_COMMIT_TIMESTAMP": "%aI",
+                "CI_COMMIT_TITLE": "%s",
+            }
+        )
+        v.add("CI_COMMIT_BEFORE_SHA", runcmd("git log -2 --pretty=%H").split("\n")[1])
+        tmp = runcmd("git tag --points-at")
+        if len(tmp):
+            v.add("CI_COMMIT_TAG", tmp.split("\n")[0])
+            v.add("CI_COMMIT_REF_NAME", v["CI_COMMIT_TAG"])
+        else:
+            v.add("CI_COMMIT_REF_NAME", v["CI_COMMIT_BRANCH"])
+        v.add(
+            "CI_COMMIT_REF_SLUG",
+            re.sub("[^0-9a-z]", "-", v["CI_COMMIT_REF_NAME"].lower()[0:63]),
+        )
+        #
+        v.add(
+            "CI_DEFAULT_BRANCH",
+            runcmd(["git", "symbolic-ref", "refs/remotes/origin/HEAD"]).replace(
+                "refs/remotes/origin/", ""
+            ),
+        )
+        #
+        v.projinfo("CI_PROJECT_ID", "id")
+        v.projinfo("CI_PROJECT_NAME", "path")
+        v.projinfo("CI_PROJECT_TITLE", "name")
+        v.add("CI_PROJECT_NAMESPACE", C_get_project_info()["namespace"]["path"])
+        v.projinfo("CI_PROJECT_PATH", "path_with_namespace")
+        v.projinfo("CI_PROJECT_URL", "web_url")
+        v.projinfo("CI_PROJECT_VISIBILITY", "visibility")
+        v.add("CI_PROJECT_TITLE", v["CI_PROJECT_NAME"])
+        v.add("CI_PROJECT_ROOT_NAMESPACE", v["CI_PROJECT_NAMESPACE"].split("/")[0])
+        #
+        v.projinfo("CI_REGISTRY_IMAGE", "container_registry_image_prefix")
+        v.add('CI_REGISTRY_PASSWORD', g.gl().private_token)
+        v.add('CI_REGISTRY_USER', 'oauth2')
+        v.add('CI_REGISTRY', 'registry.'+domain)
+        #
+        v.projinfo("CI_REPOSITORY_URL", "http_url_to_repo")
+        #
+        v.add(
+            "CI_PAGES_DOMAIN",
+            v["CI_PROJECT_PATH"].split("/")[0].lower() + "." + domainpre + ".io",
+        )
+        v.add(
+            "CI_PAGES_URL",
+            prot
+            + v["CI_PAGES_DOMAIN"]
+            + "/"
+            + re.sub("[^/]*/", "", v["CI_PROJECT_PATH"].lower()),
+        )
+        #
+        v.add("CI_PIPELINE_ID", srandom())
+        v.add("CI_PIPELINE_IID", srandom())
+        v.add("CI_PIPELINE_SOURCE", "trigger")
+        v.add("CI_PIPELINE_TRIGGERED", "true")
+        v.add("CI_PIPELINE_URL", C_get_project_info()["web_url"] + "/-/pipelines")
+        v.add("CI_PIPELINE_CREATED_AT", date_iso_8601())
+        #
+        v.add("CI_RUNNER_DESCRIPTION", ",gitlab command utility runner")
+        v.add("CI_RUNNER_EXECUTABLE_ARCH", platform.machine())
+        v.add("CI_RUNNER_ID", srandom())
+        v.add("CI_RUNNER_REVISION", srandom())
+        v.add("CI_RUNNER_SHORT_TOKEN", srandom())
+        v.add("CI_RUNNER_TAGS", "")
+        v.add("CI_RUNNER_VERSION", srandom())
+        #
+        v.add("CI_SERVER_HOST", os.uname().nodename)
+        v.add("CI_SERVER_NAME", os.uname().nodename)
+        v.add("CI_SERVER_PORT", port)
+        v.add("CI_SERVER_PROTOCOL", prot)
+        v.add("CI_SERVER_REVISION", srandom())
+        v.add("CI_SERVER_URL", url)
+        v.add("CI_SERVER_VERSION_MAJOR", "13")
+        v.add("CI_SERVER_VERSION_MINOR", "6")
+        v.add("CI_SERVER_VERSION_PATCH", "1")
+        v.add(
+            "CI_SERVER_VERSION",
+            v["CI_SERVER_VERSION_MAJOR"]
+            + v["CI_SERVER_VERSION_MINOR"]
+            + v["CI_SERVER_VERSION_PATCH"],
+        )
+        v.add("CI_SERVER", "yes")
+        #
+        v.add("GITLAB_CI", "true")
+        v.addvarrun("GITLAB_USER_EMAIL", "git config --get user.email")
+        v.add("GITLAB_USER_ID", srandom())
+        v.add("GITLAB_USER_LOGIN", srandom())
+        v.add("GITLAB_USER_NAME", srandom())
+
+    class DockerExecutor:
+        class DockerComposeBuilder:
+            mycontname = '__worker__'
+
+            def __init__(self):
+                self.dc = {}
+                self.worker = {
+                    'command': [
+                        'sh',
+                        '-c',
+                        'if hash bash 2>/dev/null; then bash /work.sh; else sh /work.sh; fi',
+                    ],
+                    'cpu_shares': 128,
+                    'volumes': [
+                        'certs:/certs',
+                        'cache:/cache',
+                    ],
+                    'user': str(os.getuid()),
+                }
+
+            def handle_image(self, image):
+                if isinstance(image, dict):
+                    if 'entrypoint' in image:
+                        self.worker['entrypoint'] = image['entrypoint']
+                    self.worker['image'] = image['name']
+                elif isinstance(image, str):
+                    self.worker['image'] = image
+                else:
+                    fatal("image:")
+
+            def add_volumes(self, tmpd, srcdir, srcdestdir):
+                self.worker['working_dir'] = srcdestdir
+                self.worker.setdefault("volumes", []).extend([
+                    {
+                        "type": "bind",
+                        "source": os.path.join(tmpd, 'work.sh'),
+                        "target": "/work.sh",
+                        "read_only": True,
+                    },
+                    {
+                        "type": "bind",
+                        "source": srcdir,
+                        "target": srcdestdir,
+                        "read_only": False,  # !!
+                    },
+                ])
+
+            def handle_waiter(self, tmpd):
+                waitscript = os.path.join(tmpd, 'wait.sh')
+                with open(waitscript, 'w') as f:
+                    f.write(textwrap.dedent(r"""
+                    #!/bin/sh
+                    set -euo pipefail
+
+                    max=60
+                    timeout=0
+
+                    while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+                        name=$1
+                        ip=$2
+                        shift 2
+                        ports=""
+                        while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+                            ports="$1 $ports"
+                            shift
+                        done
+                        shift
+
+                        echo "Waiting for $name -> $ip:$ports"
+                        success=false
+                        for curtimeout in $(seq $curtimeout $max); do
+                            for port in $ports; do
+                                if timeout 1 nc -vz "$ip" "$port"; then
+                                    success=true
+                                    break
+                                fi
+                            done
+                            if "$success"; then
+                                break;
+                            fi
+                            sleep 1
+                        done
+                        if ! "$success"; then
+                            echo "Could not connect to service $name -> $ip:$ports"
+                            exit 1
+                        fi
+                    done
+
+                    """))
+                self.dc['__waiter__'] = {
+                    'image': 'alpine:latest',
+                    'volumes': [{
+                        'type': 'bind',
+                        'source': waitscript,
+                        'target': '/wait.sh',
+                        'read_only': True,
+                    }],
+                    'links': copy.deepcopy(self.worker['links']),
+                    'depends_on': copy.deepcopy(self.worker['depends_on']),
+                }
+
+            def handle_services(self, services):
+                for srv in services:
+                    name = srv['alias']
+                    self.dc[name] = {
+                        "image": srv['name'],
+                        "privileged": True,
+                        "volumes": [
+                            'certs:/certs',
+                            'cache:/cache',
+                        ],
+                    }
+                    if not g_options.debug:
+                        self.dc[name]['logging'] = {'driver': 'none'}
+                    for j in ['entrypoint', 'command']:
+                        if j in srv:
+                            self.dc[name][j] = srv[j]
+                    self.worker.setdefault("volumes_from", []).append(name)
+                    self.worker.setdefault("links", []).append(name)
+                    self.worker.setdefault("depends_on", []).append(name)
+
+            def image(self):
+                return self.worker['image']
+
+            def finish(self, var):
+                self.dc[self.mycontname] = self.worker
+                dc = {
+                    'version': '3',
+                    'services': self.dc,
+                    'volumes': {
+                        'cache': {},
+                        'certs': {}
+                    }
+                }
+                #
+                var.setdefault('DOCKER_TLS_CERTDIR', '')
+                #
+                vvvfix = copy.deepcopy(var.variables)
+                for ll in vvvfix.values():
+                    ll = ll.replace('$', r'\$')
+                for i in dc['services'].values():
+                    i.setdefault('environment', {}).update(vvvfix)
+                return dc
+
+        def name_to_alias(self, x):
+            # https://gitlab.com/gitlab-org/gitlab-runner/-/blob/main/docs/executors/docker.md#accessing-the-services
+            x = re.sub(":[^/]*/", "/", x)
+            x = re.sub(":.*", '', x)
+            x = re.sub('/', '__', x, count=1)
+            x = re.sub('/', '-', x)
+            return x
+
+        def extract_services(self, gc, job):
+            servicesin = (
+                gc[job].get("services")
+                or gc.get("default", {}).get("services")
+                or gc.get("services")
+                or []
+            )
+            descs = []
+            services = []
+            for i in servicesin:
+                if isinstance(i, str):
+                    desc = i
+                    add = {'name': i, 'alias': self.name_to_alias(i)}
+                elif isinstance(i, dict):
+                    add = {'name': i['name']}
+                    for j in ['entrypoint', 'command', 'alias']:
+                        if j in i:
+                            add[j] = i[j]
+                    desc = str(add)
+                    add.setdefault('alias', self.name_to_alias(i['name']))
+                else:
+                    fatal("Parsing services")
+                descs += [desc]
+                services += [add]
+            if len(services):
+                return ("with services: " + ', '.join(descs), services)
+            return ('', [])
+
+        def start_services(self, services):
+            logc(CYAN, 'Wariting for services to start...')
+            logrun(["docker-compose", "up", "-d"] + [srv['alias'] for srv in services], check=True)
+            # For each service create arguments in the form:
+            #    servicename ipaddress port1 [port2...] --
+            args = []
+            for srv in services:
+                name = srv['alias']
+                id = runcmd(['docker-compose', 'ps', '-q', name])
+                data = runcmd(['docker', 'inspect', id])
+                data = json.loads(data)[0]
+                idx = list(data['NetworkSettings']['Networks'])[0]
+                ip = data['NetworkSettings']['Networks'][idx]['IPAddress']
+                ports = data['NetworkSettings']['Ports'].keys()
+                ports = [re.sub('/.*', '', x) for x in ports]
+                args += [name, ip] + ports + ['--']
+            logrun(['docker-compose', 'run', '__waiter__', 'sh', '/wait.sh'] + args)
+
+        def prepare(self, srcs, job, gc, var, ex, tmpd):
+            self.tmpd = tmpd
+            self.var = var
+            self.gc = gc
+            self.job = job
+            self.srcs = srcs
+            var.add('CI_DISPOSABLE_ENVIRONMENT', 'true')
+            var.add('CI_BUILDS_DIR', '/builds')
+            var.add('CI_PROJECT_DIR', var['CI_BUILDS_DIR'] + '/' + var['CI_PROJECT_NAME'])
+
+        def run(self, cmd):
+            gc = self.gc
+            job = self.job
+            tmpd = self.tmpd
+            dcb = self.DockerComposeBuilder()
+            #
+            image = (
+                gc[job].get('image')
+                or gc.get('default', dict()).get('image')
+                or gc.get('image')
+                or 'alpine'
+            )
+            self.var.add_interpolate('CI_JOB_IMAGE', image)
+            dcb.handle_image(self.var['CI_JOB_IMAGE'])
+            #
+            servicesdesc, services = self.extract_services(gc, job)
+            #
+            logc(CYAN, 'Running the script using docker executor in ' + dcb.image() + servicesdesc)
+            #
+            dcdir = os.path.join(self.tmpd, 'rungitlabci-' + self.var['CI_PROJECT_NAME'])
+            logc(CYAN, 'Setuping docker-compose in ' + dcdir + ' ...')
+            os.mkdir(dcdir)
+            #
+            dcb.add_volumes(tmpd, self.srcs, self.var['CI_PROJECT_DIR'])
+            if services:
+                dcb.handle_services(services)
+                dcb.handle_waiter()
+            dockercompose = dcb.finish(self.var)
+            dockercompose = yaml.dump(dockercompose, default_flow_style=False)
+            #
+            with cd(dcdir):
+                #
+                with open("docker-compose.yml", "w") as f:
+                    f.write(dockercompose)
+                debugme("generated docker-compose.yml", dockercompose)
+                check = subprocess.run(
+                    ["docker-compose", "config"], stdout=subprocess.DEVNULL, check=False
+                )
+                if check.returncode != 0:
+                    fatal("Generated invalid docker-compose.yml")
+                if g_options.dryrun:
+                    return -1
+                #
+                ret = -1
+                try:
+                    if services:
+                        self.start_services(services)
+                    ret = logrun(["docker-compose", "run", dcb.mycontname])
+                finally:
+                    logrun(["docker-compose", "down", "-v", "--remove-orphans"])
+                return ret.returncode
+
+    class ShellExecutor:
+        def prepare(self, srcs, job, gc, vars, ex, tmpd):
+            self.tmpd = tmpd
+            self.vars = vars
+            vars["CI_SHARED_ENVIRONMENT"] = "true"
+            vars['CI_BUILD_DIR'] = os.path.dirname(srcs)
+            vars['CI_PROJECT_DIR'] = srcs
+
+        def run(self, cmd):
+            logc(CYAN, "Running the script using shell executor")
+            envs = []
+            for kk, vv in self.vars.items():
+                envs += ['-E' + kk + '=' + vv]
+            cmdpre = [
+                "systemd-run",
+                "--working-directory="+self.vars['CI_PROJECT_DIR'],
+                "--user",
+                "--wait",
+                "--collect",
+                "--service-type=exec",
+                "--property=PrivateTmp=true",
+                "--pipe",
+                "--nice=10",
+            ]
+            cmdpost = [
+                "bash",
+                os.path.join(self.tmpd, "work.sh"),
+            ]
+            log("+", ' '.join(cmdpre + cmdpost))
+            if g_options.dryrun:
+                return -1
+            rr = logrun(cmdpre + envs + cmdpost, check=False)
+            return rr.returncode
+
+    def run(self, job):
+        gc = self.gitlabciyml
+        vars = copy.deepcopy(self.variables)
+        ex = self.Toexe()
+        #
+        if job not in gc:
+            fatal(
+                "No job named "
+                + job
+                + " in "
+                + self.gitlabciymlfile
+                + ": \n"
+                + indent("\n".join(gitlabciyml_list_jobs(gc)))
+            )
+        #
+        stage = gc[job].get("stage") or gc.get("default", dict()).get("stage") or "test"
+        vars.add("CI_JOB_ID", srandom())
+        vars.add("CI_JOB_NAME", job)
+        vars.add("CI_JOB_STAGE", stage)
+        vars.add("CI_JOB_URL", vars["CI_SERVER_URL"] + "/CI_JOB_URL/TODO")
+        vars.add("CI_JOB_STARTED_AT", date_iso_8601())
+        # Add scripts
+        for script in ["before_script", "script", "after_script"]:
+            todo = gc[job].get(script) or gc.get(script) or []
+            if len(todo):
+                with ex.comment_section("Running " + script):
+                    ex.notifygreen("Executing " + script)
+                    for ii in todo:
+                        ex.notifycyan(ii)
+                        ex.add(ii)
+                    ex.add(
+                        'if [ "$?" -ne 0 ]; then CI_JOB_STATUS="success"; else CI_JOB_STATUS="failed"; fi'
+                    )
+            else:
+                if script == "script":
+                    fatal("No script: section found in job " + job)
+        #
+        #
+        with tempdir() as tmpd:
+            if g_options.inplace:
+                srcsloc = g.git_root_dir()
+            else:
+                srcsloc = os.path.join(tmpd, vars['CI_PROJECT_NAME'])
+                logc(GREEN, 'Copying project to temporary directory: ' + g.git_root_dir() + ' -> ' + srcsloc)
+                if not g_options.dryrun:
+                    subprocess.run(['cp', '-a', g.git_root_dir(), srcsloc], check=True)
+            # executor
+            with ex.comment_section("Prepare execution"):
+                self.executor.prepare(srcsloc, job, gc, vars, ex, tmpd)
+            # Add all variables
+            variables = gc.get("variables", {}) if gc.get("variables", {}) else {}
+            variables.update(gc[job].get("variables", {}))
+            for kk, vv in variables.items():
+                vars.add_interpolate(kk, vv)
+            #
+            cmd = ex.finish(vars.variables)
+            debugme("Script to be executed", cmd)
+            workscript = os.path.join(tmpd, "work.sh")
+            with open(workscript, "w") as f:
+                f.write(cmd)
+            ret = self.executor.run(cmd)
+        #
+        # allow_failure_exit_codes = gc[job].get('allow_failure', dict()).get('exit_codes', [])
+        if g_options.dryrun:
+            logc(CYAN, "DRY RUN")
+        elif ret == 0:
+            logc(GREEN, "Job succeeded")
+        else:
+            logc(RED, "ERROR: Job failed: exit code " + str(ret))
+            sys.exit(ret)
+
+    def __init__(self, jobs):
+        self.executor = self.ShellExecutor() if g_options.shell else self.DockerExecutor()
+        self.gitlabciymlfile = (
+            g_options.gitlabciyml if g_options.gitlabciyml else default_gitlabci()
+        )
+        self.gitlabciyml = yaml.safe_load(gitlabci_lint(self.gitlabciymlfile)['merged_yaml'])
+        self.variables_prepare()
+        if len(jobs) == 0:
+            fatal(
+                "No job specified.\n"
+                + indent("\n".join(gitlabciyml_list_jobs(self.gitlabciyml)))
+            )
+        for job in jobs:
+            self.run(job)
+
+
+def ARGS_run_gitlabci(subparser):
+    subparser.add_argument('-n', '--dryrun', dest='dryrun', action='store_true')
+    subparser.add_argument('-S', '--shell', action='store_true', help='Use shell executor')
+    subparser.add_argument('-i', '--inplace', action='store_true',
+                           help='Do not copy the project and run the command inplace')
+    subparser.add_argument('-E', '--dropshell', action='store_true',
+                           help='Drop to shell when docker execution failed')
+    subparser.add_argument('-f', '--gitlabciyml', help='Specify path to .gitlab-ci.yml file')
+    subparser.add_argument('args', metavar='jobs', nargs='*', help='Jobs to run')
+
+
+def C_run_gitlabci(*jobs):
+    Cirun([*jobs])
+
+
+def ARGS_unittest(subparser):
+    subparser.add_argument('-n', '--dryrun', dest='dryrun', action='store_true')
+
+
+def C_unittest():
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    with open('/tmp/,gitlab-test-gitlab-ci.yml', 'w+') as f:
+        tmp = textwrap.dedent("""
+            ---
+            variables:
+                A: 1
+                B: $A-2
+            test1:
+                stage: build
+                image: docker:latest
+                services:
+                    - docker:dind
+                variables:
+                    C: ${B}-3
+                script:
+                    - echo "C = $C"
+                    - test "$C" = "1-2-3"
+                    - docker run hello-world
+            test2:
+                image:
+                    name: docker:latest
+                    entrypoint: ['docker-entrypoint.sh']
+                services:
+                    - name: docker:dind
+                      entrypoint: ['docker-entrypoint.sh']
+                      alias: docker
+                script:
+                    - docker run hello-world
+            """
+                              )
+        if f.read() != tmp:
+            f.write(tmp)
+            f.flush()
+        cmd = (['-d'] if g_options.debug else []) + ['run-gitlabci', '-f',
+                                                     f.name] + (['-n'] if g_options.dryrun else []) + ['test1']
+        print("+", cmd)
+        main(cmd)
+
+
+def list_my_commands():
+    return [
+        (key[2:].replace("_", "-"), value)
+        for key, value in list_functions_with_prefix("C_")
+    ]
+
+
+def C_list_commands():
+    return [key for key, value in list_my_commands()]
+
+
+def C_bash_completion():
+    print(textwrap.dedent(r"""
+    __cgitlabci_completion() {
+        if ((COMP_CWORD < 1)); then
+            COMPREPLY=()
+            return
+        fi
+        local i cmd='' IFS=$'\t\n ' words
+        for i in "${COMP_WORDS[@]:1}"; do
+            case "$i" in
+            -f) ;;
+            -*) ;;
+            *) cmd="$i"; break; ;;
+            esac
+        done
+        case "$cmd" in
+        run-gitlabci)
+            words=$(,gitlab gitlabci-list-jobs 2>/dev/null)
+            ;;
+        *)
+            words=$(,gitlab list-commands)
+            ;;
+        esac
+        COMPREPLY=($(compgen -W "$words" -- "${COMP_WORDS[COMP_CWORD]}"))
+    }
+    complete -o bashdefault -o default -F __cgitlabci_completion ,gitlab
+    """))
+
+###############################################################################
+
+
+def dict_get_value(dict_obj, dotted_str):
+    if dotted_str == '.':
+        return dict_obj
+    for name in dotted_str.split('.'):
+        if isinstance(dict_obj, list):
+            dict_obj = dict_obj[int(name)]
+        else:
+            dict_obj = dict_obj[name]
+    return dict_obj
+
+
+def ret_printer_str(ret):
+    if g_options.fields:
+        print("The output is a string - can't filter fileds on it")
+    print(ret)
+
+
+def ret_printer_dict(ret):
+    if g_options.fields:
+        for field in g_options.fields.split(','):
+            print(json.dumps(dict_get_value(ret, field)))
+    else:
+        print(json.dumps(ret))
+
+
+def ret_printer(ret):
+    if ret is not None:
+        if isinstance(ret, str) or isinstance(ret, int):
+            ret_printer_str(ret)
+        elif isinstance(ret, list):
+            if len(ret):
+                if isinstance(ret[0], str):
+                    ret_printer_str("\n".join(ret))
+                elif isinstance(ret[0], dict):
+                    ret_printer_dict(ret)
+        elif isinstance(ret, dict):
+            ret_printer_dict(ret)
+        else:
+            print("Unknown data format:", type(ret))
+            print(ret)
+
+
+def main(args):
+    commands = list_my_commands()
+    #
+    parser = argparse.ArgumentParser(description='Gitlab shortcuter')
+    parser.add_argument('-d', '--debug', action='store_true', help='debug')
+    parser.add_argument('-c', '--config-file', help='see gitlab --help')
+    parser.add_argument('-g', '--gitlab', help='see gitlab --help')
+    parser.add_argument('-f', '--fields', help='see gitlab --help')
+    parser.add_argument('-N', '--nocache', action='store_true', help='do not use cache')
+    subparsers = parser.add_subparsers(metavar='command', dest='command', required=True)
+    for key, value in commands:
+        subparser = subparsers.add_parser(key, help=key)
+        subparser.add_argument('-d', '--debug', dest='debug2', action='store_true', help='debug')
+        maybeargparserfunc = 'ARGS_' + key.replace('-', '_')
+        if maybeargparserfunc in globals():
+            globals()[maybeargparserfunc](subparser)
+        else:
+            subparser.add_argument('args', nargs='*', help='arguments')
+    global g_options
+    g_options = parser.parse_args(args)
+    g_options.debug = g_options.debug or g_options.debug2
+    g_options.args = g_options.args if hasattr(g_options, 'args') else []
+    #
+    func = [value for key, value in commands if key == g_options.command][0]
+    ret = func(*g_options.args)
+    ret_printer(ret)
+
+
+main(sys.argv[1:])
+
+###############################################################################

@@ -97,3 +97,13 @@ pages:
   artifacts:
     paths:
       - public
+
+run_gitlabci_tester:
+  image: alpine:latest
+  rules:
+    - when: never
+  script:
+    - if grep -sq 'docker\|lxc' /proc/1/cgroup; then echo In docker; else echo In shell; fi
+    - id
+    - pwd
+    - ls -la
