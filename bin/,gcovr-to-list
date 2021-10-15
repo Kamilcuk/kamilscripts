@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import re
+import os
+import sys
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-f", "--filename")
+parser.add_argument("-t", "--transform", nargs=2)
+parser.add_argument("coveragejson", type=argparse.FileType('r'))
+args = parser.parse_args()
+
+transformer = re.compile(args.transform[0]) if args.transform else None
+
+# f = open("/tmp/1", "w")
+# sys.stderr = f
+# print(args, file=f)
+
+rr = json.load(args.coveragejson)
+for ff in rr['files']:
+    # print(ff['file'] == os.path.relpath(args.filename, os.getcwd()), ff['file'], os.path.relpath(args.filename, os.getcwd()), file=f, flush=True)
+    if (
+            not args.filename or
+            ff['file'] == args.filename or
+            ff['file'] == os.path.relpath(args.filename, os.getcwd())
+            ):
+        #
+        file = ff['file']
+        if transformer:
+            file = transformer.sub(args.transform[1], file)
+        #
+        pre = "../"+file+":" if not args.filename else ""
+        #
+        for ll in ff['lines']:
+            if not ll['count'] and not ll['gcovr/noncode']:
+                out = pre + str(ll['line_number']) + ":1: " + ("" if args.filename else "INFO") + " gcovr"
+                # print(out, file=f, flush=True)
+                print(out)

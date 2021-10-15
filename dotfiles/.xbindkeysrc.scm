@@ -164,6 +164,14 @@
 
 (use-modules (ice-9 regex))
 (use-modules (srfi srfi-1))
+(use-modules (srfi srfi-98))
+
+; https://en.wikibooks.org/wiki/Scheme_Programming/Looping#Iterative_recursion
+(define-syntax foreach
+ (syntax-rules ()
+  ((_ ((variables lists) ...)
+    body ...)
+   (for-each (lambda (variables ...) body ...) lists ...))))
 
 ; Regex replace
 (define (kc-replace str what for)
@@ -261,30 +269,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(xbindkey
-  '(Mod4 F1)
-  "xdotool getactivewindow set_desktop_for_window 0")
-(xbindkey
-  '(Mod4 F2)
-  "xdotool getactivewindow set_desktop_for_window 1")
-(xbindkey
-  '(Mod4 F3)
-  "xdotool getactivewindow set_desktop_for_window 2")
-(xbindkey
-  '(Mod4 F4)
-  "xdotool getactivewindow set_desktop_for_window 3")
-(xbindkey
-  '(Mod4 F5)
-  "xdotool getactivewindow set_desktop_for_window 4")
-(xbindkey
-  '(Mod4 F6)
-  "xdotool getactivewindow set_desktop_for_window 5")
-(xbindkey
-  '(Mod4 F7)
-  "xdotool getactivewindow set_desktop_for_window 6")
-(xbindkey
-  '(Mod4 F8)
-  "xdotool getactivewindow set_desktop_for_window 7")
+
+(define (movewindow arg)
+  (if (equal? (get-environment-variable "XDG_CURRENT_DESKTOP") "KDE")
+	(string-append
+	  "qdbus org.kde.kglobalaccel /component/kwin invokeShortcut Window\\ to\\ Desktop\\ "
+	  (number->string arg)
+	)
+	(string-append
+	  "xdotool getactivewindow set_desktop_for_window "
+	  (number->string (- arg 1))
+	)
+  )
+)
+(xbindkey '(Mod4 F1) (movewindow 1))
+(xbindkey '(Mod4 F2) (movewindow 2))
+(xbindkey '(Mod4 F3) (movewindow 3))
+(xbindkey '(Mod4 F4) (movewindow 4))
+(xbindkey '(Mod4 F5) (movewindow 5))
+(xbindkey '(Mod4 F6) (movewindow 6))
+(xbindkey '(Mod4 F7) (movewindow 7))
 
 ;(Xbindkey '(Mod4 a) "geany")
 (Xbindkey

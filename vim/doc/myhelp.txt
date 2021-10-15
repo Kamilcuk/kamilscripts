@@ -15,7 +15,7 @@ ctrl+n  ctrl+p  Next/previous in autocompletion menu
 ctrl+y   "Yes" accept autocompletion menu
 ysiW"     vim-surround - add quotes " to word 
 S"       Visual select and quote
-NR       Ope nstuff to edit in NEW BUFFER
+:NR       Open nstuff to edit in NEW BUFFER
 
 =======================================================================
 

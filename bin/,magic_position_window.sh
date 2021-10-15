@@ -165,10 +165,6 @@ action() {
 	local events
 	events=$1
 
-	if [[ "${XDG_CURRENT_DESKTOP:-}" == "KDE" ]]; then
-		kde_action "$events"
-	fi
-
 	local activew activewname
 	activew=${ACTIVEWINDOW:-$(xdotool getactivewindow)}
 	activewname=$(xdotool getwindowname "$activew")
@@ -177,6 +173,10 @@ action() {
 	local activedesktop
 	activedesktop=$(xdotool get_desktop_for_window "$activew")
 	if ((activedesktop < 0)); then return; fi
+
+	if [[ "${XDG_CURRENT_DESKTOP:-}" == "KDE" ]]; then
+		kde_action "$events"
+	fi
 
 	local mx my tmp
 	tmp=$(,x_lib get_window_monitor "$activew" | awk '{print $2,$3}')

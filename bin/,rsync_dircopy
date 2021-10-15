@@ -13,13 +13,14 @@ EOF
 if (($# != 2)); then usage; fatal "Invalid count of arguments"; fi
 src=$1
 dest=$2
- 
-if [[ ! "$src" == *":"* && ! -d "$src" ]]; then 
+
+if [[ ! "$src" == *":"* && ! -d "$src" ]]; then
 	fatal "$src is not a directory"
 fi
 tmp="$dest"/"$(basename -- "$src")"
 if [[ ! "$tmp" == *":"* && -e "$tmp" ]]; then
-	fatal "$tmp directory already exists!"
+	# fatal "$tmp directory already exists!"
+	:
 fi
 
 set -x

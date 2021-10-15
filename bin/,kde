@@ -1,7 +1,11 @@
 #!/bin/bash
 
-L_list-shortcuts() {
-	qdbus org.kde.kglobalaccel /component/kwin shortcutNames |
+C_list-shortcuts() {
+	for i in kmix kwin; do
+		c=/component/$i
+		qdbus org.kde.kglobalaccel "$c" shortcutNames |
+			awk -v c="$c" '{ print c, $0 }'
+	done |
 	if (($#)); then
 		grep -i "$@"
 	else
@@ -9,4 +13,4 @@ L_list-shortcuts() {
 	fi
 }
 
-. ,lib_lib L_ "$@"
+. ,lib_lib C_ "$@"

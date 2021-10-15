@@ -1,0 +1,61 @@
+#!/bin/bash
+
+mode=$1
+shift
+case "$mode" in
+runremote)
+	func() {
+		pacman -S --noconfirm distcc &&
+			distcc distccd --no-detach --daemon  --allow 127.0.0.1 --log-stderr
+	}
+	set -x
+	ssh -L $1:localhost:$2 cis-$3-raw docker run -P registry.gitlab.com/kamcuk/yio "$(printf "%q " bash -c "$(printf "%q " "$(declare -f func); func")")" 2>&1 | sed 's/^/$3: /'
+	exit
+	;;
+esac
+
+svconf="
+
+[supervisord]
+nodaemon=true
+loglevel=debug
+logfile=/dev/null
+pidfile=/dev/zero
+logfile_maxbytes=0
+
+"
+
+srvs=(
+	#leszcz
+	#dzik
+	#kumak
+	#bocian
+	#dudek
+	#jenot
+	#wilga
+	#slimak
+	kaczor
+)
+port=10000
+remoteport=3632
+for srv in "${srvs[@]}"; do
+	svconf+="
+
+[program:$srv-$port]
+startretries=0
+stdout_logfile=/dev/fd/1
+stdout_logfile_maxbytes=0
+redirect_stderr=true
+command=$0 runremote $port $remoteport $srv
+
+"
+	port=$((port + 1))
+done
+
+tmp=$(mktemp)
+trap 'rm "$tmp"' EXIT
+cat <<<"$svconf" >"$tmp"
+cat "$tmp"
+supervisord -c "$tmp" -n -e debug
+
+

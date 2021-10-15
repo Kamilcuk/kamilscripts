@@ -197,6 +197,11 @@ EOF
 
 
 dectempl ncbj '
+Host cis-$1-raw
+	Hostname ${2:-$1.cis.gov.pl}
+	User ${3:-kcukrowski}
+	${4:+$4}
+
 Host cis-$1 $1 $1-cis $1.cis.gov.pl
 	Hostname ${2:-$1.cis.gov.pl}
 	User ${3:-kcukrowski}

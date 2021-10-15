@@ -3,18 +3,19 @@
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],
   "coc.preferences.semanticTokensHighlights": false,
-  "diagnostic.signOffset": 2,
+  "coc.source.file.triggerCharacters": [
+    "/"
+  ],
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
   "diagnostic.infoSign": "🛈",
   "diagnostic.hintSign": "☡",
   "diagnostic.displayByAle": false,
-  "diagnostic.refreshOnInsertMode": true,
-  "diagnostic.refreshAfterSave": false,
+  "diagnostic.refreshOnInsertMode": false,
   "diagnostic.checkCurrentLine": false,
   "diagnostic.virtualTextPrefix": " ⇒⇒⇒ ",
   "diagnostic.virtualText": true,
-  "suggest.minTriggerInputLength": 2,
+  "suggest.minTriggerInputLength": 3,
   "suggest.triggerCompletionWait": 500,
   "codeLens.enable": true,
   "solargraph.checkGemVersion": false,
@@ -27,12 +28,25 @@
     "--completion-style=detailed",
     "--pch-storage=memory"
   ],
+  "coverage.enabled": true,
+  "coverage.jsonReportPath": "./coverage/coverage-final.json",
   "python.linting.pylintEnabled": false,
   "python.linting.enabled": true,
   "python.jediEnabled": true,
   "python.jediPath": "/usr/bin/jedi-language-server",
+  "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
+  "diagnostic-languageserver.debug": false,
+  "diagnostic-languageserver.trace.server": "off",
   "diagnostic-languageserver.filetypes": {
+    "c": [
+      "cpplint",
+      "gcovrtolist"
+    ],
+    "cpp": [
+      "cpplint",
+      "gcovrtolist"
+    ],
     "vim": "vint",
     "email": "languagetool",
     "markdown": [
@@ -54,7 +68,7 @@
     ],
     "yaml": [
       "yamllint",
-      "ansible-lint"
+      "ansible-lint2"
     ],
     "cmake": [
       "cmake-lint",
@@ -64,16 +78,80 @@
       "pylava"
     ],
     "systemd": "systemd-analyze",
+    "PKGBUILD": "namcap",
     "_comment_make": "checkmake"
   },
   "diagnostic-languageserver.linters": {
+    "cpplint": {
+      "args": [
+        "--filter=-whitespace,-legal/copyright,-runtime/int,-build/include_subdir,-readability/casting,-build/include_order,-readability/todo,-build/include,-readability/nolint",
+        "%file"
+      ],
+      "formatPattern": [
+        "^[^:]+:(0:|(\\d+):)(\\d+)?\\s+(.+?)\\s\\[(\\d)\\]$",
+        {
+          "line": 2,
+          "column": 3,
+          "message": 4,
+          "security": 5
+        }
+      ]
+    },
+    "gcovrtolist": {
+      "sourceName": ",gcovr-to-list",
+      "command": ",gcovr-to-list",
+      "args": [
+        "-f",
+        "%filepath",
+        "./coverage.json"
+      ],
+      "rootPatterns": [
+        "coverage.json"
+      ],
+      "offsetColumn": 1,
+      "formatPattern": [
+        "^(\\d+)(:)(\\d+): (.*)$",
+        {
+          "line": 1,
+          "column": 3,
+          "security": 2,
+          "message": 4
+        }
+      ],
+      "securities": {
+        ":": "hint"
+      }
+    },
+    "namcap": {
+      "sourceName": "namcap",
+      "command": "namcap",
+      "args": [
+        "%filepath"
+      ],
+      "formatPattern": [
+        "^[^ ]* (\\([^\\)]*\\) ([^:]*): .*)$",
+        {
+          "security": 2,
+          "message": 1
+        }
+      ],
+      "securities": {
+        "I": "hint",
+        "R": "info",
+        "C": "info",
+        "D": "info",
+        "W": "warning",
+        "E": "error",
+        "F": "error"
+      }
+    },
     "pylava": {
-			"sourceName": "pylava",
+      "sourceName": "pylava",
       "command": "pylava",
       "args": [
         "-F",
         "-fparsable",
-				"-lmccabe,pycodestyle,pyflakes",
+        "-lmccabe,pycodestyle,pyflakes",
         "%filepath"
       ],
       "formatPattern": [
@@ -115,7 +193,7 @@
     "yamllint": {
       "args": [
         "-d",
-        "{extends: relaxed, rules: {line-length: {max: 120}}, truthy: allowed-values: [\"yes\", \"true\", \"no\", \"false\"]}",
+        "{extends: relaxed, rules: { line-length: {max: 120} }, truthy: { allowed-values: [\"yes\", \"true\", \"no\", \"false\"] } }",
         "-f",
         "parsable",
         "-"
@@ -152,6 +230,8 @@
       "command": "cmakelint",
       "debounce": 100,
       "args": [
+        "--linelength=120",
+        "--filter=-whitespace/tabs",
         "%filepath"
       ],
       "offsetLine": 0,
@@ -170,6 +250,8 @@
       "command": "cmake-lint",
       "debounce": 100,
       "args": [
+        "--line-width=120",
+        "--use-tabchars=1",
         "%filepath"
       ],
       "offsetLine": 0,
@@ -192,30 +274,31 @@
         "E": "error"
       }
     },
-    "ansible_lint": {
+    "ansible-lint": {
       "command": "ansible-lint",
+      "sourceName": "ansible-lint",
       "args": [
         "--nocolor",
         "--parseable-severity",
-        "-w",
+        "--offline",
+        "-p",
         "%file"
       ],
       "rootPatterns": [
         "ansible.cfg",
         ".git"
       ],
-      "sourceName": "ansible-lint",
+      "isStdout": true,
+      "isStderr": false,
       "formatPattern": [
-        "^([^:]+):(\\d+):\\s*(\\S+\\s*)\\[(\\S+?)\\]\\s*(.*)$",
+        "^([^:]+):(\\d+):(\\d+):(\\s*\\S+\\s*\\[(\\S+?)\\].*)$",
         {
           "sourceName": 1,
           "sourceNameFilter": true,
           "line": 2,
-          "security": 4,
-          "message": [
-            3,
-            5
-          ]
+          "column": 3,
+          "security": 5,
+          "message": 4
         }
       ],
       "securities": {

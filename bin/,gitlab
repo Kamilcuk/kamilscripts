@@ -2,21 +2,23 @@
 
 from __future__ import print_function
 import argparse
+import atexit
 import contextlib
 import copy
 import datetime
 import json
 import os
 import pickle
+import platform
 import random
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import textwrap
 import yaml
-import platform
 
 ###############################################################################
 
@@ -119,6 +121,7 @@ def cd_tempdir():
         with cd(dirpath):
             yield dirpath
 
+
 def open_url(url):
     cmd = ["xdg-open", url]
     subprocess.run(cmd)
@@ -186,7 +189,8 @@ def gitlab_construct():
             if 'url' not in conf[i]:
                 continue
             url = conf[i]['url']
-            url = re.sub('^[^:]*//', '', url)
+            url = re.sub('^[^:]*://', '', url)
+            # print(conf[i]['url'], srv)
             if url == srv:
                 id = i
                 break
@@ -240,17 +244,17 @@ class Globaldata:
     def git_remote_info(self):
         dd = self.origin_url()
         mm = re.match(
-                r'^([^:]*://)?(([^@]*)@)?([^:/]*)(:([0-9]*))?[:/](.*)$',
-                dd)
+            r'^([^:]*://)?(([^@]*)@)?([^:/]*)(:([0-9]*))?[:/](.*)$',
+            dd)
         path = re.sub('.git$', '', mm[7])
         return {
-                'prot': mm[1],
-                'user': mm[3],
-                'server': mm[4],
-                'port': mm[5],
-                'path': path,
-                'urlpath': re.sub('/', '%2F', path),
-                }
+            'prot': mm[1],
+            'user': mm[3],
+            'server': mm[4],
+            'port': mm[5],
+            'path': path,
+            'urlpath': re.sub('/', '%2F', path),
+        }
 
 
 ###############################################################################
@@ -368,6 +372,10 @@ def gitlabciyml_list_jobs(gitlabciyml):
         r"^sast$",
         r"^\.",
         r"dependency_scanning$",
+        r'^image$',
+        r'^before_script$'
+        r'^after_script$'
+        r"^services$",
     ]
     filters = [re.compile(x) for x in filters]
     return [
@@ -548,6 +556,11 @@ class Cirun:
             cmdsave = copy.deepcopy(self.cmd)
             self.cmd = ""
             self.add('#!/bin/sh')
+            self.add('set -euo pipefail')
+            with self.comment_section("pre_build_script"):
+                if g_options.pre_build_script:
+                    for line in g_options.pre_build_script:
+                        self.add(line)
             with self.comment_section("variables"):
                 self.notifygreen("Setuping variables...")
                 for kk, vv in vars.items():
@@ -579,7 +592,9 @@ class Cirun:
                 "CI_COMMIT_TITLE": "%s",
             }
         )
-        v.add("CI_COMMIT_BEFORE_SHA", runcmd("git log -2 --pretty=%H").split("\n")[1])
+        rr = subprocess.run("git log -2 --pretty=%H".split(' '), check=False, stdout=subprocess.PIPE)
+        if rr.returncode != 0:
+            v.add("CI_COMMIT_BEFORE_SHA", rr.stdout.split("\n")[1])
         tmp = runcmd("git tag --points-at")
         if len(tmp):
             v.add("CI_COMMIT_TAG", tmp.split("\n")[0])
@@ -682,10 +697,17 @@ class Cirun:
                         'certs:/certs',
                         'cache:/cache',
                     ],
-                    'user': str(os.getuid()),
                 }
+                if not g_options.runasroot:
+                    self.worker.update({
+                        'user': str(os.getuid()),
+                        'environment': {
+                            'HOME': '/tmp',
+                        },
+                        'group_add': [str(x) for x in os.getgroups()]
+                        })
 
-            def handle_image(self, image):
+            def handle_image(self, var, image):
                 if isinstance(image, dict):
                     if 'entrypoint' in image:
                         self.worker['entrypoint'] = image['entrypoint']
@@ -694,6 +716,8 @@ class Cirun:
                     self.worker['image'] = image
                 else:
                     fatal("image:")
+                var.add_interpolate('CI_JOB_IMAGE', self.worker['image'])
+                self.worker['image'] = var['CI_JOB_IMAGE']
 
             def add_volumes(self, tmpd, srcdir, srcdestdir):
                 self.worker['working_dir'] = srcdestdir
@@ -731,7 +755,11 @@ class Cirun:
             # Check if we can connect to _any_ of the ports.
             connect_to_any() {
                 for port in $ports; do
-                    printf "%2d %s\n" "$(time_passed)" "Trying to connect to $name on $ip:$port"
+                    timepassed=$(time_passed)
+                    timepassed=$(( timepassed % 5 ))
+                    if [ "$timepassed" -eq 4 ]; then
+                        printf "%2d %s\n" "$(time_passed)" "Trying to connect to $name on $ip:$port"
+                    fi
                     if timeout 1 nc -vz "$ip" "$port"; then
                         return 0
                     fi
@@ -781,7 +809,19 @@ class Cirun:
                 }
 
             def handle_services(self, services):
+                filterdocker = []
                 for srv in services:
+                    if srv['alias'] == 'docker' and g_options.usehostdocker:
+                        if not os.path.exists('/var/run/docker'):
+                            raise ValueError('Requested --usehostdocker but no docker socket found at /var/run/docker')
+                        self.worker['volumes'] += [{
+                            'type': 'bind',
+                            'source': '/var/run/docker.sock',
+                            'target': '/var/run/docker.sock',
+                            'read_only': False
+                        }]
+                        self.worker.setdefault('environment', {}).update({'DOCKER_HOST': 'unix:///var/run/docker.sock'})
+                        continue
                     name = srv['alias']
                     self.dc[name] = {
                         "image": srv['name'],
@@ -799,6 +839,8 @@ class Cirun:
                     self.worker.setdefault("volumes_from", []).append(name)
                     self.worker.setdefault("links", []).append(name)
                     self.worker.setdefault("depends_on", []).append(name)
+                    filterdocker += [srv]
+                return filterdocker
 
             def image(self):
                 return self.worker['image']
@@ -855,8 +897,10 @@ class Cirun:
                     fatal("Parsing services")
                 descs += [desc]
                 services += [add]
+            desc = ""
             if len(services):
-                return ("with services: " + ', '.join(descs), services)
+                desc = "with services: " + ', '.join(descs)
+            return (desc, services)
             return ('', [])
 
         def start_services(self, services):
@@ -902,8 +946,7 @@ class Cirun:
                 or gc.get('image')
                 or 'alpine'
             )
-            self.var.add_interpolate('CI_JOB_IMAGE', image)
-            dcb.handle_image(self.var['CI_JOB_IMAGE'])
+            dcb.handle_image(self.var, image)
             #
             servicesdesc, services = self.extract_services(gc, job)
             #
@@ -915,8 +958,9 @@ class Cirun:
             #
             dcb.add_volumes(tmpd, self.srcs, self.var['CI_PROJECT_DIR'])
             if services:
-                dcb.handle_services(services)
-                dcb.handle_waiter(tmpd)
+                services = dcb.handle_services(services)
+                if services:
+                    dcb.handle_waiter(tmpd)
             dockercompose = dcb.finish(self.var)
             dockercompose = yaml.dump(dockercompose, default_flow_style=False)
             #
@@ -946,6 +990,7 @@ class Cirun:
         def prepare(self, srcs, job, gc, vars, ex, tmpd):
             self.tmpd = tmpd
             self.vars = vars
+            self.job = job
             vars["CI_SHARED_ENVIRONMENT"] = "true"
             vars['CI_BUILD_DIR'] = os.path.dirname(srcs)
             vars['CI_PROJECT_DIR'] = srcs
@@ -955,6 +1000,7 @@ class Cirun:
             envs = []
             for kk, vv in self.vars.items():
                 envs += ['-E' + kk + '=' + vv]
+            name = 'gitlab-run-gitlabci-'+self.vars['CI_PROJECT_NAME']+'-'+self.job+'-'+str(srandom())+'.service'
             cmdpre = [
                 "systemd-run",
                 "--working-directory="+self.vars['CI_PROJECT_DIR'],
@@ -965,6 +1011,7 @@ class Cirun:
                 "--property=PrivateTmp=true",
                 "--pipe",
                 "--nice=10",
+                '--unit='+name,
             ]
             cmdpost = [
                 "bash",
@@ -973,7 +1020,13 @@ class Cirun:
             log("+", ' '.join(cmdpre + cmdpost))
             if g_options.dryrun:
                 return -1
-            rr = logrun(cmdpre + envs + cmdpost, check=False)
+            try:
+                rr = logrun(cmdpre + envs + cmdpost, check=False)
+            finally:
+                exists = subprocess.run(['systemctl', 'status', '--user', name], check=False,
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if exists.returncode == 0:
+                    logrun(['systemctl', 'stop', '--user', name], check=True)
             return rr.returncode
 
     def run(self, job):
@@ -1068,10 +1121,16 @@ def ARGS_run_gitlabci(subparser):
     subparser.add_argument('-S', '--shell', action='store_true', help='Use shell executor')
     subparser.add_argument('-i', '--inplace', action='store_true',
                            help='Do not copy the project and run the command inplace')
-    subparser.add_argument('-E', '--dropshell', action='store_true',
+    subparser.add_argument('-D', '--dropshell', action='store_true',
                            help='Drop to shell when docker execution failed')
+    subparser.add_argument('--usehostdocker', action='store_true',
+                           help='When service: docker:dind, then instead of running docker, just use the host')
     subparser.add_argument('-f', '--gitlabciyml', help='Specify path to .gitlab-ci.yml file')
+    subparser.add_argument('--pre_build_script', action='append',
+                           help='Specify commands to execute before building. Can be speciifed multiple times')
     subparser.add_argument('args', metavar='jobs', nargs='*', help='Jobs to run')
+    subparser.add_argument('--runasroot', action='store_true',
+                           help='When executing in docker, do not change the UID to current user')
 
 
 def C_run_gitlabci(*jobs):
@@ -1164,7 +1223,20 @@ def C_bash_completion():
 
 def ARGS_autowait_for_pipeline_failures(subparser):
     subparser.add_argument('--num', help='monitor last commit number', default='0')
-    subparser.add_argument('--openfailed', action='store_true', help='open web url also of allowed to fail jobs')
+    subparser.add_argument('--open', help='mode to open browsers', choices=['none','all','failed'], default='none')
+    subparser.add_argument('-o', dest='open', action='store_const', const='failed', help='same as --open=failed')
+
+
+class PipelineStatus:
+    prev = None
+
+    def print(self, pipeline):
+        if pipeline.status != self.prev:
+            msg = ' Pipeline ' + pipeline.status
+            if pipeline.status == 'failed':
+                msg = RED + msg + RESET
+            print(pipeline.web_url, msg)
+            self.prev = pipeline.status
 
 
 def C_autowait_for_pipeline_failures():
@@ -1172,7 +1244,7 @@ def C_autowait_for_pipeline_failures():
 
     path = g.git_remote_info()['path']
     sha = runcmd(['git', 'rev-parse', 'HEAD~'+str(g_options.num)])
-    project = g.gl().projects.get(path)
+    project = g.gl().projects.get(path, lazy=True)
     # Wait for pipelines to spawn.
     print("Searching for pipeline for commit", sha, "...")
     while 1:
@@ -1180,46 +1252,59 @@ def C_autowait_for_pipeline_failures():
         if pipelines:
             break
         time.sleep(1)
-    for pipeline in pipelines:
-        print('Monitoring pipeline', pipeline.web_url, "...")
-        handledjobs = set()
-        prevpipelinestatus = ''
-        while 1:
-            pipeline.refresh()
-            # Print the status of the pipeline if it changed.
-            if pipeline.status != prevpipelinestatus:
-                print(pipeline.web_url, ' Pipeline is', pipeline.status)
-                prevpipelinestatus = pipeline.status
+    #
+    # Choose the newest pipeline
+    pipeline = pipelines[0]
+    #
+    print('Monitoring pipeline', pipeline.web_url, "...")
+    handledjobs = set()
+    pendingjobs = set()
+
+    pipelinestatus = PipelineStatus()
+    pipelinestatus.print(pipeline)
+    while 1:
+        pipeline.refresh()
+        jobs = pipeline.jobs.list()
+        #
+        for job in jobs:
+            # Each job is handled once.
+            if job.id in handledjobs:
+                continue
             #
-            for job in pipeline.jobs.list():
-                # Job is handled once.
-                if job.id in handledjobs:
+            pre = job.web_url + '      Job "' + job.name + '" '
+            msg = ""
+            #
+            if job.status == 'failed':
+                msg = pre + 'failed.'
+                if job.allow_failure:
+                    msg = YELLOW + msg
+                    msg += ' It is allowed to fail.'
+                else:
+                    msg = RED + msg
+            elif job.status == 'success':
+                msg = pre + 'succeeded.'
+            else:
+                msg = pre + job.status + '.'
+                if job.id not in pendingjobs:
+                    pendingjobs.add(job.id)
+                    print(msg + RESET)
                     continue
-                msg = job.web_url + '  Job "' + job.name + '" '
-                if job.status == 'failed':
-                    handledjobs.add(job.id)
-                    browser = not job.allow_failure or g_options.openfailed
-                    msg += 'failed.'
-                    if job.allow_failure:
-                        msg = YELLOW + msg
-                        msg += ' It is allowed to fail.'
-                    else:
-                        msg = RED + msg
-                    if browser:
-                        msg += ' Opening browser.'
-                    msg += RESET
-                    print(msg)
-                    if browser:
-                        open_url(job.web_url)
-                    #
-                elif job.status == 'success':
-                    handledjobs.add(job.id)
-                    msg += 'succeeded.'
-                    print(msg)
-            # If pipeline is not running, we end.
-            if pipeline.status not in set(['pending', 'running']):
-                break
-            time.sleep(1)
+            if msg:
+                handledjobs.add(job.id)
+                if (
+                        g_options.open == 'all' or
+                        (g_options.open == 'failed' and job.status == 'failed' and not job.allow_failure) or
+                        (g_options.open == 'allfailed' and job.status == 'failed')
+                        ):
+                    msg += ' Opening browser.'
+                    open_url(job.web_url)
+                print(msg + RESET)
+        # Print the status of the pipeline if it changed.
+        pipelinestatus.print(pipeline)
+        # If pipeline is not running, we end.
+        if pipeline.status not in set(['pending', 'running']):
+            break
+        time.sleep(1)
 
 ###############################################################################
 
@@ -1294,6 +1379,12 @@ def main(args):
     ret_printer(ret)
 
 
-main(sys.argv[1:])
+if __name__ == "__main__":
+    os.setpgrp()
+    try:
+        main(sys.argv[1:])
+    except:
+        atexit.register(lambda: os.killpg(0, signal.SIGKILL))
+        raise
 
 ###############################################################################

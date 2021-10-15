@@ -243,10 +243,14 @@ KcHi LspCxxHlGroupEnumConstant     italic
 KcHi LspCxxHlSymParameter          none        x_PaleTurquoise1_159
 KcHi LspCxxHlSymField              bold        x_LightSteelBlue3_146
 KcHi LspCxxHlSymUnknownStaticField bold        x_LightSteelBlue_147
+KcHi LspCxxHlSymFunction           bold
 KcHi LspCxxHlSymFunctionVariable   none        x_Green_2
 KcHi LspCxxHlSymUnknownStatic      none        x_Red3_160
 KcHi LspCxxHlSymUnknownNone        bold        x_Red_9
-hi link LspCxxHlSkippedRegion normal
+KcHi LspCxxHlSymLocalVariable      none        x_LightCyan1_195
+KcHi LspCxxHlSymVariable           none        x_Yellow1_226
+KcHi LspCxxHlSkippedRegion         none        x_Grey53_102
+"hi link LspCxxHlSkippedRegion normal x_Grey53_102
 
 " NERDTree File highlighting {{{1
 

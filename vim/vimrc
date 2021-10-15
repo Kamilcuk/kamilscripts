@@ -160,6 +160,8 @@ set display+=uhex
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
 
+set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
+
 " }}}
 " Load kamilscripts {{{1
 
@@ -233,7 +235,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
 		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
 		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
-		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
+		Plug 'Kamilcuk/vim-auto-gcov-marker'
 		"Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
@@ -255,6 +257,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
 		endif
 		Plug 'honza/vim-snippets' " vim-snipmate default snippets
+		Plug 'ntpeters/vim-better-whitespace'
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
 		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
@@ -268,17 +271,20 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		if executable('hunspell') || executable('aspell')
 			KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 		endif
-		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
-		Plug 'junegunn/fzf' " fzf.vim needs it
+		Plug 'junegunn/fzf.vim' " , { 'on': 'Ag' } " Things you can do with fzf and Vim
+		Plug 'junegunn/fzf' ", { 'on': 'Ag' } " fzf.vim needs it
 		Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
 		Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :G
 		Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
 		Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
 	" }}}
-	" Languages syntax support parsing {{{2
+	" Languages syntax and support and parsing {{{2
+		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
+		"
 		KcPlugCoc 'neoclide/coc.nvim', { 'branch': 'release' } " coc-nvim, for all
 		KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
-		KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
+		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
+		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
 		Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
 		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
@@ -293,7 +299,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'arecarn/vim-crunch'  " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
 		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
 		Plug 'vimwiki/vimwiki' " make notes
-		Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
+		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
 		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
 		"
 		Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
@@ -315,7 +321,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
 		Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
 		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
-		Plug 'dhruvasagar/vim-table-mode' " print tables in markdown
+		Plug 'dhruvasgar/vim-table-mode' " print tables in markdown
 		Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
 		" For vim plugins dependencies
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
@@ -345,6 +351,8 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 					\ 'coc-yaml',
 					\ 'coc-vimtex',
 					\ 'coc-solargraph',
+					\ 'coc-coverage',
+					\ 'coc-json',
 					\ ]
 	" }}}
 
@@ -385,6 +393,22 @@ endif
 
 " }}}
 " Miscellaneous configuration {{{1
+
+" Duplicate the bahavior of Home key as in Eclipse, that I'm used to.
+"jump to first non-whitespace on line, jump to begining of line if already at first non-whitespace
+"https://superuser.com/questions/301109/move-cursor-to-beginning-of-non-whitespace-characters-in-a-line-in-vim
+nmap <silent> <Home> :call LineHome()<cr>
+inoremap <silent> <Home> <C-R>=LineHome()<CR>
+"map ^[[1~ :call LineHome()<CR>:echo<CR>
+"imap ^[[1~ <C-R>=LineHome()<CR>
+function! LineHome()
+  let x = col('.')
+  execute "normal ^"
+  if x == col('.')
+    execute "normal 0"
+  endif
+  return ""
+endfunction
 
 " https://vim.fandom.com/wiki/Cscope
 if has('cscope') && has('quickfix')
@@ -527,11 +551,20 @@ set tags^=./.git/tags;
 " luochen1990/rainbow configuration
 if kc#plugin#enabled('rainbow')
 	let g:rainbow_active = 1 " be active
-	let g:rainbow_conf = {'separately':{
-				\ 'cmake': 0,
-				\ 'c': 0,
-				\ 'cpp': 0,
-				\ }}
+	let g:rainbow_conf = {
+				\ 'parentheses': [
+				\ 	'start=/(/ end=/)/ fold',
+				\	'start=/\[/ end=/\]/ fold',
+				\	'start=/{/ end=/}/ fold',
+				\	'start=/≤/ end=/≥/',
+				\	'start=/«/ end=/»/',
+				\ ],
+				\ 'separately':{
+				\ 		'cmake': 0,
+				\ 	}
+				\ }
+				"\ 		'c': 0,
+				"\ 		'cpp': 0,
 endif
 
 if kc#plugin#enabled('vim-airline')
@@ -603,7 +636,7 @@ endif
 " ctrlp
 if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_custom_ignore = {
-				\ 'dir':  '\v[\/]\.(git|hg|svn|cache)$',
+				\ 'dir':  '\v[\/](\.(git|hg|svn|cache)|_build)$',
 				\ 'file': '\v\.(exe|so|dll)$',
 				\ }
 	let g:ctrlp_show_hidden = 1
@@ -617,12 +650,22 @@ if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_extensions += ['oldfiles']
 	let g:ctrlp_working_path_mode = ''
 	command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
+	let g:ctrlp_follow_symlinks = 1
+	" https://github.com/kien/ctrlp.vim/issues/576
+	let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
+        \ --skip-vcs-ignores
+		\ --ignore _build
+		\ --ignore .cache
+        \ --files-with-matches
+		\ --max-count 50000
+        \ %s
+		\ --filename-pattern ""'
 endif
 
 " https://github.com/ggreer/the_silver_searcher
 if kc#plugin#enabled('ack.vim')
 	if executable('ag')
-		let g:ackprg = 'ag --vimgrep -u'
+		let g:ackprg = 'ag --vimgrep -u --follow'
 	elseif executable('rg')
 		let g:ackprg = 'rg --vimgrep'
 	else
@@ -814,7 +857,7 @@ augroup KcDispatchComplete
 	" DispatchComplete is my patch to vim-dispath
 	autocmd User DispatchComplete call KcDispatchComplete()
 	" Put copen window on the lef.
-	autocmd FileType qf wincmd L
+	"autocmd FileType qf wincmd L
 augroup END
 let g:dispatch_quickfix_height = &lines / 3
 
@@ -938,7 +981,7 @@ augroup Code Comments
 				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
-	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml
+	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make
 				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 augroup END
 
@@ -959,7 +1002,22 @@ if kc#plugin#enabled('neoformat')
 endif
 
 " https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
-command! -nargs=1 -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
+command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
+
+" https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
+"function! KcAg(query, ...)
+  "if type(a:query) != s:TYPE.string
+    "return s:warn('Invalid query argument')
+  "endif
+  "let query = empty(a:query) ? '^(?=.)' : a:query
+  "let args = copy(a:000)
+  "let ag_opts = len(args) > 1 && type(args[0]) == s:TYPE.string ? remove(args, 0) : ''
+  "let command = ag_opts . fzf#shellescape(query)
+  "echom ag_opts.' AA '.command
+  "return call('fzf#vim#ag_raw', insert(args, command, 0))
+"endfunction
+"command! -bang -nargs=* Ag call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
+
 
 " }}}
 " coc.nvim {{{1
