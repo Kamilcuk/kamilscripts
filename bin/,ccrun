@@ -62,8 +62,8 @@ EOF
 }
 
 parse_options() {
-	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc= g_debug=false
-	g_valgrind=false g_gdb=false g_interactivegdb=false g_defaultflags=true g_verbose=false g_optind=$# 
+	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc='' g_debug=false
+	g_valgrind=false g_gdb=false g_interactivegdb=false g_defaultflags=true g_verbose=false g_optind=$#
 	while (($#)); do
 		case "$1" in
 			+cc) shift; g_cc="$1"; ;;
@@ -134,7 +134,8 @@ testit() {
 	ret=0
 	tmp=$(bash -x "$0" +d "$@" 2>"$errf") || ret=$?
 
-	local errout=$(
+	local errout
+	errout=$(
 	cat <<EOF
 EXIT STATUS: $ret
 STDOUT:
@@ -448,7 +449,7 @@ shift "$g_optind"
 s_source=""
 s_sourceisfile=false
 s_sourcefound=false
-g_ccargs=()
+g_ccargs=(-ldl -lrt -pthread -lm)
 # For each passe options...
 while (($#)); do
 	case "$1" in
@@ -570,20 +571,20 @@ fi
 
 if "${g_verbose:-false}"; then
 	{
-	printf "%s\n" "+" $g_cc "${g_ccargs[@]}"
-	if "$s_sourceisfile"; then
-		printf "%s\n" "$s_source"
-	fi
-	if ((${#precmd[@]})); then
-		printf "%s\n" "&&" "${precmd[@]}"
-	fi
+		printf "%s\n" "+ $g_cc ${g_ccargs[*]}"
+		if "$s_sourceisfile"; then
+			printf "%s\n" "$s_source"
+		fi
+		if ((${#precmd[@]})); then
+			printf "%s\n" "&&" "${precmd[@]}"
+		fi
 	} | paste -sd' ' >&2
 fi
 
 if "$g_debug"; then
-	echo "+" $g_cc "${g_ccargs[@]}" >&2
+	printf "%s\n" "+ $g_cc ${g_ccargs[*]}" >&2
 fi
-$g_cc -o "$exefile" "${g_ccargs[@]}" "$srcfile" &&
+$g_cc -o "$exefile" "$srcfile" "${g_ccargs[@]}" &&
 (
 	if "$g_debug"; then set -x; fi
 	"${cmd[@]}"

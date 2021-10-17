@@ -146,8 +146,10 @@ if v:version >= 800
 	set shortmess+=c
 endif
 
-if v:version >= 800
-	let &signcolumn='yes'.(!has('nvim')?'':':2')
+if has('nvim')
+	set signcolumn=auto:9
+elseif v:version >= 800
+	set signcolumn=yes
 endif
 
 set scrolloff=6
@@ -160,7 +162,13 @@ set display+=uhex
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
 
+" Additional unicode visual pairs.
 set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
+
+if has('nvim')
+	let g:ft_man_folding_enable = 1
+	let g:man_hardwrap = 0
+endif
 
 " }}}
 " Load kamilscripts {{{1
@@ -257,7 +265,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
 		endif
 		Plug 'honza/vim-snippets' " vim-snipmate default snippets
-		Plug 'ntpeters/vim-better-whitespace'
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
 		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
@@ -271,12 +278,14 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		if executable('hunspell') || executable('aspell')
 			KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 		endif
-		Plug 'junegunn/fzf.vim' " , { 'on': 'Ag' } " Things you can do with fzf and Vim
-		Plug 'junegunn/fzf' ", { 'on': 'Ag' } " fzf.vim needs it
-		Plug 'salcode/vim-interactive-rebase-reverse' " reverse order commits during a Git rebase
-		Plug 'tpope/vim-fugitive' " A Git wrapper so awesome, :G
-		Plug 'shumphrey/fugitive-gitlab.vim' " An extension to fugitive.vim for gitlab support
-		Plug 'tpope/vim-rhubarb' " GitHub extension for fugitive.vim
+		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
+		Plug 'salcode/vim-interactive-rebase-reverse', { 'for': ['gitrebase', 'git'] } " reverse order commits during a Git rebase
+		" A Git wrapper so awesome, :G
+		Plug 'tpope/vim-fugitive', { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		" An extension to fugitive.vim for gitlab support
+		Plug 'shumphrey/fugitive-gitlab.vim', { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		" GitHub extension for fugitive.vim
+		Plug 'tpope/vim-rhubarb', { 'on': ['G', 'GBrowse'], 'for': 'git' }
 	" }}}
 	" Languages syntax and support and parsing {{{2
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
@@ -289,30 +298,30 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
 		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
 		Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
-		Plug 'lingua-pupuli/puppet-vscode'
 		Plug 'chr4/nginx.vim', { 'for': 'nginx' }
 		KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
 	" }}}
 	" Utilities commands to run and execute {{{2
+		" Ini file parser for vim, used for parsing PYTHON_GITLAB_CFG for fugitive-gitlab.vim
+		Plug 'xuhdev/vim-IniParser'
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
-		Plug 'kamilcuk/vim-showmarks' " Show marks in file, patched to fix with newer vim
-		Plug 'arecarn/vim-crunch'  " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
-		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
+		Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
+		Plug 'sbdchd/neoformat', { 'on': ['Format', 'Neoformat'] } " Neoformat and I use :Format
 		Plug 'vimwiki/vimwiki' " make notes
 		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
 		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
 		"
-		Plug 'kamilcuk/vim-ctrlp-oldfiles' " Search old files with ctrlp
-		Plug 'suy/vim-ctrlp-commandline' " Search ctrlp in command line also
-		Plug 'FelikZ/ctrlp-py-matcher' " Faster ctrl-p matcher with python
+		Plug 'kamilcuk/vim-ctrlp-oldfiles', { 'on': 'CtrlP' } " Search old files with ctrlp
+		" Search ctrlp in command line also. Never used it, so disabling.
+		"Plug 'suy/vim-ctrlp-commandline', { 'on': 'CtrlP' }
+		Plug 'FelikZ/ctrlp-py-matcher', { 'on': 'CtrlP' } " Faster ctrl-p matcher with python
 		Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
 		"
-		Plug 'idbrii/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
+		Plug 'roman/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
 		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
 		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
-		Plug 'preservim/nerdtree', { 'on': 'NERDTreeToggle' } " The file browser.
+		Plug 'preservim/nerdtree', { 'on': ['NERDTreeToggle', 'NERDTreeFind'] } " The file browser.
 		Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
-		Plug 'luochen1990/rainbow' " Rainbow Parentheses
 		Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
 		Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
 		Plug 'gyim/vim-boxdraw' " Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
@@ -327,9 +336,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
 		Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
 	" }}}
-	" view display things {{{2
+	" View display visible stuff {{{2
+		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces and I think remove them too
+		Plug 'luochen1990/rainbow' " Rainbow Parentheses
 		Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
-		Plug 'airblade/vim-gitgutter' " Show +/- on the left when file changes in git repo
+		Plug 'airblade/vim-gitgutter' " Show +/-/~ on the left when file changes in git repo
 		Plug 'NLKNguyen/papercolor-theme' " The theme that I use. Actually I modified it that much...
 		KcPlug8 'vim-airline/vim-airline' " The vimline below.
 	" }}}
@@ -684,14 +695,14 @@ endif
 	"let g:gen_tags#cache_dir = ".cache"
 "endif
 
-" goldenratio
-" Don't resize automatically.
-let g:golden_ratio_autocommand = 0
-" Mnemonic: - is next to =, but instead of resizing equally, all windows are
-" resized to focus on the current.
-nmap <C-w>- <Plug>(golden_ratio_resize)
-" Fill screen with current window.
-nnoremap <C-w>+ <C-w><Bar><C-w>_
+if kc#plugin#enabled('golden-ratio')
+	"let g:golden_ratio_autocommand = 0
+	" Mnemonic: - is next to =, but instead of resizing equally, all windows are
+	" resized to focus on the current.
+	"nmap <C-w>- <Plug>(golden_ratio_resize)
+	" Fill screen with current window.
+	"nnoremap <C-w>+ <C-w><Bar><C-w>_
+endif
 
 "if 0 || kc#plugin#enabled('youcompleteme')
 	"if !exists('g:ycm_clangd_binary_path') && filereadable('/usr/bin/clangd')
@@ -891,6 +902,23 @@ if kc#plugin#enabled('vim-buftabline')
 	let g:buftabline_numbers = 1
 endif
 
+if kc#plugin#enabled('fugitive-gitlab.vim')
+	let tmp = get(environ(), 'PYTHON_GITLAB_CFG', '')
+	if filereadable(tmp)
+		let tmp = IniParser#Read(tmp)
+		let g:fugitive_gitlab_domains = []
+		let g:gitlab_api_keys = {}
+		for [key, value] in items(tmp)
+			if key == 'global' | continue | endif
+			if has_key(value, 'url') && has_key(value, 'private_token')
+				let g:fugitive_gitlab_domains += [get(value, 'url')]
+				call extend(g:gitlab_api_keys, {get(value, 'url'): get(value, 'private_token')})
+			endif
+		endfor
+	endif
+	unlet tmp
+endif
+
 " }}}
 " Custom maps and functions {{{1
 
@@ -981,7 +1009,7 @@ augroup Code Comments
 				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
-	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make
+	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake
 				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 augroup END
 
