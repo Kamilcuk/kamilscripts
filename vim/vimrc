@@ -147,7 +147,7 @@ if v:version >= 800
 endif
 
 if has('nvim')
-	set signcolumn=auto:9
+	set signcolumn=auto:3-9
 elseif v:version >= 800
 	set signcolumn=yes
 endif
@@ -166,7 +166,7 @@ set visualbell
 set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
 
 if has('nvim')
-	let g:ft_man_folding_enable = 1
+	let g:ft_man_folding_enable = 0
 	let g:man_hardwrap = 0
 endif
 
@@ -306,7 +306,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'xuhdev/vim-IniParser'
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
 		Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
-		Plug 'sbdchd/neoformat', { 'on': ['Format', 'Neoformat'] } " Neoformat and I use :Format
+		Plug 'sbdchd/neoformat' ", { 'on': ['Format', 'Neoformat'] } " Neoformat and I use :Format
 		Plug 'vimwiki/vimwiki' " make notes
 		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
 		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
@@ -330,7 +330,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
 		Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
 		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
-		Plug 'dhruvasgar/vim-table-mode' " print tables in markdown
+		Plug 'dhruvasagar/vim-table-mode' " print tables in markdown
 		Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
 		" For vim plugins dependencies
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
@@ -572,6 +572,7 @@ if kc#plugin#enabled('rainbow')
 				\ ],
 				\ 'separately':{
 				\ 		'cmake': 0,
+				\ 		'cmakehelp': 0,
 				\ 	}
 				\ }
 				"\ 		'c': 0,
@@ -587,7 +588,11 @@ if kc#plugin#enabled('vim-workspace')
 	let g:workspace_create_new_tabs = 0
 	let g:workspace_session_directory = $HOME . '/.vim/sessions/'
 	let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
-	let g:workspace_undodir = $HOME . '/.vim/undodir/'
+	if has('nvim')
+		let g:workspace_undodir = $HOME . '/.vim/undodir/'
+	else
+		let g:workspace_undodir = $HOME . '/.vim/undodirvim/'
+	endif
 	let g:workspace_nocompatible = 0
 	let g:workspace_session_disable_on_args = 1
 endif
@@ -917,6 +922,10 @@ if kc#plugin#enabled('fugitive-gitlab.vim')
 		endfor
 	endif
 	unlet tmp
+endif
+
+if kc#plugin#enabled('vim-lsp-cxx-highlight')
+	let g:lsp_cxx_hl_use_byteidx=1
 endif
 
 " }}}

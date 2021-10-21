@@ -141,3 +141,49 @@ function! kc#Redir(cmd, rng, start, end)
 	setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
 	call setline(1, output)
 endfunction
+
+" from /usr/share/nvim/runtime/autoload/man.vim
+" Handler for s:system() function.
+function! s:system_handler(jobid, data, event) dict abort
+  if a:event is# 'stdout' || a:event is# 'stderr'
+    let self[a:event] .= join(a:data, "\n")
+  else
+    let self.exit_code = a:data
+  endif
+endfunction
+" Run a system command and timeout after 30 seconds.
+function! s:system(cmd, ...) abort
+  let opts = {
+        \ 'stdout': '',
+        \ 'stderr': '',
+        \ 'exit_code': 0,
+        \ 'on_stdout': function('s:system_handler'),
+        \ 'on_stderr': function('s:system_handler'),
+        \ 'on_exit': function('s:system_handler'),
+        \ }
+  let jobid = jobstart(a:cmd, opts)
+
+  if jobid < 1
+    throw printf('command error %d: %s', jobid, join(a:cmd))
+  endif
+
+  let res = jobwait([jobid], 30000)
+  if res[0] == -1
+    try
+      call jobstop(jobid)
+      throw printf('command timed out: %s', join(a:cmd))
+    catch /^Vim(call):E900:/
+    endtry
+  elseif res[0] == -2
+    throw printf('command interrupted: %s', join(a:cmd))
+  endif
+  if opts.exit_code != 0
+    throw printf("command error (%d) %s: %s", jobid, join(a:cmd), substitute(opts.stderr, '\_s\+$', '', &gdefault ? '' : 'g'))
+  endif
+
+  return opts.stdout
+endfunction
+
+function! kc#getredir(cmd) abort
+	return split(s:system(a:cmd), '\n')
+endfunction

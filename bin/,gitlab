@@ -395,6 +395,8 @@ def C_gitlabci_list_jobs(gitlabci=None):
     return "\n".join(gitlabciyml_list_jobs(dd))
 
 
+###############################################################################
+
 def gitlabci_lint(file):
     rr = C_gitlabci_get_linted(file)
     if not rr["valid"]:
@@ -437,6 +439,13 @@ class Cirun:
 
         def __getitem__(self, var):
             return self.variables[var]
+
+        def add_options(self):
+            if g_options.env:
+                for i in g_options.env:
+                    s = i.split("=", 1)
+                    v = s[1] if len(s) == 2 else os.environ[s[0]]
+                    self.add(s[0], v)
 
         def items(self):
             return self.variables.items()
@@ -572,6 +581,8 @@ class Cirun:
     variables = Variables()
 
     def variables_prepare(self):
+        self.variables.add_options()
+        #
         url, prot, domain, domainpre, port = re.sub(
             r'^(([^:]*)://((.*)\.[^\.]*)(:([^/]*))?)/.*$',
             r'\1 \2 \3 \4 \6',
@@ -606,12 +617,7 @@ class Cirun:
             re.sub("[^0-9a-z]", "-", v["CI_COMMIT_REF_NAME"].lower()[0:63]),
         )
         #
-        v.add(
-            "CI_DEFAULT_BRANCH",
-            runcmd(["git", "symbolic-ref", "refs/remotes/origin/HEAD"]).replace(
-                "refs/remotes/origin/", ""
-            ),
-        )
+        v.add("CI_DEFAULT_BRANCH", "master")
         #
         v.projinfo("CI_PROJECT_ID", "id")
         v.projinfo("CI_PROJECT_NAME", "path")
@@ -705,7 +711,7 @@ class Cirun:
                             'HOME': '/tmp',
                         },
                         'group_add': [str(x) for x in os.getgroups()]
-                        })
+                    })
 
             def handle_image(self, var, image):
                 if isinstance(image, dict):
@@ -1128,14 +1134,17 @@ def ARGS_run_gitlabci(subparser):
     subparser.add_argument('-f', '--gitlabciyml', help='Specify path to .gitlab-ci.yml file')
     subparser.add_argument('--pre_build_script', action='append',
                            help='Specify commands to execute before building. Can be speciifed multiple times')
-    subparser.add_argument('args', metavar='jobs', nargs='*', help='Jobs to run')
     subparser.add_argument('--runasroot', action='store_true',
                            help='When executing in docker, do not change the UID to current user')
+    subparser.add_argument('-E', '--env', action='append',
+                           help='Add environment variables to pass to docker container')
+    subparser.add_argument('args', metavar='jobs', nargs='*', help='Jobs to run')
 
 
 def C_run_gitlabci(*jobs):
     Cirun([*jobs])
 
+###############################################################################
 
 def ARGS_unittest(subparser):
     subparser.add_argument('-n', '--dryrun', dest='dryrun', action='store_true')
@@ -1221,22 +1230,47 @@ def C_bash_completion():
     """))
 
 
+###############################################################################
+
 def ARGS_autowait_for_pipeline_failures(subparser):
     subparser.add_argument('--num', help='monitor last commit number', default='0')
-    subparser.add_argument('--open', help='mode to open browsers', choices=['none','all','failed'], default='none')
+    subparser.add_argument('--open', help='mode to open browsers', choices=['none', 'all', 'failed'], default='none')
     subparser.add_argument('-o', dest='open', action='store_const', const='failed', help='same as --open=failed')
 
 
-class PipelineStatus:
-    prev = None
+class ChangePrinter:
+    state = {}
 
-    def print(self, pipeline):
-        if pipeline.status != self.prev:
-            msg = ' Pipeline ' + pipeline.status
-            if pipeline.status == 'failed':
-                msg = RED + msg + RESET
-            print(pipeline.web_url, msg)
-            self.prev = pipeline.status
+    def status_to_color(self, tt):
+        if tt.status == 'failed':
+            if getattr(tt, 'allow_failure', None):
+                return YELLOW
+            return RED
+        elif tt.status == 'success':
+            return GREEN
+        elif tt.status == 'manual':
+            return CYAN
+        return ''
+
+    def status_to_adj(self, tt):
+        if tt.status == 'success':
+            return 'succeeded'
+        if tt.status == 'failed' and getattr(tt, 'allow_failure', None):
+            return 'failed, but is allowed to fail'
+        return tt.status
+
+    def _print(self, name, tt):
+        if tt.web_url not in self.state or self.state[tt.web_url] != tt.status:
+            self.state[tt.web_url] = tt.status
+            msg = self.status_to_color(tt) + tt.web_url + ' ' + name + ' ' + self.status_to_adj(tt) + '.'
+            return msg
+        return None
+
+    def print_pipeline(self, tt):
+        return self._print("Pipeline", tt)
+
+    def print_job(self, tt):
+        return self._print('Job  "' + tt.name + '"', tt)
 
 
 def C_autowait_for_pipeline_failures():
@@ -1257,52 +1291,28 @@ def C_autowait_for_pipeline_failures():
     pipeline = pipelines[0]
     #
     print('Monitoring pipeline', pipeline.web_url, "...")
-    handledjobs = set()
-    pendingjobs = set()
-
-    pipelinestatus = PipelineStatus()
-    pipelinestatus.print(pipeline)
+    #
+    printer = ChangePrinter()
     while 1:
         pipeline.refresh()
         jobs = pipeline.jobs.list()
+        jobs.sort(key=lambda x: x.status, reverse=True)
         #
         for job in jobs:
-            # Each job is handled once.
-            if job.id in handledjobs:
-                continue
-            #
-            pre = job.web_url + '      Job "' + job.name + '" '
-            msg = ""
-            #
-            if job.status == 'failed':
-                msg = pre + 'failed.'
-                if job.allow_failure:
-                    msg = YELLOW + msg
-                    msg += ' It is allowed to fail.'
-                else:
-                    msg = RED + msg
-            elif job.status == 'success':
-                msg = pre + 'succeeded.'
-            else:
-                msg = pre + job.status + '.'
-                if job.id not in pendingjobs:
-                    pendingjobs.add(job.id)
-                    print(msg + RESET)
-                    continue
+            msg = printer.print_job(job)
             if msg:
-                handledjobs.add(job.id)
                 if (
                         g_options.open == 'all' or
                         (g_options.open == 'failed' and job.status == 'failed' and not job.allow_failure) or
                         (g_options.open == 'allfailed' and job.status == 'failed')
-                        ):
+                ):
                     msg += ' Opening browser.'
                     open_url(job.web_url)
                 print(msg + RESET)
         # Print the status of the pipeline if it changed.
-        pipelinestatus.print(pipeline)
+        printer.print_pipeline(pipeline)
         # If pipeline is not running, we end.
-        if pipeline.status not in set(['pending', 'running']):
+        if pipeline.status not in set(['created', 'pending', 'running']):
             break
         time.sleep(1)
 

@@ -228,7 +228,7 @@ rsyncuser:$g_password
 EOF
 		chmod 0600 /etc/rsyncd.secrets &&
 		rsync --daemon &&
-		sh /usr/local/bin/wait-for-rsync-listen.sh		
+		sh /usr/local/bin/wait-for-rsync-listen.sh
 	"
 }
 
