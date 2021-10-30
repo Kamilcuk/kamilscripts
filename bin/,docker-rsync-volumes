@@ -46,6 +46,10 @@ run_tests() {
 	exit
 }
 
+hexurandom() {
+	dd if=/dev/urandom count="$1" bs=1 status=none | od -A n -t x1 | tr -d '[:space:]'
+}
+
 ###### parse arguments
 
 usage() {
@@ -192,18 +196,22 @@ EOF
 
 log "Running source and destination containers"
 {
+	tmp=$(hexurandom 8)
+	src_did=rsyncvolumes-src-$tmp
 	# Start source container in the background - we will need to wait for it later.
-	src_docker run --rm -d -v "$src_volume":/data:ro -w /data "$src_dcont" sleep infinity > "$tmpd"/src_did &
+	src_docker run --rm -d -h "$src_did" --name "$src_did" -v "$src_volume":/data:ro -w /data "$src_dcont" sleep infinity >/dev/null &
 	src_pid=$! ; childs+=("$src_pid")
 	#
-	if ! dst_did=$(dst_docker run --rm -d -v "$dst_volume":/data:rw -w /data "$dst_dcont" sleep infinity); then
+	tmp=$(hexurandom 8)
+	dst_did=rsyncvolumes-dst-$tmp
+	if ! dst_docker run --rm -d -h "$dst_did" --name "$dst_did" -v "$dst_volume":/data:rw -w /data "$dst_dcont" sleep infinity >/dev/null; then
 		fatal "Could not run destination container"
 	fi
 }
 
 log "Running rsyncd on destination container"
 {
-	g_password="$(dd if=/dev/urandom count=32 bs=1 status=none | od -A n -t x1 | tr -d '[:space:]')"
+	g_password="$(hexurandom 16)"
 	minus_x=""
 	if ((c_debug)); then
 		minus_x=-x
@@ -237,7 +245,6 @@ EOF
 	if ! wait "$src_pid"; then
 		fatal "Could not run source container"
 	fi
-	src_did=$(<"$tmpd"/src_did)
 }
 
 log "Setup rsync socat forwarding between containers"

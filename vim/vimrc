@@ -260,6 +260,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		"Plug 'LucHermitte/lh-brackets'
 		"Plug 'LucHermitte/vim-refactor'
 		"Plug '907th/vim-auto-save'
+		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
 		KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
 		if executable('languagetool')
 			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
@@ -701,6 +702,9 @@ endif
 "endif
 
 if kc#plugin#enabled('golden-ratio')
+	" https://github.com/roman/golden-ratio/issues/22#issuecomment-267785637
+	let g:golden_ratio_exclude_nonmodifiable = 1
+	" let b:golden_ratio_resizing_ignored = 1
 	"let g:golden_ratio_autocommand = 0
 	" Mnemonic: - is next to =, but instead of resizing equally, all windows are
 	" resized to focus on the current.
@@ -925,7 +929,7 @@ if kc#plugin#enabled('fugitive-gitlab.vim')
 endif
 
 if kc#plugin#enabled('vim-lsp-cxx-highlight')
-	let g:lsp_cxx_hl_use_byteidx=1
+	let g:lsp_cxx_hl_use_byteidx = 1
 endif
 
 " }}}
@@ -1290,10 +1294,6 @@ if getcwd() =~ "/home/kamil/ncbj/puppet"
 
 	let &makeprg = ",pdk unit_test"
 	"let &makeprg="cat /tmp/1"
-endif
-
-if getcwd() =~ '/home/kamil/myprojects/ckd'
-	let g:coc_start_at_startup=0
 endif
 
 if getcwd() =~ '/home/kamil/ncbj/chronos-ansible'

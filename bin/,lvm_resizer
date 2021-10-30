@@ -160,7 +160,8 @@ check_is_partition() {
 	if [[ ! -b "$1" ]]; then "$err" "Path $1 is not a block special file"; return 1; fi
 	local i
 	i=$(stat -L -c %t "$1")
-	if [[ "$i" != 8 ]]; then "$err" "Major of device $1 is not 8"; return 1; fi
+	i=$(printf "%d" "0x$i")
+	if [[ "$i" != 8 && "$i" != 252 ]]; then "$err" "Major of device $1 is not 8 or 252,it's $i"; return 1; fi
 	i=$(stat -L -c %T "$1")
 	if [[ "$i" == 0 ]]; then "$err" "Minor of device $1 is 0!"; return 1; fi
 }
@@ -203,20 +204,23 @@ fi
 		g_lvpath=$(_lvs | awk 'NR==2{print "/dev/"$2"/"$1}')
 	fi
 }
+lvpath=
 askcheck lvpath check_is_lvpath "Select lvm partition" "$g_lvpath"
 
 { # Assign defaults to partition.
 	if ! check_is_partition -q "$g_partition"; then
 		g_partition=$(
-	 		disc=$(lsblk -I 8 -d -n -o name | head -n1) &&
-			lsblk -ln -o NAME "/dev/$disc" | grep -ow "$disc"[0-9] | tail -n1 | awk -v p="$disc" '{print disc $0}'
-		)
+	 		disc=$(lsblk -I 252,8 -d -n -o name | head -n1) &&
+			lsblk -ln -o NAME "/dev/$disc" | grep -ow "$disc"'[0-9]' | tail -n1 | awk -v p="$disc" '{print disc $0}'
+		) ||:
 	fi
 }
 askcheck partition check_is_partition "Select partition to resize" "$g_partition"
 
-disc=$partition disc=${disc%%[0-9]*}
-partnum=$partition partnum=${partnum##*[^0-9]}
+disc=$g_partition
+disc=${disc%%[0-9]*}
+partnum=$g_partition
+partnum=${partnum##*[^0-9]}
 if ! id=$(get_partition_id "$disc" "$partnum") || [[ -z "$id" ]]; then
 	L_fatal "Getting partition id from $disc number $partnum failed"
 fi
@@ -226,7 +230,7 @@ fi
 cat <<EOF
 Selected:
 	lvpath=$lvpath
-	partition=$partition
+	partition=$g_partition
 	disc=$disc
 	partition_number=$partnum
 	partition_id=$id
@@ -241,7 +245,7 @@ confirm "Looks ok?" "y"
 	confirm "Is the new situation above ok?" "y"
 	echo "- +" | _sfdisk --no-reread -N "$partnum" "$disc" ||:
 	L_run partprobe
-	L_run _pvresize "$partition"
+	L_run _pvresize "$g_partition"
 	L_run _pvs
 }
 
