@@ -66,9 +66,10 @@ Options:
    -f --from DOCKER_HOST  Specify DOCKER_HOST from which to copy the volume.
    -t --to DOCKER_HOST    Specify DOCKER_HOST to which copy the volume.
       --delete            Pass --delete to rsync.
+   -n --dry-run           Pass --dry-run to rsync.
    -a --rsyncarg ARG      Add additional arguments to rsync command line.
-	  --test              Run tests
-	  --time              Time it
+      --test              Run tests
+      --time              Time it
 
 Examples:
     $NAME --delete -f ssh://user1@server2 grafana_data -t ssh://user2@server2 grafana_data_backup
@@ -80,8 +81,8 @@ EOF
 
 NAME=,docker-rsync-volumes
 args=$(getopt -n "$NAME" \
-	-o hdqf:t:a: \
-	-l help,quiet,debug,from:,to:,delete,rsyncarg:,test,time \
+	-o hdqf:t:na: \
+	-l help,quiet,debug,from:,to:,delete,dry-run,rsyncarg:,test,time \
 	-- "$@"
 )
 eval "set -- $args"
@@ -101,6 +102,7 @@ while (($#)); do
 	-f|--from) src_docker_host="$2"; shift; ;;
 	-t|--to) dst_docker_host="$2"; shift; ;;
 	--delete) rsyncargs+=(--delete); ;;
+	-n|--dry-run) rsyncargs+=(--dry-run); ;;
 	-a|--rsyncarg) rsyncargs+=("$2"); shift; ;;
 	--test) run_tests; exit; ;;
 	--time) c_time=1; ;;

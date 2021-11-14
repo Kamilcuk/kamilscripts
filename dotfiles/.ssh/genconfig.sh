@@ -83,6 +83,12 @@ Host kurczak
 	User root
 	Port 22
 	#$(ProxyJump biurek)
+Host pantera
+	Hostname 192.168.31.1
+	User root
+	Port 22
+	$(ProxyJump biurek)
+
 
 Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
@@ -314,9 +320,9 @@ Host *
 	ServerAliveInterval 60
 	ServerAliveCountMax 20
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
-	ControlMaster no
-	ControlPath  ~/.ssh/.socket_%r@%h-%p
-	ControlPersist 6000
+	ControlMaster auto
+	ControlPath  ~/.ssh/.connection-%n-%r@%h:%p
+	ControlPersist 1h
 	#
 	ExitOnForwardFailure yes
 
