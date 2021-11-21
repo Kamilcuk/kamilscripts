@@ -1,0 +1,10 @@
+[Unit]
+Description=Run _snapper_hourly hourly
+
+[Timer]
+OnCalendar=Hourly
+AccuracySec=5m
+Persistent=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Automount /mnt/perunshare
+
+[Automount]
+Where=/mnt/perunshare
+
+[Install]
+WantedBy=multi-user.target

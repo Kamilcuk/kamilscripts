@@ -282,7 +282,8 @@ Host zwierzakauto
 
 Host lightsail1
 	User kcukrowski
-	Hostname 3.69.31.141
+	#Hostname 3.69.31.141
+	Hostname 3.70.226.57
 
 Host kgomulskirpi rpichronos01
 	User root

@@ -1,0 +1,13 @@
+[Unit]
+Description=Mount /mnt/perunshare
+
+[Mount]
+What=share@perun.k.dyzio.pl:/share
+Where=/mnt/perunshare
+Type=sshfs
+Options=_netdev,port=60022,allow_other,ServerAliveInterval=1,reconnect,StrictHostKeyChecking=accept-new,x-systemd.automount,x-systemd.mount-timeout=2,ServerAliveCountMax=2,BatchMode=yes
+TimeoutSec=2s
+
+[Install]
+WantedBy=multi-user.target
+

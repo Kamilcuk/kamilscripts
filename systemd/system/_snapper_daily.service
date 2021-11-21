@@ -1,0 +1,9 @@
+[Unit]
+Description=Run snapper daily job
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /etc/cron.daily/snapper
+
+[Install]
+WantedBy=multi-user.target

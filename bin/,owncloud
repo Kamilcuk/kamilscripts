@@ -25,7 +25,7 @@ cmd_restore_from_conflict() {
 	if [[ "$a" =~ $regex ]]; then
 		:;
 	fi
-}	
+}
 
 _unsync_or_sync_vfs() {
 	g_name="$L_NAME $L_CMD"
@@ -43,7 +43,7 @@ _unsync_or_sync_vfs() {
 		-v|verbose) g_verbose_xargs_arg="-t"; ;;
 		-q|quiet) g_quiet=1; ;;
 		--) shift; break; ;;
-		*) L_fatal "Intenral error when parsign arguments"; ;;
+		*) L_fatal "Internal error when parsing arguments"; ;;
 		esac
 		shift
 	done

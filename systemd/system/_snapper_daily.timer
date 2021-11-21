@@ -1,0 +1,10 @@
+[Unit]
+Description=Run _snapper_daily Daily
+
+[Timer]
+OnCalendar=*-*-* 3:00:00
+AccuracySec=3h
+Persistent=true
+
+[Install]
+WantedBy=multi-user.target

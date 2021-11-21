@@ -124,6 +124,10 @@ for i in "$src_volume" "$dst_volume"; do
 	fi
 done
 
+if [[ "$dst_docker_host" == "$src_docker_host" && "$src_volume" == "$dst_volume" ]]; then
+	fatal "Source and destination are the same"
+fi
+
 if ((c_time)); then
 	docker() {
 		{ time command docker "$@"; } 2> >(

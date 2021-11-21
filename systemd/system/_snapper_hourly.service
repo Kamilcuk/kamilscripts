@@ -1,0 +1,9 @@
+[Unit]
+Description=Run _snapper_hourly
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /etc/cron.hourly/snapper
+
+[Install]
+WantedBy=multi-user.target

@@ -348,7 +348,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" zzz Utilities that have to be last {{{2
 		Plug 'thaerkh/vim-workspace', { 'dir': plugdir.'vim-workspace' }
 	" }}}
-	" coc plugins {{{2
+	" coc plugins {{{
 		let g:coc_global_extensions	= [
 					\ 'coc-highlight',
 					\ 'coc-yank',
@@ -1225,13 +1225,15 @@ endif " kc#plugin#enabled('coc.nvim')
 " }}}
 " vimtex Configuration {{{1
 
-let g:vimtex_compiler_progname = 'nvr'  " :help vimtex-faq-neovim
+if has('nvim')
+	let g:vimtex_compiler_progname = 'nvr'  " :help vimtex-faq-neovim
+endif
 let g:vimtex_view_method = 'mupdf'
 "let g:livepreview_previewer = 'evince'
 
 augroup KcLatex
 	autocmd!
-	autocmd FileType tex :TexItemize <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
+	" autocmd FileType tex :TexItemize <f6> :s/^ */\\item /<cr>'<O\begin{itemize}<esc>'>o\end{itemize}<esc>
 augroup END
 
 " }}}

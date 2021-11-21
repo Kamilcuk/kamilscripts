@@ -215,5 +215,60 @@ C_find_files_not_owned_by_any_packages() {
 		cut -d ' ' -f 5-
 }
 
+pkgstoredir="$HOME"/.cache/pacman_packages
+
+C_packages_store() {
+	mkdir -p "$pkgstoredir"
+	now=$(date +%Y-%m-%dT%H:%M:%S)
+	savefile="$pkgstoredir/pkglist-$now.txt"
+	echo "+ pacman -Qq > $savefile"
+	pacman -Qq > "$savefile"
+}
+
+C_packages_restore() {
+	if test -z "$1"; then
+		echo "Ta komenda robi to:"
+		# shellcheck disable=2016
+		echo 'pacman -Rsu $(comm -23 <(pacman -Qq|sort) <(sort $1))'
+		echo ' lista pakietów została zapisana w katalogu /root/pkglist-datacostam.txt'
+	else
+		if [[ ! -r "$1" && -r "$pkgstoredir/$1" ]]; then
+			set -- "$pkgstoredir/$1"
+		fi
+		if [[ ! -r "$1" ]]; then
+			echo "File $1 doesn't exists" >&2
+			return 2
+		fi
+		pacman -Rsu "$(comm -23 <(pacman -Qq | sort) <(sort "$1"))"
+	fi
+}
+
+C_packages_list() {
+	find "$pkgstoredir" -maxdepth 1 -mindepth 1 -type f -printf "%f\n"
+}
+
+_pacman_packages_restore_complete() {
+	# https://stackoverflow.com/questions/2805412/bash-completion-for-maven-escapes-colon/12495727#12495727
+	COMPREPLY=()
+	if ((COMP_CWORD != 1)); then return; fi
+	local cur
+	_get_comp_words_by_ref -n : cur
+	if [[ -d "$HOME"/.cache/pacman_packages ]]; then
+		# shellcheck disable=2207
+		COMPREPLY=($(compgen -W "$(C_packages_list)" -- "$cur"))
+	fi
+	__ltrim_colon_completions "$cur"
+}
+
+# complete -o default -F _pacman_packages_restore_complete pacman_packages_restore
+
+C_autoremove() {
+	local tmp
+	while tmp=$(pacman --query --deps --unrequired --quiet) && [[ -n "$tmp" ]]; do
+		# shellcheck disable=2086
+		p --noconfirm -R $tmp
+	done
+}
+
 . ,lib_lib C_ "$@"
 
