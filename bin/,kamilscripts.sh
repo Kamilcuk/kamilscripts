@@ -4,7 +4,7 @@ shopt -s extglob
 
 name=$(basename "$0")
 dir="$(cd "$(dirname "$0")" && git rev-parse --show-toplevel)"
-export PATH="$dir/bin:$PATH"
+export PATH="$dir/bin:$HOME/.local/bin:$PATH"
 
 usage() {
 	cat <<EOF
@@ -39,18 +39,19 @@ run() {
 }
 
 install_chezmoi() {
-	if [ ! "$(command -v chezmoi)" ]; then
+	if ! hash chezmoi 2>/dev/null >&2; then
 		bin_dir="$HOME/.local/bin"
 		chezmoi="$bin_dir/chezmoi"
 		if [[ -e /etc/arch-release ]]; then
 			pacman -S chezmoi
-		fi ||
-		if [ "$(command -v curl)" ]; then
-			sh -c "$(curl -fsLS https://git.io/chezmoi)" -- -b "$bin_dir"
-		elif [ "$(command -v wget)" ]; then
-			sh -c "$(wget -qO- https://git.io/chezmoi)" -- -b "$bin_dir"
 		else
-			fatal "To install chezmoi, you must have curl or wget installed."
+			if hash curl 2>/dev/null >&2; then
+				sh -c "$(curl -fsLS https://git.io/chezmoi)" -- -b "$bin_dir"
+			elif hash wget 2>/dev/null >&2; then
+				sh -c "$(wget -qO- https://git.io/chezmoi)" -- -b "$bin_dir"
+			else
+				fatal "To install chezmoi, you must have curl or wget installed."
+			fi
 		fi
 	else
 		chezmoi='chezmoi'

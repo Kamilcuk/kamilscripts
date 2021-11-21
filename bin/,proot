@@ -3,7 +3,11 @@ set -euo pipefail
 dest="${TMPDIR:-/tmp}"/proot
 if [[ ! -e "$dest" ]]; then
 	echo ",proot: Downloading proot executable to $dest ..." >&2
-	curl -sS --output "$dest" -L 'https://proot.gitlab.io/proot/bin/proot'
+	if hash curl 2>/dev/null >/dev/null; then
+		curl -sS --output "$dest" -L 'https://proot.gitlab.io/proot/bin/proot'
+	else
+		wget -q -O "$dest" 'https://proot.gitlab.io/proot/bin/proot'
+	fi
 	chmod +x "$dest"
 fi
 "$dest" "$@"
