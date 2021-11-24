@@ -1,7 +1,5 @@
 #!/bin/bash
 
-g_cxx="${CXX:-g++ -xc++}${CXX:+$CXX $CXXFLAGS}"
-
 cxx_defaults_headers() { cat <<EOF
 /* C++ */
 #include <bits/stdc++.h>
@@ -104,5 +102,7 @@ cxx_defaults() {
 	echo 'using namespace std;'
 }
 
-. ,ccrun +defaultsf cxx_defaults +cc "$g_cxx" "$@"
+g_cxx="${CXX:-g++}${CXX:+$CXX $CXXFLAGS}"
+. ,ccrun +defaultsf cxx_defaults +cc "$g_cxx" +cpp "$@"
+
 

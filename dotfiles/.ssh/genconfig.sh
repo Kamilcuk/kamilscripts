@@ -98,10 +98,19 @@ Host tunel_wujek
 	Hostname 192.168.1.1
 	User kamil
 	Port 10022
-Host chors
-	Hostname 193.33.111.225
+# Writual serverw ith archlinux on Hercules
+Host asteria
+	$(ProxyJump wujek)
+	Hostname localhost
 	User root
 	Port 60022
+	StrictHostKeyChecking no
+	UserKnownHostsFile /dev/null
+
+#Host chors
+	#Hostname 193.33.111.225
+	#User root
+	#Port 60022
 
 # tunels
 Host leo leonidas tunel_leonidas
@@ -284,6 +293,10 @@ Host lightsail1
 	User kcukrowski
 	#Hostname 3.69.31.141
 	Hostname 3.70.226.57
+
+Host chronossail
+	User root
+	Hostname 18.158.158.92
 
 Host kgomulskirpi rpichronos01
 	User root

@@ -38,7 +38,8 @@ adds stack protection, sanitizer when available, etc.
 \`int main(int argc, char *argv[])\` is also automatically added if detected it's missing.
 
 Options:
-   +cc <compiler>      Set the C compiler.
+   +cc  <compiler>     Set the C compiler.
+   +cpp <compiler>     Use C++ instead of C.
    +n +nochange        Disable automatic adding of include headers and \`int main()\` body.
    +V +valgrind        Run executable via valgrind.
    +G +gdb             Run executable under gdb.
@@ -62,11 +63,13 @@ EOF
 }
 
 parse_options() {
-	g_cc="${CC:-gcc -xc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc='' g_debug=false
+    g_lang=c
+	g_cc="${CC:-gcc}${CC:+$CC $CFLAGS}" g_change=true g_defaultsfunc='' g_debug=false
 	g_valgrind=false g_gdb=false g_interactivegdb=false g_defaultflags=true g_verbose=false g_optind=$#
 	while (($#)); do
 		case "$1" in
 			+cc) shift; g_cc="$1"; ;;
+			+cpp) g_lang="c++"; ;;
 			+n|+nochange) g_change=false; ;;
 			+V|+valgrind) g_valgrind=true; ;;
 			+G|+gdb) g_gdb=true; ;;
@@ -350,14 +353,22 @@ c_defaults() {
 # }}}
 # Options detection {{{
 
+declare -g GCC_VERSION
+
 gcc_version() {
-	declare -g GCC_VERSION
 	if [[ -z "${GCC_VERSION:-}" ]]; then
-		if ! GCC_VERSION=$(gcc --version | grep '^gcc' | sed 's/^.* \([0-9]\+\.[0-9]\+\).*/\1/'); then
-			fatal "Getting gcc version failed"
-		fi
-	fi
-	echo "$GCC_VERSION"
+        local tmp
+        tmp=$(gcc --version)
+        if ! [[ "$tmp" =~ ^gcc\ .*\ ([0-9]+\.[0-9]+).* ]]; then
+            fatal "Getting gcc version failed"
+        fi
+        GCC_VERSION="${BASH_REMATCH[1]}"
+    fi
+}
+
+gcc_version_gt() {
+    gcc_version
+    awkeval "$GCC_VERSION >= $*"
 }
 
 compiler_try_compile() { (
@@ -401,8 +412,11 @@ default_flags_add() {
 		-Wwrite-strings
 		-Wno-unused-function
 		-Wno-unused-parameter
-		-Wno-implicit-function-declaration
-
+    )
+    if [[ "$g_lang" != 'c++' ]]; then
+        flags+=( -Wno-implicit-function-declaration )
+    fi
+    flags+=(
 		-Wl,-z,defs
 		-Wl,-z,now
 		-Wl,-z,relro
@@ -410,25 +424,20 @@ default_flags_add() {
 
 	# Sanitize options are disabled when running via gdb or valgrind
 	if ! "$g_valgrind" && ! "$g_gdb" && ! "$g_interactivegdb"; then
-		local ver
-		if ! ver=$(gcc_version); then
-			fatal "Could not get gcc version"
-		fi
-
 		local sanitize
-		if awkeval "$ver >= 4.8"; then
+		if gcc_version_gt 4.8; then
 			sanitize+=(address)
 		fi
-		if awkeval "$ver >= 5"; then
+		if gcc_version_gt 5; then
 			sanitize+=(undefined)
 		fi
-		if awkeval "$ver >= 8"; then
+		if gcc_version_gt 8; then
 			sanitize+=(pointer-compare pointer-subtract)
 		fi
 		local tmp
 		if ((${#sanitize[@]} != 0)); then
 			local flag IFS=,
-			flag=-fsanitize=${sanitize[*]}
+			flag="-fsanitize=${sanitize[*]}"
 			if tmp=$(compiler_try_compile "$flag" 2>&1); then
 				flags+=("$flag")
 			fi
@@ -490,7 +499,7 @@ if (($#)) && [[ "$1" == '--' ]]; then
 	shift "$#"
 fi
 
-if (($# != 0)); then 
+if (($# != 0)); then
 	fatal "Internal options parser error"
 fi
 
@@ -584,7 +593,7 @@ fi
 if "$g_debug"; then
 	printf "%s\n" "+ $g_cc ${g_ccargs[*]}" >&2
 fi
-$g_cc -o "$exefile" "$srcfile" "${g_ccargs[@]}" &&
+$g_cc -x${g_lang} -o "$exefile" "$srcfile" "${g_ccargs[@]}" &&
 (
 	if "$g_debug"; then set -x; fi
 	"${cmd[@]}"
