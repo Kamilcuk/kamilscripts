@@ -146,8 +146,10 @@ if v:version >= 800
 	set shortmess+=c
 endif
 
-if has('nvim')
+if has('nvim-0.4.4')
 	set signcolumn=auto:3-9
+elseif has('nvim')
+	set signcolumn=auto:3
 elseif v:version >= 800
 	set signcolumn=yes
 endif
@@ -273,7 +275,10 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		"Plug 'mhinz/vim-hugefile' " Also edit large files quickly
 		Plug 'wellle/targets.vim' " Add additional text objects. ( a ( b ) c ) , place cursor on 'b' and type v2A)
 		Plug 'tpope/vim-sensible' " Defaults everyone can agree on
-		Plug 'subnut/visualstar.vim' " Search stuff selected in visual mode. Select stuff and type *
+		" https://github.com/subnut/visualstar.vim/blob/master/plugin/visualstar.vim
+		if !( &compatible || !(has('nvim') || has('patch-8.2.1978')) )
+			Plug 'subnut/visualstar.vim' " Search stuff selected in visual mode. Select stuff and type *
+		endif
 	" }}}
 	" Integration with external tools {{{2
 		if executable('hunspell') || executable('aspell')
