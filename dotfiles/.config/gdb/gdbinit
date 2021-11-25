@@ -1,0 +1,19 @@
+# gdbinit
+
+python
+import gdb
+class ChronoPrinter:
+
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        integral_value = self.val['__r']
+        return f"{integral_value}"
+
+p = gdb.printing.RegexpCollectionPrettyPrinter("sp")
+p.add_printer("chrono", "^std::chrono::duration<.*>$", ChronoPrinter)
+o = gdb.current_objfile()
+gdb.printing.register_pretty_printer(o, p)
+end
+
