@@ -52,7 +52,7 @@ is_cis() {
 
 cat <<EOF
 Host config rmcontrol
-	Host 255.255.255.255
+	Hostname 255.255.255.255
 	ProxyCommand false
 EOF
 

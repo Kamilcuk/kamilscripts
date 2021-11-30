@@ -1,10 +1,9 @@
 #!/bin/sh
 # kamilscripts etc/profile
 
-if [ -n "$KCDIR" ]; then
+if [ -r "${KCDIR:-}" ]; then
 	return;
 fi
-
 
 # find KCDIR
 for i in \

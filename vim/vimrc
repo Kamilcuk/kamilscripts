@@ -1267,7 +1267,7 @@ if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 	let &makeprg="sudo nginx -t && sudo nginx -s reload"
 endif
 
-if getcwd() =~ "/home/kamil/ncbj/puppet"
+if filereadable(getcwd()."/pdk.yaml")
 	set errorformat=""
 	"
 	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl

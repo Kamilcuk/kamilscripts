@@ -1,0 +1,161 @@
+#!/bin/bash
+# shellcheck disable=1083,2093,2031
+set -euo pipefail
+
+. "$(dirname "$(readlink -f "$0")")"/,lib_lib -l
+
+gnuplot_init() {
+	coproc nice gnuplot
+	gnuplot_out <<EOF
+set terminal png medium size 200,1200 crop
+set datafile separator ","
+set boxwidth 1 relative
+set grid y
+set xtics rotate
+set ytics rotate
+set style fill solid
+set key off
+EOF
+}
+
+gnuplot_out() {
+	cat >&"${COPROC[1]}"
+}
+
+gnuplot_end() {
+	exec {COPROC[0]}>&-
+	exec {COPROC[1]}>&-
+	wait "$COPROC_PID"
+}
+
+plotmultiple() {
+	#
+	gnuplot_init
+	local title column order=()
+	while IFS=, read -r column title; do
+		if [[ -z "$title" ]]; then continue; fi
+		order+=("$column")
+		echo "plot $column,$title"
+		gnuplot_out <<EOF
+set output "$tmpd/$column.png"
+set ylabel "$title"
+plot "$tmpd/data" using (\$0):$column:(\$0):xticlabels(3) notitle with boxes linecolor variable
+EOF
+	done
+	gnuplot_end
+	#
+	printf "%s\n" "$tmpd"/*.png | nice xargs -P"$(nproc)" -d '\n' -i convert -rotate 90 {} {}
+	#
+	local i
+	out "<p>"
+	for column in "${order[@]}"; do
+		image64=$(nice base64 <"$tmpd/$column.png" | tr -d '\n')
+		out <<EOF
+<p>
+<img src="data:image/png;charset=utf-8;base64,$image64" /></br>
+</p>
+EOF
+	done
+	out "</p>"
+	#
+	rm -f "$tmpd"/*.png
+}
+
+out() {
+	if (($#)); then
+		echo "$*" >&3
+	else
+		cat >&3
+	fi
+}
+
+###############################################################################
+
+usage() { cat <<EOF
+$(basename "$0") <inputfile> <outputfile>
+
+Just like bon_csv2html, but also adds data and gnuplot plots to the output
+embedded in the html.
+
+Written by Kamil Cukrowski 2021
+EOF
+}
+if ((!$#)); then usage; exit 1 ; fi
+if (($# != 2)); then fatal "Invalid number of arguments"; fi
+
+inf="$1"
+outf="$2"
+tmpd=$(mktemp -d)
+trapexit() {
+	rm -rf "$tmpd"
+}
+trap trapexit EXIT
+
+grep , "$inf" |
+	awk -F, -v OFS=, '
+	{
+		for (i=40; i<=44; ++i) {
+			v = int($i)
+			if ($i ~ /us/) {
+				v /= 1000
+			}
+			# print(v, $i, ($i ~ /.*ms/)) > "/dev/stderr"
+			$i = v
+		}
+	} 1' |
+	sort -t, -k3 > "$tmpd/data"
+
+cat "$tmpd/data"
+
+exec 3>"$outf"
+out <<EOF
+<html>
+<head>
+<style>
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+</style>
+</head>
+<body>
+EOF
+
+plotmultiple <<EOF
+12,Results for writing a block at a time K/s
+14,Results for reading and re-writing a block at a time K/s
+18,Results for reading a block at a time K/s
+15,Results for reading and re-writing a block at a time %CPU
+20,Results for the seek test seeks/s
+
+13,Results for writing a block at a time %CPU,
+19,Results for reading a block at a time %CPU,
+21,Results for the seek test %CPU
+
+40,Latency (maximum amount of time for a single operation) for put_block [ms]
+41,Latency (maximum amount of time for a single operation) for rewrite [ms]
+43,Latency for get_block [ms]
+44,Latency for seeks [ms]
+EOF
+
+grep , "$inf" | bon_csv2html >&3
+
+{
+	out <<EOF
+<p><table>
+EOF
+	sed '
+	s|\([^,]*\),\?|<th>\1</th>|g
+	s|^|<tr>|
+	s|$|</tr>|
+' - "$tmpd/data" >&3 <<EOF
+format_version,bonnie_version,name,concurrency,seed,file_size,chunk_size,seeks,seek_proc_count,putc,putc_cpu,put_block,put_block_cpu,rewrite,rewrite_cpu,getc,getc_cpu,get_block,get_block_cpu,seeks,seeks_cpu,num_files,max_size,min_size,num_dirs,file_chunk_size,seq_create,seq_create_cpu,seq_stat,seq_stat_cpu,seq_del,seq_del_cpu,ran_create,ran_create_cpu,ran_stat,ran_stat_cpu,ran_del,ran_del_cpu,putc_latency,put_block_latency,rewrite_latency,getc_latency,get_block_latency,seeks_latency,seq_create_latency,seq_stat_latency,seq_del_latency,ran_create_latency,ran_stat_latency,ran_del_latency
+EOF
+	out '<table></p>'
+}
+
+out '</body></html>'
+exec 3>&-
+
+xdg-open "$outf"
+

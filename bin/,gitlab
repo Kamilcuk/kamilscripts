@@ -496,17 +496,19 @@ class Cirun:
 
             return pipes.quote(str)
 
-        def add(self, str):
-            self.cmd += str + "\n"
+        def add(self, sstr):
+            # assert(isinstance(self.cmd, str))
+            # assert(isinstance(sstr, str))
+            self.cmd += sstr + "\n"
 
-        def addcmd(self, arr):
-            self.add(" ".join([self.quote(x) for x in arr]))
+        def addcmd(self, args):
+            self.add(" ".join([self.quote(x) for x in args]))
 
         def notifycolor(self, color, str):
             self.addcmd(["printf", "%s%s%s\\n", color, str, RESET])
 
         def notifycyan(self, str):
-            self.notifycolor(CYAN, str)
+            self.notifycolor(CYAN, "$ " + str)
 
         def notifygreen(self, str):
             self.notifycolor(GREEN, str)
@@ -1063,8 +1065,13 @@ class Cirun:
                 with ex.comment_section("Running " + script):
                     ex.notifygreen("Executing " + script)
                     for ii in todo:
-                        ex.notifycyan(ii)
-                        ex.add(ii)
+                        if isinstance(ii, list):
+                            for jj in ii:
+                                ex.notifycyan(jj)
+                                ex.add(jj)
+                        else:
+                            ex.notifycyan(ii)
+                            ex.add(ii)
                     ex.add(
                         'if [ "$?" -ne 0 ]; then CI_JOB_STATUS="success"; else CI_JOB_STATUS="failed"; fi'
                     )
