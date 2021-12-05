@@ -320,7 +320,7 @@
      "soffice --calc /home/moje/zestawienie.ods")
    (xbindkey
      '(Mod4 "3")
-     ",leonidas_toggle_hdmi_mute.sh")
+     ",leonidas toggle_hdmi_mute")
    (xbindkey
      '(Mod4 "4")
      ",xrandr_change_brightness.sh -0.1")
@@ -338,7 +338,7 @@
      "pactl set-sink-volume @DEFAULT_SINK@ +2%")
    (xbindkey
      '(Mod4 F12)
-     ",leonidas_toggle_hdmi_mute.sh"))
+     ",leonidas toggle_hdmi_mute"))
   (else
    (xbindkey
      '(Mod4 "4")

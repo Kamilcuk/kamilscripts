@@ -1,0 +1,42 @@
+#!/bin/bash
+# https://stackoverflow.com/questions/16319759/disable-webcams-autofocus-in-linux/16658508
+# https://www.youtube.com/watch?v=e_zTPEUu2_8
+set -euo pipefail
+
+r() {
+	echo "+" "$@" >&2
+	"$@"
+}
+
+name=alsa_input.usb-046d_HD_Pro_Webcam_C920_6CDDC9BF-02.analog-stereo
+
+id=$(
+	pactl list short modules |
+	awk -v name="${name%.*}" '$2 ~ /module-echo-cancel/ && $3 ~ name{print $1}'
+)
+if [[ -n "$id" ]]; then
+	for i in $id; do
+		r pactl unload-module "$i"
+	done
+fi
+r pactl set-default-source "$name"
+tmp=$(r pactl load-module module-echo-cancel \
+	source_master="$name" \
+	sink_name="EchoCancelLogitechC920" \
+	use_volume_sharing=1 \
+	use_master_format=1 \
+	aec_method='webrtc' \
+	aec_args='"analog_gain_control=0 digital_gain_control=1"'
+)
+if [[ ! "$tmp" =~ ^[0-9]+$ ]]; then
+	printf "%s\n" "$tmp"
+fi
+r pactl set-default-source "$name".echo-cancel
+
+
+r v4l2-ctl -d 0 -c focus_auto=0
+r v4l2-ctl -d 0 -c focus_absolute=55
+# r v4l2-ctl -d 0 -c exposure_auto=3
+# r v4l2-ctl -d 0 -c exposure_absolute=333
+# r v4l2-ctl -d 0 -c white_balance_temperature_auto=1
+

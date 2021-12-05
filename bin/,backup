@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+. ,lib_lib -l
+
+args=$(getopt -n "$L_NAME" -o nh -- "$@")
+eval "set -- $args"
+while (($#)); do
+	case "$1" in
+	-n) L_dryrun=1; ;;
+	-h) echo "No usage"; exit 1; ;;
+	--) shift; break;
+	esac
+	shift
+done
+
+if (($# == 0)); then L_fatal "Not enough arguments"; fi
+if (($# > 1)); then L_fatal "Too many arguments"; fi
+timestamp=$(date +%Y-%m-%dT%H:%M:%S+%Z)
+dir=$(dirname "$1")
+file=$(basename "$1")
+destf="$dir/.$file.backup.$timestamp.${file##*.}"
+linkf="$dir/.$file.backup.${file##*.}"
+if [[ -e "$destf" ]]; then
+	L_fatal "Destination $destf exists"
+fi
+if [[ -e "$linkf" && ! -L "$linkf" ]]; then
+	L_fatal "Link destination $linkf exists and is not a symlink"
+fi
+L_run cp -r "$1" "$destf"
+L_run ln -vsfT "$destf" "$linkf"

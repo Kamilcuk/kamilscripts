@@ -335,7 +335,8 @@ Host *
 	ServerAliveCountMax 20
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
 	ControlMaster auto
-	ControlPath  ~/.ssh/.connection-%n-%r@%h:%p
+	#ControlPath  ~/.ssh/.connection-%n-%r@%h:%p
+	ControlPath  ~/.ssh/.c-%C
 	ControlPersist 1h
 	#
 	ExitOnForwardFailure yes

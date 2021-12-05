@@ -1,4 +1,82 @@
 #!/bin/bash
+# shellcheck disable=2086,2154
 set -euo pipefail
+export LC_ALL=C
 
+hdmi_sink=alsa_output.pci-0000_01_00.1.hdmi-stereo
+builtin_card=alsa_card.pci-0000_00_14.2
+builtin_sink=alsa_output.pci-0000_00_14.2.analog-stereo
+
+C_fix_pulseaudio() {
+	L_run pactl set-card-profile "$builtin_card" output:analog-stereo
+	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout
+	L_run pactl set-default-sink combined
+	L_run pactl set-sink-volume "$hdmi_sink" 100%
+	L_run pactl set-sink-volume "$builtin_sink" 100%
+}
+
+C_toggle_hdmi_mute() {
+	C_fix_pulseaudio
+
+	if (($# == 0)); then
+		if [[ -n "${bluehead:-}" ]]; then
+			set -- only_bluetooth
+		else
+			tmp=$(pactl get-sink-mute "$builtin_sink")
+			if [[ "${tmp}" =~ 'no' ]]; then
+				set -- unmute_hdmi
+			else
+				set -- unmute_headphones
+			fi
+		fi
+	fi
+
+	case "$1" in
+	unmute_headphones)
+		pactl set-sink-mute "$hdmi_sink" on
+		pactl set-sink-mute "$builtin_sink" off
+		icon=audio-headphones
+		msg=$'Dźwięk przez słuchawki.\nMonitor wyciszony'
+		;;
+	unmute_hdmi)
+		pactl set-sink-mute "$hdmi_sink" off
+		pactl set-sink-mute "$builtin_sink" on
+		icon=video-display
+		msg=$'Dźwięk przez monitor.\nSłuchawki wyciszone.'
+		;;
+	only_bluetooth)
+		pactl set-sink-mute "$hdmi_sink" on
+		pactl set-sink-mute "$builtin_sink" on
+		pactl set-sink-mute "$bluehead" off
+		icon=blueman
+		msg=$'Dźwięk przez bluetooth.\nMonitor i słuchawki wyciszone.'
+		;;
+	*)
+		L_fatal "Invalid command"
+		;;
+	esac
+
+	,org.freedesktop.Notifications.Notify -i "$icon" -s "$msg" -P ',leonidas toggle-hdmi-mute'
+}
+
+C_logitech_c920() {
+	C_fix_pulseaudio
+	n=alsa_input.usb-046d_HD_Pro_Webcam_C920_6CDDC9BF-02.analog-stereo
+	# shellcheck disable=2016
+	if ! pactl list short sources | grep -q "$n"; then
+		L_log "Waiting for $n"
+		timeout 10 sh -c 'while ! pactl list short sources | grep -q "$1"; do sleep 0.5; done' - "$n"
+	fi
+	,logitech_c920
+	teams=$(
+		,pulseaudio list_2 _what,_num,properties.application.process.binary |
+		awk -F'\t' '$1 ~ /Source Output/ && $3 == "teams"{ print $2 }'
+	)
+	if [[ -n "$teams" ]]; then
+		L_run pactl move-source-output "$teams" alsa_input.usb-046d_HD_Pro_Webcam_C920_6CDDC9BF-02.analog-stereo.echo-cancel
+		L_run pactl set-source-output-mute "$teams" 0
+	fi
+}
+
+. ,lib_lib C_ "$@"
 
