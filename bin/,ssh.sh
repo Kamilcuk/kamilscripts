@@ -93,7 +93,10 @@ recreate_config
 if (($# == 1)); then
 	case "$1" in
 	config) exec ${EDITOR:-vim} ~/.ssh/genconfig.sh; ;;
-	rmcontrol) exec rm -vf ~/.ssh/.socket_*; ;;
+	rmcontrol|removecontrol)
+		rm -vf ~/.ssh/.c-*
+		exit
+		;;
 	esac
 fi
 

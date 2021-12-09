@@ -3,12 +3,24 @@
 set -euo pipefail
 export LC_ALL=C
 
-hdmi_sink=alsa_output.pci-0000_01_00.1.hdmi-stereo
-builtin_card=alsa_card.pci-0000_00_14.2
-builtin_sink=alsa_output.pci-0000_00_14.2.analog-stereo
+hdmi_port=pci-0000_01_00.1
+# hdmi_output=hdmi-stereo-extra1
+hdmi_output=$(
+	LC_ALL=C pactl list cards |
+		awk -v RS='\n\n' '/alsa_card.pci-0000_01_00.1/' |
+		awk '/output:hdmi-.*stereo.*available: yes/{gsub(/: /, " "); gsub(/output:/, ""); print $1}'
+)
+hdmi_card=alsa_card.$hdmi_port
+hdmi_sink=alsa_output.$hdmi_port.$hdmi_output
+
+builtin_port=pci-0000_00_14.2
+builtin_output=analog-stereo
+builtin_card=alsa_card.$builtin_port
+builtin_sink=alsa_output.$builtin_port.$builtin_output
 
 C_fix_pulseaudio() {
-	L_run pactl set-card-profile "$builtin_card" output:analog-stereo
+	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output"
+	L_run pactl set-card-profile "$hdmi_card"    "output:$hdmi_output"
 	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout
 	L_run pactl set-default-sink combined
 	L_run pactl set-sink-volume "$hdmi_sink" 100%

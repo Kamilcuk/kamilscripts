@@ -103,18 +103,19 @@ mkfifo_auto() {
 
 # shellcheck disable=SC2016
 C_unit_test() {
+	nice=(nice stdbuf -oL)
 	chdirtorepo
 	#
 	tmpf2='' ; mktemp_auto tmpf2
 	L_trapchain L_kill_all_jobs EXIT
 	#
 	cmd2=(pdk test unit --parallel)
-	"${cmd2[@]}" >"$tmpf2" 2>&1 &
+	"${nice[@]}" "${cmd2[@]}" >"$tmpf2" 2>&1 &
 	child2=$!
 	#
 	cmd1=(pdk validate -a --parallel)
 	L_info "+" "${cmd1[@]@Q}"
-	if "${cmd1[@]}" | cat; then :; else
+	if "${nice[@]}" "${cmd1[@]}" 2>&1 | cat; then :; else
 		exit "$?"
 	fi
 	#

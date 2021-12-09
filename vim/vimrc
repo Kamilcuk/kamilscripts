@@ -287,11 +287,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
 		Plug 'salcode/vim-interactive-rebase-reverse', { 'for': ['gitrebase', 'git'] } " reverse order commits during a Git rebase
 		" A Git wrapper so awesome, :G
-		Plug 'tpope/vim-fugitive', { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		Plug 'tpope/vim-fugitive' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
 		" An extension to fugitive.vim for gitlab support
-		Plug 'shumphrey/fugitive-gitlab.vim', { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		Plug 'shumphrey/fugitive-gitlab.vim' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
 		" GitHub extension for fugitive.vim
-		Plug 'tpope/vim-rhubarb', { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		Plug 'tpope/vim-rhubarb' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
 	" }}}
 	" Languages syntax and support and parsing {{{2
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
@@ -323,7 +323,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'FelikZ/ctrlp-py-matcher', { 'on': 'CtrlP' } " Faster ctrl-p matcher with python
 		Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
 		"
-		Plug 'roman/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.
+		" Plug 'roman/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.  NIE
 		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
 		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
 		Plug 'preservim/nerdtree', { 'on': ['NERDTreeToggle', 'NERDTreeFind'] } " The file browser.
@@ -658,7 +658,7 @@ endif
 " ctrlp
 if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_custom_ignore = {
-				\ 'dir':  '\v[\/](\.(git|hg|svn|cache)|_build)$',
+				\ 'dir':  '\v[\/](\.(git|hg|svn|cache)|_build|spec/fixtures/modules)$',
 				\ 'file': '\v\.(exe|so|dll)$',
 				\ }
 	let g:ctrlp_show_hidden = 1
@@ -676,8 +676,15 @@ if kc#plugin#enabled('ctrlp.vim')
 	" https://github.com/kien/ctrlp.vim/issues/576
 	let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
         \ --skip-vcs-ignores
-		\ --ignore _build
-		\ --ignore .cache
+		\ --ignore .git/
+		\ --ignore hg/
+		\ --ignore svn/
+		\ --ignore .cache/
+		\ --ignore _build/
+		\ --ignore spec/fixtures/modules/
+		\ --ignore "*.exe"
+		\ --ignore "*.so"
+		\ --ignore "*.dll"
         \ --files-with-matches
 		\ --max-count 50000
         \ %s
@@ -1268,38 +1275,67 @@ if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
 endif
 
 if filereadable(getcwd()."/pdk.yaml")
+	let &makeprg = ",pdk unit_test"
+
 	set errorformat=""
-	"
-	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl
-	"let &errorformat.='       error during compilation: %m (file: %f\, line: %l\, column: %c) %.%#'
-	"let &errorformat.=',       error during compilation: %m \(file: %f\, line: %l\) %.%#'
-	let &errorformat.='       error during compilation: %m \(file: %f\, line: %l%.%#'
-	let &errorformat.=',       error during compilation: %m (file: %f) %.%#'
-	"       error during compilation: Parameter source failed on File[Provision /etc/pip.conf configuration]: ....
-	let &errorformat.=',%E       error during compilation: %m'
-	"       ' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/pip.pp, line: 8)
-	let &errorformat.=',%Z       %m (file: %f\, line: %l, column: %c)%.%#'
-	let &errorformat.=',%Z       %m (file: %f\, line: %l)%.%#'
-	let &errorformat.=',%Z       %m (file: %f)%.%#'
-	"       # Set the pip repository to use nexus
-	"       [global]
-	"       index = https://nexus.services.idea.edu.pl/repository/pypi-all/pypi
-	"       index-url = https://nexus.services.idea.edu.pl/repository/pypi-all/simple
-	let &errorformat.=',%C       %m'
-	let &errorformat.=',%C      ' " just an empty line..
+
+	" Custom format for my custom executable
+	" Match directory that ,pdk changes to when unit testing
+	" ,pdk: info: + 'cd' '/home/kamil/ncbj/puppet/diz_domain'
+	let &errorformat.= '%D\,pdk: info: + ''cd'' ''%f'''
 
 	let &errorformat.=',pdk %m (%f:%l:%c)'
 	let &errorformat.=',pdk %m (%f:%l)'
 	let &errorformat.=',pdk %m (%f)'
+
+	"       error during compilation: Evaluation Error: Error while evaluating a Resource Statement, Unknown resource type: 'cron' (file: /home/.../gcalendar_server_booking.pp, line: 53, column: 3) on node leonidas.cis.gov.pl
+	let &errorformat.=',       %[ ]%#error during compilation: %m (file: %f\, line: %l\, column: %c)%.%#'
+	let &errorformat.=',       %[ ]%#error during compilation: %m (file: %f\, line: %l)%.%#'
+	let &errorformat.=',       %[ ]%#error during compilation: %m (file: %f)%.%#'
+
+
+	"       error during compilation: Evaluation Error: Error while evaluating a Function Call, Failed to parse template chgate/openvpn-chronos.conf:
+	"         Filepath: /home/.../openvpn-chronos.conf
+	"         Line: 16
+	"         Detail: undefined method `[]' for nil:NilClass
+	"        (file: /home/.../openvpn.pp, line: 9, column: 16) on node leonidas.
+
+	let &errorformat.=',%E         %[ ]%#Filepath: %f'
+	let &errorformat.=',%C         %[ ]%#Line: %l'
+	let &errorformat.=',%Z         %[ ]%#Detail: %m'
+	let &errorformat.=  ',        %[ ]%#(file: %f\, line: %l\, column: %c) %m'
+	let &errorformat.=  ',        %[ ]%#(file: %f\, line: %l) %m'
+	let &errorformat.=  ',        %[ ]%#(file: %f) %m'
+
 	" rspec ./spec/classes/zwierzak/limits_spec.rb:10 # diz_domain::zwierzak::limits on centos-7-x86_64 is expected to compile into a catalogue without dependency cycles
 	let &errorformat.=',rspec %f:%l # %m'
-	" Match directory that ,pdk changes to when unit testing
-	" ,pdk: info: + 'cd' '/home/kamil/ncbj/puppet/diz_domain'
-	let &errorformat.=',%D\,pdk: info: + ''cd'' ''%f'''
-	" pdk (INFO): Validator 'puppet-epp' skipped for '/home/kamil/ncbj/puppet/diz_domain'. No files matching '["**/*.epp"]' found to validate.
-	let &errorformat.=',%Dpdk (INFO): Validator ''%.%#'' skipped for ''%f''%.%#'
 
-	let &makeprg = ",pdk unit_test"
+	"       error during compilation: Parameter source failed on File[Provision /etc/pip.conf configuration]: ....
+	"let &errorformat.=',%E      %#error during compilation: %#%m'
+	"       ' (file: /home/kamil/ncbj/puppet/diz_zwierzak/spec/fixtures/modules/diz_zwierzak/manifests/pip.pp, line: 8)
+	"let &errorformat.=',%Z      %#%m (file: %f\, line: %l\, column: %c)%.%#'
+	"let &errorformat.=',%Z      %#%m (file: %f\, line: %l)%.%#'
+	"let &errorformat.=',%Z      %#%m (file: %f)%.%#'
+	"       # Set the pip repository to use nexus
+	"       [global]
+	"       index = https://nexus.services.idea.edu.pl/repository/pypi-all/pypi
+	"       index-url = https://nexus.services.idea.edu.pl/repository/pypi-all/simple
+	"let &errorformat.=',%C      %#%m'
+	"let &errorformat.=',%C     %#' " just an empty line..
+
+	" pdk (INFO): Validator 'puppet-epp' skipped for '/home/kamil/ncbj/puppet/diz_domain'. No files matching '["**/*.epp"]' found to validate.
+	"let &errorformat.=',%Dpdk (INFO): Validator ''%.%#'' skipped for ''%f''%.%#'
+
+
+
+		"let &errorformat.='       error during compilation: %m (file: %f\,
+		"line: %l\, column: %c) %.%#'
+		"	"let &errorformat.=',       error during compilation: %m \(file:
+		"	%f\, line: %l\) %.%#'
+		"
+	"let &errorformat.='       error during compilation: %m (file: %f\, line: %l\, column: %c) %.%#'
+	"let &errorformat.=',       error during compilation: %m \(file: %f\, line: %l\) %.%#'
+
 	"let &makeprg="cat /tmp/1"
 endif
 

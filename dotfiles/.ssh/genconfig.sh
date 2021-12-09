@@ -51,7 +51,7 @@ is_cis() {
 ###############################################################################
 
 cat <<EOF
-Host config rmcontrol
+Host config removecontrol
 	Hostname 255.255.255.255
 	ProxyCommand false
 EOF
@@ -308,6 +308,9 @@ Host rpichronos02
 Host chronosserver
 	User kcukrowski
 	Hostname 172.16.0.91
+
+Match host=*.vpn.chronos.services.idea.edu.pl
+	User root
 
 EOF
 
