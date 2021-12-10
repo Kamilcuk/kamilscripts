@@ -305,9 +305,9 @@ Host rpichronos02
 	User root
 	Hostname 10.135.0.5
 
-Host chronosserver
-	User kcukrowski
-	Hostname 172.16.0.91
+#Host chronosserver
+	#User kcukrowski
+	#Hostname 172.16.0.91
 
 Match host=*.vpn.chronos.services.idea.edu.pl
 	User root
