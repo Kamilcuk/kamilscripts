@@ -32,7 +32,7 @@ create_new() {
 	fi
 }
 
-dirname=".$(id -un).home.tmp.dir"
+dirname=".$(id -u).home.tmp.dir"
 if [ ! -L "$HOME"/tmp ]; then
 	if [ ! -e "$HOME"/tmp ]; then
 		# Does not exists -> create one
