@@ -2,7 +2,7 @@
 
 # shellcheck disable=2088
 if [ -e "$HOME" ]; then
-	if (
+	(
 
 logp() {
 	echo "hometmpdir.sh: $*" >&2
@@ -61,8 +61,6 @@ else
 	fi
 fi
 
-	); then
-		export TMPDIR="$HOME/tmp"
-	fi
+	) || :
 fi
 
