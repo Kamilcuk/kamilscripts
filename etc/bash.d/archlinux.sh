@@ -33,6 +33,9 @@ _archlinux_pacman() {
 	else
 		tmp=(pacman)
 	fi
+	if [[ " $* " =~ " -S " ]]; then
+		tmp+=(--needed)
+	fi
 	echo "+ ${tmp[*]} $*" >&2
 	nice ionice "${tmp[@]}" "$@"
 }

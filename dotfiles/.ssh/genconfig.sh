@@ -343,5 +343,6 @@ Host *
 	ControlPersist 1h
 	#
 	ExitOnForwardFailure yes
+	StrictHostKeyChecking accept-new
 
 EOF
