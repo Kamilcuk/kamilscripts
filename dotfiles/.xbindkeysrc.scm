@@ -357,18 +357,22 @@
   '(Mod4 "2")
   "pactl set-sink-volume @DEFAULT_SINK@ +2%")
 
-(xbindkey
-  '(Mod4 Right)
-  ",magic_position_window.sh right")
-(xbindkey
-  '(Mod4 Up)
-  ",magic_position_window.sh up")
-(xbindkey
-  '(Mod4 Down)
-  ",magic_position_window.sh down")
-(xbindkey
-  '(Mod4 Left)
-  ",magic_position_window.sh left")
+(case host
+  ((leonidas) "")
+  (else
+	(xbindkey
+	  '(Mod4 Right)
+	  ",magic_position_window.sh right")
+	(xbindkey
+	  '(Mod4 Up)
+	  ",magic_position_window.sh up")
+	(xbindkey
+	  '(Mod4 Down)
+	  ",magic_position_window.sh down")
+	(xbindkey
+	  '(Mod4 Left)
+	  ",magic_position_window.sh left")
+))
 
 (Xbindkey
   '(XF86Search)
