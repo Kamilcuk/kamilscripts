@@ -412,6 +412,7 @@ default_flags_add() {
 		-Wwrite-strings
 		-Wno-unused-function
 		-Wno-unused-parameter
+		-Wno-unused-variable
     )
     if [[ "$g_lang" != 'c++' ]]; then
         flags+=( -Wno-implicit-function-declaration )
