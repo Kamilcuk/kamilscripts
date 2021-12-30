@@ -115,7 +115,7 @@ C_version_gt() {
 		else
 			awk -v num="$1" '{exit !($1 >= num)}'
 		fi
-}	
+}
 
 C_autostash_supported() {
 	C_version_gt 2.6.0
@@ -184,7 +184,7 @@ C_refresh() {
 		trap trap_stash EXIT
 	fi
 	failed=0
-	if ! ( 
+	if ! (
 		gitv checkout "$onto" &&
 			gitv fetch -p &&
 			gitv pull --ff-only &&
@@ -201,6 +201,39 @@ C_refresh() {
 	exit "$failed"
 }
 
+C_judgerebase() {
+	# https://stackoverflow.com/questions/68313845/is-there-a-way-to-know-estimate-in-advance-the-number-of-conflicting-commits-and
+
+	oldbase="$(git merge-base "$1" "$2")"
+	oldhead="$2"
+	newbase="$3"
+	tmp1=$(git merge-base "$oldbase" "$newbase")
+	tmp2=$(git diff --numstat --no-renames "$tmp1" "$newbase")
+	tmp3=$(git diff --numstat --no-renames "$oldbase" "$oldhead")
+	score=$(
+		sort -k3 - <<<"$tmp2" <(cat <<<"$tmp3") |
+			uniq -D --skip-fields=2 |
+			awk '{sum += $1 + $2} END {print sum + 0}'
+	)
+	printf "score: %s\n" "$score"
+	printf "rating: "
+	if (( score == 0 )); then
+		echo "no conflicts"
+		exit 0
+	fi
+	if [[ "$score" -lt 100 ]]; then
+		echo "minor"
+	elif [[ "$score" -lt 500 ]]; then
+		echo "medium"
+	elif [[ "$score" -lt 5000 ]]; then
+		echo "major"
+	else
+		echo "brutal"
+	fi
+	exit 1
+}
+
+###############################################################################
 
 L_dryrun=0
 if [[ "${1:-}" == -n ]]; then
