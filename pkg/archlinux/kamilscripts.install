@@ -9,11 +9,11 @@ logpipe() {
 }
 
 archzfs_add() {
-	local key=F75D9D76
-	if ! pacman-key -l 2>/dev/null | grep -q "$key\$"; then
+	if ! pacman-key -l 2>/dev/null | grep -q "archzfs\$"; then
 		echo "Adding archzfs key to pacman-key"
-		pacman-key -r "$key"
-		pacman-key --lsign-key "$key"
+		curl -L https://archzfs.com/archzfs.gpg |  pacman-key -a -
+		pacman-key --lsign-key "$(curl -L https://git.io/JsfVS)"
+		curl -L https://git.io/Jsfw2 > /etc/pacman.d/mirrorlist-archzfs
 		echo "archzfs added to pacman keyring"
 	else
 		echo "archzfs key already added to pacman keyring"
@@ -46,10 +46,14 @@ git_repo_remove() {
 }
 
 provision_cfg_files() {
-	local mark
+	local mark file
 	mark="# %s kamilscript MANAGED BLOCK"
 	export PATH=$PATH:$dir/bin
-	blockinfile.sh "$@" -m "$mark" -b "Include = $dir/etc/pacman.conf" /etc/pacman.conf
+	case "$(uname -a)" in
+	*arm*) file="arm.conf"; ;;
+	*) file="pacman.conf"; ;;
+	esac
+	blockinfile.sh "$@" -m "$mark" -b "Include = $dir/etc/pacman.d/$file" /etc/pacman.conf
 }
 
 unprovision_cfg_files() {
@@ -61,8 +65,6 @@ post_install_or_upgrade() {
 	archzfs_add
 	git_repo_update
 	provision_cfg_files
-	echo "Make sure ssh/config has root:root owner"
-	chown root:root "$dir/etc/ssh/config"	
 	echo "Add gnupg kamilcukrowski keys to pacman"
 	curl https://kamcuk.gitlab.io/arch-repo/kamilcukrowski-public-gpg.txt | gpg --homedir /etc/pacman.d/gnupg --import
 	curl https://kamcuk.gitlab.io/arch-repo/kamilcukrowski-ownertrust-gpg.txt | gpg --homedir /etc/pacman.d/gnupg --import-ownertrust
