@@ -72,6 +72,7 @@ Host tunel_dyzio
 
 Host biurek gucio
 	Hostname www.biurek.pl
+	PubkeyAcceptedKeyTypes +ssh-rsa
 	User kamil
 	Port 4004
 Host tunel_biurek
@@ -192,7 +193,7 @@ fi # is_cis
 cat <<EOF
 Host gitlab.com github.com
 	User git
-	$([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
+	# $([[ -e ~/.ssh/github_id_rsa ]] && echo "IdentityFile ~/.ssh/github_id_rsa")
 	$(is_cis && hascmd ncat &&
 			echo "ProxyCommand ncat --proxy 127.0.0.1:60000 --proxy-type socks5 %h %p"
 	)
@@ -290,13 +291,14 @@ Host zwierzakauto
 	User kcukrowski
 
 Host lightsail1
-	User kcukrowski
-	#Hostname 3.69.31.141
-	Hostname 3.70.226.57
-
+	User root
+	Hostname 18.159.157.58
 Host chronossail
 	User root
 	Hostname 18.158.158.92
+Host chronosorder
+	User root
+	Hostname 3.127.144.9
 
 Host kgomulskirpi rpichronos01
 	User root
@@ -310,6 +312,9 @@ Host rpichronos02
 	#Hostname 172.16.0.91
 
 Match host=*.vpn.chronos.services.idea.edu.pl
+	User root
+
+Match host=10.145.*
 	User root
 
 EOF

@@ -40,11 +40,11 @@
   "diagnostic-languageserver.trace.server": "off",
   "diagnostic-languageserver.filetypes": {
     "c": [
-      "cpplint",
+      "cpplint_c",
       "gcovrtolist"
     ],
     "cpp": [
-      "cpplint",
+      "cpplint_cpp",
       "gcovrtolist"
     ],
     "vim": "vint",
@@ -82,11 +82,17 @@
     "_comment_make": "checkmake"
   },
   "diagnostic-languageserver.linters": {
-    "cpplint": {
+    "cpplint_c": {
       "args": [
-        "--filter=-whitespace,-legal/copyright,-runtime/int,-build/include_subdir,-readability/casting,-build/include_order,-readability/todo,-build/include,-readability/nolint",
+        "--filter=-whitespace,-legal/copyright,-runtime/int,-build/include_subdir,-readability/casting,-build/include_order,-readability/todo,-build/include,-readability/nolint,-readability/braces",
         "%file"
       ],
+      "command": "cpplint",
+      "debounce": 100,
+      "isStderr": true,
+      "isStdout": false,
+      "offsetLine": 0,
+      "offsetColumn": 0,
       "formatPattern": [
         "^[^:]+:(0:|(\\d+):)(\\d+)?\\s+(.+?)\\s\\[(\\d)\\]$",
         {
@@ -95,7 +101,42 @@
           "message": 4,
           "security": 5
         }
-      ]
+      ],
+      "securities": {
+        "1": "info",
+        "2": "warning",
+        "3": "warning",
+        "4": "error",
+        "5": "error"
+      }
+    },
+    "cpplint_cpp": {
+      "args": [
+        "--filter=-whitespace,-legal/copyright,-runtime/int,-build/include_subdir,-readability/casting,-build/include_order,-readability/todo,-build/include,-readability/nolint",
+        "%file"
+      ],
+      "command": "cpplint",
+      "debounce": 100,
+      "isStderr": true,
+      "isStdout": false,
+      "offsetLine": 0,
+      "offsetColumn": 0,
+      "formatPattern": [
+        "^[^:]+:(0:|(\\d+):)(\\d+)?\\s+(.+?)\\s\\[(\\d)\\]$",
+        {
+          "line": 2,
+          "column": 3,
+          "message": 4,
+          "security": 5
+        }
+      ],
+      "securities": {
+        "1": "info",
+        "2": "warning",
+        "3": "warning",
+        "4": "error",
+        "5": "error"
+      }
     },
     "gcovrtolist": {
       "sourceName": ",gcovr-to-list",

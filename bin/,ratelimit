@@ -1,4 +1,124 @@
-#!/bin/bash
+#!/usr/bin/env python3
+
+import argparse
+import os
+import select
+import sys
+import time
+import signal
+
+argp = argparse.ArgumentParser(
+    description="Rate limit lines coming from the input and delimeter them",
+    epilog="""
+Examples:
+ cat /dev/urandom | $name -t 5
+
+Written by Kamil Cukrowski (C) 2019
+Licensed jointly under MIT and Beerware license
+""",
+)
+argp.add_argument(
+    "-t",
+    "--timeout",
+    type=float,
+    help="Output the buffer once timeout is reached. In seconds, may be a floating number. 0 disables it. Default 5",
+    default=5,
+)
+argp.add_argument(
+    "-l",
+    "--lines",
+    type=int,
+    help="Output the buffer once the count of lines is reached. 0 disables the check. Default 5",
+    default=5,
+)
+argp.add_argument(
+    "-i",
+    "--input-separator",
+    type=str,
+    help='Input separator, default Line Feed "\n"',
+    default="\n",
+)
+argp.add_argument(
+    "-o",
+    "--output-separator",
+    type=str,
+    help='Output separator, default Start of Text "\x02"',
+    default="\x02",
+)
+argp.add_argument(
+    "-e",
+    "--print-empty",
+    action="store_true",
+    help="If set, when timeout expired and no lines are in buffer, an output separator only is printed.",
+)
+argp.add_argument("--test", action="store_true")
+arg = argp.parse_args()
+
+signal.signal(signal.SIGINT, lambda sig, frame: sys.exit(0))
+
+if arg.test:
+    import subprocess
+    subprocess.run(['bash', '-c', '''
+        while true; do
+            timeout=$((RANDOM%10?0:2)).$((RANDOM%10))
+            echo "$(( ++i )) $timeout $RANDOM $RANDOM $RANDOM"
+            sleep "$timeout"
+        done |
+        tee >(sed 's/^/    IN: /' > /dev/stderr)
+        ( set -x ; $@ -o='--------\n' -l 3 -t 1 )
+    ''', '--', __file__], check=1)
+    os.exit()
+
+def debug(*args):
+    print('dbg:', *args)
+
+giga = 1000000000
+maxtimeoutns = arg.timeout * giga
+input_separator = str.encode(arg.input_separator)
+output_separator = str.encode(arg.output_separator)
+finput = sys.stdin
+prevpart = None
+while True:
+    chunk = b''
+    linescnt = 0
+    start = time.monotonic_ns()
+    stop = start + maxtimeoutns
+
+    while True:
+        parts = []
+        now = time.monotonic_ns()
+        timeout = stop - now if stop > now else 0
+        timeout /= giga
+        r, w, e = select.select([finput], [], [], timeout)
+        if finput not in r:
+            debug('Reading timeouted')
+            break
+        parts = os.read(finput.fileno(), 4096).split(input_separator)
+        debug('Read:', parts)
+        # Was there something left from previous reading?
+        if prevpart:
+            parts[0] = prevpart + parts[0]
+            prevpart = None
+        # Did we read and end on a separator?
+        if parts[-1] != "":
+            # Remember partial element on next time
+            prevpart = parts[-1]
+            # And remove it from elements that we read
+            parts.pop()
+        chunk += output_separator.join(parts)
+        if arg.lines != 0:
+            linescnt = linescnt + 1
+            if linescnt >= arg.lines:
+                debug('Reached lines limit.')
+                break
+
+    if len(chunk) or arg.print_empty:
+        sys.stdout.buffer.write(chunk)
+        sys.stdout.buffer.write(output_separator)
+        sys.stdout.buffer.flush()
+
+
+"""
 set -euo pipefail
 export SHELLOPTS
 
@@ -23,11 +143,6 @@ Options:
                                    an output separator only is printed.
  -h, --help
 
-Examples:
- cat /dev/urandom | $name -t 5
-
-Written by Kamil Cukrowski (C) 2019
-Licensed jointly under MIT and Beerware license
 EOF
 
 	if (($#)); then
@@ -160,4 +275,4 @@ while true; do
 	fi
 
 done
-
+"""

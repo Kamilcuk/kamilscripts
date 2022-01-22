@@ -301,17 +301,16 @@
   "firefox --new-window 'https://todoist.com/app/'")
 ;(Xbindkey '(Mod4 s) "subl")
 (Xbindkey '(Mod4 f) "soffice --calc")
-(Xbindkey
-  '(Mod4 c)
-  "-iorg.xfce.terminal"
-  "terminal"
-  (string-append
-    "xfce4-terminal "
-    (case host
-      ((leonidas) "--geometry 157x40")
-      ((ardalus) "--geometry 126x34")
-      ((gorgo) "--geometry 94x22")
-      (else ""))))
+(Xbindkey '(Mod4 c) (case host
+  ((leonidas) "-iutilities-terminal" "konsole")
+  (else "-iorg.xfce.terminal" "terminal"
+    (string-append
+      "xfce4-terminal "
+      (case host
+        ((leonidas) "--geometry 157x40")
+        ((ardalus) "--geometry 126x34")
+        ((gorgo) "--geometry 94x22")
+        (else ""))))))
 
 (case host
   ((leonidas)
@@ -395,11 +394,11 @@
   '(XF86Tools)
   "-ifirefox"
   "firefox https://open.fm/stacja/alt-pl https://open.spotify.com/search")
-(Xbindkey
-  '(Print)
-  "-iorg.xfce.screenshooter"
-  "printscreen"
-  "xfce4-screenshooter --fullscreen")
+;(Xbindkey
+  ;'(Print)
+  ;"-iorg.xfce.screenshooter"
+  ;"printscreen"
+  ;"xfce4-screenshooter --fullscreen")
 (Xbindkey
   '(Mod4 n)
   "-ifirefox"

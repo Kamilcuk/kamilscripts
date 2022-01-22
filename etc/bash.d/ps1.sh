@@ -8,13 +8,17 @@ _kc_prompt_setup() {
 		,color() { :; }
 	fi
 
-	local ncolors colors
-	ncolors="reset bold standout nostandout yellow red blue green cyan"
-	local $ncolors
+	local bold=$'\E[1m'
+	local standout=$'\E[3m'
+	local nostandout=$'\E[23m'
+	local yellow=$'\E[33m'
+	local red=$'\E[31m'
+	local blue=$'\E[34m'
+	local green=$'\E[32m'
+	local cyan=$'\E[36m'
+	local reset=$'\E(B\E[m'
 
-	IFS=' ' read -r $ncolors < <(,color -s --separator=' ' $ncolors) ||:
-
-	colors=0
+	local colors=0
 	if hash tput 2>/dev/null; then
 		if ! colors=$(tput colors 2>/dev/null); then
 			colors=0
@@ -32,7 +36,7 @@ _kc_prompt_setup() {
 	local virt
 	if
 		hash systemd-detect-virt 2>/dev/null >&2 && {
-			{ virt=$(systemd-detect-virt) && [[ -n "$virt" && virt != 'none' ]] ;} ||
+			{ virt=$(systemd-detect-virt) && [[ -n "$virt" && "$virt" != 'none' ]] ;} ||
 			{ systemd-detect-virt -q -r 2>/dev/null && virt='chroot' ;} ||
 			{ systemd-detect-virt -q --private-users 2>/dev/null && virt='usernm' ;}
 		}
@@ -54,7 +58,12 @@ _kc_prompt_setup() {
 
 	local tmp
 	tmp="$(
-		for i in $ncolors hostname; do
+		one=$'\001'
+		two=$'\002'
+		for i in \
+			bold standout nostandout yellow red blue green cyan reset \
+			hostname one two
+		do
 			echo "s~%$i%~${!i}~g"
 		done
 	)"
@@ -65,21 +74,20 @@ _kc_prompt_command() {
 
 	# Use:
 	#   ${root+something} for root
-	#   ${root-soemthing} for user
-	if ((UID)); then unset root; else root=; fi
+	#   ${root-something} for user
+	if ((UID)); then
+		unset root
+	else
+		root=
+	fi
 
 	if (($1)); then
 		printf "\001%bold%%yellow%\002$1\001%reset%\002 "
 	fi
 	printf "\001%bold%${root+%standout%%red%}${root-%green%}\002$USER${root+\001%nostandout%\002}@%hostname%\001%reset%%bold%\002 %s\001%reset%${root+%red%%bold%}\002" "$(
-		one=$'\001'
-		two=$'\002'
 		printf "%q" "$PWD" | sed "
-			/^$'.*'$/{
-				s/^$'/${one}%reset%${two}$'${one}%bold%${two}/;
-				s/'$/${one}%reset%${two}'/;
-			}
-			s@/@${one}%cyan%${two}/${one}%blue%${two}@g
+			s~^$'\(.*\)'$~%one%%reset%%two%$'%one%%bold%%two%\1%one%%reset%%two%'~
+			s@/@%one%%cyan%%two%/%one%%blue%%two%@g
 		"
 	)"
 	# When listing all functions with declare -F, turn off the color.
@@ -88,7 +96,7 @@ _kc_prompt_command() {
 EOF
 	)"
 	eval "$tmp"
-	PS1="\[$reset\]$virt\$(_kc_prompt_command \$?)\n\\$\[$reset\] "
+	PS1="\[$reset\]$virt\$(_kc_prompt_command \"\$?\")\n\\$\[$reset\] "
 }
 
 _kc_prompt_setup
