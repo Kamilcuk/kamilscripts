@@ -85,11 +85,15 @@ Host kurczak
 	Port 22
 	#$(ProxyJump biurek)
 Host pantera
-	Hostname 192.168.31.1
+	# Hostname 192.168.31.1
+	Hostname 192.168.48.1
 	User root
 	Port 22
 	$(ProxyJump biurek)
 
+Host polel
+	Hostname 192.168.0.14
+	User root
 
 Host wujek hercules Hercules
 	Hostname pi.mini.pw.edu.pl
@@ -349,5 +353,6 @@ Host *
 	#
 	ExitOnForwardFailure yes
 	StrictHostKeyChecking accept-new
+	ConnectTimeout 5
 
 EOF

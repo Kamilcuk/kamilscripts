@@ -262,11 +262,11 @@ project_run_cmake_usage() {
 Usage: ,try_autorun ... <dir> [options]
 
 Options:
-  -h   Print this help and exit
-  -l   Run cleanup only
-  -c   Run cmake configuration stage
-  -D   Add macro definitions
-  -R   Filter ctest tests
+  -h          Print this help and exit
+  -l          Run cleanup only
+  -c          Always run cmake configuration stage
+  -D VAR=VAL  Add macro definitions
+  -R          Filter ctest tests
 
 EOF
 	exit 0
@@ -298,7 +298,7 @@ project_run_cmake() {
 				return "$?"
 			fi
 			;;
-		-D) l_cmakeargs+=(-D "$1"); shift; ;;
+		-D) l_cmakeargs+=(-D "$2"); shift; ;;
 		-R) l_ctestargs+=(-R "$2"); shift; ;;
 		--) shift; break; ;;
 		*) fatal "cmake: Invalid argument"; ;;
