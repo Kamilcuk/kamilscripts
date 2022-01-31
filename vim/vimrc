@@ -146,7 +146,7 @@ if v:version >= 800
 	set shortmess+=c
 endif
 
-if has('nvim-0.4.4')
+if has('nvim-0.4.5')
 	set signcolumn=auto:3-9
 elseif has('nvim')
 	set signcolumn=auto:3
