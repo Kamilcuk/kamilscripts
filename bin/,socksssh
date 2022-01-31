@@ -36,6 +36,19 @@ trap_EXIT() {
 	log "Quitting..."
 }
 
+get_next_free_port() {
+	local usedports
+	usedports=" $(ss  -tulpn | awk '/tcp/ && /LISTEN/{print $5}' | sed 's/.*://' | sort -un | paste -sd' ') "
+	local i
+	for ((i = 10000; i < 10020; ++i)); do
+		if [[ "$usedports" != *" $i "* ]]; then
+			echo "$i"
+			return
+		fi
+	done
+	return 1
+}
+
 ###############################################################################
 
 args=$(getopt -n "$name" -o h -l help -- "$@")
@@ -49,10 +62,15 @@ while (($#)); do
 	shift
 done
 if (($# == 0)); then usage; fatal "Missing arguments"; fi
-if (($# != 2)); then fatal "Wrong number of arguments"; fi
+if (($# < 1)); then fatal "Wrong number of arguments"; fi
 host=$1
-port=$2
-shift 2
+shift
+if (($# >= 1)); then
+	port=$1
+	shift
+else
+	port=$(get_next_free_port)
+fi
 log "Starting socks proxy on $port to $host"
 trap trap_EXIT EXIT
 cmd=(ssh -D "$port" -q -C -N "$@" "$host")
