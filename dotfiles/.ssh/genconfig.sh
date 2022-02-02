@@ -72,7 +72,9 @@ Host tunel_dyzio
 
 Host biurek gucio
 	Hostname www.biurek.pl
+	$(ssh_check_ver '>' 6.0 '
 	PubkeyAcceptedKeyTypes +ssh-rsa
+	')
 	User kamil
 	Port 4004
 Host tunel_biurek
@@ -346,17 +348,18 @@ Host *
 	$(ssh_check_ver '<' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc')
 	#
 	Compression yes
+	ExitOnForwardFailure yes
 	#
 	ServerAliveInterval 60
 	ServerAliveCountMax 20
+	$(ssh_check_ver '>' 6.0 '
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
 	ControlMaster auto
 	#ControlPath  ~/.ssh/.connection-%n-%r@%h:%p
 	ControlPath  ~/.ssh/.c-%C
 	ControlPersist 1h
-	#
-	ExitOnForwardFailure yes
 	StrictHostKeyChecking accept-new
 	ConnectTimeout 5
+	')
 
 EOF
