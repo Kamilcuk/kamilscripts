@@ -532,6 +532,12 @@ autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 " }}}
 " Plugins configuration {{{1
 
+if filereadable('/usr/bin/languagetool')
+	let g:languagetool_cmd='/usr/bin/languagetool'
+elseif filereadable('/usr/share/java/languagetool/languagetool-commandline.jar')
+	let g:languagetool_jar = '/usr/share/java/languagetool/languagetool-commandline.jar'
+endif
+
 if kc#plugin#enabled('vim-oscyank')
 	autocmd TextYankPost * if v:event.operator is 'y' && v:event.regname is '' | OSCYankReg " | endif
 endif
@@ -864,7 +870,7 @@ function KcDispatchComplete_firstErrorHasValidFile() abort
 	" Check if the first valid error in quickfix has a valid file
 	for i in getqflist()
 		if !i.valid | continue | endif
-		if file_readable(bufname(i.bufnr))
+		if filereadable(bufname(i.bufnr))
 			echo bufname(i.bufnr)
 			return 1
 		endif
