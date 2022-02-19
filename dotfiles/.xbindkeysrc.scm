@@ -316,7 +316,7 @@
   ((leonidas)
    (xbindkey
      '(Mod4 equal)
-     "soffice --calc /home/moje/zestawienie.ods")
+     "soffice --calc /home/kamil/mnt/share/archive/moje_dokumenty/zestawienie.ods")
    (xbindkey
      '(Mod4 "3")
      ",leonidas toggle_hdmi_mute")

@@ -1274,8 +1274,14 @@ let &errorformat = '%\d%\+: %f:%l:%c: %m,' . &errorformat
 " #2 0x555f87c5271d in DataContainer::getName[abi:cxx11]() const /tmp/1.cpp:8
 let &errorformat .= ',%+G    #%\d%\+ 0x%[0-9a-fA-F]%\+ in %.%# %f:%l'
 
+let s:sudo = ($USER == 'root' ? 'sudo ' : '')
+
 if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
-	let &makeprg="sudo nginx -t && sudo nginx -s reload"
+	let &makeprg=s:sudo."nginx -t && ".s:sudo."nginx -s reload"
+endif
+
+if getcwd() =~ "/etc/samba" || expand('%') =~ "/etc/samba"
+	let &makeprg=s:sudo."testparm -s 2>&1 && ".s:sudo."systemctl restart smb"
 endif
 
 if filereadable(getcwd()."/pdk.yaml")
