@@ -102,7 +102,7 @@ dodirlist() {
 				print(substr(lines[i], 2))
 			}
 		}
-		' | xargs -0 -r "${_ls[@]}"
+		' | xargs -0 -r "${_ls[@]}" --
 	then
 		fatal "ls failed"
 	fi

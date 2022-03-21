@@ -2,9 +2,9 @@
 
 " Init {{{1
 
-if get(g:, 'loaded_kamilscripts_vimrc', 0)
-	finish
-endif
+" if get(g:, 'loaded_kamilscripts_vimrc', 0)
+" 	finish
+" endif
 let g:loaded_kamilscripts_vimrc = 1
 
 " Ignore missing terminfo - ie. wrong TERM.
@@ -173,6 +173,11 @@ if has('nvim')
 endif
 
 " }}}
+" GUI Settings {{{
+if has('ide')
+    finish
+endif
+" }}}
 " Load kamilscripts {{{1
 
 if !exists('g:kamilscripts')
@@ -262,6 +267,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		"Plug 'LucHermitte/lh-brackets'
 		"Plug 'LucHermitte/vim-refactor'
 		"Plug '907th/vim-auto-save'
+		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
 		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
 		KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
 		if executable('languagetool')
@@ -880,7 +886,7 @@ function KcDispatchComplete_firstErrorHasValidFile() abort
 endfunction
 function KcDispatchComplete() abort
 	Copen
-	if KcDispatchComplete_firstErrorHasValidFile()
+	if 0 " cDispatchComplete_firstErrorHasValidFile()
 		" If we can navigate to the file with the first error, then
 		" instantaneously navigate to it.
 		cc 1

@@ -1,4 +1,7 @@
 {
+	"java.jdt.ls.home": "/usr/share/java/jdtls",
+	"https.rejectUnauthorized": false,
+	"http.proxyStrictSSL": false,
   "coc.preferences.extensionUpdateCheck": "weekly",
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],

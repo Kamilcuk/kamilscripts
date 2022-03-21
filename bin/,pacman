@@ -73,11 +73,11 @@ C_move_packages_from_pip() {
 		pacman -S --noconfirm python-"$1"
 	}
 
-	version=2
+	version=3
 	echo "version=pip$version"
 
-	pip$version list | awk '{print $1}' |
-	while read -r p; do
+	pip$version list |
+	while read -r p _; do
 		n="python$version-$p"
 		if ! C_is_installed "$n" && C_package_exists "$n"; then
 			echo "$p"
@@ -89,7 +89,7 @@ C_move_packages_from_pip() {
 	paste -sd' ' |
 	while IFS= read -r l; do
 		echo "sudo pip uninstall -y $l"
-		l=$(<<<"$l" tr ' ' '\n' | xargs -i echo python-{} | paste -sd' ')
+		l=$(<<<"$l" tr ' ' '\n' | xargs -I{} echo python-{} | paste -sd' ')
 		echo "sudo pacman -S --noconfirm $l"
 	done
 }

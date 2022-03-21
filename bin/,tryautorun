@@ -189,6 +189,12 @@ gcc_version() {
 	fi
 }
 
+cmake_version() {
+	if ! cmake --version | sed '1!d; s/.* \([0-9]*\.[0-9]*\).*/\1/'; then
+		fatal "Getting cmake version failed"
+	fi
+}
+
 gcc_try_gcc_compile() (
 	local tmps tmpo
 	tmps=$(mktemp --tmpdir tmp.try_autorun.XXXXXXXXXX.c)
@@ -298,7 +304,7 @@ project_run_cmake() {
 				return "$?"
 			fi
 			;;
-		-D) l_cmakeargs+=(-D "$2"); shift; ;;
+		-D) l_cmakeargs+=(-D"$2"); shift; ;;
 		-R) l_ctestargs+=(-R "$2"); shift; ;;
 		--) shift; break; ;;
 		*) fatal "cmake: Invalid argument"; ;;
@@ -306,19 +312,25 @@ project_run_cmake() {
 		shift
 	done
 
+	cmakever=$(cmake_version)
+	cmakebuildargs=()
+	if awkeval "$cmakever > 3.12"; then
+		cmakebuildargs=( --paralell  --verbose )
+	fi
+
 	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((l_runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
 		local cflags
 		cflags_detect
 		l_cmakeargs=(
-			-S . -B "$cdir"
+			-H. -B"$cdir"
 			--no-warn-unused-cli
-			-D CMAKE_VERBOSE_MAKEFILE=1
-			-D CMAKE_EXPORT_COMPILE_COMMANDS=1
-			-D CMAKE_C_FLAGS="${cflags[*]}"
-			-D CMAKE_CXX_FLAGS="${cflags[*]}"
-			-D CMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
-			-D CMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
-			-D CMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
+			-DCMAKE_VERBOSE_MAKEFILE=1
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
+			-DCMAKE_C_FLAGS="${cflags[*]}"
+			-DCMAKE_CXX_FLAGS="${cflags[*]}"
+			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
+			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
 			"${l_cmakeargs[@]}"
 		)
 		if hash ninja 2>/dev/null; then
@@ -326,7 +338,7 @@ project_run_cmake() {
 		fi
 		f_cmdlogrun cmake "${l_cmakeargs[@]}" "$@"
 	fi &&
-	f_cmdlogrun cmake --build "$cdir" --parallel --verbose &&
+	f_cmdlogrun cmake --build "$cdir" "${cmakebuildargs[@]}" &&
 	if [[ -e "$cdir"/CTestTestfile.cmake ]]; then
 		f_cmdlog "cd $cdir && ctest -V ${l_ctestargs[*]}"
 		(

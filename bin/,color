@@ -627,6 +627,10 @@ function hex_to_dec(str) {
 	return strtonum("0x" str)
 }
 
+function dec_to_hex(dec) {
+	return sprintf("%02x", dec)
+}
+
 function fg_to_num(num) {
 	if (length(num) != 1) fatal("fg_to_num: length not 1: length="length(num)" num="num)
 	if (num == "f") num = 3
@@ -747,8 +751,28 @@ function charrainbow(color1, color2, str, \
 	}
 }
 
+function color_brightness(color, \
+		t) {
+	t = hex_to_dec(color)
+	return or( or( and( t / 256 / 256, 0xff ), and( t / 256 , 0xff ) ), and(t, 0xff) )
+}
+
+function color_maybe_brighten(color, \
+		ths) {
+	ths = 0x55
+	if (color_brightness(color) < ths) {
+		color = or(hex_to_dec(color), 0xf0f0f0)
+		color = sprintf("%06x", color)
+	}
+	return color
+}
+
 function charrainbow3(color1, color2, color3, str, \
 		  l) {
+	color1 = color_maybe_brighten(color1)
+	color2 = color_maybe_brighten(color2)
+	color3 = color_maybe_brighten(color3)
+	#
 	l = length(str)
 	charrainbow(color1, color2, substr(str, 1, l/2))
 	charrainbow(color2, color3, substr(str, l/2 + 1))
