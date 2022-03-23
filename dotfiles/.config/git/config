@@ -118,3 +118,6 @@
 [gui]
 	fontui = -family \"LiterationSans Nerd Font\" -size 10 -weight normal -slant roman -underline 0 -overstrike 0
 	fontdiff = -family \"LiterationMono Nerd Font\" -size 10 -weight normal -slant roman -underline 0 -overstrike 0
+
+[credential]
+	helper = store --file ~/.config/git/credentials
