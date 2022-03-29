@@ -34,7 +34,9 @@ fi
 export COUNTRY=PL
 export HISTSIZE=
 export HISTFILESIZE=
-mesg y
+if hash mesg 2>/dev/null; then
+	mesg y
+fi
 
 # https://wiki.archlinux.org/index.php/Makepkg
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"

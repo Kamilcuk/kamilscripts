@@ -3,7 +3,7 @@
 
 # . ,bash_qprofile.sh 1start
 
-. ~/.config/kamilscripts/kamilscripts/etc/bash.bashrc
+. ~/.kamilscripts/etc/bash.bashrc
 
 for i in \
 		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
