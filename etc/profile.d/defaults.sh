@@ -55,29 +55,35 @@ export WATCH_INTERVAL=1
 locale_supported() {
 	[ -z "$( { LC_ALL=$1 ;} 2>&1 )" ]
 }
-en_US=""
-if locale_supported en_US.UTF-8; then
-	en_US="en_US.UTF-8"
+_C_UTF="C"
+if locale_supported C.UTF-8; then
+	_C_UTF="C.UTF-8"
 fi
-pl_PL=""
+_en_US="$_C_UTF"
+if locale_supported en_US.UTF-8; then
+	_en_US="en_US.UTF-8"
+fi
+_pl_PL="$_en_US"
 if locale_supported pl_PL.UTF-8; then
-	pl_PL="pl_PL.UTF-8"
+	_pl_PL="pl_PL.UTF-8"
 fi
 unset -f locale_supported
 
-export LANG=${en_US:-C}
-export LC_CTYPE=${pl_PL:-${en_US:-C}}
-export LC_NUMERIC=${en_US:-C}
-export LC_TIME=${pl_PL:-${en_US:-C}}
-export LC_COLLATE=C
-export LC_MONETARY=${en_US:-C}
-export LC_MESSAGES=${en_US:-C}
-export LC_PAPER=${en_US:-C}
-export LC_NAME=${en_US:-C}
-export LC_ADDRESS=${en_US:-C}
-export LC_TELEPHONE=${en_US:-C}
-export LC_MEASUREMENT=${en_US:-C}
-export LC_IDENTIFICATION=${en_US:-C}
+export \
+	LANG="$_en_US" \
+	LANGUAGE="$_en_US" \
+	LC_CTYPE="$_pl_PL" \
+	LC_NUMERIC="$_en_US" \
+	LC_TIME="$_pl_PL" \
+	LC_COLLATE="$_C_UTF" \
+	LC_MONETARY="$_pl_PL" \
+	LC_MESSAGES="$_en_US" \
+	LC_PAPER="$_pl_PL" \
+	LC_NAME="$_pl_PL" \
+	LC_ADDRESS="$_pl_PL" \
+	LC_TELEPHONE="$_pl_PL" \
+	LC_MEASUREMENT="$_pl_PL" \
+	LC_IDENTIFICATION="$_pl_PL"
 
-unset pl_PL en_US
+unset _C_UTF pl_PL en_US
 

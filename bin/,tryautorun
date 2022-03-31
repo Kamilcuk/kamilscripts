@@ -374,7 +374,7 @@ if [[ -d "$g_path" ]] || "$g_use_project"; then
 fi
 
 if [[ ! -d "$g_path" && -x "$g_path" ]]; then
-	"$g_path" "$@"
+	f_cmdlogrun "$g_path" "$@"
 	exit
 fi
 

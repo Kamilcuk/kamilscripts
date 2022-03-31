@@ -114,6 +114,19 @@ C_sorted_by_size() {
 	_sorted_by_size "$@" | _rev
 }
 
+C_home_sizes() {
+	cd ~
+	{
+		#find . -mindepth 1 -maxdepth 1 '!' -name .cache '!' -name .local '!' -name '.config' -print0
+		#find .config .cache .local -maxdepth 1 -mindepth 1 -print0
+		find .local/share/Steam/steamapps/common -maxdepth 1 -mindepth 1 -print0
+	} |
+		xargs -0 du -s |
+		sort -z
+		#numfmt -z --field=1 --from=none --to=iec-i |
+		#_rev
+}
+
 ###############################################################################
 
 _finish_zerotonl() {

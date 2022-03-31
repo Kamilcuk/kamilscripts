@@ -10,7 +10,7 @@ Usage: $name [options] args...
 Generate permutatinos of arguments.
 
 Options:
-  -F STRING  Separate elements by this string. Empty by default.
+  -F STRING  Separate elements by this string. Space by default.
   -R STRING  Separate sets by this string. Newline by default.
   -c INT     Count of elements in output. Default is count of arguments.
   -m MODE    Select mode
@@ -34,7 +34,7 @@ fatal() {
 
 args=$(getopt -n "$name" -o F:R:c:m:h -- "$@")
 eval set -- "$args"
-OFS=''
+OFS=' '
 ORS=$'\n'
 COUNT=
 MODE=

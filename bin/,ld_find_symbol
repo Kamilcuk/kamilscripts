@@ -44,7 +44,7 @@ for dir in dirs:
 		if os.path.islink(file):
 			continue
 			file = os.readlink(file)
-		libs += [file] 
+		libs += [file]
 
 proc = subprocess.Popen(["nm", "--defined-only", "--extern-only", "-f", "posix", "--"] + libs, stdout=subprocess.PIPE)
 while True:
@@ -61,7 +61,6 @@ while True:
 		continue
 	if a[1] == "T":
 		print(section, a[0])
-	
 
 EOF
 }
@@ -168,10 +167,10 @@ else
 				print $1, section
 				fflush()
 			}
-		'\''' _ 
+		'\''' _
 	} |
 	sort -t $'\t' -u -o "$g_database"
- 
+
 fi 3>&1
 
 for i in "$@"; do
