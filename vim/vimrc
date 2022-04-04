@@ -274,7 +274,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
 		endif
 		Plug 'honza/vim-snippets' " vim-snipmate default snippets
-		Plug 'mg979/vim-visual-multi'
+	" }}}
+	" Disabled stuff {{{
+		"Plug 'mg979/vim-visual-multi' " No - overwrites <C-n> taken by NetrdTree
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
 		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
