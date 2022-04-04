@@ -114,18 +114,37 @@ C_sorted_by_size() {
 	_sorted_by_size "$@" | _rev
 }
 
+_handle_sizes() {
+	xargs -0 du -s0 |
+	sort -zn |
+	numfmt -z --field=1 --from=none  --from-unit=1Ki --to=iec |
+	_rev
+}
+
 C_home_sizes() {
 	cd ~
 	{
-		#find . -mindepth 1 -maxdepth 1 '!' -name .cache '!' -name .local '!' -name '.config' -print0
-		#find .config .cache .local -maxdepth 1 -mindepth 1 -print0
-		find .local/share/Steam/steamapps/common -maxdepth 1 -mindepth 1 -print0
-	} |
-		xargs -0 du -s |
-		sort -z
-		#numfmt -z --field=1 --from=none --to=iec-i |
-		#_rev
+		descend=( .cache .local .config chmura "VirtualBox VMs" Desktop .local/share/Steam/steamapps/common )
+		args=(); for i in "${descend[@]}"; do args+=('!' -name "$i"); done
+		L_run find . -mindepth 1 -maxdepth 1 "${args[@]}" -print0
+		L_run find "${descend[@]}" -maxdepth 1 -mindepth 1 -print0
+	} | _handle_sizes
 }
+
+C_root_sizes() {
+	cd /
+	{
+		ignore=( dev proc sys tmp run mnt )
+		descend=( /opt /var /home /usr )
+		args=(); for i in "${descend[@]}" "${ignore[@]}"; do args+=('!' -name "${i#/}"); done
+		L_run find / -mindepth 1 -maxdepth 1 "${args[@]}" -print0
+		L_run find "${descend[@]}" -maxdepth 1 -mindepth 1 -print0
+		for i in /var/lib/docker /var/cache/pacman ; do
+			if [[ -e "$i" ]]; then L_run echo "$i"; fi
+		done
+	} | _handle_sizes
+}
+
 
 ###############################################################################
 
