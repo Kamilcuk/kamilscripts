@@ -254,7 +254,11 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		"Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
-	" Staging stuff that maybe should be removed maybe not {{{2
+	" Staging stuff that maybe should be removed maybe not {{{
+		Plug 'martinda/Jenkinsfile-vim-syntax'
+		Plug 'hashivim/vim-hashicorp-tools'
+		Plug 'jvirtanen/vim-hcl'
+
 		" Plug 'powerman/vim-plugin-AnsiEsc' " :AsciEsc replaces color codes for real codes
 		" Plug 'ojroques/vim-oscyank' " Copy selected text using special ANSI sequences
 		" Plug 'flwyd/nerdtree-harvest' " Additional mapping on nerdtree
@@ -363,6 +367,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'thaerkh/vim-workspace', { 'dir': plugdir.'vim-workspace' }
 	" }}}
 	" coc plugins {{{
+					"\ 'coc-groovy',
 		let g:coc_global_extensions	= [
 					\ 'coc-highlight',
 					\ 'coc-yank',
@@ -372,7 +377,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 					\ 'coc-tabnine',
 					\ 'coc-cmake',
 					\ 'coc-vimlsp',
-					\ 'coc-python',
 					\ 'coc-clangd',
 					\ 'coc-yaml',
 					\ 'coc-vimtex',
@@ -380,6 +384,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 					\ 'coc-coverage',
 					\ 'coc-json',
 					\ ]
+		"let g:coc_filetype_map = {
+					"\ 'Jenkinsfile': 'groovy',
+					"\ }
 	" }}}
 
 	call plug#end()
