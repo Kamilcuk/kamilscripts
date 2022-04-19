@@ -1,9 +1,22 @@
+#!/usr/bin/env bash
 
-if [[ -e /usr/share/fzf/key-bindings.bash ]]; then
-	. /usr/share/fzf/key-bindings.bash
-	. /usr/share/fzf/completion.bash
-elif command -v fzf-share >/dev/null; then
-  source "$(fzf-share)/key-bindings.bash"
-  source "$(fzf-share)/completion.bash"
+
+if hash -v fzf-share 2>/dev/null; then
+	. "$(fzf-share)/key-bindings.bash"
+	. "$(fzf-share)/completion.bash"
+else
+	for i in \
+		/usr/share/fzf/shell/ \
+		/usr/share/fzf/ \
+	; do
+		if [[ -r "$i"/key-bindings.bash ]]; then
+			. "$i"/key-bindings.bash
+			if [[ -r "$i"/completion.bash ]]; then
+				. "$i"/completion.bash
+			fi
+			break
+		fi
+	done
+	unset i
 fi
 
