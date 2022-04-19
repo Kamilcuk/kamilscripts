@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 if [[ $- != *i* ]]; then return; fi
 
@@ -18,9 +19,11 @@ fi
 
 # Show screen and tmux detached sessions.
 if hash screen 2>/dev/null; then
-	screen -list | sed '/Detached/!d; s/^/screen: /'
+	screen -list | sed '/No Sockets found/{N;d}; s/^/screen: /' || :
+	# | sed '/Detached/!d; s/^/screen: /'
 fi
 if hash tmux 2>/dev/null; then
-	tmux ls 2>/dev/null | sed '/(attached)/d; s/$/ (detached)/; s/^/tmux: /'
+	tmux ls 2>/dev/null | sed 's/^/tmux: /' || :
+	# | sed '/(attached)/d; s/$/ (detached)/; s/^/tmux: /'
 fi
 
