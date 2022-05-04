@@ -153,7 +153,7 @@ fatal() {
 be_nice() {
 	{
 		renice 20 -p $$
-		ionice -c 3 -p $$ 
+		ionice -c 3 -p $$
 	} >/dev/null
 }
 
@@ -315,7 +315,7 @@ project_run_cmake() {
 	cmakever=$(cmake_version)
 	cmakebuildargs=()
 	if awkeval "$cmakever > 3.12"; then
-		cmakebuildargs=( --paralell  --verbose )
+		cmakebuildargs+=( --parallel --verbose )
 	fi
 
 	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((l_runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
@@ -374,7 +374,7 @@ if [[ -d "$g_path" ]] || "$g_use_project"; then
 fi
 
 if [[ ! -d "$g_path" && -x "$g_path" ]]; then
-	f_cmdlogrun "$g_path" "$@"
+	f_cmdlogrun "$(readlink -f "$g_path")" "$@"
 	exit
 fi
 

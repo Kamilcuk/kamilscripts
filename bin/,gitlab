@@ -550,6 +550,10 @@ class Cirun:
         fi
         # Remove command line arguments
         set --
+        # Fix newer git issues with safe-directory problem
+        if [ ! -e /etc/gitconfig ]; then
+            printf "%s\n" "[safe]" "  directory = $CI_PROJECT_DIR" >> /etc/gitconfig
+        fi
         # Restore saner shell behavior, but still preserve set -e
         set +uo pipefail
         set -e
@@ -911,6 +915,15 @@ class Cirun:
             return (desc, services)
             return ('', [])
 
+        def docker_compose_run_args(self):
+            dcargs = []
+            if not (getattr(sys, 'stdout') is not None and
+                    getattr(sys, 'stdin') is not None and
+                    sys.stdout.isatty() and
+                    sys.stdin.isatty()):
+                dcargs += ["-T"]
+            return dcargs
+
         def start_services(self, services):
             logc(CYAN, 'Waiting for services to start...')
             logrun(["docker-compose", "up", "-d"] + [srv['alias'] for srv in services], check=True)
@@ -930,7 +943,7 @@ class Cirun:
                 args += [name, ip] + ports + ['--']
             # Run the waiter to wait for services.
             logc(CYAN, 'Waiting for services to start...')
-            logrun(['docker-compose', 'run', '__waiter__', 'sh', '/wait.sh'] + args)
+            logrun(['docker-compose', 'run'] + self.docker_compose_run_args() + ['__waiter__', 'sh', '/wait.sh'] + args)
 
         def prepare(self, srcs, job, gc, var, ex, tmpd):
             self.tmpd = tmpd
@@ -989,7 +1002,7 @@ class Cirun:
                 try:
                     if services:
                         self.start_services(services)
-                    ret = logrun(["docker-compose", "run", dcb.mycontname])
+                    ret = logrun(["docker-compose", "run"] + self.docker_compose_run_args() + [dcb.mycontname])
                 finally:
                     logrun(["docker-compose", "down", "-v", "--remove-orphans"])
                 return ret.returncode
@@ -1152,6 +1165,7 @@ def C_run_gitlabci(*jobs):
     Cirun([*jobs])
 
 ###############################################################################
+
 
 def ARGS_unittest(subparser):
     subparser.add_argument('-n', '--dryrun', dest='dryrun', action='store_true')

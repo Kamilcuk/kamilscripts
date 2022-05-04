@@ -74,6 +74,6 @@ ${text:+<big><b>    $(html-quote <<<"$text")</b></big>
 EOF
 )"
 fi &
-
-exec bash -x -c "$*"
+bash -x -c "$*"
+wait
 
