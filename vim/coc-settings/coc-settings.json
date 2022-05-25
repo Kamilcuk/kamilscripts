@@ -2,6 +2,7 @@
 	"java.jdt.ls.home": "/usr/share/java/jdtls",
 	"https.rejectUnauthorized": false,
 	"http.proxyStrictSSL": false,
+  "java.home": "/usr/lib/jvm/java-11-openjdk",
   "coc.preferences.extensionUpdateCheck": "weekly",
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],
@@ -82,9 +83,27 @@
     ],
     "systemd": "systemd-analyze",
     "PKGBUILD": "namcap",
-    "_comment_make": "checkmake"
+    "_comment_make": "checkmake",
+    "hcl": "nomad_validate"
   },
   "diagnostic-languageserver.linters": {
+    "nomad_validate": {
+      "sourceName": "nomad_validate",
+      "command": "sh",
+      "args": [
+        "-c",
+        "if hash nomad 2>/dev/null && test \"${1##*.}\" == nomad; then nomad validate \"$1\" 2>&1; fi",
+        "_",
+        "%file"
+      ],
+      "offsetLine": 1,
+      "formatPattern": [
+        "^\\s+\\* (.+)$",
+        {
+          "message": 1
+        }
+      ]
+    },
     "cpplint_c": {
       "args": [
         "--filter=-whitespace,-legal/copyright,-runtime/int,-build/include_subdir,-readability/casting,-build/include_order,-readability/todo,-build/include,-readability/nolint,-readability/braces",

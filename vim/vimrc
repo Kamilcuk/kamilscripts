@@ -368,6 +368,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" }}}
 	" coc plugins {{{
 					"\ 'coc-groovy',
+					"\ 'coc-coverage',
 		let g:coc_global_extensions	= [
 					\ 'coc-highlight',
 					\ 'coc-yank',
@@ -381,7 +382,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 					\ 'coc-yaml',
 					\ 'coc-vimtex',
 					\ 'coc-solargraph',
-					\ 'coc-coverage',
 					\ 'coc-json',
 					\ ]
 		"let g:coc_filetype_map = {
