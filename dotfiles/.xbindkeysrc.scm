@@ -417,8 +417,10 @@
 
 (XbindkeyMultiple
   '((Mod4 d) (Mod4 s))
-  "-islack"
-  "wmctrl -c 'Slack |' || slack")
+  "-iteams"
+  "teams")
+  ;"-islack"
+  ;"wmctrl -c 'Slack |' || slack")
 
 (Xbindkey '(Alt F3) "xfce4-appfinder")
 (Xbindkey

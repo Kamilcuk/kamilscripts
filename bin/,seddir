@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+import argparse
+import fnmatch
+import os
+import subprocess
+import tempfile
+import shutil
+import shlex
+import sys
+import filecmp
+import re
+
+
+def log(*nargs):
+    global args
+    if args.verbose:
+        print(*nargs)
+
+
+def fnmatches_to_re(arr):
+    return [re.compile(fnmatch.translate(i)) for i in arr]
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-i",
+    "--include",
+    action="append",
+    default=[],
+    help="include paths with this glob",
+)
+parser.add_argument(
+    "-e",
+    "--exclude",
+    action="append",
+    default=[],
+    help="exclude paths with this glob",
+)
+parser.add_argument(
+    "-E", "--regexp-extended", action="store_true", help="Use extended regex"
+)
+parser.add_argument(
+    "-k",
+    "--ok",
+    action="store_true",
+    help="set this to actually make changes",
+    default=False,
+)
+parser.add_argument(
+    "-D", "--no-diff", action="store_true", help="Do not display diff", default=False
+)
+parser.add_argument(
+    "-g",
+    "--git-ls-files",
+    action="store_true",
+    default=False,
+    help="Ignore files in .gitignore",
+)
+parser.add_argument("-v", "--verbose", action="store_true", default=False)
+parser.add_argument("script", help="sed script to run")
+parser.add_argument("dirs", nargs="*", default=["."], help="directories to scan")
+args = parser.parse_args()
+args.include = fnmatches_to_re(args.include)
+args.exclude = fnmatches_to_re(args.exclude)
+
+
+def files_generator():
+    global args
+    files = []
+    if args.git_ls_files:
+        files = (
+            subprocess.check_output(["git", "ls-files", "-z"])
+            .decode(sys.stdout.encoding)
+            .split("\0")
+        )
+        del files[-1]
+    else:
+        # log(args.dirs)
+        for dir in args.dirs:
+            # log(dir)
+            for root, dirnames, filenames in os.walk(dir):
+                log(root, dirnames, filenames)
+                partfiles = [os.path.join(root, filename) for filename in filenames]
+                files += partfiles
+    files = [f for f in files if os.path.isfile(f)]
+    return files
+
+
+def run_on_file(file):
+    global args, changed
+    cmd = ["sed"] + (["-E"] if args.regexp_extended else []) + [args.script, file]
+    with tempfile.NamedTemporaryFile() as fp:
+        if not args.no_diff or args.ok:
+            subprocess.run(cmd, check=True, stdout=fp)
+        if not filecmp.cmp(file, fp.name):
+            print("+", shlex.join(cmd))
+            if not args.no_diff:
+                subprocess.run(
+                    ["diff", "-Naur", "--color", file, fp.name],
+                )
+            if args.ok:
+                shutil.copyfile(fp.name, file)
+            changed = changed + 1
+        # else:
+            # log("+", cmd)
+
+
+files = files_generator()
+if len(args.exclude):
+    files = [n for n in files if not any([e.match(n) for e in args.exclude])]
+# print(args.include, len(files))
+if len(args.include):
+    files = [n for n in files if any([e.match(n) for e in args.include])]
+changed = 0
+for file in files:
+    run_on_file(file)
+
+CYAN = "\033[33m"
+RESET = "\033[0m"
+if args.ok:
+    print(CYAN + "Changed", changed, "files." + RESET)
+else:
+    print(CYAN + "Would change", changed, "files. Run with -k to do the change." + RESET)

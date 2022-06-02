@@ -247,6 +247,9 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	delcommand PlugUpgrade
 
 	" My Plugins {{{2
+		"Plug 'google/vim-maktaba'
+		"Plug 'google/vim-coverage'
+		"Plug 'google/vim-glaive'
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
 		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
 		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
@@ -258,7 +261,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'martinda/Jenkinsfile-vim-syntax'
 		Plug 'hashivim/vim-hashicorp-tools'
 		Plug 'jvirtanen/vim-hcl'
-
 		" Plug 'powerman/vim-plugin-AnsiEsc' " :AsciEsc replaces color codes for real codes
 		" Plug 'ojroques/vim-oscyank' " Copy selected text using special ANSI sequences
 		" Plug 'flwyd/nerdtree-harvest' " Additional mapping on nerdtree
@@ -1097,6 +1099,11 @@ command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-ar
 "endfunction
 "command! -bang -nargs=* Ag call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
 
+if kc#plugin#enabled('vim-glaive')
+	call glaive#Install()
+	" Optional: Enable coverage's default mappings on the <Leader>C prefix.
+	Glaive coverage plugin[mappings]
+endif
 
 " }}}
 " coc.nvim {{{1
@@ -1137,18 +1144,26 @@ if 0 " Use tab for trigger completion with characters ahead and navigate.
 	endif
 endif
 
-" Use <c-space> to trigger completion.
-if has('nvim')
-  inoremap <silent><expr> <c-space> coc#refresh()
-else
-  inoremap <silent><expr> <c-@> coc#refresh()
+if 1
+	" Use <c-space> to trigger completion.
+	if has('nvim')
+	  inoremap <silent><expr> <c-space> coc#refresh()
+	else
+	  inoremap <silent><expr> <c-@> coc#refresh()
+	endif
 endif
 
-if 1
+if 0
 	" Make <CR> auto-select the first completion item and notify coc.nvim to
 	" format on enter, <cr> could be remapped by other vim plugin
+	" By default that's <c-y>
 	inoremap <silent><expr> <cr> pumvisible() ? coc#_select_confirm()
 								  \: "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"
+endif
+if 1
+	" Use tab and S-TAB to navigate completion list
+	inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
+	inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 endif
 
 " Use `[g` and `]g` to navigate diagnostics
@@ -1386,4 +1401,4 @@ autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
 " }}}
 
-" vim: filetype=vim:foldmethod=marker:nofoldenable
+" vim: filetype=vim:foldmethod=marker

@@ -10,6 +10,7 @@ appendpath () {
 appendpath "$HOME"/bin
 appendpath "$HOME"/.local/bin
 appendpath "${XDG_CONFIG_HOME:-"$HOME"/.config}"/bin
+appendpath "$KCDIR"/secrets/bin
 appendpath "$KCDIR"/bin
 appendpath /usr/local/sbin
 appendpath /usr/local/bin

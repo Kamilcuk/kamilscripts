@@ -1,5 +1,12 @@
 # gdbinit
 
+# https://stackoverflow.com/questions/3176800/how-can-i-make-gdb-save-the-command-history
+set history save on
+set history size 60000
+set history remove-duplicates 500
+set history filename ~/.cache/gdb_history
+
+# https://stackoverflow.com/questions/70099368/stdchrono-gdb-pretty-printer
 python
 import gdb
 class ChronoPrinter:
@@ -17,3 +24,9 @@ o = gdb.current_objfile()
 gdb.printing.register_pretty_printer(o, p)
 end
 
+# custom
+define asmrun
+	target asm
+	load
+	run
+end

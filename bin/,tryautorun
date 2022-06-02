@@ -290,7 +290,7 @@ project_run_cmake() {
 		cdir=./_build
 	fi
 
-	local l_runconfig=0 l_cmakeargs=() l_ctestargs=()
+	local l_runconfig=0 l_cmakedefines=() l_ctestargs=()
 	local l_args
 	l_args=$(getopt -n "$L_NAME cmake" -o hclD:R: -l help -- "$@")
 	eval "set -- $l_args"
@@ -304,7 +304,7 @@ project_run_cmake() {
 				return "$?"
 			fi
 			;;
-		-D) l_cmakeargs+=(-D"$2"); shift; ;;
+		-D) l_cmakedefines+=(-D"$2"); shift; ;;
 		-R) l_ctestargs+=(-R "$2"); shift; ;;
 		--) shift; break; ;;
 		*) fatal "cmake: Invalid argument"; ;;
@@ -321,9 +321,12 @@ project_run_cmake() {
 	if [[ -n "${VIMRUNTIME:-}" ]] || "$g_runfromvim" || ((l_runconfig)) || [[ ! -e "$cdir/CMakeCache.txt" ]]; then
 		local cflags
 		cflags_detect
+		local l_cmakeargs=()
 		l_cmakeargs=(
 			-H. -B"$cdir"
 			--no-warn-unused-cli
+		)
+		local l_cmakedefaultdefines=(
 			-DCMAKE_VERBOSE_MAKEFILE=1
 			-DCMAKE_EXPORT_COMPILE_COMMANDS=1
 			-DCMAKE_C_FLAGS="${cflags[*]}"
@@ -331,8 +334,13 @@ project_run_cmake() {
 			-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=bin
 			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=lib
 			-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib
-			"${l_cmakeargs[@]}"
 		)
+		for dd in "${l_cmakedefaultdefines[@]}"; do
+			if [[ ! " ${l_cmakedefines[*]} " == *"${dd%%=*}="* ]]; then
+				l_cmakeargs+=("${dd}")
+			fi
+		done
+		l_cmakeargs+=("${l_cmakedefines[@]}")
 		if hash ninja 2>/dev/null; then
 			l_cmakeargs+=(-G Ninja);
 		fi
