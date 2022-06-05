@@ -1,16 +1,18 @@
 #!/bin/bash
 
+return; exit
+
 if [[ "$HOSTNAME" != 'leonidas' ]]; then return; exit; fi
 
 # xrandr --output HDMI-0 --gamma 0.95:0.97:1.0
 # xcalib -a -c ; xcalib -a -red 0.95 0 100 -green 0.97 0 100 -blue 1.00 0 100
 
-,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' |
-	xargs -i pactl set-card-profile {} output:analog-stereo
-,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' |
-	xargs -i pactl set-sink-port {} analog-output-lineout
+#,pulseaudio_lib filter_2 'Card' '' '*Built-in Audio*' |
+	#xargs -i pactl set-card-profile {} output:analog-stereo
+#,pulseaudio_lib filter_2 'Sink' '' 'Built-in Audio Analog Stereo' |
+	#xargs -i pactl set-sink-port {} analog-output-lineout
 
-return
+#return
 
 runinbg() {
 	echo "runinbg: $*"
@@ -60,25 +62,25 @@ closewindowwait() {
 	echo "closewindowwait end"
 }
 
-{
+#{
 
-echo mouse+keyboard settings
-( set -x; 
-for i in 1 2 3; do
-	sleep 1;
-	xset m 1/1 1;
-	xinput --set-prop "USB Optical Mouse" 'Device Accel Constant Deceleration' 1.5;
-	xset r rate 190 29;
-	setxkbmap pl;
-done
-) &
+#echo mouse+keyboard settings
+#( set -x; 
+#for i in 1 2 3; do
+	#sleep 1;
+	#xset m 1/1 1;
+	#xinput --set-prop "USB Optical Mouse" 'Device Accel Constant Deceleration' 1.5;
+	#xset r rate 190 29;
+	#setxkbmap pl;
+#done
+#) &
 
-runinbg xbindkeys
+#runinbg xbindkeys
 
-# runbgsl 4 TogglDesktop.sh
-# { sleep 4; closewindowwait 100 --onlyvisible --name "Toggl Desktop"; } &
+## runbgsl 4 TogglDesktop.sh
+## { sleep 4; closewindowwait 100 --onlyvisible --name "Toggl Desktop"; } &
 
-} 2>&1 | { while read l; do echo "$(date "+%T:%N") $(basename $0) $*: $l" >&2; done; } & # logs to .xsession-errors
+#} 2>&1 | { while read l; do echo "$(date "+%T:%N") $(basename $0) $*: $l" >&2; done; } & # logs to .xsession-errors
 
 
 #/home/studia/inzynierka/qqautocopy.sh &

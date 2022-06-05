@@ -13,18 +13,20 @@ hdmi_output=$(
 hdmi_card=alsa_card.$hdmi_port
 hdmi_sink=alsa_output.$hdmi_port.$hdmi_output
 
-builtin_port=pci-0000_00_14.2
+# builtin_port=pci-0000_00_14.2  # GIGABYTE
+builtin_port=pci-0000_00_1b.0
 builtin_output=analog-stereo
 builtin_card=alsa_card.$builtin_port
 builtin_sink=alsa_output.$builtin_port.$builtin_output
 
 C_fix_pulseaudio() {
-	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output"
-	L_run pactl set-card-profile "$hdmi_card"    "output:$hdmi_output"
-	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout
-	L_run pactl set-default-sink combined
-	L_run pactl set-sink-volume "$hdmi_sink" 100%
-	L_run pactl set-sink-volume "$builtin_sink" 100%
+	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output" &
+	L_run pactl set-card-profile "$hdmi_card"    "output:$hdmi_output" &
+	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout &
+	L_run pactl set-default-sink combined &
+	L_run pactl set-sink-volume "$hdmi_sink" 100% &
+	L_run pactl set-sink-volume "$builtin_sink" 100% &
+	wait
 }
 
 C_toggle_hdmi_mute() {
