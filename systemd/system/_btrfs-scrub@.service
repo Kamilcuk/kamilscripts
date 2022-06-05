@@ -1,0 +1,11 @@
+# /usr/lib/systemd/system/btrfs-scrub@.service
+[Unit]
+Description=Btrfs scrub on %f
+ConditionPathIsMountPoint=%f
+RequiresMountsFor=%f
+
+[Service]
+Nice=19
+IOSchedulingClass=idle
+KillSignal=SIGINT
+ExecStart=/usr/bin/btrfs scrub start -c 3 -B %f

@@ -1,0 +1,12 @@
+# /usr/lib/systemd/system/btrfs-scrub@.timer
+[Unit]
+Description=Monthly Btrfs scrub on %f
+
+[Timer]
+OnCalendar=monthly
+AccuracySec=1d
+RandomizedDelaySec=1w
+Persistent=true
+
+[Install]
+WantedBy=timers.target

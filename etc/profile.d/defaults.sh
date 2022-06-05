@@ -48,9 +48,6 @@ export npm_config_prefix="$HOME/.node_modules"
 
 unset -f appendpath
 
-# man watch
-export WATCH_INTERVAL=1
-
 # locale ##############################################################################
 
 locale_supported() {
