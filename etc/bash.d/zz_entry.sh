@@ -19,11 +19,11 @@ fi
 
 # Show screen and tmux detached sessions.
 if hash screen 2>/dev/null; then
-	screen -list | sed '/No Sockets found/{N;d}; s/^/screen: /' || :
+	timeout -v 1 screen -list | sed '/No Sockets found/{N;d}; /This room is empty/d; /^[[:space:]]*$/d; s/^/screen: /' || :
 	# | sed '/Detached/!d; s/^/screen: /'
 fi
 if hash tmux 2>/dev/null; then
-	tmux ls 2>/dev/null | sed 's/^/tmux: /' || :
+	timeout -v 1 tmux ls 2>/dev/null | sed 's/^/tmux: /' || :
 	# | sed '/(attached)/d; s/$/ (detached)/; s/^/tmux: /'
 fi
 

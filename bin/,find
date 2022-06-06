@@ -115,19 +115,21 @@ C_sorted_by_size() {
 }
 
 _handle_sizes() {
-	xargs -0 du -s0 |
+	xargs -0 du -cs0 |
 	sort -zn |
 	numfmt -z --field=1 --from=none  --from-unit=1Ki --to=iec |
 	_rev
 }
 
 C_home_sizes() {
+	set -euo pipefail
 	cd ~
 	{
 		descend=( .cache .local .config chmura "VirtualBox VMs" Desktop .local/share/Steam/steamapps/common )
-		args=(); for i in "${descend[@]}"; do args+=('!' -name "$i"); done
-		L_run find . -mindepth 1 -maxdepth 1 "${args[@]}" -print0
-		L_run find "${descend[@]}" -maxdepth 1 -mindepth 1 -print0
+		args=(); for i in "${descend[@]}"; do args+=('!' -path "./$i"); done
+		args2=(); for i in "${descend[@]}"; do args2+=(-o -regex "./$i/[^/]*"); done
+		L_run find . -mindepth 1 "${args[@]}" -prune -print0
+		for i in "${descend[@]}"; do printf "%s\0" "$i"/*; done
 	} | _handle_sizes
 }
 
