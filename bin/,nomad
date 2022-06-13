@@ -18,6 +18,18 @@ def run(str):
     print("+ " + str)
     subprocess.run(str, shell=True, check=True)
 
+def cleanup():
+       timeout_sec = 5
+       for p in all_processes: # list of your processes
+           p_sec = 0
+           for second in range(timeout_sec):
+               if p.poll() == None:
+                   time.sleep(1)
+                   p_sec += 1
+           if p_sec >= timeout_sec:
+               p.kill() # supported from python 2.6
+       print 'cleaned up!'
+
 
 def getnomad():
     return nomad.Nomad()
@@ -28,15 +40,28 @@ def C_getjobs():
 
 
 def C_joblastalloc(job):
-    for i in getnomad().job.get_allocations(job):
-        if i["ClientStatus"] == "running":
-            return i
+    return sorted(getnomad().job.get_allocations(job), key=lambda d: d['JobVersion'], reverse=True)[0]
 
 
 def C_getjobstatus(job):
     alloc = C_joblastalloc(job)["ID"]
     run("nomad job status " + str(job))
     run("nomad alloc status " + str(alloc))
+
+
+def C_jobgetlastlogs(job):
+    alloc = C_joblastalloc(job)["ID"]
+    procs = []
+    for i in [[], ['--stderr']]:
+        procs += [
+            subprocess.Popen([
+                "nomad", "alloc", "-v"]
+                             + i + [
+                alloc
+            ])
+        ]
+    for i in procs:
+
 
 
 ###############################################################################

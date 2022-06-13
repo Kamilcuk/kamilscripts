@@ -8,15 +8,17 @@ _kc_prompt_setup() {
 		,color() { :; }
 	fi
 
+	local reset=$'\E[m'
 	local bold=$'\E[1m'
 	local standout=$'\E[3m'
 	local nostandout=$'\E[23m'
-	local yellow=$'\E[33m'
 	local red=$'\E[31m'
-	local blue=$'\E[34m'
 	local green=$'\E[32m'
+	local yellow=$'\E[33m'
+	local blue=$'\E[34m'
 	local cyan=$'\E[36m'
-	local reset=$'\E(B\E[m'
+	local white=$'\E[37m'
+	local back_magenta=$'\E[45m'
 
 	local colors=0
 	if hash tput 2>/dev/null; then
@@ -32,6 +34,8 @@ _kc_prompt_setup() {
 
 	# {user:green/root:red}<username>@{rainbow}<hostname> {lightblue}/{blue}<dir>...\n$
 
+	local pre=""
+
 	# Detect virtualization with the help of systemd
 	local virt
 	if
@@ -41,9 +45,11 @@ _kc_prompt_setup() {
 			{ systemd-detect-virt -q --private-users 2>/dev/null && virt='usernm' ;}
 		}
 	then
-		virt="\\[$bold$red\\]$virt\\[$reset\\] "
-	else
-		virt=""
+		pre+="\\[$bold$red\\]$virt\\[$reset\\] "
+	fi
+
+	if [[ -n "${NIX_PROFILES:-}" && -r '/nix/' && -d '/nix/' ]]; then
+		pre+="\\[$back_magenta$white\\]nix\\[$reset\\] "
 	fi
 
 	local hostname
@@ -96,7 +102,7 @@ _kc_prompt_command() {
 EOF
 	)"
 	eval "$tmp"
-	PS1="\[$reset\]$virt\$(_kc_prompt_command \"\$?\")\n\\$\[$reset\] "
+	PS1="\[$reset\]$pre\$(_kc_prompt_command \"\$?\")\n\\$\[$reset\] "
 }
 
 _kc_prompt_setup

@@ -259,6 +259,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'martinda/Jenkinsfile-vim-syntax'
+		"Plug 'fholgado/minibufexpl.vim'
 		Plug 'hashivim/vim-hashicorp-tools'
 		Plug 'jvirtanen/vim-hcl'
 		" Plug 'powerman/vim-plugin-AnsiEsc' " :AsciEsc replaces color codes for real codes
@@ -844,6 +845,9 @@ if kc#plugin#enabled('nerdcommenter')
 	" use // instead of /* */ in C by default
 	let g:NERDAltDelims_c = 1
 	let g:NERDAltDelims_java = 1
+	let g:NERDCustomDelimiters = {
+				\ 'hcl': { 'left': '#', 'right': '', }
+				\ }
 endif
 
 if kc#plugin#enabled('spelunker.vim')
