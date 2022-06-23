@@ -188,7 +188,7 @@ if !exists('g:kamilscripts')
 			\ $HOME . '/.config/kamilscripts/',
 			\ $HOME . '/.kamilscripts/',
 			\ ]
-		if isdirectory(i) && isdirectory(i.'/vim') && isdirectory(i.'/.git')
+		if isdirectory(i) && isdirectory(i.'/vim') && ( isdirectory(i.'/.git') || filereadable(i.'/.git') )
 			let g:kamilscripts = i
 			break
 		endif
@@ -300,6 +300,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		if executable('hunspell') || executable('aspell')
 			KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 		endif
+		Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
 		Plug 'salcode/vim-interactive-rebase-reverse', { 'for': ['gitrebase', 'git'] } " reverse order commits during a Git rebase
 		" A Git wrapper so awesome, :G
