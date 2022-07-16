@@ -240,7 +240,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	command Update call KcUpdate()
 
 	filetype off
-	execute 'source ~/.vim/plugged/vim-plug/plug.vim'
+	source ~/.vim/plugged/vim-plug/plug.vim
 	let plugdir = '~/.vim/plugged/'
 	call plug#begin(plugdir)
 	Plug 'junegunn/vim-plug' " Add itself
@@ -686,7 +686,7 @@ endif
 " ctrlp
 if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_custom_ignore = {
-				\ 'dir':  '\v[\/](\.(git|hg|svn|cache)|_build|spec/fixtures/modules)$',
+				\ 'dir':  '\v[\/](\.git|\.hg|\.svn|\.cache|\.tox|_build|spec/fixtures/modules)$',
 				\ 'file': '\v\.(exe|so|dll)$',
 				\ }
 	let g:ctrlp_show_hidden = 1
@@ -701,22 +701,25 @@ if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_working_path_mode = ''
 	command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 	let g:ctrlp_follow_symlinks = 1
-	" https://github.com/kien/ctrlp.vim/issues/576
-	let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
-        \ --skip-vcs-ignores
-		\ --ignore .git/
-		\ --ignore hg/
-		\ --ignore svn/
-		\ --ignore .cache/
-		\ --ignore _build/
-		\ --ignore spec/fixtures/modules/
-		\ --ignore "*.exe"
-		\ --ignore "*.so"
-		\ --ignore "*.dll"
-        \ --files-with-matches
-		\ --max-count 50000
-        \ %s
-		\ --filename-pattern ""'
+	if executable('ag')
+		" https://github.com/kien/ctrlp.vim/issues/576
+		let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
+			\ --skip-vcs-ignores
+			\ --ignore .tox/
+			\ --ignore .git/
+			\ --ignore hg/
+			\ --ignore svn/
+			\ --ignore .cache/
+			\ --ignore _build/
+			\ --ignore spec/fixtures/modules/
+			\ --ignore "*.exe"
+			\ --ignore "*.so"
+			\ --ignore "*.dll"
+			\ --files-with-matches
+			\ --max-count 50000
+			\ %s
+			\ --filename-pattern ""'
+	endif
 endif
 
 " https://github.com/ggreer/the_silver_searcher
@@ -1058,6 +1061,10 @@ if &diff
 endif
 
 command! VimConfig :edit ~/.vimrc
+command! VimLocalConfig :edit ~/.vim/vimrc
+if filereadable(expand('~/.vim/vimrc'))
+	source ~/.vim/vimrc
+endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 augroup Code Comments

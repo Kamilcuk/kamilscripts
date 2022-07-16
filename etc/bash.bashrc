@@ -50,7 +50,9 @@ alias cd..='cd ..'
 alias beep='echo -en "\007"'
 alias l='command l'
 alias ll='ls -l -F --color -h --group-directories-first'
-alias make='nice ionice -c 3 make'
-alias cmake='nice ionice -c 3 cmake'
-alias tar='nice ionice -c 3 tar'
 alias watch='watch -c -d -n 1'
+for _i in make cmake tar du find; do
+	# shellcheck disable=2139
+	alias make="nice ionice -c 3 $_i"
+done
+unset _i

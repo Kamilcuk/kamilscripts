@@ -54,9 +54,6 @@ locale_supported() {
 	[ -z "$( { LC_ALL=$1 ;} 2>&1 )" ]
 }
 _C_UTF="C"
-if locale_supported C.UTF-8; then
-	_C_UTF="C.UTF-8"
-fi
 _en_US="$_C_UTF"
 if locale_supported en_US.UTF-8; then
 	_en_US="en_US.UTF-8"

@@ -10,6 +10,7 @@
   "coc.source.file.triggerCharacters": [
     "/"
   ],
+	"colors.filetypes": ["*"],
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
   "diagnostic.infoSign": "🛈",
