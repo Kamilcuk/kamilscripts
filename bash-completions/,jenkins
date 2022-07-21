@@ -1,0 +1,2 @@
+#!/bin/bash
+eval "$(env "_,JENKINS_COMPLETE=bash_source" ,jenkins)"

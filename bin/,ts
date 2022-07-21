@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import errno
 import datetime
 import select
 
-chunk = 4096
-os.set_blocking(0, False)
+chunksize = 4096
+FD = 0
+os.set_blocking(FD, False)
 was_newline = True
 while 1:
     # Read at most chunk data from input.
     try:
-        bs = os.read(0, chunk)
+        bs = os.read(FD, chunksize)
+        if not len(bs):
+            break
     except OSError as err:
         # If we would block, wait with select and read again.
         if err.errno == errno.EAGAIN or err.errno == errno.EWOULDBLOCK:
-            select.select([0], [], [])
-            bs = os.read(0, chunk)
+            select.select([FD], [], [])
+            bs = os.read(FD, chunksize)
             if not len(bs):
                 break
         else:
