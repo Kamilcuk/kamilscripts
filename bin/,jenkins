@@ -72,7 +72,11 @@ Configfile format:
 @click.pass_context
 def cli(ctx, **kwargs):
     ctx.obj = kwargs
-    logging.basicConfig(level=logging.DEBUG if ctx.obj["verbose"] else logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(name)s:%(lineno)d:%(funcName)s %(levelname)s %(message)s",
+        level=logging.DEBUG if ctx.obj["verbose"] else logging.INFO,
+        datefmt='%T',
+    )
 
 
 def in_list_jobs(job, prefix=""):
@@ -131,9 +135,9 @@ class Logprinter():
             (CYAN, re.compile("^#[0-9]")),
         ]
         self.wordcolors = [
-            (RED, re.compile(r"(\W(error|fatal|failure|fail\w*)\w*\W)", re.I)),
-            (YELLOW, re.compile(r"(\W(warn\w*)\W)", re.I)),
-            (GREEN, re.compile(r"(\W(success|OK)\W)", re.I)),
+            (RED, re.compile(r"(\b(error|fatal|failure|fail)\w*\b)", re.I)),
+            (YELLOW, re.compile(r"(\b(warn\w*)\b)", re.I)),
+            (GREEN, re.compile(r"(\b(success\w*|OK)\b)", re.I)),
         ]
 
     def printline(self, line):
@@ -182,5 +186,5 @@ def autogetlogs(jobname):
             time.sleep(2)
         build = nextbuild
 
-
-cli.main()
+if __name__ == "__main__":
+    cli.main()

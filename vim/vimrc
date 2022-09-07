@@ -430,6 +430,10 @@ else
 	let &t_EI = "\<esc>[2 q"
 endif
 
+" https://stackoverflow.com/a/16988346/9072753
+syntax match nonascii "[^\x00-\x7F]"
+highlight nonascii guibg=Red ctermbg=2
+
 " }}}
 " Miscellaneous configuration {{{1
 
@@ -686,7 +690,7 @@ endif
 " ctrlp
 if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_custom_ignore = {
-				\ 'dir':  '\v[\/](\.git|\.hg|\.svn|\.cache|\.tox|_build|spec/fixtures/modules)$',
+				\ 'dir':  '\v[\/](\.git|\.hg|\.svn|\.cache|\.tox|_build|spec/fixtures/modules|.*\.egg-info|\.pytest_cache)$',
 				\ 'file': '\v\.(exe|so|dll)$',
 				\ }
 	let g:ctrlp_show_hidden = 1
@@ -715,6 +719,9 @@ if kc#plugin#enabled('ctrlp.vim')
 			\ --ignore "*.exe"
 			\ --ignore "*.so"
 			\ --ignore "*.dll"
+			\ --ignore "*.egg-info/"
+			\ --ignore ".pytest_cache/"
+			\ --ignore "__pycache__/"
 			\ --files-with-matches
 			\ --max-count 50000
 			\ %s
@@ -1130,30 +1137,19 @@ autocmd CursorHold ?* silent call CocActionAsync('highlight')
 " This has been taken from the readme:
 " https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
 
-function! s:check_back_space() abort
-  let col = col('.') - 1
-  return !col || getline('.')[col - 1]  =~# '\s'
-endfunction
+if 1
+	" Use <tab> and <S-tab> to navigate completion list: >
+	function! CheckBackSpace() abort
+		let col = col('.') - 1
+		return !col || getline('.')[col - 1]  =~ '\s'
+	endfunction
 
-if 0 " Use tab for trigger completion with characters ahead and navigate.
-	if 0 " coc-snippets disabled
-		" https://github.com/neoclide/coc.nvim/blob/master/README.md#example-vim-configuration
-		" NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
-		" other plugin before putting this into your config.
-		inoremap <silent><expr> <TAB>
-			  \ pumvisible() ? "\<C-n>" :
-			  \ <SID>check_back_space() ? "\<TAB>" :
-			  \ coc#refresh()
-		inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
-	else
-		" https://github.com/neoclide/coc-snippets
-		inoremap <silent><expr> <TAB>
-			  \ pumvisible() ? coc#_select_confirm() :
-			  \ coc#expandableOrJumpable() ? "\<C-r>=coc#rpc#request('doKeymap', ['snippets-expand-jump',''])\<CR>" :
-			  \ <SID>check_back_space() ? "\<TAB>" :
-			  \ coc#refresh()
-		let g:coc_snippet_next = '<tab>'
-	endif
+	" Insert <tab> when previous text is space, refresh completion if not.
+	inoremap <silent><expr> <TAB>
+				\ coc#pum#visible() ? coc#pum#next(1):
+				\ CheckBackSpace() ? "\<Tab>" :
+				\ coc#refresh()
+	inoremap <expr><S-TAB> coc#pum#visible() ? coc#pum#prev(1) : "\<C-h>"
 endif
 
 if 1
@@ -1165,18 +1161,49 @@ if 1
 	endif
 endif
 
-if 0
-	" Make <CR> auto-select the first completion item and notify coc.nvim to
-	" format on enter, <cr> could be remapped by other vim plugin
-	" By default that's <c-y>
-	inoremap <silent><expr> <cr> pumvisible() ? coc#_select_confirm()
-								  \: "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"
-endif
 if 1
-	" Use tab and S-TAB to navigate completion list
-	inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
-	inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
+	" https://www.reddit.com/r/vim/comments/8urbln/cursorholdcursorholdi_with_different_updatetimes/
+	function! TriggerCocAfterInactivity(timerid)
+		"echom "Calling coc-start() " . a:timerid
+		if ! coc#pum#visible()
+			call coc#start()
+		endif
+	endfunction
+	function! MyStopTimer()
+		if exists("b:mytimer")
+			" echom "Stopping timer " . b:mytimer
+			call timer_stop(b:mytimer)
+			unlet b:mytimer
+		endif
+	endfun
+	function! MyStartTimer()
+		call MyStopTimer()
+		" https://vi.stackexchange.com/questions/17194/expandcword-returns-empty-string-in-inoremap
+		let l:WORDContainingCursor = matchstr(getline('.'), '\S*\%' . virtcol('.') . 'v\S*')
+		if len(l:WORDContainingCursor) < 3
+			return
+		endif
+		let l:wait = 3000
+		if l:wait < &updatetime
+			call TriggerCocAfterInactivity(0)
+		else
+			let l:timertime = l:wait - &updatetime
+			let b:mytimer = timer_start(l:timertime, "TriggerCocAfterInactivity")
+			"echom "Started timer " . b:mytimer . " " . l:timertime
+		endif
+	endfun
+	augroup MyEscTimer
+		autocmd!
+		autocmd CursorHold,CursorHoldI * call MyStartTimer()
+		autocmd CursorMoved,CursorMovedI,InsertCharPre,InsertLeave * call MyStopTimer()
+	augroup end
 endif
+
+if 1
+	" Use <CR> to confirm completion, use: >
+	inoremap <expr> <cr> coc#pum#visible() ? coc#_select_confirm() : "\<CR>"
+endif
+
 
 " Use `[g` and `]g` to navigate diagnostics
 " Use `:CocDiagnostics` to get all diagnostics of current buffer in location list.

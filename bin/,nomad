@@ -20,8 +20,14 @@ def run(str):
     print("| " + str, flush=True)
     subprocess.run(str, shell=True, check=True)
 
+
 def cleanup():
-   print('cleaned up!')
+    print("cleaned up!")
+
+
+def error(str):
+    print(str, file=sys.stderr)
+    sys.exit(-1)
 
 
 def getnomad():
@@ -33,7 +39,16 @@ def C_getjobs():
 
 
 def C_joblastalloc(job):
-    return sorted(getnomad().job.get_allocations(job), key=lambda d: d['JobVersion'], reverse=True)[0]
+    allocs = getnomad().job.get_allocations(job)
+    if not allocs:
+        for ns in getnomad().namespaces.get_namespaces():
+            allocs = getnomad().job.request(job, "allocations", method="get", params={"namespace": ns["Name"]}).json()
+            if allocs:
+                break
+    if not allocs:
+        error(f"Job not found: {job}")
+    allocssorted = sorted(allocs, key=lambda d: d["JobVersion"], reverse=True)
+    return allocssorted[0]
 
 
 def C_getjobstatus(job):
@@ -62,6 +77,7 @@ def C_jobgetlastlogs(job):
         for p in [p1, p2]:
             p.wait()
 
+
 ###############################################################################
 
 cmdfunctions = [
@@ -77,4 +93,3 @@ func = [func for name, func in cmdfunctions if name == args.command[0]][0]
 ret = func(*args.args)
 if ret is not None:
     pprint(ret)
-
