@@ -1,9 +1,4 @@
 {
-  "http.proxy": "http://172.18.128.36:3128/",
-  "https.proxy": "http://172.18.128.36:3128/",
-  "https.rejectUnauthorized": false,
-  "http.proxyStrictSSL": false,
-  "java.home": "/usr/lib/jvm/java-11-openjdk",
   "coc.preferences.extensionUpdateCheck": "weekly",
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],
