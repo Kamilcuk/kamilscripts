@@ -341,5 +341,85 @@ C_get_package_dependencies() {
 		paste -sd' '
 }
 
+C_unofficial_user_repositories() {
+	# curl https://wiki.archlinux.org/title/Unofficial_user_repositories |
+	cat /tmp/1 |
+		#xmllint --format --html - 2>/dev/null |
+		sed '
+			s/<[^>]*>//g
+			s/&lt;/</g
+			s/&gt;/>/g
+			s/&amp;/\&/g
+		' |
+		awk '
+	BEGIN {
+		outlen = 0
+		out[outlen++] = "Description"
+		out[outlen++] = "Key-ID"
+		out[outlen++] = "Keyring"
+		out[outlen++] = "Mirrorlist"
+		out[outlen++] = "Upstream page"
+	}
+	#{ print }
+	/^$/{ next }
+	!/^$/{ prev = curr ; curr = $0 }
+	{ a[NR] = $0 }
+	/^(Un|S)igned$/{ type = $1 ; print "### " type ; next }
+	!type{ next }
+	func get(rgx) {
+		if ($0 ~ "^" rgx "s?:" && NF > 1) {
+			v[rgx] = $2
+			for (i = 3; i <= NF; ++i) {
+				v[rgx] = v[rgx] " " $i
+			}
+			next
+		}
+	}
+	{
+		km = "Maintainer"
+		if ($0 ~ "^" m ":") {
+			v["name"] = prev
+		}
+		for (i in out) {
+			get(out[i])
+		}
+	}
+	/^\[[a-z0-9_A-Z-]*\]$/{
+		server = $0
+		while (1) {
+			getline
+			if (/^Server =/ || /^Include = / || /^\[.*\]$/ || /^#/) {
+				server = server "@" $0
+				continue
+			}
+			if (/^$/) {
+				continue
+			}
+			v["server"] = server
+			prev = $0
+			break
+		}
+		if (0) {
+			printf "%s|", type
+			for (i in v) printf "%s=%s|", i, v[i]
+			printf "\n"
+		}
+
+
+		for (i = 0; i < outlen; ++i) {
+			if (out[i] in v) {
+				print "# " out[i] ": " v[out[i]]
+			}
+		}
+		print gensub(/@/, "\n", "g", v["server"])
+		print ""
+
+		delete v
+	}
+	' |
+	#head -n "$(tput lines)" |
+	cat || :
+}
+
 . ,lib_lib C_ "$@"
 

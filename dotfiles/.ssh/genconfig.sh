@@ -191,6 +191,11 @@ Host perun
 	User root
 	Port 60022
 
+Host perunshare
+	Hostname kamcuk.top
+	User share
+	Port 60022
+
 Host mx1
 	Hostname 192.168.21.12
 	User kamil

@@ -1,37 +1,48 @@
 #!/bin/bash
 
-
 r() {
-	echo "+ $*"
+	echo "${L_CYAN}+ $*${L_RESET}"
 	"$@"
 }
-
-joinhalf() {
-	COLUMNS=$(tput cols)
-	half=$(( ( COLUMNS - 2) / 2 ))
-	tmp1=$(<<<"$1" tr '\t' ' ' | cut -c -"$half")
-	tmp2=$(<<<"$2" tr '\t' ' ' | cut -c -"$half")
-	paste -d '|' - <(cat <<<"$tmp2") <<<"$tmp1" |
-	column -t -s '|'
-}
-
 
 C_stats() {
 	text=$(
 		exec 2>&1
 		r df -h "$fs"
-		r btrfs scrub status "$fs"
+		r btrfs device stats "$fs"
 		r btrfs filesystem show "$fs"
 		r btrfs filesystem df "$fs"
 		r btrfs balance status "$fs"
 		r btrfs scrub status "$fs"
 		r btrfs filesystem usage "$fs"
+		r btrfs device usage "$fs"
+		r sensorstable | grep _input
 	)
-	mapfile -t lines <<<"$text"
-	LINES=$(tput lines)
-	tmp1=$(printf "%s\n" "${lines[@]:0:$LINES}")
-	tmp2=$(printf "%s\n" "${lines[@]:$LINES}")
-	joinhalf "$tmp1" "$tmp2"
+	awk -v COLUMNS="$(tput cols)" -v LINES="$(tput lines)" '
+	BEGIN {
+		cols = COLUMNS / 2 - 4
+		lines = LINES - 4
+	}
+	{
+		gsub(/\t/, "  ")
+		buf[NR] = $0
+	}
+	func esclen(a, b) {
+		b = a
+		gsub(/\x1b\[[0-9;]*[mGKH]/, "", b)
+		return cols + length(a) - length(b)
+	}
+	END {
+		for (i = 1; i <= lines; ++i) {
+			a = buf[i]
+			b = buf[i + lines]
+			printf("%-*.*s %-.*s\n", esclen(a), esclen(a), a, esclen(b), b)
+		}
+	}' <<<"$text"
+}
+
+C_s() {
+	C_stats
 }
 
 fs=/

@@ -129,7 +129,9 @@ f_cmdlog() {
 
 
 f_cmdlogrun() {
-	printf "+ %s\n" "$*" >&2
+	local tmp
+	printf -v tmp " %q" "$@"
+	printf "+ %s\n" "$tmp" >&2
 	f_cmdrun "$@"
 }
 

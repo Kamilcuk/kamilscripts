@@ -307,9 +307,9 @@
     (string-append
       "xfce4-terminal "
       (case host
-        ((leonidas) "--geometry 157x40")
-        ((ardalus) "--geometry 126x34")
-        ((gorgo) "--geometry 94x22")
+        ((leonidas) "--geometry=157x40")
+        ((ardalus) "--geometry=126x34")
+        ((gorgo) "--geometry=94x22")
         (else ""))))))
 
 (case host
