@@ -1457,6 +1457,14 @@ endfunction
 autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
+
+if hostname() =~ '\.striketechnologies\.com'
+  	call coc#config("http.proxy", "http://172.18.128.36:3128/")
+  	call coc#config("https.proxy", "http://172.18.128.36:3128/")
+  	call coc#config("https.rejectUnauthorized", "false")
+  	call coc#config("http.proxyStrictSSL", "false")
+endif
+
 " }}}
 
 " vim: filetype=vim:foldmethod=marker
