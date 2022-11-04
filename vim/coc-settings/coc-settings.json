@@ -36,6 +36,7 @@
   "python.linting.enabled": true,
   "python.jediEnabled": true,
   "python.jediPath": "/usr/bin/jedi-language-server",
+	"tabnine.priority": 98,
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.debug": false,

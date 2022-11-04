@@ -1,12 +1,12 @@
 " nomad files
 
 " Tab/indent settings
-setlocal noexpandtab
+setlocal expandtab
 setlocal autoindent
 setlocal nosmartindent
-setlocal tabstop=2
-setlocal shiftwidth=2
-setlocal softtabstop=2
+setlocal tabstop=4
+setlocal shiftwidth=4
+setlocal softtabstop=4
 setlocal indentexpr=
 setlocal cindent
 setlocal cinkeys-=0#

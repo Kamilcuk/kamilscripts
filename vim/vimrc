@@ -722,6 +722,7 @@ if kc#plugin#enabled('ctrlp.vim')
 			\ --ignore "*.egg-info/"
 			\ --ignore ".pytest_cache/"
 			\ --ignore "__pycache__/"
+			\ --ignore ".mypy_cache/"
 			\ --files-with-matches
 			\ --max-count 50000
 			\ %s
@@ -857,7 +858,8 @@ if kc#plugin#enabled('nerdcommenter')
 	let g:NERDAltDelims_c = 1
 	let g:NERDAltDelims_java = 1
 	let g:NERDCustomDelimiters = {
-				\ 'hcl': { 'left': '#', 'right': '', }
+				\ 'hcl': { 'left': '#', 'right': '', },
+				\ 'Jenkinsfile': { 'left': '//', 'right': '', },
 				\ }
 endif
 
@@ -957,6 +959,20 @@ if kc#plugin#enabled('neoformat')
 				\ 'stdin': 1,
 				\ }
 	let g:neoformat_enabled_scheme = ['schemeformat']
+	if executable('tidy-imports') && executable('isort') && executable('black')
+		" Fun fact: neoformat executes system(...) effectively calling shell.
+		let g:neoformat_python_tidyimportsisort = {
+					\ 'exe': 'tidy-imports',
+					\ 'args': [
+						\ '--black --quiet --replace-star-imports | ',
+						\ 'isort --stdout --quiet --profile black - | ',
+						\ 'black --quiet -',
+					\ ],
+					\ 'env': [ 'BASH_ENV=' ],
+					\ 'stdin': 1
+					\ }
+		let g:neoformat_enabled_python = [ 'tidyimportsisort' ]
+	endif
 endif
 
 if kc#plugin#enabled('vim-buftabline')
@@ -1163,24 +1179,27 @@ endif
 
 if 1
 	" https://www.reddit.com/r/vim/comments/8urbln/cursorholdcursorholdi_with_different_updatetimes/
+	function! TriggerCocIf()
+		return &modifiable && !coc#pum#visible() && nvim_win_get_config(0).relative == ''
+	endfunction
 	function! TriggerCocAfterInactivity(timerid)
 		"echom "Calling coc-start() " . a:timerid
-		if ! coc#pum#visible()
+		if TriggerCocIf()
 			call coc#start()
 		endif
 	endfunction
-	function! MyStopTimer()
+	function! TriggerCocStopTimer()
 		if exists("b:mytimer")
 			" echom "Stopping timer " . b:mytimer
 			call timer_stop(b:mytimer)
 			unlet b:mytimer
 		endif
 	endfun
-	function! MyStartTimer()
-		call MyStopTimer()
+	function! TriggerCocStartTimer()
+		call TriggerCocStopTimer()
 		" https://vi.stackexchange.com/questions/17194/expandcword-returns-empty-string-in-inoremap
 		let l:WORDContainingCursor = matchstr(getline('.'), '\S*\%' . virtcol('.') . 'v\S*')
-		if len(l:WORDContainingCursor) < 3
+		if len(l:WORDContainingCursor) < 3 || !TriggerCocIf()
 			return
 		endif
 		let l:wait = 3000
@@ -1192,10 +1211,10 @@ if 1
 			"echom "Started timer " . b:mytimer . " " . l:timertime
 		endif
 	endfun
-	augroup MyEscTimer
+	augroup TriggerCocTimer
 		autocmd!
-		autocmd CursorHold,CursorHoldI * call MyStartTimer()
-		autocmd CursorMoved,CursorMovedI,InsertCharPre,InsertLeave * call MyStopTimer()
+		autocmd CursorHold,CursorHoldI * call TriggerCocStartTimer()
+		autocmd CursorMoved,CursorMovedI,InsertCharPre,InsertLeave * call TriggerCocStopTimer()
 	augroup end
 endif
 

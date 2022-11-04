@@ -16,9 +16,11 @@ except ImportError:
 ###############################################################################
 
 
-def run(str):
-    print("| " + str, flush=True)
-    subprocess.run(str, shell=True, check=True)
+def run(cmd):
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    print("+ " + " ".join(cmd), flush=True)
+    subprocess.run(cmd, check=True)
 
 
 def cleanup():
@@ -38,7 +40,7 @@ def C_getjobs():
     return getnomad().jobs.get_jobs()
 
 
-def C_joblastalloc(job):
+def nomad_job_get_allocations(job):
     allocs = getnomad().job.get_allocations(job)
     if not allocs:
         for ns in getnomad().namespaces.get_namespaces():
@@ -48,7 +50,10 @@ def C_joblastalloc(job):
     if not allocs:
         error(f"Job not found: {job}")
     allocssorted = sorted(allocs, key=lambda d: d["JobVersion"], reverse=True)
-    return allocssorted[0]
+    return allocssorted
+
+def C_joblastalloc(job):
+    return nomad_job_get_allocations(job)[0]
 
 
 def C_getjobstatus(job):
@@ -70,12 +75,27 @@ def process(cmd, **kwargs):
         pp.wait()
 
 
-def C_jobgetlastlogs(job):
-    alloc = C_joblastalloc(job)["ID"]
-    cmd = "nomad alloc logs -f -verbose {} " + alloc
+def C_jobgetlastlogs(job, task=None):
+    alloc = C_joblastalloc(job)
+    cmd = "nomad alloc logs -f -verbose {} " + alloc["ID"]
+    if task is not None:
+        cmd += " " + task
     with process(cmd.format("-stderr")) as p1, process(cmd.format("")) as p2:
         for p in [p1, p2]:
             p.wait()
+
+def C_jobexec(job, *args):
+    args = [*args] if args else ["bash", "-l"]
+    allocs = nomad_job_get_allocations(job)
+    tasks = []
+    for alloc in allocs:
+        tasks += [[taskname, alloc["ID"]] for taskname, task in alloc["TaskStates"].items() if task["State"] == "running"]
+    if len(tasks) == 0:
+        error("No running tasks")
+    if len(tasks) > 1:
+        error("More then two running tasks")
+    task = tasks[0]
+    run("nomad alloc exec -task".split() + task + args)
 
 
 ###############################################################################
