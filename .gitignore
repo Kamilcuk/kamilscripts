@@ -1,4 +1,6 @@
 .owncloudsync.log*
 .sync*
 *.swp
+__pycache__
+**/__pycache__
 

@@ -1,153 +1,237 @@
-#!/bin/bash
-# SPDX-License-Identifier: MIT+Beerware
-set -euo pipefail
+#!/usr/bin/python3
 
-g_name=${BASH_SOURCE##*/}
+import argparse
+import atexit
+import logging
+import os
+import queue
+import shlex
+import signal
+import socket
+import subprocess
+import sys
+import time
+import traceback
+from datetime import datetime
 
-print_left_right() {
-	local left right leftlen rightlen columns
-	left=$1
-	right=$2
-	leftlen=${#left}
-	rightlen=${#right}
-	columns=$(tput cols)
-	if ((rightlen > columns / 2)); then
-		right=""
-		rightlen=0
-	fi
-	if ((leftlen + rightlen > columns - 2)); then
-		left="${left:0:columns - 5 - rightlen}..."
-		leftlen=${#left}
-	fi
-	printf "%s%*s\n" "$left" "$((columns - leftlen))" "$right"
-}
+import kc
 
-fatal() {
-	echo "$g_name Error:" "$*" >&2
-	exit 2
-}
+ON_POSIX = "posix" in sys.builtin_module_names
+HOSTNAME = socket.gethostname()
+log = logging.getLogger(__name__)
 
-usage() {
-	cat <<EOF
-Usage: $g_name [options] file command [args...]
 
-Each the file changes, $g_name runs the _command_ displaying its output.
-It allows to execute a command on each file change.
+class Waiter:
+    def getOneFlush(self):
+        raise NotImplementedError()
 
-Options:
-  -t --no-title  Turn off showing the header and the following blank line.
-  -b --beep      Beep if command has a non-zero exit.
-  -x --exec      Pass command to exec instead of sh -c.
-  -h --help      Print this help and exit.
-  -k --killonchange  Kill the current process if file changes.
 
-Examples:
-  $g_name src.c 'gcc src.c && ./a.out'
-      Watch src.c file and compile and execute it every time it changes.
+class Inotify(Waiter):
+    q = queue.Queue()
 
-Written by Kamil Cukrowski 2020
-Licensed jointly under Beerware and MIT License
-EOF
-}
+    def __init__(self):
+        from threading import Thread
 
-# main ##############################################
+        self.dir = os.path.dirname(args.file)
+        self.filename = os.path.basename(args.file)
+        cmd = "inotifywait -qme close_write,moved_to --format %f".split() + [self.dir]
+        log.debug(cmd)
+        self.proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.thread = Thread(target=Inotify.enqueue_output, args=[self])
+        self.thread.demon = True
+        log.debug("Thread started")
+        self.thread.start()
 
-args=$(getopt -n "$g_name" \
-		-o +tbxhRk \
-		-l no-title,exec,help,ignore-resize,killonchange,debug -- "$@")
-eval set -- "$args"
-use_exec=false
-use_beep=false
-use_title=true
-use_debug=false
-use_killonchange=false
-while (($#)); do
-	case "$1" in
-	-t|--no-title) use_title=false; ;;
-	-b|--beep) use_beep=true; ;;
-	-x|--exec) use_exec=true; ;;
-	-h|--help) usage; exit; ;;
-	-k|--killonchange) use_killonchange=true; ;;
-	--debug) use_debug=true; ;;
-	--) shift; break; ;;
-	*) fatal "Internal parsing options error"; ;;
-	esac
-	shift
-done
+    def enqueue_output(self):
+        for line in self.proc.stdout:
+            line = line[:-1]
+            if line == self.filename:
+                log.debug("Received and put: %s %s", line, self.filename)
+                self.q.put(line)
+            else:
+                log.debug("Received: %s %s", line, self.filename)
+        self.proc.stdout.close()
 
-if (($# == 0)); then
-	usage
-	fatal "Missing arguments"
-fi
-if (($# == 1)); then
-	set "$1" "$1"
-fi
+    def getOneFlush(self):
+        if not self.q.empty():
+            try:
+                while self.q.get_nowait():
+                    pass
+            except queue.EMPTY:
+                pass
+        else:
+            self.q.get()
 
-g_file="$1"
-shift
 
-if [[ ! -e "$g_file" ]] || ! file=$(readlink -f "$g_file"); then
-	fatal "file does not exists: $g_file"
-fi
+class Sleeper(Waiter):
+    def changed(self):
+        return os.path.getmtime(args.file)
 
-if [[ "$g_file" =~ $'\n' ]]; then
-	fatal "Current version does not support newlines in filenames"
-fi
+    def __init__(self):
+        self.lastchanged = self.changed()
 
-filebase=${file##*/}
+    def getOneFlush(self):
+        while True:
+            time.sleep(1)
+            changed = self.changed()
+            if self.lastchanged != changed:
+                self.lastchanged = changed
+                return
 
-if ! "$use_exec"; then
-	set -- sh -c "$*"
-fi
 
-inotifywait -q -m -e close_write,moved_to --format "%f" "$(dirname "$g_file")" |
-{
-	trap_exit() {
-		if [[ -n "${g_pid:-}" ]]; then
-			kill "$g_pid"
-		fi
-	}
-	trap trap_exit EXIT
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Each time the file changes, run the command displaying its output.",
+        epilog="Written by Kamil Cukrowski. 2022",
+    )
+    parser.add_argument(
+        "-t",
+        "--no-title",
+        action="store_true",
+        help="Turn off showing the header and the following blank line.",
+    )
+    parser.add_argument(
+        "-b", "--beep", action="store_true", help="Beep if command has a non-zero exit."
+    )
+    parser.add_argument(
+        "-k",
+        "--killonchange",
+        action="store_true",
+        help="Kill the current process if file changes.",
+    )
+    parser.add_argument(
+        "-d",
+        "--differences",
+        action="store_true",
+        help="highlight changes between updates",
+    )
+    parser.add_argument(
+        "-p", "--python", action="store_true", help="run python script in same process"
+    )
+    parser.add_argument(
+        "-x",
+        "--exec",
+        action="store_true",
+        help='pass command to exec instead of "sh -c"',
+    )
+    parser.add_argument(
+        "-f",
+        "--file",
+        help="watch this file instead of first argument",
+    )
+    parser.add_argument(
+        "-D",
+        "--debug",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-S",
+        "--poll",
+        action="store_true",
+        help="Use polling method instead of inoitfywait",
+    )
+    parser.add_argument("cmd", nargs=1)
+    parser.add_argument("args", nargs=argparse.REMAINDER)
+    return parser.parse_args()
 
-	while true; do
-		if [[ ! -e "$g_file" ]]; then
-			fatal "File does not exists"
-		fi
-		if ! "$use_debug"; then
-			clear
-		fi
-		if "$use_title"; then
-			print_left_right "Every $g_file change: $*" "$HOSTNAME: $(date +'%a %b %d %T %Y')"
-			echo
-		fi
-		"$@" &
-		g_pid=$!
-		g_ret=0
-		g_event=false
-		if ! "$use_killonchange"; then
-			wait "$g_pid" || g_ret=$?
-			unset g_pid
-		fi
-		# Eat stdin events.
-		while IFS= read -r -t 0.1 _; do
-			g_event=true
-		done
-		while ! "$g_event"; do
-			if ! IFS= read -r line; then
-				fatal "inotifywait failed"
-			fi
-			if [[ "$line" = "$filebase" ]]; then
-				g_event=true
-			fi
-		done
-		if "$use_killonchange"; then
-			kill "$g_pid" ||:
-			wait "$g_pid" || g_ret=$?
-			unset g_pid
-		fi
-		if ((!g_ret)) && "$use_beep"; then
-			printf '\007'
-		fi
-	done
-}
 
+class Runner:
+    def __init__(self, cmdstr):
+        self.cmdstr = cmdstr
+
+    def clear(sefl):
+        os.system("cls" if os.name == "nt" else "clear")
+
+    def print_left_right(self, left, right):
+        termsize = os.get_terminal_size()
+        columns = termsize.columns
+        rightlen = len(right)
+        leftlen = len(left)
+        if rightlen > columns / 2:
+            right = ""
+            rightlen = 0
+        if leftlen + rightlen > columns - 2:
+            left = left[0 : columns - 5 - rightlen] + "..."
+            leftlen = len(left)
+        print("%s%*s" % (left, columns - leftlen, right))
+
+    def run(self):
+        raise NotImplementedError()
+
+    def event(self):
+        if not args.debug:
+            self.clear()
+        if not args.no_title:
+            self.print_left_right(
+                "Every %s change: %s" % (args.cmd[0], self.cmdstr),
+                "%s: %s" % (HOSTNAME, datetime.now().strftime("%c")),
+            )
+        print("+", self.cmdstr)
+        self.run()
+
+
+class ShellRunner(Runner):
+    def __init__(self):
+        super().__init__(kc.shlex_join(args.cmd))
+
+    def run(self):
+        subprocess.run(args.cmd)
+
+
+class PythonRunner(Runner):
+    def __init__(self):
+        super().__init__(kc.shlex_join(["python3shell"] + args.cmd))
+
+    def run(self):
+        sys.argv = args.cmd
+        try:
+            exec(open(args.cmd[0], "r").read())
+        except Exception:
+            traceback.print_exc()
+
+
+def killonexit():
+    os.killpg(os.getpgid(0), signal.SIGTERM)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    atexit.register(killonexit)
+    args.cmd = args.cmd + (args.args or [])
+    #
+    if not args.exec and not args.python:
+        if not args.file:
+            os.exit("--file argument is required when not using --python nor --exec")
+        args.cmd = ["sh", "-c", shlex.join(args.cmd)]
+    elif not args.file:
+        if "/" not in args.cmd[0]:
+            if os.path.exists(args.cmd[0]):
+                args.cmd[0] = "./" + args.cmd[0]
+            else:
+                from shutil import which
+
+                args.cmd[0] = which(args.cmd[0])
+        args.file = args.cmd[0]
+    waiter = None
+    if not args.poll:
+        try:
+            waiter = Inotify()
+        except FileNotFoundError:
+            # If inotifywait was not found, use polling method.
+            pass
+    if waiter is None:
+        waiter = Sleeper()
+    #
+    if args.python:
+        rr = PythonRunner()
+    else:
+        rr = ShellRunner()
+    #
+    while True:
+        rr.event()
+        waiter.getOneFlush()
