@@ -24,7 +24,7 @@ function! kc#plugin#enabled(name) abort
 		endfor
 	endif
 	for i in kc#plugin#split(&rtp)
-		if fnamemodify(i, ':t') =~ a:name
+		if fnamemodify(i, ':t') =~ a:name && isdirectory(i)
 			return 1
 		endif
 	endfor
