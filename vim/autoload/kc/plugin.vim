@@ -11,7 +11,7 @@ endfunction
 
 " Check if the plugin with the name is enabled
 function! kc#plugin#enabled(name) abort
-	if exists('g:plugs')
+	if 0 && exists('g:plugs')
 		for [key, val] in items(g:plugs)
 			if has_key(val, 'uri')
 				let val = val.uri
