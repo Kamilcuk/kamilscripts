@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 import argparse
+import filecmp
 import fnmatch
 import os
-import subprocess
-import tempfile
-import shutil
-import shlex
-import sys
-import filecmp
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import kc
 
 
 def log(*nargs):
@@ -78,11 +79,14 @@ def files_generator():
     else:
         # log(args.dirs)
         for dir in args.dirs:
-            # log(dir)
-            for root, dirnames, filenames in os.walk(dir):
-                log(root, dirnames, filenames)
-                partfiles = [os.path.join(root, filename) for filename in filenames]
-                files += partfiles
+            if os.path.isfile(dir):
+                files += [dir]
+            else:
+                # log(dir)
+                for root, dirnames, filenames in os.walk(dir):
+                    log(root, dirnames, filenames)
+                    partfiles = [os.path.join(root, filename) for filename in filenames]
+                    files += partfiles
     files = [f for f in files if os.path.isfile(f)]
     return files
 
@@ -94,7 +98,7 @@ def run_on_file(file):
         if not args.no_diff or args.ok:
             subprocess.run(cmd, check=True, stdout=fp)
         if not filecmp.cmp(file, fp.name):
-            print("+", shlex.join(cmd))
+            print("+", kc.shlex_join(cmd))
             if not args.no_diff:
                 subprocess.run(
                     ["diff", "-Naur", "--color", file, fp.name],
@@ -103,7 +107,7 @@ def run_on_file(file):
                 shutil.copyfile(fp.name, file)
             changed = changed + 1
         # else:
-            # log("+", cmd)
+        # log("+", cmd)
 
 
 files = files_generator()
@@ -121,4 +125,6 @@ RESET = "\033[0m"
 if args.ok:
     print(CYAN + "Changed", changed, "files." + RESET)
 else:
-    print(CYAN + "Would change", changed, "files. Run with -k to do the change." + RESET)
+    print(
+        CYAN + "Would change", changed, "files. Run with -k to do the change." + RESET
+    )

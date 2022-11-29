@@ -1134,6 +1134,10 @@ command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-ar
 "endfunction
 "command! -bang -nargs=* Ag call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
 
+if kc#plugin#enabled('fzf.vim')
+	command! -bang -nargs=* AG call fzf#vim#ag(<q-args>, fzf#vim#with_preview(), <bang>0)
+endif
+
 if kc#plugin#enabled('vim-glaive')
 	call glaive#Install()
 	" Optional: Enable coverage's default mappings on the <Leader>C prefix.

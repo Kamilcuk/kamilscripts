@@ -19,7 +19,7 @@ def atexit_killpg():
 def shlex_join(arr: list):
     import shlex
 
-    return " ".join(shlex.join(x) for x in arr)
+    return " ".join(shlex.quote(x) for x in arr)
 
 
 @click.group()

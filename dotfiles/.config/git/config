@@ -13,21 +13,25 @@
 	trustExitCode = false
 [mergetool "fugitive"]
 	# cmd = # vim -f -c \"Gvdiffsplit!\" \"$MERGED\"
-	cmd = vim -f -d -c \"wincmd l\" -c \"normal gg\" -c \"normal ]n\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
+	cmd = nvim -f -d -c \"wincmd l\" -c \"normal gg\" -c \"normal ]n\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
 	trustExitCode = false
 [mergetool "vim_mergetool"]
-	cmd = vim -d -f -c \"MergetoolStart\" \"$MERGED\" \"$BASE\" \"$LOCAL\" \"$REMOTE\"
+	cmd = nvim -d -f -c \"MergetoolStart\" \"$MERGED\" \"$BASE\" \"$LOCAL\" \"$REMOTE\"
 	trustExitCode = false
 [mergetool "merge3"]
-	cmd = vim -d -c \"wincmd l\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
+	cmd = nvim -d -c \"wincmd l\" \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
+[mergetool "vimdiff"]
+	cmd = nvim -d $LOCAL $REMOTE $MERGED
+[mergetool "nvimdiff"]
+	cmd = nvim -d $LOCAL $REMOTE $MERGED
 [mergetool]
 	prompt = false
 	keepBackup = false
 	trustExitCode = false
 [merge]
-	tool = meld
+	tool = nvimdiff
+	conflictstyle = diff3
 	# tool = vim_mergetool
-	# conflictstyle = diff3
 
 [difftool "meld"]
 	cmd = meld \"$LOCAL\" \"$REMOTE\" --label \"DIFF (ORIGINAL MY)\"
