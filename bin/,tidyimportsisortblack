@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+if [[ $# == 1 && ( "$1" == -h || "$1" == --help ) || $# -gt 1 ]]; then
+	echo "Usage: $1 file"
+	exit 1
+fi
+if (($# == 1)); then
+	exec 1<"$1"
+fi
+if tmp=$(
+	tidy-imports --black --quiet --replace-star-imports |
+	isort --stdout --quiet --profile black - |
+	black --quiet -
+); then
+	echo "$tmp"
+else
+	exit "$?"
+fi

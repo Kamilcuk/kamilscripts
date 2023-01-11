@@ -981,18 +981,25 @@ if kc#plugin#enabled('neoformat')
 	let g:neoformat_enabled_scheme = ['schemeformat']
 	if executable('tidy-imports') && executable('isort') && executable('black')
 		" Fun fact: neoformat executes system(...) effectively calling shell.
-		let g:neoformat_python_tidyimportsisort = {
-					\ 'exe': 'tidy-imports',
-					\ 'args': [
-						\ '--black --quiet --replace-star-imports | ',
-						\ 'isort --stdout --quiet --profile black - | ',
-						\ 'black --quiet -',
-					\ ],
+		let g:neoformat_python_tidyimportsisortblack = {
+					\ 'exe': ',tidyimportsisortblack',
 					\ 'env': [ 'BASH_ENV=' ],
-					\ 'stdin': 1
+					\ 'stdin': 1,
+					\ 'stderr': 1,
 					\ }
-		let g:neoformat_enabled_python = [ 'tidyimportsisort' ]
+		let g:neoformat_enabled_python = [ 'tidyimportsisortblack' ]
 	endif
+	let g:neoformat_hcl_nomad = {
+				\ 'exe': 'nomad',
+				\ 'args': [ 'fmt', '-' ],
+				\ 'stdin': 1,
+				\ }
+	let g:neoformat_enabled_hcl = [ 'nomad' ]
+	" Add `:Format` command to format current buffer.
+	"command! -nargs=0 Format :call CocAction('format')
+	" neoformat/plugin/neoformat.vim
+	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
+				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
 endif
 
 if kc#plugin#enabled('vim-buftabline')
@@ -1124,14 +1131,6 @@ endif
 
 " https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
 nnoremap <leader>s i<CR><Esc>
-
-if kc#plugin#enabled('neoformat')
-	" Add `:Format` command to format current buffer.
-	"command! -nargs=0 Format :call CocAction('format')
-	" neoformat/plugin/neoformat.vim
-	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
-				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
-endif
 
 " https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
