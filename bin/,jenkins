@@ -2,7 +2,9 @@
 
 import logging
 import pathlib
+import re
 import sys
+import threading
 import time
 from functools import lru_cache
 
@@ -135,19 +137,16 @@ def getjob_in(jobname):
 
 
 class Logprinter:
-    def __init__(self):
-        import re
-
-        self.excl = re.compile(r"^\[(Pipeline|GitCheckoutListener)\] ")
-        self.linecolors = [
-            (GRAY, re.compile("^[$+] ")),
-            (CYAN, re.compile("^#[0-9]")),
-        ]
-        self.wordcolors = [
-            (RED, re.compile(r"(\b(error|fatal|failure|fail)\w*\b)", re.I)),
-            (YELLOW, re.compile(r"(\b(warn\w*)\b)", re.I)),
-            (GREEN, re.compile(r"(\b(success\w*|OK)\b)", re.I)),
-        ]
+    excl = re.compile(r"^\[(Pipeline|GitCheckoutListener)\] ")
+    linecolors = [
+        (GRAY, re.compile("^[$+] ")),
+        (CYAN, re.compile("^#[0-9]")),
+    ]
+    wordcolors = [
+        (RED, re.compile(r"(\b(error|fatal|failure|fail)\w*\b)", re.I)),
+        (YELLOW, re.compile(r"(\b(warn\w*)\b)", re.I)),
+        (GREEN, re.compile(r"(\b(success\w*|OK)\b)", re.I)),
+    ]
 
     def printline(self, line):
         if self.excl.search(line):
@@ -182,15 +181,17 @@ def getlogs(jobname):
 def autogetlogs(jobname):
     job = getjob_in(jobname)
     build = next(job.iter_builds())
-    lp = Logprinter()
     while True:
-        lp.print(build)
+        th = threading.Thread(target=lambda: Logprinter().print(build))
+        th.daemon = True
+        th.start()
+        #
         log.info("Waiting for next build on %s", build)
         while True:
             nextbuild = build.get_next_build()
             if nextbuild is not None:
                 break
-            log.debug("Waiting for next build on %s", build)
+            # log.debug("Waiting for next build on %s", build)
             time.sleep(2)
         build = nextbuild
 

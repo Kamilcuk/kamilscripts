@@ -23,11 +23,15 @@ function! kc#plugin#enabled(name) abort
 			endif
 		endfor
 	endif
-	for i in kc#plugin#split(&rtp)
-		if fnamemodify(i, ':t') =~ a:name && isdirectory(i)
-			return 1
-		endif
-	endfor
+	if exists('g:plugs')
+		return index(keys(g:plugs), a:name) != -1
+	else
+		for i in kc#plugin#split(&rtp)
+			if fnamemodify(i, ':t') =~ a:name && isdirectory(i)
+				return 1
+			endif
+		endfor
+	endif
 	return 0
 endfunction
 

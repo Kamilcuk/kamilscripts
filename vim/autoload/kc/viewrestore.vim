@@ -6,6 +6,7 @@
 " https://vim.fandom.com/wiki/Make_views_automatic
 " :call kc#viewrestore#enable() to enable this module
 
+finish
 if !exists("g:skipview_files") | let g:skipview_files = [] | endif
 
 function kc#viewrestore#enable()

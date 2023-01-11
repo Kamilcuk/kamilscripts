@@ -5,7 +5,7 @@
 " if get(g:, 'loaded_kamilscripts_vimrc', 0)
 " 	finish
 " endif
-let g:loaded_kamilscripts_vimrc = 1
+" let g:loaded_kamilscripts_vimrc = 1
 
 " Ignore missing terminfo - ie. wrong TERM.
 if 0 && &t_cm == ""
@@ -120,8 +120,11 @@ set foldnestmax=10
 set nofoldenable
 set foldlevel=0
 
+" https://gist.github.com/eduardocereto/3088543
 set wildignore+=*/node_modules/*,_site,*/__pycache__/,*/venv/*,*/target/*,*/.vim$,\~$,*/.log,*/.aux,*/.cls
 set wildignore+=*/.aux,*/.bbl,*/.blg,*/.fls,*/.fdb*/,*/.toc,*/.out,*/.glo,*/.log,*/.ist,*/.fdb_latexmk
+set wildignore+=*.egg-info/**
+set wildignore+=*.o,*.obj,.git,*.pyc
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip
 set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe
 
@@ -156,9 +159,6 @@ endif
 
 set scrolloff=6
 
-" https://github.com/thaerkh/vim-workspace/issues/11
-set sessionoptions-=blank
-
 set display+=uhex
 
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
@@ -172,6 +172,36 @@ if has('nvim')
 	let g:man_hardwrap = 0
 endif
 
+if 1
+ " Put these in an autocmd group, so that you can revert them with:
+  " ":augroup vimStartup | exe 'au!' | augroup END"
+  augroup vimStartup
+    au!
+
+    " When editing a file, always jump to the last known cursor position.
+    " Don't do it when the position is invalid, when inside an event handler
+    " (happens when dropping a file on gvim) and for a commit message (it's
+    " likely a different one than last time).
+    autocmd BufReadPost *
+      \ if line("'\"") >= 1 && line("'\"") <= line("$") && &ft !~# 'commit'
+      \ |   exe "normal! g`\""
+      \ | endif
+
+  augroup END
+
+  " Quite a few people accidentally type "q:" instead of ":q" and get confused
+  " by the command line window.  Give a hint about how to get out.
+  " If you don't like this you can put this in your vimrc:
+  " ":augroup vimHints | exe 'au!' | augroup END"
+  augroup vimHints
+    au!
+    autocmd CmdwinEnter *
+	  \ echohl Todo |
+	  \ echo 'You discovered the command-line window! You can close it with ":q".' |
+	  \ echohl None
+  augroup END
+endif
+
 " }}}
 " GUI Settings {{{
 if has('ide')
@@ -180,55 +210,46 @@ endif
 " }}}
 " Load kamilscripts {{{1
 
-if !exists('g:kamilscripts')
-	for i in [
-			\ '/usr/lib/kamilscripts/',
-			\ $HOME . '/.config/kamilscripts/kamilscripts/',
-			\ $HOME . '/.local/kamilscripts/',
-			\ $HOME . '/.config/kamilscripts/',
-			\ $HOME . '/.kamilscripts/',
-			\ ]
-		if isdirectory(i) && isdirectory(i.'/vim') && ( isdirectory(i.'/.git') || filereadable(i.'/.git') )
-			let g:kamilscripts = i
-			break
-		endif
-	endfor
-	unlet i
+" https://stackoverflow.com/questions/4976776/how-to-get-path-to-the-current-vimscript-being-executed
+let g:kamilscripts = fnamemodify(resolve(expand('<sfile>:p')), ':h:h').'/'
+if !isdirectory(g:kamilscripts.'vim')
+	echoe '~/.vimrc: ERROR: No g:kamilscripts = '.g:kamilscripts
+	finish
 endif
 
-if !exists('g:kamilscripts')
-	echoe '~/.vimrc: ERROR: No g:kamilscripts'
-else
-	execute 'set rtp^=' . fnameescape(g:kamilscripts) . 'vim'
-	let &spellfile = g:kamilscripts . "vim/spellfiles/en.utf-8.add"
-endif
+let &rtp.=','.fnameescape(g:kamilscripts).'vim'
+let &spellfile = g:kamilscripts.'vim/spellfiles/en.utf-8.add'
 
 " Automatically generate tags for custom documentation files
 " https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
 autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
-if exists('g:kamilscripts')
-	autocmd BufWritePost g:kamilscripts . "/vim/doc/*" :helptags g:kamilscripts . "/vim/doc"
-endif
+autocmd BufWritePost g:kamilscripts . '/vim/doc/*' :helptags g:kamilscripts . '/vim/doc'
 
 " }}}
 " Load plugins with vim-plug {{{1
 
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
-		call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+	if executable('git')
+		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
+			call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+		endif
+		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
+	else
+		echoe '~/.vimrc: ERROR: no git executable'
+		finish
 	endif
-	!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
 endif
 
-if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-
-	command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
-	command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
+if 1
 	if v:version >= 800
 		command! -nargs=+ -bar KcPlug8 call plug#(<args>)
 		if executable('node') && executable('npm') && executable('yarn')
 			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
+		else
+			command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
 		endif
+	else
+		command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
 	endif
 	function KcUpdate()
 		PlugUpdate
@@ -239,51 +260,54 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	endfunction
 	command Update call KcUpdate()
 
-	filetype off
 	source ~/.vim/plugged/vim-plug/plug.vim
 	let plugdir = '~/.vim/plugged/'
 	call plug#begin(plugdir)
 	Plug 'junegunn/vim-plug' " Add itself
-	delcommand PlugUpgrade
+	delcommand PlugUpgrade " Just use PlugUpdate
 
 	" My Plugins {{{2
-		"Plug 'google/vim-maktaba'
-		"Plug 'google/vim-coverage'
-		"Plug 'google/vim-glaive'
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
-		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
+		"Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
 		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
-		Plug 'Kamilcuk/vim-auto-gcov-marker'
+		"Plug 'Kamilcuk/vim-auto-gcov-marker'
 		"Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'martinda/Jenkinsfile-vim-syntax'
-		"Plug 'fholgado/minibufexpl.vim'
-		Plug 'hashivim/vim-hashicorp-tools'
 		Plug 'jvirtanen/vim-hcl'
+		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
+		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
+		if executable('languagetool')
+			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
+		endif
+	" }}}
+	" Disabled stuff {{{
+		" KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin Too slow
+		" Plug 'mg979/vim-visual-multi' " No - overwrites <C-n> taken by NetrdTree
+		" Plug 'honza/vim-snippets' " vim-snipmate default snippets
+		" Plug 'fholgado/minibufexpl.vim'
+		" Plug 'hashivim/vim-hashicorp-tools'
 		" Plug 'powerman/vim-plugin-AnsiEsc' " :AsciEsc replaces color codes for real codes
 		" Plug 'ojroques/vim-oscyank' " Copy selected text using special ANSI sequences
 		" Plug 'flwyd/nerdtree-harvest' " Additional mapping on nerdtree
 		" Plug 'abdalrahman-ali/vim-remembers' Changes working directory!
-		"Plug  'joshzcold/DrawIt' " For drawing stuff
-		"Plug 'LucHermitte/lh-vim-lib'
-		"Plug 'LucHermitte/lh-tags'
-		"Plug 'LucHermitte/lh-dev'
-		"Plug 'LucHermitte/lh-style'
-		"Plug 'LucHermitte/lh-brackets'
-		"Plug 'LucHermitte/vim-refactor'
-		"Plug '907th/vim-auto-save'
-		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
-		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
-		KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin
-		if executable('languagetool')
-			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
-		endif
-		Plug 'honza/vim-snippets' " vim-snipmate default snippets
-	" }}}
-	" Disabled stuff {{{
-		"Plug 'mg979/vim-visual-multi' " No - overwrites <C-n> taken by NetrdTree
+		" Plug  'joshzcold/DrawIt' " For drawing stuff
+		" Plug 'LucHermitte/lh-vim-lib'
+		" Plug 'LucHermitte/lh-tags'
+		" Plug 'LucHermitte/lh-dev'
+		" Plug 'LucHermitte/lh-style'
+		" Plug 'LucHermitte/lh-brackets'
+		" Plug 'LucHermitte/vim-refactor'
+		" Plug '907th/vim-auto-save'
+		" Plug 'google/vim-maktaba'
+		" Plug 'google/vim-coverage'
+		" Plug 'google/vim-glaive'
+		" Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
+		" Plug 'kamilcuk/vim-template', { 'dir': plugdir.'kamilcuk-vim-template' }
+		" Plug 'shumphrey/fugitive-gitlab.vim' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } An extension to fugitive.vim for gitlab support
+		" Plug 'tpope/vim-rhubarb' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } GitHub extension for fugitive.vim
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
 		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
@@ -305,10 +329,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'salcode/vim-interactive-rebase-reverse', { 'for': ['gitrebase', 'git'] } " reverse order commits during a Git rebase
 		" A Git wrapper so awesome, :G
 		Plug 'tpope/vim-fugitive' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
-		" An extension to fugitive.vim for gitlab support
-		Plug 'shumphrey/fugitive-gitlab.vim' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
-		" GitHub extension for fugitive.vim
-		Plug 'tpope/vim-rhubarb' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
 	" }}}
 	" Languages syntax and support and parsing {{{2
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
@@ -317,7 +337,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
 		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
 		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
-		Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
+		"Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
 		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
 		Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
@@ -329,7 +349,7 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'xuhdev/vim-IniParser'
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
 		Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
-		Plug 'sbdchd/neoformat' ", { 'on': ['Format', 'Neoformat'] } " Neoformat and I use :Format
+		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
 		Plug 'vimwiki/vimwiki' " make notes
 		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
 		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
@@ -348,8 +368,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 		Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
 		Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
 		Plug 'gyim/vim-boxdraw' " Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
-		" Plug 'aperezdc/vim-template' " Simple templates plugin for Vim
-		Plug 'kamilcuk/vim-template', { 'dir': plugdir.'kamilcuk-vim-template' }
 		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
 		Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
 		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
@@ -394,7 +412,6 @@ if exists('g:kamilscripts') && filereadable(expand('~/.vim/plugged/vim-plug/plug
 	" }}}
 
 	call plug#end()
-	filetype on
 
 	delcommand KcPlug8
 	delcommand KcPlugCoc
@@ -402,9 +419,6 @@ endif
 
 " }}}
 " Some view things {{{1
-
-" See kamilscript/autoload/viewrestore.vim
-call kc#viewrestore#enable()
 
 " Highlight current line when leaving buffer buffer
 " https://vim.fandom.com/wiki/Highlight_current_line
@@ -556,10 +570,12 @@ autocmd! BufReadPost .clangd set syntax=yaml filetype=yaml
 " }}}
 " Plugins configuration {{{1
 
-if filereadable('/usr/bin/languagetool')
-	let g:languagetool_cmd='/usr/bin/languagetool'
-elseif filereadable('/usr/share/java/languagetool/languagetool-commandline.jar')
-	let g:languagetool_jar = '/usr/share/java/languagetool/languagetool-commandline.jar'
+if kc#plugin#enabled('coc-languagetool')
+	if filereadable('/usr/bin/languagetool')
+		let g:languagetool_cmd='/usr/bin/languagetool'
+	elseif filereadable('/usr/share/java/languagetool/languagetool-commandline.jar')
+		let g:languagetool_jar = '/usr/share/java/languagetool/languagetool-commandline.jar'
+	endif
 endif
 
 if kc#plugin#enabled('vim-oscyank')
@@ -620,6 +636,7 @@ endif
 if kc#plugin#enabled('vim-airline')
 	let g:airline#extensions#tabline#enabled = 0
 	let g:airline#extensions#tabline#buffer_nr_show = 0
+	"let g:airline#extensions#branch#enabled = 0
 endif
 
 if kc#plugin#enabled('vim-workspace')
@@ -633,6 +650,9 @@ if kc#plugin#enabled('vim-workspace')
 	endif
 	let g:workspace_nocompatible = 0
 	let g:workspace_session_disable_on_args = 1
+	nnoremap <leader>W :ToggleWorkspace<CR>
+	" https://github.com/thaerkh/vim-workspace/issues/11
+	set sessionoptions-=blank
 endif
 
 if kc#plugin#enabled('vim-tips')
@@ -831,7 +851,7 @@ endif
 	"let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
 "endif
 
-if kc#plugin#enabled('smooth-scroll')
+if 0 && kc#plugin#enabled('smooth-scroll')
 	noremap <silent> <c-u> :call smooth_scroll#up(&scroll, 5, 2)<CR>
 	noremap <silent> <c-d> :call smooth_scroll#down(&scroll, 5, 2)<CR>
 	noremap <silent> <c-b> :call smooth_scroll#up(&scroll*2, 5, 4)<CR>
@@ -1023,10 +1043,6 @@ augroup vimrcQfClose
 	autocmd!
 	autocmd FileType qf if mapcheck('<esc>', 'n') ==# '' | nnoremap <buffer><silent> <esc> :cclose<bar>lclose<CR> | endif
 augroup END
-
-if kc#plugin#enabled('vim-workspace')
-	nnoremap <leader>W :ToggleWorkspace<CR>
-endif
 
 " https://vim.fandom.com/wiki/Search_and_replace_the_word_under_the_cursor
 nnoremap <leader>S :%s/\<<C-r><C-w>\>/<C-r><C-w>/g<Left><Left>
