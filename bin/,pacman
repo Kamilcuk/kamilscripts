@@ -317,11 +317,12 @@ C_p() { _archlinux_pacman "$@"; }
 C_pn() { C_p --noconfirm "$@"; }
 
 C_pupdate() {
-	local tmp &&
-	tmp=$(pacman -Q | cut -d' ' -f1 | grep '[^ ]*-keyring') &&
-	if [[ -n "$tmp" ]]; then
+	local keyrings &&
+	L_run sudo reflector @/etc/xdg/reflector/reflector.conf &&
+	keyrings=$(pacman -Qqs '.*-keyring$') &&
+	if [[ -n "$keyrings" ]]; then
 		# shellcheck disable=2086
-		C_p --noconfirm -Sy --needed $tmp;
+		C_p --noconfirm -Sy --needed $keyrings;
 	fi &&
 	C_p --noconfirm -Su --needed "$@" &&
 	C_autoremove
