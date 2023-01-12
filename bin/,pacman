@@ -165,6 +165,22 @@ EOF
 	done
 }
 
+C_list_installed_packages_by_size() {
+	pacman -Qi |
+		gawk '
+			/^Name/ { x = $3 };
+			/^Installed Size/ {
+				sub(/Installed Size  *:/, "");
+				gsub(/ /, "");
+				gsub(/B$/, "");
+				print x" " $0
+			}' |
+		numfmt --field 2 --from=auto --to=none |
+		sort -k2n |
+		numfmt --field 2 --to=iec |
+		column -t
+}
+
 C_list_installed_packages_by_date_filter() {
 	sed 's/.*/[ALPM] installed & /' |
 	grep -Ff - /var/log/pacman.log |
