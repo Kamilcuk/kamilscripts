@@ -2,7 +2,8 @@
   "coc.preferences.extensionUpdateCheck": "weekly",
   "coc.preferences.formatOnType": false,
   "coc.preferences.formatOnSaveFiletypes": [],
-  "coc.preferences.semanticTokensHighlights": false,
+  "coc.preferences.colorSupport": true,
+  "coc.preferences.semanticTokensHighlights": true,
   "coc.source.file.triggerCharacters": [
     "/"
   ],

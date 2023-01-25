@@ -275,6 +275,7 @@ if 1
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+	    Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
 		Plug 'martinda/Jenkinsfile-vim-syntax'
 		Plug 'jvirtanen/vim-hcl'
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
@@ -405,6 +406,7 @@ if 1
 					\ 'coc-vimtex',
 					\ 'coc-solargraph',
 					\ 'coc-json',
+					\ 'coc-pyright',
 					\ ]
 		"let g:coc_filetype_map = {
 					"\ 'Jenkinsfile': 'groovy',
@@ -859,12 +861,24 @@ if 0 && kc#plugin#enabled('smooth-scroll')
 endif
 
 if kc#plugin#enabled('vim-mergetool')
-	function s:on_mergetool_set_layout(split)
-		set syntax=off
-		set nospell
-	endfunction
-	let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
+	" By default - local | merged | remove , like in meld.
 	let g:mergetool_layout = 'lmr'
+	" Use ctrl+right ctrl+left to merge stuff in merge mode
+	nmap <leader>mt <plug>(MergetoolToggle)
+	nmap <expr> <C-Left>    !&diff ? '<C-Left>'  : '<Plug>(MergetoolDiffExchangeLeft)  ]c<CR>'
+	nmap <expr> <C-Right>   !&diff ? '<C-Right>' : '<Plug>(MergetoolDiffExchangeRight) ]c<CR>'
+	nmap <expr> <C-Down>    !&diff ? '<C-Down>'  : '<Plug>(MergetoolDiffExchangeDown)  ]c<CR>'
+	nmap <expr> <C-Up>      !&diff ? '<C-Up>'    : '<Plug>(MergetoolDiffExchangeUp)    ]c<CR>'
+	"
+	"function s:on_mergetool_set_layout(split)
+		"set syntax=off
+		"set nospell
+	"endfunction
+	"let g:MergetoolSetLayoutCallback = function('s:on_mergetool_set_layout')
+	"function MLayoutCompletion(ArgLead, CmdLine, CursorPos)
+		"return [ "mr", "lmr", "bmr", "LBR" ]
+	"endfunction
+	"command MLayout -nargs=1 -complete=customlist, :MergetoolToggleLayout <q-args><CR>
 endif
 
 if kc#plugin#enabled('showmarks')
@@ -1095,15 +1109,6 @@ if &diff
 		autocmd!
 		autocmd VimEnter *? norm ]c[c
 	augroup END
-	function MLayoutCompletion(ArgLead, CmdLine, CursorPos)
-		return [ "mr", "lmr", "bmr", "LBR" ]
-	endfunction
-	command MLayout -nargs=1 -complete=customlist, :MergetoolToggleLayout <q-args><CR>
-	nmap <leader>mt <plug>(MergetoolToggle)
-	nmap <expr> <C-Left>    !&diff ? '<C-Left>'  : '<Plug>(MergetoolDiffExchangeLeft)  ]c<CR>'
-	nmap <expr> <C-Right>   !&diff ? '<C-Right>' : '<Plug>(MergetoolDiffExchangeRight) ]c<CR>'
-	nmap <expr> <C-Down>    !&diff ? '<C-Down>'  : '<Plug>(MergetoolDiffExchangeDown)  ]c<CR>'
-	nmap <expr> <C-Up>      !&diff ? '<C-Up>'    : '<Plug>(MergetoolDiffExchangeUp)    ]c<CR>'
 endif
 
 command! VimConfig :edit ~/.vimrc
@@ -1165,6 +1170,7 @@ endif
 if kc#plugin#enabled('coc.nvim')
 
 let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
+let g:coc_default_semantic_highlight_groups = 1
 
 " https://github.com/neoclide/coc-highlight
 autocmd CursorHold ?* silent call CocActionAsync('highlight')
