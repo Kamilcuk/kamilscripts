@@ -10,6 +10,12 @@ Print module parameters with values if loaded.
 
 EOF
 }
+
+fatal() {
+	echo "$name: $*" >&2
+	exit 234
+}
+
 if ((!$#)); then
 	usage
 	exit
@@ -17,7 +23,7 @@ fi
 
 m=$1
 d=/sys/module/$m/parameters/
-if [ ! -d "$d" ]; then
+if [[ ! -d "$d" ]]; then
 	fatal "Module $m not loaded"
 fi
 

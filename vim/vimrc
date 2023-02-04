@@ -1205,7 +1205,12 @@ endif
 if 1
 	" https://www.reddit.com/r/vim/comments/8urbln/cursorholdcursorholdi_with_different_updatetimes/
 	function! TriggerCocIf()
-		return &modifiable && !coc#pum#visible() && nvim_win_get_config(0).relative == ''
+		return &modifiable &&
+					\ exists('nvim_win_get_config') &&
+					\ exists('coc#pum#visible') &&
+					\ exists('coc#start') &&
+					\ !coc#pum#visible() &&
+					\ nvim_win_get_config(0).relative == ''
 	endfunction
 	function! TriggerCocAfterInactivity(timerid)
 		"echom "Calling coc-start() " . a:timerid

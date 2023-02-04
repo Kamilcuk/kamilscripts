@@ -334,7 +334,7 @@ C_pn() { C_p --noconfirm "$@"; }
 
 C_pupdate() {
 	local keyrings &&
-	L_run sudo reflector @/etc/xdg/reflector/reflector.conf &&
+	( set -x && sudo reflector @/etc/xdg/reflector/reflector.conf ) &&
 	keyrings=$(pacman -Qqs '.*-keyring$') &&
 	if [[ -n "$keyrings" ]]; then
 		# shellcheck disable=2086

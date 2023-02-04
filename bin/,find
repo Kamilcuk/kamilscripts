@@ -125,7 +125,18 @@ C_home_sizes() {
 	set -euo pipefail
 	cd ~
 	{
-		descend=( .cache .local .config chmura "VirtualBox VMs" Desktop .local/share/Steam/steamapps/common )
+		descend=(
+			.cache
+			.local
+			.config
+			chmura
+			"VirtualBox VMs"
+			Desktop
+			.local/share/Steam/steamapps/common
+			.local/share
+			Downloads
+			Documents
+		)
 		args=(); for i in "${descend[@]}"; do args+=('!' -path "./$i"); done
 		args2=(); for i in "${descend[@]}"; do args2+=(-o -regex "./$i/[^/]*"); done
 		L_run find . -mindepth 1 "${args[@]}" -prune -print0
@@ -142,7 +153,9 @@ C_root_sizes() {
 		L_run find / -mindepth 1 -maxdepth 1 "${args[@]}" -print0
 		L_run find "${descend[@]}" -maxdepth 1 -mindepth 1 -print0
 		for i in /var/lib/docker /var/cache/pacman ; do
-			if [[ -e "$i" ]]; then L_run echo "$i"; fi
+			if [[ -e "$i" ]]; then
+				L_run printf "%s\0" "$i"
+			fi
 		done
 	} | _handle_sizes
 }
