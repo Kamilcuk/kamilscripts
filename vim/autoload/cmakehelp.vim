@@ -1,9 +1,9 @@
 
 function! s:error(msg) abort
-  redraw
-  echohl ErrorMsg
-  echon 'cmakehelp.vim: ' a:msg
-  echohl None
+	redraw
+	echohl ErrorMsg
+	echon 'cmakehelp.vim: ' a:msg
+	echohl None
 endfunction
 
 function! s:find_window() abort
@@ -29,8 +29,8 @@ function! cmakehelp#get(target) abort
 				\ ]
 	if a:target =~ '^CMP[0-9]\+$'
 		let l:prefixes = [
-				\ 'help-policy ',
-				\ ]
+					\ 'help-policy ',
+					\ ]
 	endif
 	let l:target = shellescape(a:target)
 	for l:prefix in l:prefixes

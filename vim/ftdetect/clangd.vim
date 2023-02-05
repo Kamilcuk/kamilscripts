@@ -1,1 +1,1 @@
-au BufRead,BufNewFile .clangd set filetype=yaml
+autocmd BufReadPost,BufRead,BufNewFile .clangd set syntax=yaml filetype=yaml

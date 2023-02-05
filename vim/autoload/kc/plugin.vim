@@ -3,10 +3,10 @@
 " Under VIM license Copyright (c) Tim Pope
 " Split a path into a list.
 function! kc#plugin#split(path) abort
-  if type(a:path) == type([]) | return a:path | endif
-  if empty(a:path) | return [] | endif
-  let split = split(a:path,'\\\@<!\%(\\\\\)*\zs,')
-  return map(split,'substitute(v:val,''\\\([\\,]\)'',''\1'',"g")')
+	if type(a:path) == type([]) | return a:path | endif
+	if empty(a:path) | return [] | endif
+	let split = split(a:path,'\\\@<!\%(\\\\\)*\zs,')
+	return map(split,'substitute(v:val,''\\\([\\,]\)'',''\1'',"g")')
 endfunction
 
 " Check if the plugin with the name is enabled

@@ -187,3 +187,7 @@ endfunction
 function! kc#getredir(cmd) abort
 	return split(s:system(a:cmd), '\n')
 endfunction
+
+function! kc#log(str) abort
+	echom substitute(expand("<sfile>"), '\.\.[^.]*$', "", "").": ".a:str
+endfunction

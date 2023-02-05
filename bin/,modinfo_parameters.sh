@@ -24,7 +24,7 @@ fi
 m=$1
 d=/sys/module/$m/parameters/
 if [[ ! -d "$d" ]]; then
-	fatal "Module $m not loaded"
+	fatal "ERROR: No direcotry $d"
 fi
 
 modinfo "$m" | sed -n 's/^parm: *//p' |
