@@ -275,7 +275,7 @@ if 1
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-	    Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
+		"Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
 		Plug 'martinda/Jenkinsfile-vim-syntax'
 		Plug 'jvirtanen/vim-hcl'
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
@@ -861,8 +861,8 @@ if 0 && kc#plugin#enabled('smooth-scroll')
 endif
 
 if kc#plugin#enabled('vim-mergetool')
-	" By default - local | merged | remove , like in meld.
-	let g:mergetool_layout = 'lmr'
+	" By default - local | merged | remote , like in meld.
+	let g:mergetool_layout = 'lmR'
 	" Use ctrl+right ctrl+left to merge stuff in merge mode
 	nmap <leader>mt <plug>(MergetoolToggle)
 	nmap <expr> <C-Left>    !&diff ? '<C-Left>'  : '<Plug>(MergetoolDiffExchangeLeft)  ]c<CR>'
