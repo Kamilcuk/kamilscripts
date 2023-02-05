@@ -514,7 +514,9 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
+		if has('nvim')
+			Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
+		endif
 		Plug 'martinda/Jenkinsfile-vim-syntax'
 		Plug 'jvirtanen/vim-hcl'
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
@@ -978,6 +980,8 @@ if kc#plugin#enabled('vimspector')
 	" You may also wish to add mappings for up/down the stack, for example:
 	nmap <LocalLeader><F11> <Plug>VimspectorUpFrame
 	nmap <LocalLeader><F12> <Plug>VimspectorDownFrame
+	nmap <LocalLeader>B     <Plug>VimspectorBreakpoints
+	nmap <LocalLeader>D     <Plug>VimspectorDisassemble
 	" dc = 'Debug Stop'
 	nmap <Leader>dc :VimspectorReset<CR>
 endif
@@ -1196,7 +1200,7 @@ if 1
 		if CocAction('hasProvider', 'hover')
 			call CocActionAsync('doHover')
 		else
-			call kc#log("no hover")
+			call kc#log("no coc hover")
 			"call feedkeys('K', 'in')
 		endif
 	endfunction
