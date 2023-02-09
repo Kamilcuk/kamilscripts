@@ -55,8 +55,8 @@ while (($#)); do
 	-n)  dry_run=true; ;;
 	-h|--help)  usage; exit; ;;
 	--no-default-flags) g_encargs+=("$1"); ;;
-	-g|--graphic) g_graphic=1; ;;
-	-x) g_graphic=2; ;;
+	-g|--graphic) if [[ -v DISPLAY ]]; then g_graphic=1; fi; ;;
+	-x) if [[ -v DISPLAY ]]; then g_graphic=2; fi; ;;
 	--) shift; break; ;;
 	*) fatal "unknown argument: $1"; ;;
 	esac
@@ -103,14 +103,14 @@ notifyerror() {
 }
 
 domount() {
-	if ((g_graphic)) && [[ -n "$DISPLAY" ]] &&
+	if ((g_graphic)) && [[ -n "${DISPLAY:-}" ]] &&
 		password=$(
 			zenity --title ",encfs mounting $dir1 to $dir2" --entry --text "Give encfs password to $dir1:" --hide-text
 		)
 	then
 		g_encargs+=( "--extpass=printf %s $(printf %q "$password")" )
 	fi
-	if ((g_graphic == 2)) && [[ -z "$password" ]]; then
+	if ((g_graphic == 2)) && [[ -z "${password:-}" ]]; then
 		notifyerror "Invalid password"
 		exit 1
 	fi
