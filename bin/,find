@@ -160,6 +160,12 @@ C_root_sizes() {
 	} | _handle_sizes
 }
 
+C_duplicates_md5sum() {
+	(
+		set -x
+		find . -type f -print0 | xargs -0 md5sum | sort | uniq -w32 --all-repeated=separate
+	)
+}
 
 ###############################################################################
 
