@@ -189,5 +189,19 @@ function! kc#getredir(cmd) abort
 endfunction
 
 function! kc#log(str) abort
-	echom substitute(expand("<sfile>"), '\.\.[^.]*$', "", "").": ".a:str
+	" Keep a cache of printed lines in a file.
+	" In that file store printed lines. If a line was already printed,
+	" do not print it again.
+	" Remove cache after one day.
+	let myfile = expand("~/.vim/.kccache")
+	if filereadable(myfile) && system("date +%s") - system("stat -f%c ".myfile) < 3600 * 24
+		call delete(myfile)
+	endif
+	let lines = filereadable(myfile) ? readfile(myfile) : []
+	" Add current script location to the message.
+	let msg = substitute(expand("<sfile>"), '\.\.[^.]*$', "", "").": ".a:str
+	if index(lines, msg) == -1
+		echom msg
+		call writefile([msg], myfile, "a")
+	endif
 endfunction
