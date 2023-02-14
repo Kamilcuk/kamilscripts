@@ -1,13 +1,11 @@
 {
   "coc.preferences.extensionUpdateCheck": "weekly",
-  "coc.preferences.formatOnType": false,
-  "coc.preferences.formatOnSaveFiletypes": [],
   "coc.preferences.colorSupport": true,
   "coc.preferences.semanticTokensHighlights": true,
   "coc.source.file.triggerCharacters": [
     "/"
   ],
-	"colors.filetypes": ["*"],
+	"colors.enable": true,
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
   "diagnostic.infoSign": "🛈",
@@ -40,8 +38,8 @@
 	"tabnine.priority": 98,
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
-  "diagnostic-languageserver.debug": false,
-  "diagnostic-languageserver.trace.server": "off",
+  "diagnostic-languageserver.debug": true,
+  "diagnostic-languageserver.trace.server": "verbose",
   "diagnostic-languageserver.filetypes": {
     "c": [
       "cpplint_c",
@@ -51,7 +49,6 @@
       "cpplint_cpp",
       "gcovrtolist"
     ],
-    "vim": "vint",
     "email": "languagetool",
     "markdown": [
       "write-good",
@@ -84,23 +81,46 @@
     "systemd": "systemd-analyze",
     "PKGBUILD": "namcap",
     "_comment_make": "checkmake",
-    "hcl": "nomad_validate"
+    "hcl": "nomad",
+    "vim": "vint"
   },
   "diagnostic-languageserver.linters": {
-    "nomad_validate": {
-      "sourceName": "nomad_validate",
-      "command": "sh",
+    "vint": {
+      "command": "vint",
+      "debounce": 100,
+      "args": ["-f", "{line_number}:{column_number}: {severity}! {description}", "%file"],
+      "offsetLine": 0,
+      "offsetColumn": 0,
+      "sourceName": "vint",
+      "formatLines": 1,
+      "formatPattern": [
+        "(\\d+):(\\d+):\\s*([^!]*)! (.*)(\\r|\\n)*$",
+        {
+          "line": 1,
+          "column": 2,
+          "security": 3,
+          "message": 4
+        }
+      ],
+      "securities": {
+        "error": "error",
+        "warning": "warning",
+        "style_problem": "info"
+      }
+    },
+    "nomad": {
+      "sourceName": "nomad",
+      "command": "nomad",
       "args": [
-        "-c",
-        "if hash nomad 2>/dev/null && test \"${1##*.}\" == nomad; then nomad validate \"$1\" 2>&1; fi",
-        "_",
-        "%file"
+        "validate",
+        "%file",
       ],
       "offsetLine": 1,
+      "isStderr": true,
       "formatPattern": [
-        "^\\s+\\* (.+)$",
+        "^([^:]+:[^:]+:|\\s+[*])\\s+(.+)$",
         {
-          "message": 1
+          "message": 2
         }
       ]
     },

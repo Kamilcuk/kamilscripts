@@ -11,7 +11,7 @@ if !has('nvim') && filereadable(expand('$VIMRUNTIME/defaults.vim'))
 	source $VIMRUNTIME/defaults.vim
 endif
 
-if $LC_CTYPE == 'pl_PL.UTF-8'
+if $LC_CTYPE ==? 'pl_PL.UTF-8'
 	source $VIMRUNTIME/delmenu.vim
 	set langmenu=pl_PL.UTF-8
 	language pl_PL.UTF-8
@@ -49,6 +49,7 @@ set pastetoggle=<F2>
 filetype plugin indent on
 syntax enable
 set encoding=utf-8
+scriptencoding utf-8
 set nofoldenable
 set modeline
 
@@ -72,7 +73,7 @@ function Kc_spell_suggest_correct_word()
 	if len(spellbadword(v:val)[0])
 		return []
 	endif
-	if v:lang == 'pl_PL.UTF-8'
+	if v:lang ==? 'pl_PL.UTF-8'
 		echo 'Słowo "'.v:val.'" jest poprawne.'
 	else
 		echo 'The word "'.v:val.'" is correct.'
@@ -132,7 +133,10 @@ set exrc
 
 " I do not like mouse
 set mouse=
-autocmd BufEnter ?* set mouse=
+augroup NoMouse
+	autocmd!
+	autocmd BufEnter ?* set mouse=
+augroup END
 
 " https://github.com/neoclide/coc.nvim
 " Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
@@ -318,11 +322,11 @@ inoremap <silent> <Home> <C-R>=LineHome()<CR>
 "imap ^[[1~ <C-R>=LineHome()<CR>
 function! LineHome()
   let x = col('.')
-  execute "normal ^"
+  execute 'normal ^'
   if x == col('.')
-    execute "normal 0"
+    execute 'normal 0'
   endif
-  return ""
+  return ''
 endfunction
 
 " https://vim.fandom.com/wiki/Cscope
@@ -338,14 +342,14 @@ endif
 "If you're using tmux version 2.2 or later, you can remove the outermost $TMUX check and use tmux's 24-bit color support
 "(see < http://sunaku.github.io/tmux-24bit-color.html#usage > for more information.)
 if 0 && empty($TMUX)
-	if has("nvim")
+	if has('nvim')
 		"For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
 		let $NVIM_TUI_ENABLE_TRUE_COLOR = 1
 	endif
 	"For Neovim > 0.1.5 and Vim > patch 7.4.1799 < https://github.com/vim/vim/commit/61be73bb0f965a895bfb064ea3e55476ac175162 >
 	"Based on Vim patch 7.4.1770 (`guicolors` option) < https://github.com/vim/vim/commit/8a633e3427b47286869aa4b96f2bfc1fe65b25cd >
 	" < https://github.com/neovim/neovim/wiki/Following-HEAD#20160511 >
-	if has("termguicolors")
+	if has('termguicolors')
 		set termguicolors
 	endif
 endif
@@ -417,12 +421,12 @@ if has('nvim')
 		if exists('+winhighlight') "&& &filetype !=? 'fzf'
 			" autocmd TermOpen call s:highlight_myterm()
 			" Clear highlight for fzf buffers because yuck
-			au FileType fzf setl winhighlight=
+			autocmd FileType fzf setl winhighlight=
 		endif
 		autocmd TermOpen * set bufhidden=hide
 		autocmd FileType fzf tnoremap <nowait><buffer> <esc> <c-g> "Close FZF in neovim with esc
+		autocmd BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
 	augroup END
-	au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
 endif
 
 
@@ -440,7 +444,7 @@ endif
 " https://stackoverflow.com/questions/4976776/how-to-get-path-to-the-current-vimscript-being-executed
 let g:kamilscripts = fnamemodify(resolve(expand('<sfile>:p')), ':h:h').'/'
 if !isdirectory(g:kamilscripts.'vim')
-	echoe expand("<sfile>").' ERROR: No g:kamilscripts = '.g:kamilscripts
+	echoe expand('<sfile>').' ERROR: No g:kamilscripts = '.g:kamilscripts
 endif
 
 let &runtimepath .= ','.fnameescape(g:kamilscripts).'vim'
@@ -448,8 +452,11 @@ let &spellfile = g:kamilscripts.'vim/spellfiles/en.utf-8.add'
 
 " Automatically generate tags for custom documentation files
 " https://vim.fandom.com/wiki/Add_your_note_files_to_Vim_help
-autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
-autocmd BufWritePost g:kamilscripts.'/vim/doc/*' :helptags g:kamilscripts.'/vim/doc'
+augroup KcDoc
+	autocmd!
+	autocmd BufWritePost ~/.vim/doc/* :helptags ~/.vim/doc
+	autocmd BufWritePost g:kamilscripts.'/vim/doc/*' :helptags g:kamilscripts.'/vim/doc'
+augroup END
 
 if 0
 	" https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
@@ -462,7 +469,7 @@ endif
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	if executable('git')
 		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
-			call mkdir(expand('~/.vim/plugged/vim-plug/'), "p")
+			call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
 		endif
 		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
 	else
@@ -480,11 +487,11 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
 		else
 			command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
-			call kc#log("No node or npm or yarn")
+			call kc#log('No node or npm or yarn')
 		endif
 	else
 		command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
-		call kc#log("v:version < 800")
+		call kc#log('v:version < 800')
 	endif
 
 	function KcUpdate()
@@ -494,7 +501,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 			CocUpdate
 			sleep 3
 		else
-			call kc#log("no CocUpdate")
+			call kc#log('no CocUpdate')
 		endif
 		sleep 3
 		call kc#Redir('!cd '.g:kamilscripts.' && ./update.sh', 0, 0, 0)
@@ -525,7 +532,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		if executable('languagetool')
 			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
 		else
-			call kc#log("no languagetool")
+			call kc#log('no languagetool')
 		endif
 	" }}}
 	" Disabled stuff {{{
@@ -564,14 +571,14 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		if !( &compatible || !(has('nvim') || has('patch-8.2.1978')) )
 			Plug 'subnut/visualstar.vim' " Search stuff selected in visual mode. Select stuff and type *
 		else
-			call kc#log("no visualstar")
+			call kc#log('no visualstar')
 		endif
 	" }}}
 	" Integration with external tools {{{2
 		if executable('hunspell') || executable('aspell')
 			KcPlug8 'konfekt/vim-DetectSpellLang' " make Vim autodetect the spellcheck language
 		else
-			call kc#log("no hunspell and no aspell")
+			call kc#log('no hunspell and no aspell')
 		endif
 		Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
@@ -703,20 +710,20 @@ endif
 " https://stackoverflow.com/questions/31818109/how-to-selectively-disable-checkers-for-certain-file-types-when-using-syntastic
 if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
 	let g:syntastic_mode_map = {
-	    \ "mode": "active",
-	    \ "passive_filetypes": [
-		\ "c",
-		\ "cpp",
-		\ "python",
-		\ "json",
-		\ "vim",
-		\ "bin",
-		\ "cmake",
-		\ "ruby",
-		\ "java",
-		\ "html",
-		\ "sh",
-		\ "systemd",
+	    \ 'mode': 'active',
+	    \ 'passive_filetypes': [
+		\ 'c',
+		\ 'cpp',
+		\ 'python',
+		\ 'json',
+		\ 'vim',
+		\ 'bin',
+		\ 'cmake',
+		\ 'ruby',
+		\ 'java',
+		\ 'html',
+		\ 'sh',
+		\ 'systemd',
 		\ 'json',
 		\ ]}
 endif
@@ -784,14 +791,14 @@ endif
 " https://github.com/aperezdc/vim-template
 if kc#plugin#enabled('vim-template')
 	let g:templates_no_autocmd = 1
-	let g:templates_global_name_prefix = "=template=."
-	let g:templates_directory = [ g:kamilscripts . "/vim/templates/" ]
+	let g:templates_global_name_prefix = '=template=.'
+	let g:templates_directory = [ g:kamilscripts . '/vim/templates/' ]
 	let g:templates_user_variables = [
 		\ ['GUARDPATH', 'KcVimTemplateGuardpath'],
 		\ ['RANDOM', 'KcVimTemplateRandom'],
 		\ ]
 	function! KcVimTemplateGuardpath()
-		return toupper(substitute(expand("%:p:."), "[^a-zA-Z0-9]", "_", "g")) . "_"
+		return toupper(substitute(expand('%:p:.'), '[^a-zA-Z0-9]', '_', 'g')) . '_'
 	endfunction
 	function! KcVimTemplateRandom()
 		return system('uuidgen')[:-2]
@@ -859,7 +866,7 @@ if 0 || kc#plugin#enabled('gen_tags.vim')
 	let g:gen_tags#statusline = 0
 	let g:gen_tags#gtags_default_map = 0
 	let g:gen_tags#use_cache_dir = 0
-	let g:gen_tags#cache_dir = ".cache"
+	let g:gen_tags#cache_dir = '.cache'
 endif
 
 if kc#plugin#enabled('golden-ratio')
@@ -911,7 +918,7 @@ if 0 || kc#plugin#enabled('gutentags')
 		\ '_build_tools/*/examples',
 		\ ]
 	let g:gutentags_trace = 0
-	let g:gutentags_find_args = " -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ "
+	let g:gutentags_find_args = ' -path ./_build -prune -o -regextype egrep -regex .*\.(cpp|hpp|[hcsS])$ '
 endif
 
 if 0 && kc#plugin#enabled('smooth-scroll')
@@ -1088,7 +1095,7 @@ if kc#plugin#enabled('fugitive-gitlab.vim')
 			let g:fugitive_gitlab_domains = []
 			let g:gitlab_api_keys = {}
 			for [key, value] in items(tmp)
-				if key == 'global' | continue | endif
+				if key ==? 'global' | continue | endif
 				if has_key(value, 'url') && has_key(value, 'private_token')
 					let g:fugitive_gitlab_domains += [get(value, 'url')]
 					call extend(g:gitlab_api_keys, {get(value, 'url'): get(value, 'private_token')})
@@ -1149,7 +1156,7 @@ endif
 
 if kc#plugin#enabled('coc.nvim')
 
-let g:coc_config_home = g:kamilscripts . "vim/coc-settings"
+let g:coc_config_home = g:kamilscripts . 'vim/coc-settings'
 let g:coc_default_semantic_highlight_groups = 1
 
 " This has been taken from the readme:
@@ -1200,7 +1207,7 @@ if 1
 		if CocAction('hasProvider', 'hover')
 			call CocActionAsync('doHover')
 		else
-			call kc#log("no coc hover")
+			call kc#log('no coc hover')
 			"call feedkeys('K', 'in')
 		endif
 	endfunction
@@ -1315,7 +1322,7 @@ if !kc#plugin#enabled('semshi')
 else
 	" Exclude python filetype, semshi is providing highlighting.
 	function! CocHighlightExceptPython() abort
-		if &filetype == 'python'
+		if &filetype ==? 'python'
 			return
 		endif
 		call CocActionAsync('highlight')
@@ -1352,7 +1359,7 @@ if 1
 		endif
 	endfunction
 	function! TriggerCocStopTimer()
-		if exists("b:mytimer")
+		if exists('b:mytimer')
 			" echom "Stopping timer " . b:mytimer
 			call timer_stop(b:mytimer)
 			unlet b:mytimer
@@ -1370,7 +1377,7 @@ if 1
 			call TriggerCocAfterInactivity(0)
 		else
 			let l:timertime = l:wait - &updatetime
-			let b:mytimer = timer_start(l:timertime, "TriggerCocAfterInactivity")
+			let b:mytimer = timer_start(l:timertime, 'TriggerCocAfterInactivity')
 			"echom "Started timer " . b:mytimer . " " . l:timertime
 		endif
 	endfun
@@ -1421,18 +1428,18 @@ let &errorformat = '%\d%\+: %f:%l:%c: %m,' . &errorformat
 " #2 0x555f87c5271d in DataContainer::getName[abi:cxx11]() const /tmp/1.cpp:8
 let &errorformat .= ',%+G    #%\d%\+ 0x%[0-9a-fA-F]%\+ in %.%# %f:%l'
 
-let s:sudo = ($USER == 'root' ? 'sudo ' : '')
+let s:sudo = ($USER ==# 'root' ? 'sudo ' : '')
 
-if getcwd() =~ "/etc/nginx" || expand('%') =~ "/etc/nginx"
-	let &makeprg=s:sudo."nginx -t && ".s:sudo."nginx -s reload"
+if getcwd() =~# '/etc/nginx' || expand('%') =~# '/etc/nginx'
+	let &makeprg=s:sudo.'nginx -t && '.s:sudo.'nginx -s reload'
 endif
 
-if getcwd() =~ "/etc/samba" || expand('%') =~ "/etc/samba"
-	let &makeprg=s:sudo."testparm -s 2>&1 && ".s:sudo."systemctl restart smb"
+if getcwd() =~# '/etc/samba' || expand('%') =~# '/etc/samba'
+	let &makeprg=s:sudo.'testparm -s 2>&1 && '.s:sudo.'systemctl restart smb'
 endif
 
-if filereadable(getcwd()."/pdk.yaml")
-	let &makeprg = ",pdk unit_test"
+if filereadable(getcwd().'/pdk.yaml')
+	let &makeprg = ',pdk unit_test'
 
 	set errorformat=""
 
@@ -1496,7 +1503,7 @@ if filereadable(getcwd()."/pdk.yaml")
 	"let &makeprg="cat /tmp/1"
 endif
 
-if getcwd() =~ '/home/kamil/ncbj/chronos-ansible'
+if getcwd() =~# '/home/kamil/ncbj/chronos-ansible'
 	let &makeprg = 'ansible-playbook site.yml --diff --check'
 endif
 
@@ -1504,16 +1511,16 @@ endif
 " Custom functions {{{1
 
 function KcRestartXbindkeys()
-	! if pid=$(pgrep -u "$(id -u)" xbindkeys); then kill -HUP "$pid"; else xbindkeys; fi
+	! if pid=$(pgrep -u '$(id -u)' xbindkeys); then kill -HUP '$pid'; else xbindkeys; fi
 endfunction
 autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
-if kc#plugin#enabled('coc.nvim') && hostname() =~ '\.striketechnologies\.com'
-  	call coc#config("http.proxy",  "http://172.18.128.36:3128/")
-  	call coc#config("https.proxy", "http://172.18.128.36:3128/")
-  	call coc#config("https.rejectUnauthorized", v:false)
-  	call coc#config("http.proxyStrictSSL", v:false)
+if kc#plugin#enabled('coc.nvim') && hostname() =~# '\.striketechnologies\.com'
+  	call coc#config('http.proxy',  'http://172.18.128.36:3128/')
+  	call coc#config('https.proxy', 'http://172.18.128.36:3128/')
+  	call coc#config('https.rejectUnauthorized', v:false)
+  	call coc#config('http.proxyStrictSSL', v:false)
 endif
 
 " }}}
