@@ -19,7 +19,7 @@ if $LC_CTYPE ==? 'pl_PL.UTF-8'
 endif
 
 " }}}
-" Global configuration {{{1
+" Global vim configuration {{{1
 
 if !isdirectory(expand('~/.vim'))
 	call mkdir(expand('~/.vim'))
@@ -165,6 +165,9 @@ set visualbell
 
 " Additional unicode visual pairs.
 set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
+
+" Do not underline current line.
+highlight clear CursorLine
 
 " }}}
 " Global plugin independent configuration {{{1
@@ -461,6 +464,12 @@ augroup END
 if 0
 	" https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 	command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
+endif
+
+if hostname() ==# 'rpi3'
+	" Raspberri pi is not able to process that much.
+	colorscheme elflord
+	finish
 endif
 
 " }}}
