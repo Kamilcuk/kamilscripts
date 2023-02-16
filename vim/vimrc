@@ -166,9 +166,6 @@ set visualbell
 " Additional unicode visual pairs.
 set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
 
-" Do not underline current line.
-highlight clear CursorLine
-
 " }}}
 " Global plugin independent configuration {{{1
 

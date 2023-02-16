@@ -3,6 +3,9 @@
 " Init {{{1
 let s:dark = &background ==# 'dark'
 
+hi clear CursorLine
+hi CursorLine ctermbg=235 guibg=Grey40
+
 " Load Papercolor {{{1
 
 let g:PaperColor_Theme_Options = {
