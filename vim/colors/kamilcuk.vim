@@ -1,7 +1,7 @@
 " Kamil Cukrowski color scheme
 
 " Init {{{1
-let s:dark = &background == "dark"
+let s:dark = &background ==# 'dark'
 
 " Load Papercolor {{{1
 
@@ -180,8 +180,8 @@ let g:PaperColor_Theme_Options = {
 			\   }
 			\ }
 
+
 " https://github.com/NLKNguyen/papercolor-theme
-"let g:airline_theme = 'papercolor'
 runtime colors/PaperColor.vim
 
 " Load all names for xterm256 variables, see autoload
@@ -192,7 +192,7 @@ call kc#xterm256color#KcHi()
 " I want them as they are
 let i=1 | while i <= 15 | execute 'if exists("g:terminal_color_'.i.'") | unlet g:terminal_color_'.i.' | endif' | let i+=1 | endwhile
 unlet i
-if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
+if exists('g:terminal_ansi_colors') | unlet g:terminal_ansi_colors | endif
 
 " Standard colors {{{1
 
@@ -201,7 +201,7 @@ if exists("g:terminal_ansi_colors") | unlet g:terminal_ansi_colors | endif
 " Cursor is set above also
 " hi clear CursorLine after
 hi CursorLineNr cterm=bold gui=bold
- 
+
 KcHi! cInclude x_DodgerBlue1_33 none
 hi cRepeat cterm=italic gui=italic
 KcHi! cDefine x_DeepSkyBlue1_39
