@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+
+import argparse
+import atexit
+import glob
+import shlex
+import subprocess
+from os.path import realpath
+
+
+def run(*cmd, force=False):
+    dryrun = args.dry_run and not force
+    dryrunstr = "DRY RUN" if dryrun else ""
+    print(dryrunstr, "+", shlex.join(cmd))
+    if not dryrun:
+        subprocess.check_call(cmd)
+
+
+def runnocheck(*cmd):
+    return subprocess.run(cmd).returncode == 0
+
+
+def unmount_all(root):
+    for dir in glob.glob(f"{root}/*/"):
+        if runnocheck("mountpoint", "-q", dir):
+            run("umount", dir)
+    run("umount", root, force=True)
+
+
+def fsck(device):
+    if not args.nofsck:
+        run("fsck", "-y", device)
+
+
+def mount_from_fstab(root):
+    with open(f"{root}/etc/fstab", "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                device, mountpoint, fs, options = line.split()[:4]
+            except ValueError:
+                continue
+            if not device.startswith("LABEL") or mountpoint == "/":
+                continue
+            options = ",".join("rw" if o == "ro" else o for o in options.split(","))
+            mountpoint = realpath(f"{root}/{mountpoint}")
+            fsck(device)
+            run("mount", "-t", fs, "-o", options, device, mountpoint)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--nofsck", action="store_true")
+    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("device")
+    parser.add_argument("mountpoint")
+    args = parser.parse_args()
+    fsck(args.device)
+    run("mount", args.device, args.mountpoint, force=True)
+    atexit.register(unmount_all, args.mountpoint)
+    mount_from_fstab(args.mountpoint)
+    run("arch-chroot", args.mountpoint)
