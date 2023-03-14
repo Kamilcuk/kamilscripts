@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+
+
+def run(cmd):
+    print(f"+ {cmd}")
+    subprocess.check_call(cmd.split())
+
+
+def get(args):
+    run(f"udevadm info --query=all --attribute-walk --path={args}")
+
+
+def reload(args):
+    run("udevadm control --log-priority=debug")
+    run("udevadm trigger")
+
+
+actions = {reload.__name__: reload, get.__name__: get}
+parser = argparse.ArgumentParser()
+parser.add_argument("action", choices=actions.keys())
+parser.add_argument("args", nargs="?")
+args = parser.parse_args()
+actions[args.action](args.args)

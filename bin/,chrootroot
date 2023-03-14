@@ -21,6 +21,8 @@ def runnocheck(*cmd):
 
 
 def unmount_all(root):
+    if args.noumount:
+        return
     for dir in glob.glob(f"{root}/*/"):
         if runnocheck("mountpoint", "-q", dir):
             run("umount", dir)
@@ -42,7 +44,11 @@ def mount_from_fstab(root):
                 device, mountpoint, fs, options = line.split()[:4]
             except ValueError:
                 continue
-            if not device.startswith("LABEL") or mountpoint == "/":
+            if (
+                mountpoint in ["/", "/proc", "/sys", "/dev"]
+                or fs in ["proc", "tmpfs", "dev"]
+                or not mountpoint.startswith("/")
+            ):
                 continue
             options = ",".join("rw" if o == "ro" else o for o in options.split(","))
             mountpoint = realpath(f"{root}/{mountpoint}")
@@ -53,6 +59,7 @@ def mount_from_fstab(root):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--nofsck", action="store_true")
+    parser.add_argument("--noumount", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("device")
     parser.add_argument("mountpoint")

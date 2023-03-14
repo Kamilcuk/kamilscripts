@@ -3,6 +3,7 @@
 # shellcheck disable=2155
 if hash nvim 2>/dev/null; then
 	export MANPAGER='nvim +Man!'
+	export MANWIDTH=999
 elif false && hash most 2>/dev/null; then
 	export PAGER=most
 elif hash less 2>/dev/null; then
