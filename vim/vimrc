@@ -529,7 +529,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'aduros/ai.vim'
 		if has('nvim')
-			Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['pytohn'] }
+			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
 		endif
 		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
 		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
@@ -1533,8 +1533,8 @@ autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
 if kc#plugin#enabled('coc.nvim') && hostname() =~# '\.striketechnologies\.com'
-  	call coc#config('http.proxy',  'http://172.18.128.36:3128/')
-  	call coc#config('https.proxy', 'http://172.18.128.36:3128/')
+    call coc#config("http.proxy",  "http://st-proxy01.striketechnologies.com:3128/")
+    call coc#config("https.proxy", "http://st-proxy01.striketechnologies.com:3128/")
   	call coc#config('https.rejectUnauthorized', v:false)
   	call coc#config('http.proxyStrictSSL', v:false)
 endif
