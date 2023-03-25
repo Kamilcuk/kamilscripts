@@ -520,18 +520,19 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 
 	" My Plugins {{{2
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
-		"Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
-		"KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
-		"Plug 'Kamilcuk/vim-auto-gcov-marker'
-		"Plug 'JonasMuehlmann/conoline.vim'
+		" Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
+		" KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
+		" Plug 'Kamilcuk/vim-auto-gcov-marker'
+		" Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+		Plug 'aduros/ai.vim'
 		if has('nvim')
-			Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
+			Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['pytohn'] }
 		endif
-		Plug 'martinda/Jenkinsfile-vim-syntax'
-		Plug 'jvirtanen/vim-hcl'
+		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
+		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
 		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
 		Plug 'pappasam/vim-keywordprg-commands'
@@ -612,7 +613,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
 		Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
 		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
-		Plug 'vimwiki/vimwiki' " make notes
+		"Plug 'vimwiki/vimwiki' " make notes
 		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
 		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
 		"
@@ -682,6 +683,13 @@ endif
 
 " }}}
 " Plugins configuration {{{1
+
+if kc#plugin#enabled('ai.vim')
+	let g:ai_no_mappings = 1
+	nnoremap <leader>a :AI
+	vnoremap <leader>a :AI
+	inoremap <C-a> <Esc>:AI<CR>a
+endif
 
 if kc#plugin#enabled('vim-better-whitespace')
 	let g:better_whitespace_filetypes_blacklist = [
@@ -1085,6 +1093,8 @@ if kc#plugin#enabled('neoformat')
 	"command! -nargs=0 Format :call CocAction('format')
 	" neoformat/plugin/neoformat.vim
 	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
+				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
+	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters F
 				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
 endif
 
