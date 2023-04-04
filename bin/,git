@@ -233,6 +233,13 @@ C_judgerebase() {
 	exit 1
 }
 
+C_removebranchesnotonremote() (
+	tmpf=$(mktemp --suffix=-branches-to-remove.txt)
+	git branch --merged >"$tmpf" &&
+		"${EDITOR:-vim}" "$tmpf" &&
+		xargs -prtd '\n' git branch -d <"$tmpf"
+)
+
 ###############################################################################
 
 L_dryrun=0
