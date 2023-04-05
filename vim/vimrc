@@ -686,6 +686,7 @@ endif
 
 if kc#plugin#enabled('ai.vim')
 	let g:ai_no_mappings = 1
+	" Let ctrl-a stay as number increment operator.
 	nnoremap <leader>a :AI
 	vnoremap <leader>a :AI
 	inoremap <C-a> <Esc>:AI<CR>a

@@ -25,12 +25,14 @@ unset _i
 # set some history variables
 export HISTSIZE=
 export HISTFILESIZE=
+export HISTFILE=~/.bash_historymy
 export HISTCONTROL="ignorespace:erasedups"
-export HISTIGNORE="123:234:l:ls:[bf]g:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
+export HISTIGNORE="123:234:l:ls:bg:fg:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
 export HISTTIMEFORMAT='%FT%T '
 # For good measure, make all history environment variables read-only.
 readonly HISTSIZE
 readonly HISTFILESIZE
+readonly HISTFILE
 
 shopt -s histappend # append to history, dont overwrite
 shopt -s cmdhist # multiple commands in one line

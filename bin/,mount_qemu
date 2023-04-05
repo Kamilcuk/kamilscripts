@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+
+import glob
+import tempfile
+import subprocess
+import click
+import os
+
+def logrun(cmd, *args, **kvargs):
+    print(f"+ {cmd}")
+    return subprocess.run(cmd, *args, **kvargs)
+
+def read(f: str):
+    return open(f).read().strip()
+
+def isreadable(f: str):
+    return os.access(f, os.R_OK)
+
+def modprobe_nbd():
+    if subprocess.run("lsmod | grep -q '^nbd'").returncode != 0:
+        if logrun("rmmod nbd").returncode != 0:
+            if logrun("modprobe nbd max_part=16").returncode != 0:
+                logrun("modprobe nbd max_parts=16")
+
+def get_next_free_qemu_nbd():
+    modprobe_nbd()
+    d='/sys/class/block'
+    for x in [
+            *glob.glob(f'{d}/nbd[2-9]'),
+            *glob.glob(f'{d}/nbd[0-9][0-9]'),
+    ]:
+        sizef = f"{x}/size"
+        if not os.path.exists(sizef):
+            continue
+        if int(read(sizef)) == 0:
+            name = os.path.basename(x)
+            return f"/dev/{name}"
+    raise Exception("No free /dev/nbd* found!")
+
+#########################################################
+
+@click.group(
+    description="""
+Mount qemu-img image <image> to the <directory>.
+Automatically manages free /dev/nbd* devices
+When running with -c option, automatically unmounts
+the image after command exist.
+    """,
+    epilog="""
+Written by Kamil Cukrowski
+Licensed jointly under Beerware and MIT License
+    """
+)
+def cli():
+    pass
+
+poption = click.option('-p', '--partition', default=0, type=int, help="Mount this partition number")
+
+
+@cli.command(alias="m")
+@poption
+@click.argument('image')
+@click.argument('dir')
+def mount(partition, image, dir):
+    nbddev = get_next_free_qemu_nbd()
+    logrun(["qemu-nbd", "-c", nbddev, image], check=True)
+    logrun(["mkdir", "-pv", dir], check=True)
+    try:
+        logrun(["partprobe", nbddev], check=True)
+        logrun(["mount", f"{nbddev}p{partition}", dir], check=True)
+    except Exception:
+        logrun(["qemu-nbd", "-d", nbddev])
+
+@cli.command(alias='c')
+@poption
+@click.argument('image')
+@click.argument('command', nargs=-1)
+def command(partition, image, command):
+    nbddev = get_next_free_qemu_nbd()
+    logrun(["qemu-nbd", "-c", nbddev, image], check=True)
+    try:
+        logrun(["partprobe", "nbddev"], check=True)
+        with tempfile.TemporaryDirectory() as mountd:
+            logrun(["mount" f"{nbddev}p{partition}", mountd], check=True)
+            try:
+                os.chdir(mountd)
+                logrun(command, check=True)
+            finally:
+                logrun(["umount", f"{nbddev}p{partition}"], check=True)
+    finally:
+        logrun(["qemu-nbd", "-d", nbddev], check=True)
+
+@cli.command(alias='u')
+@click.argument('dir')
+def umount(dir):
+    nbddev = logrun([*"findmnt -n -o SOURCE --target".split(), dir], check=True)
+    logrun(["qemu-nbd", "-d", nbddev])
