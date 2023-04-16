@@ -295,12 +295,14 @@ endif
 augroup Code Comments
 	au!
 	" Horizontal Rule (78 char long)
-	autocmd FileType vim
+	autocmd FileType vim,lua
 				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
 	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake
 				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
+	autocmd FileType lua
+				\ nnoremap <silent><buffer> <leader>hr 0i-------------------------------------------------------------------------------<ESC>^1l
 augroup END
 
 " https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
@@ -527,7 +529,9 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		Plug 'aduros/ai.vim'
+		"Plug 'aduros/ai.vim'
+		Plug 'kamilcuk/ai.vim', { 'dir': plugdir.'kamilcuk-ai.vim' }
+		Plug 'junegunn/vader.vim'
 		if has('nvim')
 			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
 		endif
@@ -689,7 +693,7 @@ if kc#plugin#enabled('ai.vim')
 	" Let ctrl-a stay as number increment operator.
 	nnoremap <leader>a :AI
 	vnoremap <leader>a :AI
-	inoremap <C-a> <Esc>:AI<CR>a
+	"inoremap <C-a> <Esc>:AI<CR>a
 endif
 
 if kc#plugin#enabled('vim-better-whitespace')
