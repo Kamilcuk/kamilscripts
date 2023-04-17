@@ -696,7 +696,6 @@ if kc#plugin#enabled('ai.vim')
 	vnoremap <leader>a :AI
 	" inoremap <C-a> <Esc>:AI<CR>a
 	" inoremap <C-q> <Esc>:AI<CR>a
->>>>>>> Stashed changes
 endif
 
 if kc#plugin#enabled('vim-better-whitespace')
