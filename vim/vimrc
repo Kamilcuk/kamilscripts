@@ -530,6 +530,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		"Plug 'aduros/ai.vim'
+		"Plug 'madox2/vim-ai'
 		Plug 'kamilcuk/ai.vim', { 'dir': plugdir.'kamilcuk-ai.vim' }
 		Plug 'junegunn/vader.vim'
 		if has('nvim')
@@ -693,7 +694,9 @@ if kc#plugin#enabled('ai.vim')
 	" Let ctrl-a stay as number increment operator.
 	nnoremap <leader>a :AI
 	vnoremap <leader>a :AI
-	"inoremap <C-a> <Esc>:AI<CR>a
+	" inoremap <C-a> <Esc>:AI<CR>a
+	" inoremap <C-q> <Esc>:AI<CR>a
+>>>>>>> Stashed changes
 endif
 
 if kc#plugin#enabled('vim-better-whitespace')
@@ -1537,11 +1540,16 @@ endfunction
 autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
-if kc#plugin#enabled('coc.nvim') && hostname() =~# '\.striketechnologies\.com'
-    call coc#config("http.proxy",  "http://st-proxy01.striketechnologies.com:3128/")
-    call coc#config("https.proxy", "http://st-proxy01.striketechnologies.com:3128/")
-  	call coc#config('https.rejectUnauthorized', v:false)
-  	call coc#config('http.proxyStrictSSL', v:false)
+if hostname() =~# '\.striketechnologies\.com'
+	if executable('/usr/bin/python3')
+		let g:python3_host_prog = '/usr/bin/python3'
+	endif
+	if kc#plugin#enabled('coc.nvim')
+		call coc#config("http.proxy",  "http://st-proxy01.striketechnologies.com:3128/")
+		call coc#config("https.proxy", "http://st-proxy01.striketechnologies.com:3128/")
+		call coc#config('https.rejectUnauthorized', v:false)
+		call coc#config('http.proxyStrictSSL', v:false)
+	endif
 endif
 
 " }}}

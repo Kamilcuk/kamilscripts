@@ -426,5 +426,6 @@
   },
   "yaml.customTags": [
     "!reference sequence"
-  ]
+  ],
+  "snippets.ultisnips.pythonPrompt": false
 }
