@@ -6,6 +6,7 @@
     "/"
   ],
 	"colors.enable": true,
+  "semanticTokens.enable": true,
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
   "diagnostic.infoSign": "🛈",
@@ -36,6 +37,10 @@
   "python.jediEnabled": true,
   "python.jediPath": "/usr/bin/jedi-language-server",
 	"tabnine.priority": 98,
+  "Lua.codeLens.enable": false,
+  "Lua.completion.callSnippet": "Both",
+  "Lua.hint.enable": true,
+  "Lua.semantic.keyword": true,
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.debug": true,
