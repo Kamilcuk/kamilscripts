@@ -413,8 +413,8 @@
   '((Mod4 w) (Mod4 m) (XF86Mail))
   "-iemblem-mail"
   "email"
-  "xdotool search --onlyvisible --class --onlyvisible --limit 1 'BlueMail' windowquit || bluemail --in-process-gpu"
-  ;"nohup birdtray -t >/dev/null </dev/null 2>&1"
+  ;"xdotool search --onlyvisible --class --onlyvisible --limit 1 'BlueMail' windowquit || bluemail --in-process-gpu"
+  "nohup birdtray -t >/dev/null </dev/null 2>&1"
  )
 
 (XbindkeyMultiple

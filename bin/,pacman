@@ -16,7 +16,7 @@ C_logs_with_timestamp() {
 
 C_logs_with_timestamp_since() {
 	if [ $# -lt 1 ]; then
-		cat << EOF
+		cat <<EOF
 Usage examples:
 	$0 today
 	$0 yesterday
@@ -30,16 +30,15 @@ EOF
 	C_logs_with_timestamp | awk -v since="$since" '$1 > since'
 }
 
-
 C_list_packages_installed_since() {
 	since=$(date --date="$*" +%s)
 
 	tmp=$(C_logs_with_timestamp_since "$@")
 
-	ins=$(<<<"$tmp" sed -n 's/.* \[ALPM\] installed \(.*\) ([^ ]*.*/\1/p' | sort -u )
-	insexp=$(comm -12 - <<<"$ins" <(pacman -Qqe) )
-	remov=$( comm -23 - <<<"$ins" <(pacman -Qq ) )
-	still=$( comm -12 - <<<"$ins" <(pacman -Qq ) )
+	ins=$(sed <<<"$tmp" -n 's/.* \[ALPM\] installed \(.*\) ([^ ]*.*/\1/p' | sort -u)
+	insexp=$(comm -12 - <(pacman -Qqe) <<<"$ins")
+	remov=$(comm -23 - <(pacman -Qq) <<<"$ins")
+	still=$(comm -12 - <(pacman -Qq) <<<"$ins")
 	{
 		echo "date -d \"$*\"# $(date --date="@$since")"
 		echo "Packages explicitly installed# "$insexp
@@ -77,21 +76,21 @@ C_move_packages_from_pip() {
 	echo "version=pip$version"
 
 	pip$version list |
-	while read -r p _; do
-		n="python$version-$p"
-		if ! C_is_installed "$n" && C_package_exists "$n"; then
-			echo "$p"
-			echo "$p will be moved" >&2
-		else
-			echo "$p is fine" >&2
-		fi
-	done |
-	paste -sd' ' |
-	while IFS= read -r l; do
-		echo "sudo pip uninstall -y $l"
-		l=$(<<<"$l" tr ' ' '\n' | xargs -I{} echo python-{} | paste -sd' ')
-		echo "sudo pacman -S --noconfirm $l"
-	done
+		while read -r p _; do
+			n="python$version-$p"
+			if ! C_is_installed "$n" && C_package_exists "$n"; then
+				echo "$p"
+				echo "$p will be moved" >&2
+			else
+				echo "$p is fine" >&2
+			fi
+		done |
+		paste -sd' ' |
+		while IFS= read -r l; do
+			echo "sudo pip uninstall -y $l"
+			l=$(tr <<<"$l" ' ' '\n' | xargs -I{} echo python-{} | paste -sd' ')
+			echo "sudo pacman -S --noconfirm $l"
+		done
 }
 
 C_vimdiff_pacnew() {
@@ -116,17 +115,17 @@ EOF
 
 	findthem() {
 		grep -aEo "[^ ]*\.$1" /var/log/pacman.log |
-		sort -u |
-		while IFS= read -r line; do
-			if [[ -e "$line" ]]; then
-				printf "%s\n" "$line"
-			fi
-		done
+			sort -u |
+			while IFS= read -r line; do
+				if [[ -e "$line" ]]; then
+					printf "%s\n" "$line"
+				fi
+			done
 	}
 
-	tmp=$(findthem pacnew) ||:
+	tmp=$(findthem pacnew) || :
 	readarray -t pacnew < <(printf "%s" "$tmp")
-	tmp=$(findthem pacsave) ||:
+	tmp=$(findthem pacsave) || :
 	readarray -t pacsave < <(printf "%s" "$tmp")
 
 	printf "%2d .pacnew files found.\n" "${#pacnew[@]}"
@@ -139,28 +138,34 @@ EOF
 			was_pacsave=true
 			echo "Success! There are no *.pacnew files on the system!!!"
 			while true; do
-				read -r -p "Do you want to continue with *.pacsave files? [yes/no] " ans; echo
-				case "$ans" in 
-				yes) break; ;;
-				no) exit; ;;
-				*) echo "Please answer exactly 'yes' or 'no'."; echo; ;;
+				read -r -p "Do you want to continue with *.pacsave files? [yes/no] " ans
+				echo
+				case "$ans" in
+				yes) break ;;
+				no) exit ;;
+				*)
+					echo "Please answer exactly 'yes' or 'no'."
+					echo
+					;;
 				esac
 			done
 		fi
 		now="${i%.pac*}"
 		new="$i"
 		if ! cmp -s "$now" "$new"; then
-			cmd=( vimdiff "$now" "$new" )
+			cmd=(vimdiff "$now" "$new")
 			echo "+" "${cmd[@]}"
 			sleep 1
 			"${cmd[@]}"
-			read -r -n 1 -p "Edit was successfull? [y/n] " ans; echo
-			case "$ans" in [yYtT]) ;; *) exit; ;; esac
+			read -r -n 1 -p "Edit was successfull? [y/n] " ans
+			echo
+			case "$ans" in [yYtT]) ;; *) exit ;; esac
 		else
 			echo "Files $now and $new are the same..."
 		fi
-		read -r -n 1 -p "Remove $i? [y/n] " ans; echo
-		case "$ans" in [yYtT]) rm -I -v "$i";; esac
+		read -r -n 1 -p "Remove $i? [y/n] " ans
+		echo
+		case "$ans" in [yYtT]) rm -I -v "$i" ;; esac
 		echo
 	done
 }
@@ -183,11 +188,11 @@ C_list_installed_packages_by_size() {
 
 C_list_installed_packages_by_date_filter() {
 	sed 's/.*/[ALPM] installed & /' |
-	grep -Ff - /var/log/pacman.log |
-	sed 's/\[ALPM\] installed //; s/ *(.*)$//; s/\[\([^ ]*\) \([^ ]*\)\]/\[\1T\2:00+0000\]/' |
-	sort -k1,1r |
-	sort -u -k2,2 |
-	sort -k1,1
+		grep -Ff - /var/log/pacman.log |
+		sed 's/\[ALPM\] installed //; s/ *(.*)$//; s/\[\([^ ]*\) \([^ ]*\)\]/\[\1T\2:00+0000\]/' |
+		sort -k1,1r |
+		sort -u -k2,2 |
+		sort -k1,1
 }
 
 C_list_installed_packages_by_date() {
@@ -200,12 +205,12 @@ C_list_explicitly_installed_packages_by_date() {
 
 C_list_explicitly_installed_packages_by_date_merge() {
 	C_list_explicitly_installed_packages_by_date |
-	awk 'a[$1]=a[$1](length(a[$1])?" ":"")$2
+		awk 'a[$1]=a[$1](length(a[$1])?" ":"")$2
 		END{for (i in a) print i " " a[i]}' |
-	sort -k1,1
+		sort -k1,1
 }
 
-C_list_packages_by_size()  { 
+C_list_packages_by_size() {
 	pacman -Qi |
 		awk -F: '/^Name *:/{n=$2} /^Installed Size *:/{print n, $2}' |
 		awk '{print $2 gensub("B$", "", "g", $3), $1, $2 $3 }' |
@@ -238,7 +243,7 @@ C_packages_store() {
 	now=$(date +%Y-%m-%dT%H:%M:%S)
 	savefile="$pkgstoredir/pkglist-$now.txt"
 	echo "+ pacman -Qq > $savefile"
-	pacman -Qq > "$savefile"
+	pacman -Qq >"$savefile"
 }
 
 C_packages_restore() {
@@ -286,41 +291,51 @@ C_autoremove() {
 	done
 }
 
-_archlinux_pacman() {
-	local tmp sudo envs i IFS
-	envs=""
-	sudo=( sudo )
-	for i in \
-		no_proxy http_proxy https_proxy ftp_proxy rsync_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY
-	do
-		if [[ -n "${!i:-}" ]]; then
-			envs="${envs:---preserve-env=}${envs:+,}$i"
+nice=(nice -n 20 ionice -c 3)
+
+_run() {
+	echo "+ $*" >&2
+	"$@"
+}
+
+_sudo() {
+	declare -g sudo
+	if [[ ! -v sudo ]]; then
+		sudo=()
+		if ((UID != 0)) && hash sudo 2>/dev/null; then
+			sudo=(sudo)
+			local envs
+			envs=""
+			if id kamil 2>/dev/null >&2 && sudo grep -q 'kamil.*NOPASSWD' /etc/sudoers.d/* /etc/sudoers 2>/dev/null; then
+				sudo+=(-ukamil)
+			fi
+			for i in \
+				no_proxy http_proxy https_proxy ftp_proxy rsync_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY; do
+				if [[ -n "${!i:-}" ]]; then
+					envs="${envs:---preserve-env=}${envs:+,}$i"
+				fi
+			done
+			# shellcheck disable=2206
+			sudo+=($envs)
 		fi
-	done
-	# shellcheck disable=2206
-	sudo+=( $envs )
+	fi
+	_run "${nice[@]}" "${sudo[@]}" "$@"
+}
+
+_yay() {
+	local cmd
 	if hash yay 2>/dev/null; then
-		shopt -s nullglob
-		if
-			((UID == 0)) &&
-			id kamil 2>/dev/null >&2 &&
-			grep -q 'kamil.*NOPASSWD' /etc/sudoers.d/* /etc/sudoers
-		then
-			tmp=("${sudo[@]}" -u kamil yay)
-		else
-			tmp=(yay)
-		fi
-	elif ((UID != 0)); then
-		tmp=("${sudo[@]}" pacman)
+		# yay has no sudo
+		cmd=(_run "${nice[@]}" yay)
 	else
-		tmp=(pacman)
+		cmd=(_sudo "${nice[@]}" pacman)
 	fi
 	if [[ " $* " =~ ' '-[a-z]*S ]]; then
-		tmp+=(--needed)
+		cmd+=(--needed)
 	fi
-	echo "+ ${tmp[*]} $*" >&2
+	local ret
 	ret=0
-	nice ionice -c 3 "${tmp[@]}" "$@" || ret=$?
+	"${cmd[@]}" "$@" || ret=$?
 	if ((ret == 0)) && [[ " $* " =~ " -R " ]]; then
 		C_autoremove
 	fi
@@ -328,20 +343,22 @@ _archlinux_pacman() {
 	return "$ret"
 }
 
-C_p() { _archlinux_pacman "$@"; }
+C_p() { _yay "$@"; }
 
 C_pn() { C_p --noconfirm "$@"; }
 
 C_pupdate() {
 	local keyrings &&
-	( set -x && sudo reflector @/etc/xdg/reflector/reflector.conf ) &&
-	keyrings=$(pacman -Qqs '.*-keyring$') &&
-	if [[ -n "$keyrings" ]]; then
-		# shellcheck disable=2086
-		C_p --noconfirm -Sy --needed $keyrings;
-	fi &&
-	C_p --noconfirm -Su --needed "$@" &&
-	C_autoremove
+		_sudo "${nice[@]}" reflector @/etc/xdg/reflector/reflector.conf &&
+		keyrings=$(pacman -Qqs '.*-keyring$') &&
+		if [[ -n "$keyrings" ]]; then
+			# shellcheck disable=2086
+			C_p --noconfirm -Sy --needed $keyrings
+		fi &&
+		_sudo pacman --noconfirm -Su --needed "$@" &&
+		C_p --noconfirm -Su --needed "$@" &&
+		C_autoremove &&
+		_sudo pacman -Scc <<<$'y\ny\n'
 }
 
 C_pacmann() { pacman --noconfirm "$@"; }
@@ -434,9 +451,8 @@ C_unofficial_user_repositories() {
 		delete v
 	}
 	' |
-	#head -n "$(tput lines)" |
-	cat || :
+		#head -n "$(tput lines)" |
+		cat || :
 }
 
 . ,lib_lib C_ "$@"
-

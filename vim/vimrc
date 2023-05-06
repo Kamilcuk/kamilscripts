@@ -575,7 +575,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
 		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
-		"Plug 'vim-scripts/LargeFile' " Edit large files quickly
+		Plug 'vim-scripts/LargeFile' " Edit large files quickly
 		"Plug 'mhinz/vim-hugefile' " Also edit large files quickly
 		Plug 'wellle/targets.vim' " Add additional text objects. ( a ( b ) c ) , place cursor on 'b' and type v2A)
 		Plug 'tpope/vim-sensible' " Defaults everyone can agree on
@@ -1135,9 +1135,13 @@ endif
 
 if kc#plugin#enabled('nerdtree')
 	nmap <C-n> :NERDTreeToggle<CR>
-	let NERDTreeBookmarksFile = expand('~/.vim/NERDTreeBookmarks')
-	let NERDTreeAutoDeleteBuffer = 1
-	let NERDTreeMinimalUI = 0
+	let g:NERDTreeBookmarksFile = expand('~/.vim/NERDTreeBookmarks')
+	let g:NERDTreeAutoDeleteBuffer = 1
+	let g:NERDTreeMinimalUI = 0
+	let g:NERDTreeIgnore = [
+				\ '^__pycache__$',
+				\ '^[^\.]*\.egg-info$',
+				\ ]
 	augroup NERDTree
 		autocmd!
 		" Close vim if only window is a Nerd Tree
