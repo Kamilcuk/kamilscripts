@@ -188,7 +188,6 @@ Host netemera
 Host perun
 	Hostname karta.dyzio.pl
 	# 2a02:c207:2050:3924::1 207.180.196.233
-	User root
 	Port 60022
 
 Host perunshare
@@ -377,7 +376,7 @@ Host *
 	ControlPath  ~/.ssh/.c-%C
 	ControlPersist 1h
 	StrictHostKeyChecking accept-new
-	ConnectTimeout 5
+	ConnectTimeout 2
 	')
 
 EOF

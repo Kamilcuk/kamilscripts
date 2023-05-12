@@ -100,5 +100,4 @@ if (($# == 1)); then
 	esac
 fi
 
-command ssh "$@"
-
+exec ssh "$@"
