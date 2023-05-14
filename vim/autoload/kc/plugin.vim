@@ -23,12 +23,22 @@ function! kc#plugin#enabled(name) abort
 			endif
 		endfor
 	endif
+	" If using vim-plug, check the global variable g:plugs.
 	if exists('g:plugs')
-		return index(keys(g:plugs), a:name) != -1
+		if index(keys(g:plugs), a:name) != -1
+			" The variable has a dir that we can use to check.
+			let i = get(get(g:plugs, a:name), "dir", "")
+			" Check if the dir exists and is not empty.
+			if isdirectory(i) && !empty(glob(i.'/*', v:true))
+				return 1
+			endif
+		endif
 	else
 		for i in kc#plugin#split(&rtp)
-			if fnamemodify(i, ':t') =~ a:name && isdirectory(i)
-				return 1
+			if fnamemodify(i, ':t') =~ a:name
+				if isdirectory(i) && !empty(glob(i.'/*', v:true))
+					return 1
+				endif
 			endif
 		endfor
 	endif
