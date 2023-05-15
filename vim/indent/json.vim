@@ -1,1 +1,1 @@
-html.vim
+runtime! indent/html.vim
