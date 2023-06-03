@@ -1,15 +1,64 @@
 #!/bin/sh
-cmd=""
-{
-	if hash ionice; then
-		cmd="$cmd ionice -c 3"
+set -eu
+hascmd() {
+	hash "$@" 2>/dev/null
+}
+case "${1:-}" in
+-h | --help | "")
+	cat <<EOF
+Usage: ,nice command [argument]...
+    ,nice -p PID
+    ,nice -s [PID]
+EOF
+	;;
+-s)
+	pid="${2:-$$}"
+	(
+		set -x
+		ps -l "$pid"
+		ionice -p "$pid"
+		chrt -v -p "$pid"
+	)
+	if cgroup=$(cut -d: -f3- "/proc/$pid/cgroup") 2>/dev/null; then
+		set --
+		for f in \
+				memory.high \
+				memory.max \
+				cpu.weight \
+				cpu.weight.nice \
+		; do
+			f="/sys/fs/cgroup/$cgroup/$f"
+			if [ -r "$f" ]; then
+				set -- "$@" "$f"
+			fi
+		done
+		if [ "$#" -ne 0 ]; then
+			tail -n +1 "$@"
+		fi
 	fi
-	if hash nice; then
-		cmd="$cmd nice -n 20"
+	;;
+-p)
+	pid="$2"
+	if hascmd ionice; then
+		ionice -c 3 -p "$pid"
 	fi
-	if hash chrt; then
-		cmd="$cmd chrt -i 0"
+	if hascmd renice; then
+		renice -n 19 -p "$pid" >/dev/null
 	fi
-} >/dev/null 2>&1
-exec $cmd "$@"
-
+	if hascmd chrt; then
+		chrt -i -p 0 "$pid"
+	fi
+	;;
+*)
+	if hascmd ionice; then
+		set -- ionice -c 3 "$@"
+	fi
+	if hascmd nice; then
+		set -- nice -n 39 "$@"
+	fi
+	if hascmd chrt; then
+		set -- chrt -i 0 "$@"
+	fi
+	exec "$@"
+	;;
+esac

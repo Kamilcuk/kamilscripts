@@ -59,6 +59,15 @@ for _i in \
 		tar \
 		du \
 		find \
+		cargo \
+		zip \
+		gcc \
+		cc \
+		g++ \
+		ld \
+		mv \
+		rm \
+		cp \
 ; do
 	# shellcheck disable=2139
 	alias "${_i}"="nice ionice -c 3 $_i"

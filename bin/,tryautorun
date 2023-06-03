@@ -153,10 +153,12 @@ fatal() {
 }
 
 be_nice() {
-	{
-		renice 20 -p $$
+	if hash ,nice 2>/dev/null; then
+		,nice -p $$
+	else
+		renice 20 -p $$ >/dev/null
 		ionice -c 3 -p $$
-	} >/dev/null
+	fi
 }
 
 f_get_unbuffer_cmd() {

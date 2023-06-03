@@ -527,11 +527,14 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug 'Kamilcuk/vim-auto-gcov-marker'
 		" Plug 'JonasMuehlmann/conoline.vim'
 		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
+		"
+		" Plug 'aduros/ai.vim'
+		" Plug 'madox2/vim-ai'
+		Plug 'kamilcuk/ai.vim', { 'dir': plugdir.'kamilcuk-ai.vim' }
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		"Plug 'aduros/ai.vim'
-		"Plug 'madox2/vim-ai'
-		Plug 'kamilcuk/ai.vim', { 'dir': plugdir.'kamilcuk-ai.vim' }
+		Plug 'mzlogin/vim-markdown-toc'
+		"
 		Plug 'junegunn/vader.vim'
 		if has('nvim')
 			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }

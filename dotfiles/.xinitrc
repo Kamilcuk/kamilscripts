@@ -38,7 +38,12 @@ if [ -x "$script" ] && [ ! -d "$script" ]; then
 fi
 
 # set -- startxfce4
-export DESKTOP_SESSION=plasma ; set -- startplasma-x11
+export DESKTOP_SESSION=plasma
+if [ "$(hostname)" = "leonidas" ]; then
+	set -- startplasma-wayland
+else
+	set -- startplasma-x11
+fi
 
 echo "::: kamilscripts X session wrapper complete, running session $*"
 
