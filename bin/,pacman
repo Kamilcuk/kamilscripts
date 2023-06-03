@@ -291,7 +291,11 @@ C_autoremove() {
 	done
 }
 
-nice=(nice -n 20 ionice -c 3)
+if hash ,nice 2>/dev/null; then
+	nice=(",nice")
+else
+	nice=(nice -n 20 ionice -c 3)
+fi
 
 _run() {
 	echo "+ $*" >&2
