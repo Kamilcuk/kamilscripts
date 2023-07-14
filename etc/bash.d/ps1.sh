@@ -52,6 +52,11 @@ _kc_prompt_setup() {
 		pre+="\\[$back_magenta$white\\]nix\\[$reset\\] "
 	fi
 
+	local tmp
+	if tmp=$(readlink -f /proc/$$/root 2>/dev/null) && [[ "$tmp" == ~/.junest ]]; then
+		pre+="\\[$back_magenta$white\\]junest\\[$reset\\] "
+	fi
+
 	local hostname
 	if ! {
 			((colors)) && hash ,color 2>/dev/null &&

@@ -619,7 +619,12 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Ini file parser for vim, used for parsing PYTHON_GITLAB_CFG for fugitive-gitlab.vim
 		Plug 'xuhdev/vim-IniParser'
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
-		Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
+		if 0
+			Plug 'arecarn/vim-selection' " vim-crunch dependency
+			Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
+		else
+			Plug 'sk1418/HowMuch'
+		endif
 		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
 		"Plug 'vimwiki/vimwiki' " make notes
 		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
@@ -663,6 +668,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					"\ 'coc-groovy',
 					"\ 'coc-coverage',
 					"\ 'coc-highlight',
+					"\ 'coc-vimlsp',
 		let g:coc_global_extensions	= [
 					\ 'coc-yank',
 					\ 'coc-diagnostic',
@@ -670,7 +676,6 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					\ 'coc-snippets',
 					\ 'coc-tabnine',
 					\ 'coc-cmake',
-					\ 'coc-vimlsp',
 					\ 'coc-clangd',
 					\ 'coc-yaml',
 					\ 'coc-vimtex',
@@ -691,6 +696,16 @@ endif
 
 " }}}
 " Plugins configuration {{{1
+
+if kc#plugin#enabled('vim-crunch')
+	command -nargs=* -range=0 -bang Calculate
+				\ call crunch#command(<count>, <line1>, <line2>, <q-args>, "<bang>")
+endif
+
+if kc#plugin#enabled("HowMuch")
+	command -range -nargs=* Calculate
+				\ call HowMuch#DoWithCommand(<q-args>)
+endif
 
 if kc#plugin#enabled('ai.vim')
 	let g:ai_no_mappings = 1
@@ -1093,12 +1108,21 @@ if kc#plugin#enabled('neoformat')
 					\ }
 		let g:neoformat_enabled_python = [ 'tidyimportsisortblack' ]
 	endif
+	"
 	let g:neoformat_hcl_nomad = {
 				\ 'exe': 'nomad',
 				\ 'args': [ 'fmt', '-' ],
 				\ 'stdin': 1,
 				\ }
 	let g:neoformat_enabled_hcl = [ 'nomad' ]
+	"
+	let g:neoformat_policyhcl_nomad = {
+				\ 'exe': 'vault',
+				\ 'args': [ 'policy', 'fmt', '-' ],
+				\ 'stdin': 1,
+				\ }
+	let g:neoformat_enabled_policyhcl = [ 'vault_policy_fmt' ]
+	"
 	" Add `:Format` command to format current buffer.
 	"command! -nargs=0 Format :call CocAction('format')
 	" neoformat/plugin/neoformat.vim
@@ -1349,7 +1373,7 @@ endif
 " https://github.com/neoclide/coc-highlight
 if !kc#plugin#enabled('semshi')
 	autocmd CursorHold ?* silent call CocActionAsync('highlight')
-else
+elseif exists('CocActionAsync')
 	" Exclude python filetype, semshi is providing highlighting.
 	function! CocHighlightExceptPython() abort
 		if &filetype ==? 'python'

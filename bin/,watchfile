@@ -206,8 +206,8 @@ if __name__ == "__main__":
     #
     if not args.exec and not args.python:
         if not args.file:
-            os.exit("--file argument is required when not using --python nor --exec")
-        args.cmd = ["sh", "-c", shlex.join(args.cmd)]
+            exit("--file argument is required when not using --python nor --exec")
+        args.cmd = ["sh", "-c", kc.shlex_join(args.cmd)]
     elif not args.file:
         if "/" not in args.cmd[0]:
             if os.path.exists(args.cmd[0]):

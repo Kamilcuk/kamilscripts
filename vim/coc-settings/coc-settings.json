@@ -409,9 +409,18 @@
     "lua": "lua-format",
     "sh": "shfmt",
     "blade": "blade-formatter",
-    "cmake": "cmake-format"
+    "cmake": "cmake-format",
+    "policyhcl": "vault_policy_fmt"
   },
   "diagnostic-languageserver.formatters": {
+    "vault_policy_fmt": {
+      "command": "vault",
+      "args": [
+        "policy",
+        "fmt",
+        "-"
+      ]
+    },
     "shfmt": {
       "command": "shfmt",
       "args": [
