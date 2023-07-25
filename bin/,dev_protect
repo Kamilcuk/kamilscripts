@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+r() {
+	echo "+ $*" >&2
+	if ((!c_dry_run)); then
+		"$@"
+	fi
+}
+
+usage() {
+	cat <<EOF
+Usage: $0 /dev/sda*
+       $0 -r
+       $0 -h
+
+EOF
+}
+
+c_restore=0
+c_dry_run=0
+while getopts 'hrn' opt; do
+	case "$opt" in
+	h) usage; ;;
+	r) c_restore=1; ;;
+	n) c_dry_run=1; ;;
+	*) echo "Invalid: $opt"; exit 1; ;;
+	esac
+done
+shift "$((OPTIND - 1))"
+
+if ((c_restore)); then
+	r rsync -axui --progress /dev/DO_NOT_TOUCH/ /dev/
+else
+	filter=()
+	for i in "$@"; do
+		if [[ ! -e "$i" ]]; then
+			echo "ERROR: does not exists: $i" >&2
+		else
+			i=$(readlink -f "$i")
+			filter+=("$i")
+		fi
+	done
+	tmp=$(
+		printf "%s\n" "${filter[@]}"
+		find /dev/disk -type l -exec readlink -nf {} ';' -exec printf "\t{}\n" ';' |
+			grep -f <(printf "^%s\t\n" "${filter[@]}") |
+			cut -f2
+	)
+	#
+	r mkdir -vp /dev/DO_NOT_TOUCH
+	cat <<<"$tmp"
+	r rsync -axui --progress --remove-source-files --files-from - <<<"$tmp" / /dev/DO_NOT_TOUCH
+fi

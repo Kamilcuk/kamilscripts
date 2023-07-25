@@ -302,26 +302,42 @@ _run() {
 	"$@"
 }
 
-_sudo() {
-	declare -g sudo
-	if [[ ! -v sudo ]]; then
-		sudo=()
-		if ((UID != 0)) && hash sudo 2>/dev/null; then
-			sudo=(sudo)
-			local envs
-			envs=""
-			if id kamil 2>/dev/null >&2 && sudo grep -q 'kamil.*NOPASSWD' /etc/sudoers.d/* /etc/sudoers 2>/dev/null; then
-				sudo+=(-ukamil)
+SUDO_ARGS_init() {
+	if [[ ! -v SUDO_ARGS ]]; then
+		declare -g SUDO_ARGS
+		SUDO_ARGS=()
+		local envs
+		envs=
+		for i in no_proxy http_proxy https_proxy ftp_proxy rsync_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY; do
+			if [[ -n "${!i:-}" ]]; then
+				envs="${envs:---preserve-env=}${envs:+,}$i"
 			fi
-			for i in \
-				no_proxy http_proxy https_proxy ftp_proxy rsync_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY; do
-				if [[ -n "${!i:-}" ]]; then
-					envs="${envs:---preserve-env=}${envs:+,}$i"
-				fi
-			done
-			# shellcheck disable=2206
-			sudo+=($envs)
+		done
+		if ((${#envs})); then
+			SUDO_ARGS=("$env")
 		fi
+	fi
+}
+
+_sudo() {
+	declare -g SUDO_ARGS
+	SUDO_ARGS_init
+	sudo=()
+	if ((UID != 0)) && hash sudo 2>/dev/null; then
+		sudo=(sudo -n "${SUDO_ARGS[@]}")
+	fi
+	_run "${nice[@]}" "${sudo[@]}" "$@"
+}
+
+_sudo_kamil() {
+	declare -g SUDO_ARGS
+	SUDO_ARGS_init
+	sudo=()
+	if hash sudo 2>/dev/null &&
+		id kamil >/dev/null 2>&1 &&
+		sudo -nu kamil true 2>/dev/null 2>&1 &&
+		sudo -nu kamil sudo true 2>/dev/null 2>&1; then
+		sudo=(sudo -nu kamil "${SUDO_ARGS[@]}")
 	fi
 	_run "${nice[@]}" "${sudo[@]}" "$@"
 }
@@ -329,8 +345,7 @@ _sudo() {
 _yay() {
 	local cmd
 	if hash yay 2>/dev/null; then
-		# yay has no sudo
-		cmd=(_run "${nice[@]}" yay)
+		cmd=(_sudo_kamil "${nice[@]}" yay)
 	else
 		cmd=(_sudo "${nice[@]}" pacman)
 	fi
