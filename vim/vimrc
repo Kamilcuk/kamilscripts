@@ -464,6 +464,7 @@ if 0
 	" https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 	command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
 endif
+command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file *
 
 if hostname() ==# 'rpi3'
 	" Raspberri pi is not able to process that much.
