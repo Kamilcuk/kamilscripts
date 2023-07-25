@@ -1,5 +1,16 @@
 #!/bin/bash
 
+for _i in \
+		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
+		~/.bashrc_*
+do
+	if [[ -e "$_i" ]]; then
+		# shellcheck disable=SC1090
+		. "$_i"
+	fi
+done
+unset _i
+
 # function hist is declared in bash.d/hist.sh
 if declare -f hist >/dev/null 2>&1; then
 	# already sourced - just ignore
@@ -40,9 +51,9 @@ shopt -s cmdhist # multiple commands in one line
 # Aliases
 
 alias ls='ls --color -F'
-alias o='less -r'
-alias rm='rm --preserve-root -I'
-alias mv='mv -i'
+alias o='less -R'
+alias rm='nice -n 20 ionice -c 3 rm --preserve-root -I'
+alias mv='nice -n 20 ionice -c 4 mv -i'
 # shellcheck disable=2285
 alias +='pushd .'
 alias -- -='popd'
@@ -61,6 +72,7 @@ for _i in \
 		find \
 		cargo \
 		zip \
+		clang \
 		gcc \
 		cc \
 		g++ \
@@ -68,8 +80,11 @@ for _i in \
 		mv \
 		rm \
 		cp \
+		rsync \
 ; do
-	# shellcheck disable=2139
-	alias "${_i}"="nice ionice -c 3 $_i"
+	if ! alias "${_i}" >/dev/null 2>&1; then
+		# shellcheck disable=2139
+		alias "${_i}"="nice -n 20 ionice -c 3 $_i"
+	fi
 done
 unset _i

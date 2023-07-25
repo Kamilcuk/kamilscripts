@@ -1,23 +1,34 @@
 #!/bin/sh
 # kamilscripts etc/profile
 
+for _i in \
+		"${XDG_CONFIG_HOME:-$HOME/.config}"/profile.d/*.sh \
+		~/.profile_*
+do
+	if [ -e "$_i" ]; then
+		# shellcheck disable=SC1090
+		. "$_i"
+	fi
+done
+unset _i
+
 if [ -r "${KCDIR:-}" ]; then
 	return;
 fi
 
 # find KCDIR
-for i in \
+for _i in \
 		/usr/lib/kamilscripts \
 		"$HOME"/.kamilscripts \
 		"$HOME"/.config/kamilscripts/kamilscripts \
 		"$HOME"/.config/kamilscripts \
 ; do
-	if [ -e "$i" ] && [ -e "$i"/.git ] && [ -e "$i"/bin ]; then
-		KCDIR=$(readlink -f "$i")
+	if [ -e "$_i" ] && [ -e "$_i"/.git ] && [ -e "$_i"/bin ]; then
+		KCDIR=$(readlink -f "$_i")
 		break
 	fi
 done
-unset i
+unset _i
 
 if [ -z "$KCDIR" ]; then
 	echo "KCDIR not found" >&2
@@ -28,6 +39,7 @@ fi
 
 for _i in "$KCDIR"/etc/profile.d/*.sh; do
 	if [ -r "$_i" ]; then
+		# shellcheck disable=SC1090
 		. "$_i"
 	fi
 done
