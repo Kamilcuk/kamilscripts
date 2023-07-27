@@ -1571,13 +1571,13 @@ endfunction
 autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
-if hostname() =~# '\.striketechnologies\.com'
+if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
 	if executable('/usr/bin/python3')
 		let g:python3_host_prog = '/usr/bin/python3'
 	endif
 	if kc#plugin#enabled('coc.nvim')
-		call coc#config("http.proxy",  "http://st-proxy01.striketechnologies.com:3128/")
-		call coc#config("https.proxy", "http://st-proxy01.striketechnologies.com:3128/")
+		call coc#config("http.proxy",  $HTTP_PROXY)
+		call coc#config("https.proxy", $HTTPS_PROXY)
 		call coc#config('https.rejectUnauthorized', v:false)
 		call coc#config('http.proxyStrictSSL', v:false)
 	endif

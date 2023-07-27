@@ -345,7 +345,9 @@ Host st-ssh-bastion.striketechnologies.com
 	IdentityFile ~/.ssh/bastion_id_rsa
 	PubkeyAcceptedKeyTypes +ssh-rsa
 	RequestTTY yes
-Host weelxavt017d
+Match host="*.striketechnologies.com,*lxavt*[dp]"
+	PubkeyAcceptedKeyTypes +ssh-rsa
+	HostKeyAlgorithms +ssh-rsa
 EOF
 
 # {{{1 ##############################################################################
