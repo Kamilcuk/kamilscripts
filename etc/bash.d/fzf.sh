@@ -8,6 +8,7 @@ else
 	for i in \
 		/usr/share/fzf/shell/ \
 		/usr/share/fzf/ \
+		/usr/share/doc/fzf/examples \
 	; do
 		if [[ -r "$i"/key-bindings.bash ]]; then
 			. "$i"/key-bindings.bash

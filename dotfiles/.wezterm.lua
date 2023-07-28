@@ -1,0 +1,40 @@
+local wezterm = require 'wezterm'
+return {
+	font = wezterm.font_with_fallback{
+        'LiterationMono Nerd Font',
+		'DejaVu Sans Mono',
+		'JetBrains Mono',
+		'Noto Color Emoji',
+	},
+	automatically_reload_config = true,
+	colors = {
+		foreground = 'white',
+		background = 'black',
+		cursor_bg = 'white',
+		cursor_fg = 'black',
+		cursor_border = 'white',
+		selection_fg = 'grey',
+		selection_bg = 'white',
+		ansi = {
+			"#000000",
+			"#b21818",
+			"#18b218",
+			"#b26818",
+			"#1818b2",
+			"#b218b2",
+			"#18b2b2",
+			"#b2b2b2",
+		},
+		brights = {
+			"#686868",
+			"#ff5454",
+			"#54ff54",
+			"#ffff54",
+			"#5454ff",
+			"#ff54ff",
+			"#54ffff",
+			"#ffffff",
+		},
+	},
+	term = "wezterm",
+}
