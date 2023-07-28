@@ -53,7 +53,7 @@ shopt -s cmdhist # multiple commands in one line
 alias ls='ls --color -F'
 alias o='less -R'
 alias rm='nice -n 20 ionice -c 3 rm --preserve-root -I'
-alias mv='nice -n 20 ionice -c 4 mv -i'
+alias mv='nice -n 20 ionice -c 3 mv -i'
 # shellcheck disable=2285
 alias +='pushd .'
 alias -- -='popd'
