@@ -1,0 +1,58 @@
+#!/bin/bash
+
+_run() {
+	echo "+ $*" >&2
+	"$@"
+}
+
+if hash ,nice 2>/dev/null; then
+	nice=(",nice")
+else
+	nice=(nice -n 20 ionice -c 3)
+fi
+
+SUDO_ARGS_init() {
+	if [[ ! -v SUDO_ARGS ]]; then
+		declare -g SUDO_ARGS
+		SUDO_ARGS=()
+		local envs
+		envs=
+		for i in no_proxy http_proxy https_proxy ftp_proxy rsync_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY; do
+			if [[ -n "${!i:-}" ]]; then
+				envs="${envs:---preserve-env=}${envs:+,}$i"
+			fi
+		done
+		if ((${#envs})); then
+			SUDO_ARGS=("$envs")
+		fi
+	fi
+}
+
+_sudo() {
+	declare -g SUDO_ARGS
+	SUDO_ARGS_init
+	sudo=()
+	if ((UID != 0)) && hash sudo 2>/dev/null; then
+		sudo=(sudo -n "${SUDO_ARGS[@]}")
+	fi
+	_run "${nice[@]}" "${sudo[@]}" "$@"
+}
+
+C_p() {
+	_sudo apt-get install --no-install-recommends "$@"
+}
+
+C_p() {
+	_sudo apt-get install -y --no-install-recommends "$@"
+}
+
+C_pupdate() {
+	_sudo apt-get -y upgrade &&
+		_sudo apt-get -y update &&
+		if L_hash snap; then
+			_sudo snap refresh
+		fi &&
+		_sudo apt-get autoremove -y
+}
+
+. ,lib_lib C_ "$@"

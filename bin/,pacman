@@ -314,7 +314,7 @@ SUDO_ARGS_init() {
 			fi
 		done
 		if ((${#envs})); then
-			SUDO_ARGS=("$env")
+			SUDO_ARGS=("$envs")
 		fi
 	fi
 }

@@ -14,5 +14,3 @@ alias pupdate=',pacman pupdate'
 alias pacmann=',pacman pacmann'
 alias yayn=',pacman yayn'
 alias pacman_autoremove=',pacman autoremove'
-
-
