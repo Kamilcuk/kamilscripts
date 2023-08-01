@@ -30,8 +30,9 @@ if tmp=$(
 ); then
 	echo "$tmp"
 else
-	if [[ -n "$tmp" ]]; then
+	ret=$?
+	if [[ -t 2 && -n "$tmp" ]]; then
 		echo "$tmp" >&2
 	fi
-	exit "$?"
+	exit "$ret"
 fi
