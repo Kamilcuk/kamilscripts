@@ -39,11 +39,30 @@ _sudo() {
 }
 
 C_p() {
-	_sudo apt-get install --no-install-recommends "$@"
+	local arg
+	declare -g noconfirm
+	arg=""
+	if ((noconfirm)); then
+		arg=-y
+	fi
+	case "$1" in
+	-S)
+		shift
+		_sudo apt-get install $arg --no-install-recommends "$@"
+		;;
+	-R)
+		shift
+		_sudo apt-get remove $arg "$@"
+		;;
+	*)
+		_sudo apt-get install $arg --no-install-recommends "$@"
+		;;
+	esac
 }
 
-C_p() {
-	_sudo apt-get install -y --no-install-recommends "$@"
+C_pn() {
+	noconfirm=1
+	C_p "$@"
 }
 
 C_pupdate() {
