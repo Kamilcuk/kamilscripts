@@ -288,7 +288,6 @@ c_defaults_posix() { cat <<EOF
 #include <math.h>
 #include <monetary.h>
 #include <mqueue.h>
-#include <ndbm.h>
 #include <net/if.h>
 #include <netdb.h>
 #include <netinet/in.h>

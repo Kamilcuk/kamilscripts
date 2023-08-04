@@ -578,7 +578,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug 'tpope/vim-rhubarb' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } GitHub extension for fugitive.vim
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
-		Plug 'Konfekt/FastFold' " Speed up fold vim calculation
+		"Plug 'Konfekt/FastFold' " Speed up fold vim calculation
 		Plug 'vim-scripts/LargeFile' " Edit large files quickly
 		"Plug 'mhinz/vim-hugefile' " Also edit large files quickly
 		Plug 'wellle/targets.vim' " Add additional text objects. ( a ( b ) c ) , place cursor on 'b' and type v2A)

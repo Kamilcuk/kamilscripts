@@ -1,16 +1,5 @@
 #!/bin/bash
 
-for _i in \
-		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
-		~/.bashrc_*
-do
-	if [[ -e "$_i" ]]; then
-		# shellcheck disable=SC1090
-		. "$_i"
-	fi
-done
-unset _i
-
 # function hist is declared in bash.d/hist.sh
 if declare -f hist >/dev/null 2>&1; then
 	# already sourced - just ignore
@@ -85,6 +74,17 @@ for _i in \
 	if ! alias "${_i}" >/dev/null 2>&1; then
 		# shellcheck disable=2139
 		alias "${_i}"="nice -n 20 ionice -c 3 $_i"
+	fi
+done
+unset _i
+
+for _i in \
+		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
+		~/.bashrc_*
+do
+	if [[ -e "$_i" ]]; then
+		# shellcheck disable=SC1090
+		. "$_i"
 	fi
 done
 unset _i

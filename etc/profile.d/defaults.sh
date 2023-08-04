@@ -32,7 +32,6 @@ elif command -v vi >/dev/null 2>&1; then
 	export VISUAL=vi
 fi
 # export TMPDIR=/tmp
-export COUNTRY=PL
 export HISTSIZE=
 export HISTFILESIZE=
 if hash mesg 2>/dev/null; then
