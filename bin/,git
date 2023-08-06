@@ -36,12 +36,12 @@ C_mergetopush() {
 
 C_convertGitRepoToSubmodule() {
 	if [ "$#" = 0 ]; then
-		echo "Usage: convertGitRepoToSubmodule <submodule_directory...>" >&2;
-		return 1;
-	fi;
+		echo "Usage: convertGitRepoToSubmodule <submodule_directory...>" >&2
+		return 1
+	fi
 	cd -- "$(C_get-root)" || exit 1
 	for i in "$@"; do
-		origin="$(cd "$i" && git config --get remote.origin.url)";
+		origin="$(cd "$i" && git config --get remote.origin.url)"
 		L_run git submodule add "$origin" "$i"
 	done
 }
@@ -155,9 +155,9 @@ C_qlAllAddAmendPushForce() {
 
 C_supersync() {
 	git pull --rebase --autostash &&
-	git add -A &&
-	git commit -m "supersync: $(date -R)" &&
-	git push
+		git add -A &&
+		git commit -m "supersync: $(date -R)" &&
+		git push
 }
 
 C_refresh() {
@@ -180,7 +180,7 @@ C_refresh() {
 		need_to_stash=false
 	fi
 	if "$need_to_stash"; then
-		gitv stash save --include-untracked "stashed by $L_NAME$L_CMD" 
+		gitv stash save --include-untracked "stashed by $L_NAME$L_CMD"
 		trap trap_stash EXIT
 	fi
 	failed=0
@@ -190,9 +190,9 @@ C_refresh() {
 			gitv pull --ff-only &&
 			gitv checkout "$branch" &&
 			gitv rebase "$onto"
-					); then
-					gitv checkout "$branch"
-					failed=1
+	); then
+		gitv checkout "$branch"
+		failed=1
 	fi
 	if "$need_to_stash"; then
 		gitv stash pop
@@ -211,13 +211,13 @@ C_judgerebase() {
 	tmp2=$(git diff --numstat --no-renames "$tmp1" "$newbase")
 	tmp3=$(git diff --numstat --no-renames "$oldbase" "$oldhead")
 	score=$(
-		sort -k3 - <<<"$tmp2" <(cat <<<"$tmp3") |
+		sort -k3 - <(cat <<<"$tmp3") <<<"$tmp2" |
 			uniq -D --skip-fields=2 |
 			awk '{sum += $1 + $2} END {print sum + 0}'
 	)
 	printf "score: %s\n" "$score"
 	printf "rating: "
-	if (( score == 0 )); then
+	if ((score == 0)); then
 		echo "no conflicts"
 		exit 0
 	fi
@@ -240,6 +240,47 @@ C_removebranchesnotonremote() (
 		xargs -prtd '\n' git branch -d <"$tmpf"
 )
 
+C_autoaddcommitpush() {
+	L_run git add -A
+	L_run git commit -m "$HOSTNAME: Updates"
+	L_run git push
+}
+
+git_autostash_supported() {
+	git --version | awk '{exit !(0+$3>2.6)}'
+}
+
+C_autosubmoduleupdate() {
+	L_log "Updating submodules..."
+	if git submodule --help | grep -q update | grep -q -- --remote; then
+		L_run git submodule update --remote --merge --recursive
+	else
+		L_run git submodule update --merge --recursive
+	fi
+}
+
+C_autoupdate() {
+	L_log "Updating repository..."
+	if git_autostash_supported; then
+		L_run git pull --rebase --autostash
+	else
+		porcelain=$(git status --porcelain)
+		if [[ -n "$porcelain" ]]; then
+			L_run git stash --include-untracked
+			L_run git pull --rebase
+			L_run git stash apply
+		else
+			L_run git pull --rebase
+		fi
+	fi
+	C_autosubmoduleupdate
+}
+
+C_automasterrebase() {
+	git fetch --all
+	git rebase origin/master --autostash
+}
+
 ###############################################################################
 
 L_dryrun=0
@@ -254,4 +295,3 @@ if (($# >= 2)) && [[ "${2:-}" == -n ]]; then
 fi
 
 . ,lib_lib C_ "$@"
-

@@ -1,15 +1,35 @@
 #!/bin/sh
 set -eu
+
 hascmd() {
 	hash "$@" 2>/dev/null
 }
-case "${1:-}" in
--h | --help | "")
+
+fatal() {
+	echo ",nice: ERROR: $*" >&2
+	exit 1
+}
+
+usage() {
 	cat <<EOF
 Usage: ,nice command [argument]...
-    ,nice -p PID
-    ,nice -s [PID]
+       ,nice -p PID
+       ,nice -s [PID]
+
+Executes a command with the most possible niceness value ever.
+
+Options:
+  -p PID    Changes the pid specified by -p to be the niceness possible.
+  -s [PID]  Queries the niceness of this PID
+
+Written by Kamil Cukrowski
 EOF
+}
+
+case "${1:-}" in
+-h | --help | "")
+	usage
+	exit 0
 	;;
 -s)
 	pid="${2:-$$}"
@@ -38,12 +58,15 @@ EOF
 	fi
 	;;
 -p)
+	if [ $# -ne 2 ]; then
+		fatal "wrong number of argumnnets: $#"
+	fi
 	pid="$2"
 	if hascmd ionice; then
 		ionice -c 3 -p "$pid"
 	fi
 	if hascmd renice; then
-		renice -n 19 -p "$pid" >/dev/null
+		renice -n 39 -p "$pid" >/dev/null
 	fi
 	if hascmd chrt; then
 		chrt -i -p 0 "$pid"

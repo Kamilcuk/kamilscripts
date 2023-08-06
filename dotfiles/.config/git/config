@@ -99,11 +99,15 @@
 	acp = "! f() { set -x ; git commit -a -m \"$*\" && git push; } ; f"
 	aacp  = "! f() { set -x ; git add -A && git commit -m \"$*\" && git push; } ; f"
 	allcp = "! f() { set -x ; git add -A && git commit -m \"$*\" && git push; } ; f"
-	qdAddAmendPushForce = "! f() {    : git commit ; ,git qdAddAmendPushForce    \"$@\"; }; f"
-	qlAllAddAmendPushForce = "! f() { : git commit ; ,git qlAllAddAmendPushForce \"$@\"; }; f"
-	mergeto     = "!f() { : git checkout ; ,git mergeto     \"$@\"; }; f"
-	mergetopush = "!f() { : git checkout ; ,git mergetopush \"$@\"; }; f"
-	convertGitRepoToSubmodule = ",git convertGitRepoToSubmodule"
+	qdAddAmendPushForce       = "!f() { : git commit   ; ,git qdAddAmendPushForce       \"$@\"; }; f"
+	qlAllAddAmendPushForce    = "!f() { : git commit   ; ,git qlAllAddAmendPushForce    \"$@\"; }; f"
+	mergeto                   = "!f() { : git checkout ; ,git mergeto                   \"$@\"; }; f"
+	mergetopush               = "!f() { : git checkout ; ,git mergetopush               \"$@\"; }; f"
+	convertGitRepoToSubmodule = "!f() {                  ,git convertGitRepoToSubmodule \"$@\"; }; f"
+	autoaddcommitpush         = "!f() {                  ,git autoaddcommitpush         \"$@\"; }; f"
+	autosubmoduleupdate       = "!f() {                  ,git autosubmoduleupdate       \"$@\"; }; f"
+	autoupdate                = "!f() {                  ,git autoupdate                \"$@\"; }; f"
+	automasterrebase          = "!f() {                  ,git automasterrebase          \"$@\"; }; f"
 	log1 = log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)'
 	log2 = log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(dim white)- %an%C(reset)'
 [init]
