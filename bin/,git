@@ -241,8 +241,11 @@ C_removebranchesnotonremote() (
 )
 
 C_autoaddcommitpush() {
+	if (( $# > 1 )); then L_fatal "too many arguments"; fi
+	local commit
+	commit=${1:-"$HOSTNAME: Updates"}
 	L_run git add -A
-	L_run git commit -m "$HOSTNAME: Updates"
+	L_run git commit -m "$commit"
 	L_run git push
 }
 
@@ -251,6 +254,7 @@ git_autostash_supported() {
 }
 
 C_autosubmoduleupdate() {
+	if (( $# != 0 )); then L_fatal "no arguments"; fi
 	L_log "Updating submodules..."
 	if git submodule --help | grep -q update | grep -q -- --remote; then
 		L_run git submodule update --remote --merge --recursive
@@ -261,6 +265,7 @@ C_autosubmoduleupdate() {
 
 C_autoupdate() {
 	L_log "Updating repository..."
+	if (( $# != 0 )); then L_fatal "no arguments"; fi
 	if git_autostash_supported; then
 		L_run git pull --rebase --autostash
 	else
@@ -273,10 +278,11 @@ C_autoupdate() {
 			L_run git pull --rebase
 		fi
 	fi
-	C_autosubmoduleupdate
+	C_autosubmoduleupdate "$@"
 }
 
 C_automasterrebase() {
+	if (( $# != 0 )); then L_fatal "no arguments"; fi
 	git fetch --all
 	git rebase origin/master --autostash
 }
