@@ -241,7 +241,7 @@ C_removebranchesnotonremote() (
 )
 
 C_autoaddcommitpush() {
-	if (( $# > 1 )); then L_fatal "too many arguments"; fi
+	if (($# > 1)); then L_fatal "too many arguments"; fi
 	local commit
 	commit=${1:-"$HOSTNAME: Updates"}
 	L_run git add -A
@@ -254,7 +254,7 @@ git_autostash_supported() {
 }
 
 C_autosubmoduleupdate() {
-	if (( $# != 0 )); then L_fatal "no arguments"; fi
+	if (($# != 0)); then L_fatal "no arguments"; fi
 	L_log "Updating submodules..."
 	if git submodule --help | grep -q update | grep -q -- --remote; then
 		L_run git submodule update --remote --merge --recursive
@@ -265,7 +265,7 @@ C_autosubmoduleupdate() {
 
 C_autoupdate() {
 	L_log "Updating repository..."
-	if (( $# != 0 )); then L_fatal "no arguments"; fi
+	if (($# != 0)); then L_fatal "no arguments"; fi
 	if git_autostash_supported; then
 		L_run git pull --rebase --autostash
 	else
@@ -282,9 +282,22 @@ C_autoupdate() {
 }
 
 C_automasterrebase() {
-	if (( $# != 0 )); then L_fatal "no arguments"; fi
-	git fetch --all
-	git rebase origin/master --autostash
+	if (($# != 0)); then L_fatal "no arguments"; fi
+	L_run git fetch --all
+	L_run git rebase origin/master --autostash
+}
+
+C_checkoutmylastbranch() {
+	if (($# != 0)); then L_fatal "no arguments"; fi
+	L_run git fetch --all
+	branch=$(
+		git branch -a --format='%(refname:short)' |
+			grep -i "$USER|kcukrowski|kamilcukrowski" |
+			sort -t- -k2n |
+			tail -n1 |
+			sed 's@origin/@@'
+	)
+	L_run git checkout "$branch"
 }
 
 ###############################################################################
