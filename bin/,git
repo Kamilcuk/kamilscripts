@@ -292,7 +292,7 @@ C_checkoutmylastbranch() {
 	L_run git fetch --all
 	branch=$(
 		git branch -a --format='%(refname:short)' |
-			grep -i "$USER|kcukrowski|kamilcukrowski" |
+			grep -i "$USER\|kcukrowski\|kamilcukrowski" |
 			sort -t- -k2n |
 			tail -n1 |
 			sed 's@origin/@@'
