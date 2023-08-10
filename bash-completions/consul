@@ -1,1 +1,1 @@
-complete -C /usr/bin/consul consul
+complete -C consul consul

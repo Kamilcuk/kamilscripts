@@ -1,1 +1,1 @@
-complete -C /usr/bin/nomad nomad
+complete -C nomad nomad
