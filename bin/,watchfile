@@ -5,7 +5,6 @@ import atexit
 import logging
 import os
 import pwd
-import queue
 import shlex
 import signal
 import socket
@@ -36,7 +35,7 @@ class Waiter(ABC):
         log.debug(f"Initializing {self.__class__.__name__}")
 
     @abstractmethod
-    def getOneFlush(self):
+    def wait(self):
         raise NotImplementedError()
 
 
@@ -65,7 +64,7 @@ def is_relative_to(a: Path, b: Path):
 
 class Inotify(Waiter):
     def __init__(self, paths: List[Path]):
-        self.q = queue.Queue[int]()
+        self.lock = threading.Lock()
         self.paths = paths
         # cmd = "inotifywait -qme close_write,moved_to --format %f".split()
         cmd = "inotifywait -qme create,modify,close_write,moved_to --format %w%f%0 --no-newline".split()
@@ -75,6 +74,7 @@ class Inotify(Waiter):
         self.thread = threading.Thread(
             target=Inotify.enqueue_output, args=[self], daemon=True
         )
+        self.lock.acquire()
         self.thread.start()
 
     def enqueue_output(self):
@@ -84,29 +84,28 @@ class Inotify(Waiter):
             for path in self.paths:
                 if path.is_file():
                     if line == path:
-                        log.debug(f"{line} is {path}, putting")
-                        self.q.put(1)
+                        log.debug(f"{line} is {path}, signaling")
+                        self.signal()
                         break
                 elif is_relative_to(line, path):
-                    log.debug(f"{line} is relative to {path}, putting")
-                    self.q.put(1)
+                    log.debug(f"{line} is relative to {path}, signaling")
+                    self.signal()
                     break
             else:
                 log.debug(f"Received {line} but not matched against {self.paths}")
         self.proc.stdout.close()
 
-    def getOneFlush(self):
-        if not self.q.empty():
-            try:
-                while self.q.get_nowait():
-                    pass
-            except queue.Empty:
-                pass
-        else:
-            self.q.get()
+    def signal(self):
+        try:
+            self.lock.release()
+        except RuntimeError:
+            pass
+
+    def wait(self):
+        self.lock.acquire()
 
 
-class Sleeper(Waiter):
+class Poller(Waiter):
     def __init__(self, paths: List[Path]):
         self.paths = paths
         self.lastchanged = self.changehash()
@@ -120,7 +119,7 @@ class Sleeper(Waiter):
         ]
         return set(os.path.getmtime(file) for file in files)
 
-    def getOneFlush(self):
+    def wait(self):
         while True:
             time.sleep(1)
             changed = self.changehash()
@@ -283,7 +282,7 @@ if __name__ == "__main__":
         except FileNotFoundError:
             log.debug("inotifywait was not found, using polling method")
     if waiter is None:
-        waiter = Sleeper(paths)
+        waiter = Poller(paths)
     #
     if args.python:
         assert not args.exec
@@ -293,6 +292,9 @@ if __name__ == "__main__":
     else:
         rr = ShellRunner(cmd)
     #
-    while True:
-        rr.event()
-        waiter.getOneFlush()
+    try:
+        while True:
+            rr.event()
+            waiter.wait()
+    except KeyboardInterrupt:
+        pass
