@@ -4,6 +4,7 @@ import argparse
 import atexit
 import logging
 import os
+import pwd
 import queue
 import shlex
 import signal
@@ -81,14 +82,13 @@ class Inotify(Waiter):
         for line in readbytelines(self.proc.stdout, b"\0"):
             line = Path(line)
             for path in self.paths:
-                log.debug(f"{list(path.parents)}")
                 if path.is_file():
                     if line == path:
                         log.debug(f"{line} is {path}, putting")
                         self.q.put(1)
                         break
                 elif is_relative_to(line, path):
-                    log.debug(f"{line} is in {path}, putting")
+                    log.debug(f"{line} is relative to {path}, putting")
                     self.q.put(1)
                     break
             else:
@@ -172,10 +172,11 @@ class Runner(ABC):
 
 class ShellRunner(Runner):
     def __init__(self, cmd: List[str]):
-        super().__init__(cmd)
+        shell = pwd.getpwuid(os.getuid()).pw_shell
+        super().__init__([shell, "-c", " ".join(cmd)])
 
     def run(self):
-        subprocess.run(self.cmd, shell=True)
+        subprocess.run(self.cmd)
 
 
 class ExecRunner(Runner):
