@@ -10,50 +10,89 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import traceback
+from abc import ABC, abstractmethod
 from datetime import datetime
-
-import kc
+from pathlib import Path
+from typing import IO, List
 
 ON_POSIX = "posix" in sys.builtin_module_names
 HOSTNAME = socket.gethostname()
 log = logging.getLogger(__name__)
 
 
-class Waiter:
+def quotearr(cmd: List[str]):
+    return " ".join(shlex.quote(x) for x in cmd)
+
+
+###############################################################################
+
+
+class Waiter(ABC):
+    def __init__(self):
+        log.debug(f"Initializing {self.__class__.__name__}")
+
+    @abstractmethod
     def getOneFlush(self):
         raise NotImplementedError()
 
 
+def readbytelines(input: IO[bytes], separator=b"\0", readSize=1):
+    partialLine = b""
+    while True:
+        charsJustRead = input.read(readSize)
+        if not charsJustRead:
+            break
+        partialLine += charsJustRead
+        lines = partialLine.split(separator)
+        partialLine = lines.pop()
+        for line in lines:
+            yield line.decode()
+    if partialLine:
+        yield partialLine.decode()
+
+
+def is_relative_to(a: Path, b: Path):
+    try:
+        a.relative_to(b)
+        return True
+    except ValueError:
+        return False
+
+
 class Inotify(Waiter):
-    q = queue.Queue()
-
-    def __init__(self):
-        from threading import Thread
-
-        self.dir = os.path.dirname(args.file)
-        self.filename = os.path.basename(args.file)
-        cmd = "inotifywait -qme close_write,moved_to --format %f".split() + [self.dir]
-        log.debug(cmd)
-        self.proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            text=True,
+    def __init__(self, paths: List[Path]):
+        self.q = queue.Queue[int]()
+        self.paths = paths
+        # cmd = "inotifywait -qme close_write,moved_to --format %f".split()
+        cmd = "inotifywait -qme create,modify,close_write,moved_to --format %w%f%0 --no-newline".split()
+        cmd += [str(p.parent if p.is_file() else p) for p in self.paths]
+        log.debug(f"+ {cmd}")
+        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        self.thread = threading.Thread(
+            target=Inotify.enqueue_output, args=[self], daemon=True
         )
-        self.thread = Thread(target=Inotify.enqueue_output, args=[self])
-        self.thread.demon = True
-        log.debug("Thread started")
         self.thread.start()
 
     def enqueue_output(self):
-        for line in self.proc.stdout:
-            line = line[:-1]
-            if line == self.filename:
-                log.debug("Received and put: %s %s", line, self.filename)
-                self.q.put(line)
+        assert self.proc.stdout
+        for line in readbytelines(self.proc.stdout, b"\0"):
+            line = Path(line)
+            for path in self.paths:
+                log.debug(f"{list(path.parents)}")
+                if path.is_file():
+                    if line == path:
+                        log.debug(f"{line} is {path}, putting")
+                        self.q.put(1)
+                        break
+                elif is_relative_to(line, path):
+                    log.debug(f"{line} is in {path}, putting")
+                    self.q.put(1)
+                    break
             else:
-                log.debug("Received: %s %s", line, self.filename)
+                log.debug(f"Received {line} but not matched against {self.paths}")
         self.proc.stdout.close()
 
     def getOneFlush(self):
@@ -61,26 +100,103 @@ class Inotify(Waiter):
             try:
                 while self.q.get_nowait():
                     pass
-            except queue.EMPTY:
+            except queue.Empty:
                 pass
         else:
             self.q.get()
 
 
 class Sleeper(Waiter):
-    def changed(self):
-        return os.path.getmtime(args.file)
+    def __init__(self, paths: List[Path]):
+        self.paths = paths
+        self.lastchanged = self.changehash()
 
-    def __init__(self):
-        self.lastchanged = self.changed()
+    def changehash(self):
+        files = [
+            y
+            for x in self.paths
+            for y in ([x] if x.is_file() else x.rglob("*"))
+            if y.is_file()
+        ]
+        return set(os.path.getmtime(file) for file in files)
 
     def getOneFlush(self):
         while True:
             time.sleep(1)
-            changed = self.changed()
+            changed = self.changehash()
             if self.lastchanged != changed:
                 self.lastchanged = changed
                 return
+
+
+###############################################################################
+
+
+class Runner(ABC):
+    def __init__(self, cmd: List[str]):
+        log.debug(f"Initializing {self.__class__.__name__}")
+        self.cmd = cmd
+        self.cmdstr = quotearr(cmd)
+
+    def clear(self):
+        os.system("cls" if os.name == "nt" else "clear")
+
+    def print_left_right(self, left, right):
+        termsize = os.get_terminal_size()
+        columns = termsize.columns
+        rightlen = len(right)
+        leftlen = len(left)
+        if rightlen > columns / 2:
+            right = ""
+            rightlen = 0
+        if leftlen + rightlen > columns - 2:
+            left = left[0 : columns - 5 - rightlen] + "..."
+            leftlen = len(left)
+        print("%s%*s" % (left, columns - leftlen, right))
+
+    def event(self):
+        if not args.debug:
+            self.clear()
+        if not args.no_title:
+            self.print_left_right(
+                "Every %s change: %s" % (args.cmd[0], self.cmdstr),
+                "%s: %s" % (HOSTNAME, datetime.now().strftime("%c")),
+            )
+        print("+", self.cmdstr)
+        self.run()
+
+    @abstractmethod
+    def run(self):
+        raise NotImplementedError()
+
+
+class ShellRunner(Runner):
+    def __init__(self, cmd: List[str]):
+        super().__init__(cmd)
+
+    def run(self):
+        subprocess.run(self.cmd, shell=True)
+
+
+class ExecRunner(Runner):
+    def run(self):
+        subprocess.run(self.cmd)
+
+
+class PythonRunner(Runner):
+    def __init__(self, cmd: List[str]):
+        super().__init__(["python3shell", *cmd])
+
+    def run(self):
+        sys.argv = args.cmd
+        try:
+            exec(open(args.cmd[0], "r").read())
+        except Exception:
+            traceback.print_exc()
+
+
+def killonexit():
+    os.killpg(os.getpgid(0), signal.SIGTERM)
 
 
 def parse_args():
@@ -121,7 +237,10 @@ def parse_args():
     parser.add_argument(
         "-f",
         "--file",
-        help="watch this file instead of first argument",
+        help="watch this file or dir for changes. The first argument starts the command.",
+        action="append",
+        default=[],
+        type=Path,
     )
     parser.add_argument(
         "-D",
@@ -134,103 +253,44 @@ def parse_args():
         action="store_true",
         help="Use polling method instead of inoitfywait",
     )
-    parser.add_argument("cmd", nargs=1)
-    parser.add_argument("args", nargs=argparse.REMAINDER)
+    parser.add_argument("path")
+    parser.add_argument("cmd", nargs=argparse.REMAINDER)
     return parser.parse_args()
-
-
-class Runner:
-    def __init__(self, cmdstr):
-        self.cmdstr = cmdstr
-
-    def clear(sefl):
-        os.system("cls" if os.name == "nt" else "clear")
-
-    def print_left_right(self, left, right):
-        termsize = os.get_terminal_size()
-        columns = termsize.columns
-        rightlen = len(right)
-        leftlen = len(left)
-        if rightlen > columns / 2:
-            right = ""
-            rightlen = 0
-        if leftlen + rightlen > columns - 2:
-            left = left[0 : columns - 5 - rightlen] + "..."
-            leftlen = len(left)
-        print("%s%*s" % (left, columns - leftlen, right))
-
-    def run(self):
-        raise NotImplementedError()
-
-    def event(self):
-        if not args.debug:
-            self.clear()
-        if not args.no_title:
-            self.print_left_right(
-                "Every %s change: %s" % (args.cmd[0], self.cmdstr),
-                "%s: %s" % (HOSTNAME, datetime.now().strftime("%c")),
-            )
-        print("+", self.cmdstr)
-        self.run()
-
-
-class ShellRunner(Runner):
-    def __init__(self):
-        super().__init__(kc.shlex_join(args.cmd))
-
-    def run(self):
-        subprocess.run(args.cmd)
-
-
-class PythonRunner(Runner):
-    def __init__(self):
-        super().__init__(kc.shlex_join(["python3shell"] + args.cmd))
-
-    def run(self):
-        sys.argv = args.cmd
-        try:
-            exec(open(args.cmd[0], "r").read())
-        except Exception:
-            traceback.print_exc()
-
-
-def killonexit():
-    os.killpg(os.getpgid(0), signal.SIGTERM)
 
 
 if __name__ == "__main__":
     args = parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     atexit.register(killonexit)
-    args.cmd = args.cmd + (args.args or [])
     #
-    if not args.exec and not args.python:
-        if not args.file:
-            exit("--file argument is required when not using --python nor --exec")
-        args.cmd = ["sh", "-c", kc.shlex_join(args.cmd)]
-    elif not args.file:
-        if "/" not in args.cmd[0]:
-            if os.path.exists(args.cmd[0]):
-                args.cmd[0] = "./" + args.cmd[0]
-            else:
-                from shutil import which
-
-                args.cmd[0] = which(args.cmd[0])
-        args.file = args.cmd[0]
+    if args.file:
+        paths = args.file
+        cmd = [args.path, *args.cmd]
+    else:
+        paths = [Path(args.path)]
+        cmd = args.cmd
+    log.debug(f"cmd = {cmd}")
+    log.debug(f"paths = {paths}")
+    assert cmd
+    for i in paths:
+        assert i.exists(), f"{i} does not exists"
+    #
     waiter = None
     if not args.poll:
         try:
-            waiter = Inotify()
+            waiter = Inotify(paths)
         except FileNotFoundError:
-            # If inotifywait was not found, use polling method.
-            pass
+            log.debug("inotifywait was not found, using polling method")
     if waiter is None:
-        waiter = Sleeper()
+        waiter = Sleeper(paths)
     #
     if args.python:
-        rr = PythonRunner()
+        assert not args.exec
+        rr = PythonRunner(cmd)
+    elif args.exec:
+        rr = ExecRunner(cmd)
     else:
-        rr = ShellRunner()
+        rr = ShellRunner(cmd)
     #
     while True:
         rr.event()

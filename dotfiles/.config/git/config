@@ -126,5 +126,3 @@
 
 [credential]
 	helper = store --file ~/.config/git/credentials
-[safe]
-	directory = /home/kamil/mnt/perun/srv

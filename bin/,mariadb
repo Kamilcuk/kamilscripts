@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import shlex
+import subprocess
+from typing import List, Optional, Union
+
+import click
+
+
+def option(name: str, default: Optional[str] = None):
+    return click.get_current_context().obj.get(name, default)
+
+
+def dryrun():
+    return option("dryrun")
+
+
+def dryrunstr():
+    return "DRYRUN: " if dryrun() else ""
+
+
+def quotearr(cmd: List[str]):
+    return " ".join(shlex.quote(x) for x in cmd)
+
+
+def run(cmd: Union[List[str], str], shell=False, check=True):
+    cmdstr = quotearr(cmd) if isinstance(cmd, list) else shlex.quote(cmd)
+    print(f"{dryrunstr()}+ {cmdstr}")
+    if not dryrun():
+        subprocess.run(cmd, shell=shell, check=check, text=True)
+
+
+def mariadb(sql: str):
+    return run(["mariadb", "-e", sql])
+
+
+###############################################################################
+
+
+@click.group()
+@click.option("-n", "--dryrun", is_flag=True)
+@click.pass_context
+def cli(ctx, **kvargs):
+    ctx.obj.update(kvargs)
+
+
+@cli.command()
+@click.option("-d", "--domain")
+@click.argument("username")
+@click.argument("password")
+@click.argument("database")
+def create_user(username, password, database, domain):
+    commands = [
+        f"CREATE USER '{username}'@'{domain}' IDENTIFIED BY '{password}';",
+        f"CREATE DATABASE {database};",
+        f"GRANT ALL PRIVILEGES ON {database}.* TO '{username}'@'{domain}';",
+        "FLUSH PRIVILEGES;",
+    ]
+    for command in commands:
+        mariadb(command)
+
+
+@cli.command()
+@click.argument("src")
+@click.argument("srcdumpfile")
+@click.argument("dst")
+def copy_databse(src, srcdumpfile, dst):
+    run(f"mysqldump {shlex.quote(src)} > {shlex.quote(srcdumpfile)}")
+    run(f"mysql {shlex.quote(dst)} < {srcdumpfile}")
+
+
+@cli.command()
+def show_databases_update_time():
+    mariadb(
+        "select table_schema, max(update_time), engine, table_type from information_schema.tables group by table_schema"
+    )
+
+
+if __name__ == "__main__":
+    cli.main(obj={})

@@ -10,3 +10,6 @@ zstyle :compinstall filename '/home/users/kamil/.zshrc'
 autoload -Uz compinit
 compinit
 # End of lines added by compinstall
+
+autoload -U +X bashcompinit && bashcompinit
+complete -o nospace -C /usr/bin/nomad nomad
