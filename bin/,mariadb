@@ -34,6 +34,11 @@ def mariadb(sql: str):
     return run(["mariadb", "-e", sql])
 
 
+def mariadbarr(*sqls: str):
+    for sql in sqls:
+        mariadb(sql)
+
+
 ###############################################################################
 
 
@@ -50,14 +55,12 @@ def cli(ctx, **kvargs):
 @click.argument("password")
 @click.argument("database")
 def create_user(username, password, database, domain):
-    commands = [
+    mariadbarr(
         f"CREATE USER '{username}'@'{domain}' IDENTIFIED BY '{password}';",
         f"CREATE DATABASE {database};",
         f"GRANT ALL PRIVILEGES ON {database}.* TO '{username}'@'{domain}';",
         "FLUSH PRIVILEGES;",
-    ]
-    for command in commands:
-        mariadb(command)
+    )
 
 
 @cli.command()
@@ -67,6 +70,18 @@ def create_user(username, password, database, domain):
 def copy_databse(src, srcdumpfile, dst):
     run(f"mysqldump {shlex.quote(src)} > {shlex.quote(srcdumpfile)}")
     run(f"mysql {shlex.quote(dst)} < {srcdumpfile}")
+
+
+@cli.command()
+@click.option("-u", "--username", default="readonly")
+@click.option("-d", "--domain", default="%")
+@click.argument("password")
+def create_readonly_user(username, domain, password):
+    mariadbarr(
+        f"CREATE USER '{username}'@'{domain}' IDENTIFIED BY '{password}';",
+        f"GRANT SELECT, SHOW VIEW PRIVILEGES ON *.* TO '{username}'@'{domain}';",
+        "FLUSH PRIVILEGES;",
+    )
 
 
 @cli.command()

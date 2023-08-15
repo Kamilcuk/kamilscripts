@@ -126,3 +126,5 @@
 
 [credential]
 	helper = store --file ~/.config/git/credentials
+[safe]
+	directory = *
