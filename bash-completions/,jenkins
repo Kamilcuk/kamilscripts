@@ -1,2 +1,7 @@
 #!/bin/bash
-eval "$(env "_,JENKINS_COMPLETE=bash_source" ,jenkins)"
+# https://click.palletsprojects.com/en/8.1.x/shell-completion/
+eval "$(
+	# Take name and uppercase complete it with variable.
+	name="${BASH_SOURCE[0]##*/}"
+	env "_${name^^}_COMPLETE=bash_source" "$name"
+)"
