@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+provision_script = """
+set -xeuo pipefail
+apt-get update -y
+apt-get install -y tmux neovim
+systemctl disable --now rsyslog
+apt-get remove -y rsyslog
+sed -i 's/#Storage=auto/Storage=persistent/' /etc/systemd/journald.conf
+sed -i 's/#SplitMode=uid/SplitMode=none/' /etc/systemd/journald.conf
+if id kamil >/dev/null && [[ ! -e /home/kamil/.ssh/id_rsa ]]; then
+    sudo -u kamil ssh-keygen -N ""
+fi
+if [[ ! ~/.ssh/id_rsa ]]; then
+    ssh-keygen -N ""
+fi
+systemctl disable --now apt-daily-upgrade.timer
+"""
+

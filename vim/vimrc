@@ -466,24 +466,14 @@ if 0
 endif
 command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file *
 
-if hostname() ==# 'rpi3'
-	" Raspberri pi is not able to process that much.
-	colorscheme elflord
-	finish
-endif
-
 " }}}
 " Load plugins with vim-plug {{{1
 
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-	if executable('git')
-		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
-			call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
-		endif
-		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug/
-	else
-		call kc#log('no git executable, could not clone vim-plug')
+	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
+		call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
 	endif
+	call kc#log('vim-plug not clonned. Execute: git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug')
 endif
 
 if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
