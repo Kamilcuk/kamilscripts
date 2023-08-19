@@ -2,18 +2,52 @@
 
 provision_script = """
 set -xeuo pipefail
-apt-get update -y
-apt-get install -y tmux neovim
+
+cat <<EOF >/etc/apt/apt.conf.d/01norecommend
+APT::Install-Recommends "0";
+APT::Install-Suggests "0";
+EOF
+
+apt-get install -y tmux neovim git
+
 systemctl disable --now rsyslog
+
 apt-get remove -y rsyslog
+
 sed -i 's/#Storage=auto/Storage=persistent/' /etc/systemd/journald.conf
+
 sed -i 's/#SplitMode=uid/SplitMode=none/' /etc/systemd/journald.conf
+
+systemctl enable --now systemd-journald
+
 if id kamil >/dev/null && [[ ! -e /home/kamil/.ssh/id_rsa ]]; then
     sudo -u kamil ssh-keygen -N ""
 fi
+
 if [[ ! ~/.ssh/id_rsa ]]; then
     ssh-keygen -N ""
 fi
+
 systemctl disable --now apt-daily-upgrade.timer
+
+git clone git@gitlab.com:Kamcuk/kamilscripts.git ~/.kamilscripts
+
+~/.kamilscripts/bin/,kamilscripts.sh -k
+
+cat <<EOF >/etc/systemd/network/wlan0.network
+[Match]
+Name=wlan0
+[Network]
+DHCP=yes
+EOF
+
+cat <<EOF >/etc/systemd/network/eth0.network
+[Match]
+Name=eth0
+[Network]
+DHCP=yes
+EOF
+
+
 """
 

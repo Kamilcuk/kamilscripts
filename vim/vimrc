@@ -521,7 +521,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		"
 		" Plug 'aduros/ai.vim'
 		" Plug 'madox2/vim-ai'
-		Plug 'kamilcuk/ai.vim', { 'dir': plugdir.'kamilcuk-ai.vim' }
+		Plug 'kamilcuk/kai.nvim'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'mzlogin/vim-markdown-toc'
