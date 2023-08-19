@@ -35,14 +35,14 @@ def mariadb(sql: str):
 
 
 def mariadbarr(*sqls: str):
-    for sql in sqls:
-        mariadb(sql)
+    mariadb('\n' + '\n'.join(sqls) + '\n')
 
 
 ###############################################################################
 
 
 @click.group()
+@click.help_option("-h", "--help")
 @click.option("-n", "--dryrun", is_flag=True)
 @click.pass_context
 def cli(ctx, **kvargs):
@@ -50,11 +50,11 @@ def cli(ctx, **kvargs):
 
 
 @cli.command()
-@click.option("-d", "--domain")
+@click.option("-d", "--domain", default="localhost", show_default=True)
 @click.argument("username")
 @click.argument("password")
 @click.argument("database")
-def create_user(username, password, database, domain):
+def create_user_and_database(username, password, database, domain):
     mariadbarr(
         f"CREATE USER '{username}'@'{domain}' IDENTIFIED BY '{password}';",
         f"CREATE DATABASE {database};",
