@@ -123,9 +123,9 @@
       "offsetLine": 1,
       "isStderr": true,
       "formatPattern": [
-        "^([^:]+:[^:]+:|\\s+[*])\\s+(.+)$",
+        "^(([^:]+:[^:]+:|\\s+[*])\\s+(.+))$",
         {
-          "message": 2
+          "message": 1
         }
       ]
     },
