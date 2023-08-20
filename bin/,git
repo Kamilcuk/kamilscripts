@@ -244,6 +244,7 @@ C_autoaddcommitpush() {
 	if (($# > 1)); then L_fatal "too many arguments"; fi
 	local commit
 	commit=${1:-"$HOSTNAME: Updates"}
+	git_pull_rebase_autostash
 	L_run git add -A
 	L_run git commit -m "$commit"
 	L_run git push
@@ -263,9 +264,7 @@ C_autosubmoduleupdate() {
 	fi
 }
 
-C_autoupdate() {
-	L_log "Updating repository..."
-	if (($# != 0)); then L_fatal "no arguments"; fi
+git_pull_rebase_autostash() {
 	if git_autostash_supported; then
 		L_run git pull --rebase --autostash
 	else
@@ -278,6 +277,12 @@ C_autoupdate() {
 			L_run git pull --rebase
 		fi
 	fi
+}
+
+C_autoupdate() {
+	L_log "Updating repository..."
+	if (($# != 0)); then L_fatal "no arguments"; fi
+	git_pull_rebase_autostash
 	C_autosubmoduleupdate "$@"
 }
 
