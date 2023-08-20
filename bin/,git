@@ -251,7 +251,7 @@ C_autoaddcommitpush() {
 }
 
 git_autostash_supported() {
-	git --version | awk '{exit !(0+$3>2.6)}'
+	git pull --help | grep -Fq -- --autostash
 }
 
 C_autosubmoduleupdate() {
