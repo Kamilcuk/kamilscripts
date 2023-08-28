@@ -41,6 +41,10 @@
   "Lua.completion.callSnippet": "Both",
   "Lua.hint.enable": true,
   "Lua.semantic.keyword": true,
+  "Lua.diagnostics.disable": [
+    "unused-vararg",
+    "unused-local"
+  ],
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.debug": true,

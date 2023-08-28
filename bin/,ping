@@ -1,3 +1,42 @@
 #!/bin/bash
-set -x
-nmap -sP "$@"
+set -euo pipefail
+
+main() {
+	#nmap -sn -PE -T 5 --max-rtt-timeout 100ms "$@"
+	#exec nmap -n -sn -PE -R --max-rtt-timeout 100ms "$@"
+	nmap -sP "$@"
+	#myping "$@"
+}
+
+r() {
+	echo "+ $*" >&2
+	"$@"
+}
+
+scan() {
+	set -x
+	ip=$1
+	if ping -c1 "$ip" >/dev/null 2>/dev/null; then
+		if name=$(sed -n "/$ip /s///p" "$dns"); then
+			name=$(resolvectl --json=short query "$ip" | sed -n 's/^\([0-9\.]:\).*/\1/')
+			(
+				flock 10
+				echo "$1 $name" >> "$dns"
+			) 10<"$dns"
+		fi
+		echo "$1 $name"
+	fi
+}
+
+myping() {
+	dns=$(mktemp)
+	trap 'rm $dns' EXIT
+	hosts=$(nmap -sL -n -oG - "$@" | sed -n 's/Host: \([0-9\.]*\).*/\1/p')
+	set -x
+	export -f scan
+	export dns
+	xargs -n1 bash -c 'scan "$@"' -- <<<"$hosts" | column -t
+}
+
+main "$@"
+

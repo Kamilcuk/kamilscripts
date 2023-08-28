@@ -522,8 +522,11 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug 'aduros/ai.vim'
 		" Plug 'madox2/vim-ai'
 		Plug 'kamilcuk/kai.nvim'
+		Plug 'kamilcuk/VimRepressPy3'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+		Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
+		Plug 'folke/neodev.nvim'
 		Plug 'mzlogin/vim-markdown-toc'
 		"
 		Plug 'junegunn/vader.vim'
@@ -643,7 +646,8 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" For vim plugins dependencies
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
 		Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
-	" }}}
+
+		" }}}
 	" View display visible stuff {{{2
 		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces and I think remove them too
 		Plug 'luochen1990/rainbow' " Rainbow Parentheses
@@ -679,6 +683,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					"\ }
 	" }}}
 
+
 	call plug#end()
 
 	delcommand KcPlug8
@@ -698,13 +703,8 @@ if kc#plugin#enabled("HowMuch")
 				\ call HowMuch#DoWithCommand(<q-args>)
 endif
 
-if kc#plugin#enabled('ai.vim')
-	let g:ai_no_mappings = 1
-	" Let ctrl-a stay as number increment operator.
-	nnoremap <leader>a :AI
-	vnoremap <leader>a :AI
-	" inoremap <C-a> <Esc>:AI<CR>a
-	" inoremap <C-q> <Esc>:AI<CR>a
+if kc#plugin#enabled('kai.nvim')
+	let g:kai_reload = 1
 endif
 
 if kc#plugin#enabled('vim-better-whitespace')
@@ -724,11 +724,16 @@ if kc#plugin#enabled('vim-keywordprg-commands')
 	augroup end
 endif
 
-if kc#plugin#enabled('coc-languagetool')
-	if filereadable('/usr/bin/languagetool')
-		let g:languagetool_cmd='/usr/bin/languagetool'
-	elseif filereadable('/usr/share/java/languagetool/languagetool-commandline.jar')
-		let g:languagetool_jar = '/usr/share/java/languagetool/languagetool-commandline.jar'
+if kc#plugin#enabled('vim-LanguageTool')
+	if filereadable(expand("~/Downloads/LanguageTool-5.9/languagetool-commandline.jar"))
+		let g:languagetool_jar = expand("~/Downloads/LanguageTool-5.9/languagetool-commandline.jar")
+	else
+		if filereadable('/usr/bin/languagetool')
+			let g:languagetool_cmd = '/usr/bin/languagetool'
+		endif
+		if filereadable('/usr/share/java/languagetool/languagetool-commandline.jar')
+			let g:languagetool_jar = '/usr/share/java/languagetool/languagetool-commandline.jar'
+		endif
 	endif
 endif
 
