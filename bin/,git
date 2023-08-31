@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 gitv() {
 	L_log "git $*"
@@ -303,6 +304,140 @@ C_checkoutmylastbranch() {
 			sed 's@origin/@@'
 	)
 	L_run git checkout "$branch"
+}
+
+paginated_curl() {
+	local url r headers body
+	url="$1"
+	shift
+	while [[ "$url" ]]; do
+		if ! r=$(L_run curl -i -Ss "$url" "$@"); then
+			exit 1
+		fi
+		r=$(tr -d '\r' <<<"$r")
+		headers=$(sed '/^$/q' <<<"$r")
+		body=$(sed '1,/^$/d' <<<"$r")
+		echo "$body"
+		url=$(echo "$headers" |
+			sed -n 's/^link: //p' |
+			sed -n 's/.*<\([^>]*\)>; rel="next".*/\1/pi')
+	done
+}
+
+if hash jq 2>/dev/null; then
+	_jq_get() { jq -r ".${2:-}[].$1"; }
+else
+	_jq_get() { tr , '\n' | sed -ne '/"'"$1"'"[[:space:]]*:[[:space:]]*"/s/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p'; }
+fi
+jq_get() {
+	local tmp
+	tmp=$(cat)
+	if ! _jq_get <<<"$tmp" "$@"; then
+		echo "$tmp" >&2
+		return 1
+	fi
+}
+
+C_github_get_repos_username() {
+	local username
+	username=$1
+	paginated_curl "https://api.github.com/users/${username}/repos?per_page=100" | jq_get clone_url
+}
+
+C_github_get_repos_token() {
+	local where token
+	where=$1
+	token=$2
+	paginated_curl "https://api.github.com/$where/repos?per_page=100" -H "Authorization: token $token" | jq_get ssh_url
+}
+
+C_gitlab_v3_projects() {
+	local token
+	token=$1
+	paginated_curl 'https://gitlab.com/api/v3/projects' --header "PRIVATE-TOKEN: $token" | jq_get ssh_url_to_repo
+}
+
+C_gitlab_v4_projects() {
+	local token
+	token=$1
+	tmp=$(paginated_curl 'https://gitlab.com/api/v4/projects?membership=true&simple=true&per_page=100' --header "PRIVATE-TOKEN: $token")
+	tmp=$(jq_get ssh_url_to_repo <<<"$tmp")
+	tmp=$(sed "s|git@gitlab.com:|https://oauth2:$token@gitlab.com/|" <<<"$tmp")
+	echo "$tmp"
+}
+
+C_aur_repos() {
+	local maintainer
+	maintainer=$1
+	curl -sS 'https://aur.archlinux.org/rpc/?v=5&type=search&by=maintainer&arg='"$maintainer" |
+		jq -r '.results[].Name' |
+		sed 's;.*;https://aur.archlinux.org/&.git;'
+}
+
+C_aur_html_repos() {
+	local maintainer
+	maintainer=$1
+	curl -sS 'https://aur.archlinux.org/packages/?SeB=m&K='"$maintainer" |
+		xmllint --html --xpath '//table[@class="results"]//tr/td[1]/a/@href' - |
+		tr ' ' '\n' | sed -e '/^$/d' -e 's;^href="/packages/;;' -e 's;/"$;;' |
+		sed 's;\(.*\);aur@aur.archlinux.org:/\1.git;'
+}
+
+C_url_to_dir() {
+	local out ret
+	if out=$(sed -E <&0 '
+		# check input
+		\|^([^@]+@\|https?://)([^:/]+)[:/](.+)$|!{
+			s/.*/regex not matched/p
+			q1
+		}
+		# Create the dir name
+		s||\2/\3|
+		s|/|:|g
+		s/.git$//
+		# No empty dirs
+		/::/{
+			s/.*/internal error: two empty dirs/p
+			q2
+		}
+		'
+	); then
+		echo "$out"
+	else
+		ret=$?
+		echo "$out" >&2
+		exit "$ret"
+	fi
+}
+
+C_backup_git() {
+	local dest input repos
+	dest=$1
+	input="$(cat)"
+	repos=$(C_url_to_dir <<<"$input" | paste <(printf "%s\n" "$input") -)
+	if [[ -z "$repos" ]]; then
+		L_fatal "-z repos"
+	fi
+	reposlen=$(wc -l <<<"$repos")
+	while read -r url dir; do
+		if [[ -z "$url" ]]; then
+			L_fatal "-z $url"
+		fi
+		if [[ -z "$dir" ]]; then
+			L_fatal "-z $url"
+		fi
+	done <<<"$repos"
+	echo "Received ${reposlen} repositories"
+	printf "%s\n" "${repos}" | column -t
+	echo
+	while read -r url dir; do
+		L_info "backup_repo $url to $dest/$dir"
+		if [ ! -d "$dest/$dir" ]; then
+			L_run git clone --mirror "$url" "$dest/$dir"
+		fi
+		L_run git --git-dir="$dest/$dir" remote set-url origin "$url"
+		L_run git --git-dir="$dest/$dir" remote update
+	done <<<"$repos"
 }
 
 ###############################################################################
