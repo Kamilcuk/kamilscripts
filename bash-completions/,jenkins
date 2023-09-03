@@ -3,5 +3,7 @@
 eval "$(
 	# Take name and uppercase complete it with variable.
 	name="${BASH_SOURCE[0]##*/}"
-	env "_${name^^}_COMPLETE=bash_source" "$name"
+	complete=${name^^}
+	complete=${complete//-/_}
+	env "_${complete}_COMPLETE=bash_source" "$name"
 )"
