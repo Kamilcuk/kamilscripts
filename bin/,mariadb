@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+import gzip
+import os
 import shlex
 import subprocess
-from typing import List, Optional, Union
+from pathlib import Path
+from typing import List, Optional
 
 import click
 
@@ -23,19 +26,25 @@ def quotearr(cmd: List[str]):
     return " ".join(shlex.quote(x) for x in cmd)
 
 
-def run(cmd: Union[List[str], str], shell=False, check=True):
-    cmdstr = quotearr(cmd) if isinstance(cmd, list) else shlex.quote(cmd)
+def run(cmd: List[str], check=True, dryrun=None, text=True, **kvargs):
+    cmdstr = quotearr(cmd)
     print(f"{dryrunstr()}+ {cmdstr}")
-    if not dryrun():
-        subprocess.run(cmd, shell=shell, check=check, text=True)
+    dryrun = dryrun if dryrun is not None else option("dryrun")
+    if not dryrun:
+        return subprocess.run(cmd, check=check, text=text, **kvargs)
 
 
-def mariadb(sql: str):
-    return run(["mariadb", "-e", sql])
+def mariadb(sql: str, **kvargs):
+    return run(["mariadb", "-e", sql], **kvargs)
 
 
 def mariadbarr(*sqls: str):
-    mariadb('\n' + '\n'.join(sqls) + '\n')
+    mariadb("\n" + "\n".join(sqls) + "\n")
+
+
+def useropt():
+    user = option("username")
+    return f"-u {shlex.quote(user)}" if user is not None else ""
 
 
 ###############################################################################
@@ -43,6 +52,7 @@ def mariadbarr(*sqls: str):
 
 @click.group()
 @click.help_option("-h", "--help")
+@click.option("-u", "--username")
 @click.option("-n", "--dryrun", is_flag=True)
 @click.pass_context
 def cli(ctx, **kvargs):
@@ -68,8 +78,8 @@ def create_user_and_database(username, password, database, domain):
 @click.argument("srcdumpfile")
 @click.argument("dst")
 def copy_databse(src, srcdumpfile, dst):
-    run(f"mysqldump {shlex.quote(src)} > {shlex.quote(srcdumpfile)}")
-    run(f"mysql {shlex.quote(dst)} < {srcdumpfile}")
+    run(["sh", "-c", f"mariadb-dump {shlex.quote(src)} > {shlex.quote(srcdumpfile)}"])
+    run(["sh", "-c", f"mariadb {shlex.quote(dst)} < {srcdumpfile}"])
 
 
 @cli.command()
@@ -89,6 +99,36 @@ def show_databases_update_time():
     mariadb(
         "select table_schema, max(update_time), engine, table_type from information_schema.tables group by table_schema"
     )
+
+
+@cli.command()
+@click.argument(
+    "destination", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+def dumpalldir(destination):
+    rr = run(
+        shlex.split(f"mariadb -s -r {useropt()} -e 'show databases'"),
+        stdout=subprocess.PIPE,
+        dryrun=False,
+    )
+    assert rr
+    databases = rr.stdout.split()
+    databases = [
+        d
+        for d in databases
+        if d not in "information_schema performance_schema Database sys".split()
+    ]
+    if not destination.exists() and not dryrun():
+        destination.mkdir()
+    for db in databases:
+        cmd = f"mariadb-dump {useropt()} {db}".split()
+        out = destination / f"{db}.sql.gz"
+        print(f"{dryrunstr()}{quotearr(cmd)} | gzip > {out}")
+        if not dryrun():
+            tmpf = out.with_suffix(out.suffix + ".tmp")
+            with gzip.open(tmpf, "wb") as f:
+                run(f"mariadb-dump {useropt()} {db}".split(), stdout=f, text=False)
+            os.rename(tmpf, out)
 
 
 if __name__ == "__main__":
