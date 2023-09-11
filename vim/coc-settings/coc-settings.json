@@ -45,6 +45,9 @@
     "unused-vararg",
     "unused-local"
   ],
+  "perl.p::ls.enable": false,
+  "perl.enable": false,
+  "perl.navigator.enable": true,
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
   "diagnostic-languageserver.debug": true,
