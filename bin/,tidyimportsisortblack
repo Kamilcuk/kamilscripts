@@ -15,7 +15,7 @@ if ! hascmd tidy-imports; then pkg+=(pyflyby); fi
 if ! hascmd isort; then pkg+=(isort); fi
 if ! hascmd black; then pkg+=(black); fi
 if ((${#pkg[@]})); then
-	echo "ERROR: execute pip install --user ${pkg[*]}" >&2
+	echo "ERROR: execute pipx install ${pkg[*]}" >&2
 	exit 2
 fi
 

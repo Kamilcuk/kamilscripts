@@ -693,8 +693,8 @@ endif
 " }}}
 " Plugins configuration {{{1
 
-# Disable default neovim SQL completion because it makes it very slow.
-set g:loaded_sql_completion=0
+" Disable default neovim SQL completion because it makes it very slow.
+let g:omni_sql_no_default_maps=0
 
 if kc#plugin#enabled('vim-crunch')
 	command -nargs=* -range=0 -bang Calculate
