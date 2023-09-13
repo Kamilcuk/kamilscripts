@@ -1,0 +1,3 @@
+#!/bin/sh
+# Remove docker ad...
+export DOCKER_SCAN_SUGGEST=false
