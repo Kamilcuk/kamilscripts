@@ -670,13 +670,8 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					\ 'coc-lists',
 					\ 'coc-snippets',
 					\ 'coc-tabnine',
-					\ 'coc-cmake',
-					\ 'coc-clangd',
 					\ 'coc-yaml',
-					\ 'coc-vimtex',
-					\ 'coc-solargraph',
 					\ 'coc-json',
-					\ 'coc-pyright',
 					\ ]
 		"let g:coc_filetype_map = {
 					"\ 'Jenkinsfile': 'groovy',
@@ -1580,6 +1575,11 @@ if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
 		call coc#config('http.proxyStrictSSL', v:false)
 	endif
 endif
+
+
+if has("nvim")
+	lua require("kc").setup()
+end
 
 " }}}
 

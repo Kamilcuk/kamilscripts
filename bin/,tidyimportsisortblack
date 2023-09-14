@@ -23,6 +23,7 @@ if (($# == 1)); then
 	exec 0<"$1"
 fi
 
+export PYTHONWARNINGS="ignore"
 if tmp=$(
 	tidy-imports --black --quiet --replace-star-imports |
 		isort --stdout --quiet --profile black - |
