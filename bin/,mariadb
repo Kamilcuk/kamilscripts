@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import gzip
 import os
 import shlex
 import subprocess
@@ -126,8 +125,17 @@ def dumpalldir(destination):
         print(f"{dryrunstr()}{quotearr(cmd)} | gzip > {out}")
         if not dryrun():
             tmpf = out.with_suffix(out.suffix + ".tmp")
-            with gzip.open(tmpf, "wb") as f:
-                run(f"mariadb-dump {useropt()} {db}".split(), stdout=f, text=False)
+            run(
+                [
+                    "bash",
+                    "-o",
+                    "pipefail",
+                    "-c",
+                    f"mariadb-dump {useropt()} {db} | gzip",
+                ],
+                stdout=tmpf.open('wb'),
+                text=False,
+            )
             os.rename(tmpf, out)
 
 
