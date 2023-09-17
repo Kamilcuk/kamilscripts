@@ -295,12 +295,12 @@ endif
 augroup Code Comments
 	au!
 	" Horizontal Rule (78 char long)
+	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake,*
+				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 	autocmd FileType vim,lua
 				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
 				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
-	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake
-				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
 	autocmd FileType lua
 				\ nnoremap <silent><buffer> <leader>hr 0i-------------------------------------------------------------------------------<ESC>^1l
 augroup END
@@ -525,7 +525,10 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'kamilcuk/VimRepressPy3'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
+		if executable('yarn')
+			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install' }
+		endif
+		"Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
 		Plug 'folke/neodev.nvim'
 		Plug 'mzlogin/vim-markdown-toc'
 		"

@@ -4,10 +4,20 @@ set -euo pipefail
 export LC_ALL=C
 
 hdmi_port=pci-0000_01_00.1
+hdmi_port=pci-0000_05_00.1
+hdmi_port=$(
+	LC_ALL=C pactl list cards |
+		awk -v  RS='\n\n' '/"HDA NVidia"/' |
+		awk '/Name: /{print $2}' |
+		sed 's/alsa_card.//'
+)
 # hdmi_output=hdmi-stereo-extra1
 hdmi_output=$(
 	LC_ALL=C pactl list cards |
-		awk -v RS='\n\n' '/alsa_card.pci-0000_01_00.1/' |
+		#awk -v RS='\n\n' '/alsa_card.pci-0000_01_00.1/ || /alsa_card.pci0002_00_1b.0/' |
+		#awk -v RS='\n\n' '/alsa_card.pci-0000_00_1b.0/' |
+		#awk -v  RS='\n\n' -v "re=$hdmi_port" '$0 ~ "alsa_card." re' |
+		awk -v  RS='\n\n' -v "re=$hdmi_port" '$0 ~ "alsa_card." re' |
 		awk '/output:hdmi-.*stereo.*available: yes/{gsub(/: /, " "); gsub(/output:/, ""); print $1}'
 )
 hdmi_card=alsa_card.$hdmi_port
@@ -18,6 +28,11 @@ builtin_port=pci-0000_00_1b.0
 builtin_output=analog-stereo
 builtin_card=alsa_card.$builtin_port
 builtin_sink=alsa_output.$builtin_port.$builtin_output
+
+C_info() {
+	declare -p hdmi_card hdmi_output
+	declare -p builtin_card builtin_output
+}
 
 C_fix_pulseaudio() {
 	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output" &

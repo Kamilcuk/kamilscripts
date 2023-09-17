@@ -16,7 +16,7 @@ C_stats() {
 		r btrfs scrub status "$fs"
 		r btrfs filesystem usage "$fs"
 		r btrfs device usage "$fs"
-		r sensorstable | grep _input
+		r sensorstable | grep _input | cut -d: -f1,3- | column -t -s':'
 	)
 	awk -v COLUMNS="$(tput cols)" -v LINES="$(tput lines)" '
 	BEGIN {
