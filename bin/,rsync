@@ -1,3 +1,8 @@
 #!/bin/sh
+if hash ,nice 2>/dev/null; then
+	nice=",nice"
+else
+	nice="nice -n 20 ionice -c 3"
+fi
 set -x
-nice -n 20 ionice -c 3 rsync -aivxsAHSX --progress "$@"
+$nice rsync -aivxsAHSX --progress "$@"
