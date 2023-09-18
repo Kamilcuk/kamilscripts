@@ -5,4 +5,4 @@ else
 	nice="nice -n 20 ionice -c 3"
 fi
 set -x
-$nice rsync -aivxsAHSX --progress "$@"
+$nice rsync -aivxsAHSX --progress --rsync-path="nice -n 20 ionice -c 3 rsync" --rsh="nice -n 20 ionice -c 3 ssh" "$@"
