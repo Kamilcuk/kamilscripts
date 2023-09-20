@@ -468,6 +468,29 @@ command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profil
 
 " }}}
 " Load plugins with vim-plug {{{1
+"
+function! KcInstall()
+	if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
+		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug
+	endif
+	lua package.loaded.kc = nil
+	lua require("kc").lang()
+endfunction
+command! KcInstall :source ~/.vimrc | call KcInstall()
+
+function! KcUpdate()
+	if exists(":PlugUpdate")
+		PlugUpdate
+	else
+		call kc#log('no CocUpdate')
+	end
+	if exists(':CocUpdate')
+		CocUpdate
+	else
+		call kc#log('no CocUpdate')
+	endif
+endfunction
+command! KcUpdate :call KcUpdate()
 
 if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
@@ -492,20 +515,6 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
 		call kc#log('v:version < 800')
 	endif
-
-	function KcUpdate()
-		PlugUpdate
-		sleep 3
-		if exists(':CocUpdate')
-			CocUpdate
-			sleep 3
-		else
-			call kc#log('no CocUpdate')
-		endif
-		sleep 3
-		call kc#Redir('!cd '.g:kamilscripts.' && ./update.sh', 0, 0, 0)
-	endfunction
-	command Update call KcUpdate()
 
 	call plug#begin(plugdir)
 	Plug 'junegunn/vim-plug' " Add itself
@@ -673,7 +682,6 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					\ 'coc-lists',
 					\ 'coc-snippets',
 					\ 'coc-tabnine',
-					\ 'coc-yaml',
 					\ 'coc-json',
 					\ ]
 		"let g:coc_filetype_map = {
@@ -1568,8 +1576,8 @@ autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
 if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
-	if executable('/usr/bin/python3')
-		let g:python3_host_prog = '/usr/bin/python3'
+	if executable('python3')
+		let g:python3_host_prog = 'python3'
 	endif
 	if kc#plugin#enabled('coc.nvim')
 		call coc#config("http.proxy",  $HTTP_PROXY)
@@ -1579,10 +1587,6 @@ if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
 	endif
 endif
 
-
-if has("nvim")
-	lua require("kc").setup()
-end
 
 " }}}
 

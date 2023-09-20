@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
+# shellcheck disable=1091
 
+if [[ $- != *i* ]]; then return; fi
 
-if hash -v fzf-share 2>/dev/null; then
-	. "$(fzf-share)/key-bindings.bash"
-	. "$(fzf-share)/completion.bash"
+if hash fzf-share 2>/dev/null; then
+	_i=$(fzf-share)
+	if [[ -r "$_i"/key-bindings.bash ]]; then
+		. "$_i"/key-bindings.bash
+		if [[ -r "$_i"/completion.bash ]]; then
+			. "$_i"/completion.bash
+		fi
+	fi
+	unset _i
 else
-	for i in \
+	for _i in \
 		/usr/share/fzf/shell/ \
 		/usr/share/fzf/ \
 		/usr/share/doc/fzf/examples \
 	; do
-		if [[ -r "$i"/key-bindings.bash ]]; then
-			. "$i"/key-bindings.bash
-			if [[ -r "$i"/completion.bash ]]; then
-				. "$i"/completion.bash
+		if [[ -r "$_i"/key-bindings.bash ]]; then
+			. "$_i"/key-bindings.bash
+			if [[ -r "$_i"/completion.bash ]]; then
+				. "$_i"/completion.bash
 			fi
 			break
 		fi
 	done
-	unset i
+	unset _i
 fi
 

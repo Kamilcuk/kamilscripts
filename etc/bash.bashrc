@@ -41,8 +41,8 @@ shopt -s cmdhist # multiple commands in one line
 
 alias ls='ls --color -F'
 alias o='less -R'
-alias rm='nice -n 20 ionice -c 3 rm --preserve-root=all --one-file-system -I'
-alias mv='nice -n 20 ionice -c 3 mv -i'
+alias rm='nice -n 40 ionice -c 3 rm --preserve-root=all --one-file-system -I'
+alias mv='nice -n 40 ionice -c 3 mv -i'
 # shellcheck disable=2285
 alias +='pushd .'
 alias -- -='popd'
@@ -73,7 +73,7 @@ for _i in \
 ; do
 	if ! alias "${_i}" >/dev/null 2>&1; then
 		# shellcheck disable=2139
-		alias "${_i}"="nice -n 20 ionice -c 3 $_i"
+		alias "${_i}"="nice -n 40 ionice -c 3 $_i"
 	fi
 done
 unset _i

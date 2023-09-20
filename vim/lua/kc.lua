@@ -24,45 +24,53 @@ local function doifnocmd(cmd, exe)
 	return false
 end
 
--------------------------------------------------------------------------------
-
-local Lang = {}
-
 ---@param what string
-function Lang._CocInstall(what)
-    vim.cmd(":CocInstall " .. what)
+function CocInstall(what)
+    if vim.fn.exists("CocInstall") then
+        vim.cmd(":CocInstall " .. what)
+    end
 end
 
+-------------------------------------------------------------------------------
+
+---@class Lang
+local Lang = {}
+
 function Lang.nomad()
-	doifnocmd("nomad-watch", "!pipx install nomad-watch")
+	vim.cmd("!pipx install nomad-watch")
 end
 
 function Lang.python()
-	Lang._CocInstall("coc-pyright")
-	doifnocmd("black", "!pipx install black")
-	doifnocmd("isort", "!pipx install isort")
-	doifnocmd("pyflyby-diff", "!pipx install pyflyby && pipx pipenv pyflyby install --upgrade black")
-	doifnocmd("pyright", "!pipx install pyright")
+    vim.cmd("!pip install --upgrade pynvim")
+	vim.cmd("!pipx install black")
+	vim.cmd("!pipx install isort")
+	vim.cmd("!pipx install pyflyby")
+    vim.cmd("!pipx runpip pyflyby install --upgrade black")
+	vim.cmd("!pipx install pyright")
+	CocInstall("coc-pyright coc-yaml")
+end
+
+function Lang.yaml()
+	CocInstall("coc-yaml")
 end
 
 function Lang.lua()
-	Lang._CocInstall("coc-lua")
+	CocInstall("coc-lua")
 	doifnocmd("stylua", function()
 		print("Install cargo and then cargo install stylua")
 	end)
 end
 
 function Lang.vim()
-    Lang._CocInstall("coc-vimlsp")
+    CocInstall("coc-vimlsp")
 end
 
 function Lang.groovy()
-    Lang._CocInstall("coc-groovy")
+    CocInstall("coc-groovy")
 end
 
 function Lang.c()
-    Lang._CocInstall("coc-clangd")
-    Lang._CocInstall("coc-cmake")
+    CocInstall("coc-clangd coc-cmake")
 end
 
 function Lang.cmake()
@@ -74,28 +82,26 @@ function Lang.cpp()
 end
 
 function Lang.tex()
-    Lang._CocInstall("coc-vimtext")
+    CocInstall("coc-vimtext")
 end
 
 function Lang.ruby()
-    Lang._CocInstall("coc-solargraph")
+    CocInstall("coc-solargraph")
 end
 
-function Lang._main(args)
-	print(vim.inspect(args))
-	local filetype = args.fargs[1] or vim.bo.filetype
+-------------------------------------------------------------------------------
+
+local kc = { }
+
+function kc.lang(args)
+    print(vim.inspect(args))
+    local filetype = args and args.fargs[1] or vim.bo.filetype
 	assert(filetype ~= nil and filetype ~= "", "filetype = " .. vim.inspect(filetype))
 	print("Setuping " .. vim.inspect(filetype))
 	return Lang[filetype]()
 end
 
--------------------------------------------------------------------------------
-
-local kc = {}
-
 function kc.setup()
-	vim.api.nvim_create_user_command("KcSetupLang", Lang._main, { nargs = "?" })
-	vim.api.nvim_create_user_command("SetupLang", Lang._main, { nargs = "?" })
 end
 
 return kc
