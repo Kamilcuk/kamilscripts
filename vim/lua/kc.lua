@@ -31,6 +31,11 @@ function CocInstall(what)
     end
 end
 
+---@param cmd string
+function npm(cmd)
+	vim.cmd("!npm " .. cmd)
+end
+
 -------------------------------------------------------------------------------
 
 ---@class Lang
@@ -87,6 +92,10 @@ end
 
 function Lang.ruby()
     CocInstall("coc-solargraph")
+end
+
+function Lang.markdown()
+    npm("install markdownlint --save-dev")
 end
 
 -------------------------------------------------------------------------------

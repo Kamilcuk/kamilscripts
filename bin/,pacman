@@ -336,7 +336,7 @@ _sudo_kamil() {
 	if hash sudo 2>/dev/null &&
 		id kamil >/dev/null 2>&1 &&
 		sudo -nu kamil true 2>/dev/null 2>&1 &&
-		sudo -nu kamil sudo true 2>/dev/null 2>&1; then
+		sudo -nu kamil sudo -n true 2>/dev/null 2>&1; then
 		sudo=(sudo -nu kamil "${SUDO_ARGS[@]}")
 	fi
 	_run "${nice[@]}" "${sudo[@]}" "$@"
