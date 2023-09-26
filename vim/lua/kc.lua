@@ -3,25 +3,25 @@
 ---@param cmd string
 ---@return boolean
 local function hascmd(cmd)
-	return vim.fn.executable(cmd)
+    return vim.fn.executable(cmd)
 end
 
 ---@param cmd string
 ---@param exe fun() -> nil|string
 ---@return boolean
 local function doifnocmd(cmd, exe)
-	if not vim.fn.executable("black") then
-		if type(exe) == "function" then
-			exe()
-		elseif type(exe) == "string" then
+    if not vim.fn.executable("black") then
+        if type(exe) == "function" then
+            exe()
+        elseif type(exe) == "string" then
             print("Executing " .. exe)
-			vim.cmd(exe)
-		else
-			assert(false, "Type(exe)=" .. type(exe))
-		end
-		return true
-	end
-	return false
+            vim.cmd(exe)
+        else
+            assert(false, "Type(exe)=" .. type(exe))
+        end
+        return true
+    end
+    return false
 end
 
 ---@param what string
@@ -31,39 +31,50 @@ function CocInstall(what)
     end
 end
 
+<<<<<<< Updated upstream
 ---@param cmd string
 function npm(cmd)
 	vim.cmd("!npm " .. cmd)
 end
 
+||||||| constructed merge base
+=======
+function npm_install(what)
+    vim.cmd("!npm install -g " .. what)
+end
+
+>>>>>>> Stashed changes
 -------------------------------------------------------------------------------
 
 ---@class Lang
 local Lang = {}
 
 function Lang.nomad()
-	vim.cmd("!pipx install nomad-watch")
+    vim.cmd("!pipx install nomad-watch")
 end
 
 function Lang.python()
     vim.cmd("!pip install --upgrade pynvim")
-	vim.cmd("!pipx install black")
-	vim.cmd("!pipx install isort")
-	vim.cmd("!pipx install pyflyby")
+    vim.cmd("!pipx install black")
+    vim.cmd("!pipx install isort")
+    vim.cmd("!pipx install pyflyby")
     vim.cmd("!pipx runpip pyflyby install --upgrade black")
-	vim.cmd("!pipx install pyright")
-	CocInstall("coc-pyright coc-yaml")
+    vim.cmd("!pipx install pyright")
+    CocInstall("coc-pyright coc-yaml")
 end
 
 function Lang.yaml()
-	CocInstall("coc-yaml")
+    CocInstall("coc-yaml")
 end
 
 function Lang.lua()
-	CocInstall("coc-lua")
-	doifnocmd("stylua", function()
-		print("Install cargo and then cargo install stylua")
-	end)
+    CocInstall("coc-lua")
+    doifnocmd(
+        "stylua",
+        function()
+            print("Install cargo and then cargo install stylua")
+        end
+    )
 end
 
 function Lang.vim()
@@ -94,20 +105,40 @@ function Lang.ruby()
     CocInstall("coc-solargraph")
 end
 
+<<<<<<< Updated upstream
 function Lang.markdown()
     npm("install markdownlint --save-dev")
 end
 
+||||||| constructed merge base
+=======
+function Lang.perl()
+    -- vim.cmd("!cpan Perl::LangugeServer")
+    npm_install("perlnavigator-server")
+    CocInstall("coc-perl")
+end
+
+function Lang.lua()
+    npm_install("lua-fmt")
+    CocInstall("coc-lua")
+end
+
+>>>>>>> Stashed changes
 -------------------------------------------------------------------------------
 
-local kc = { }
+local kc = {}
 
 function kc.lang(args)
     print(vim.inspect(args))
     local filetype = args and args.fargs[1] or vim.bo.filetype
-	assert(filetype ~= nil and filetype ~= "", "filetype = " .. vim.inspect(filetype))
-	print("Setuping " .. vim.inspect(filetype))
-	return Lang[filetype]()
+    assert(filetype ~= nil and filetype ~= "", "filetype = " .. vim.inspect(filetype))
+    print("Setuping " .. vim.inspect(filetype))
+    local func = Lang[filetype]
+    if func == nil then
+        print("Configuration for " .. filetype .. " not found")
+        return nil
+    end
+    return func()
 end
 
 function kc.setup()
