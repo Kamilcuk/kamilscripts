@@ -1,0 +1,55 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+builddir=~/.cache/,nvim/neovim
+buildnvim="$builddir"/build/bin/nvim
+
+r() {
+	echo "+ $*" >&2
+	"$@"
+}
+
+build() {
+	,nice -p $$
+	if [[ ! -e "$builddir" ]]; then
+		mkdir -p "$builddir"
+		git clone https://github.com/neovim/neovim.git "$builddir"
+	fi
+	oldversion=$(_nvim -V1 -v) || true
+	r git -C "$builddir" tag -d nightly
+	r git -C "$builddir" fetch --all --tags --prune
+	r git -C "$builddir" checkout tags/nightly
+	r rm -vf "$builddir"/build/.ran-cmake
+	r make -C "$builddir" CMAKE_BUILD_TYPE=RelWithDebInfo VERBOSE=1 cmake nvim
+	newversion=$("$buildnvim" -V1 -v)
+	echo "sdiff oldversion newversion"
+	sdiff <(cat <<<"$oldversion") - <<<"$newversion"
+	echo SUCCESS
+}
+
+_nvim() {
+	if [[ -x "$buildnvim" && -e "$builddir/runtime" ]]; then
+		exec env VIM="$builddir/runtime" "$buildnvim" "$@"
+	elif hash nvim 2>/dev/null; then
+		exec nvim "$@"
+	elif hash vim 2>/dev/null; then
+		exec vim "$@"
+	elif hash vi 2>/dev/null; then
+		exec vim "$@"
+	fi
+}
+
+if (($# == 1)); then
+	case "$1" in
+	-h | --help)
+		echo "Usage: ,nvim [-h|--help|--build]"
+		echo
+		;;
+	--build)
+		build
+		exit
+		;;
+	esac
+fi
+
+_nvim "$@"
