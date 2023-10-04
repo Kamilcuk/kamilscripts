@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+import functools
 import logging
 import os
 import pwd
@@ -14,9 +15,10 @@ import threading
 import time
 import traceback
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import IO, List
+from typing import IO, Iterable, List
 
 ON_POSIX = "posix" in sys.builtin_module_names
 HOSTNAME = socket.gethostname()
@@ -39,7 +41,7 @@ class Waiter(ABC):
         raise NotImplementedError()
 
 
-def readbytelines(input: IO[bytes], separator=b"\0", readSize=1):
+def readbytelines(input: IO[bytes], separator=b"\0", readSize=1) -> Iterable[str]:
     partialLine = b""
     while True:
         charsJustRead = input.read(readSize)
@@ -67,13 +69,13 @@ class Inotify(Waiter):
         self.lock = threading.Lock()
         self.paths = paths
         # cmd = "inotifywait -qme close_write,moved_to --format %f".split()
-        cmd = "inotifywait -qme create,modify,close_write,moved_to --format %w%f%0 --no-newline".split()
-        cmd += [str(p.parent if p.is_file() else p) for p in self.paths]
+        cmd = [
+            *"inotifywait -rqme create,modify,close_write,moved_to --format %w%f%0 --no-newline".split(),
+            *[str(p.parent if p.is_file() else p) for p in self.paths],
+        ]
         log.debug(f"+ {cmd}")
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        self.thread = threading.Thread(
-            target=Inotify.enqueue_output, args=[self], daemon=True
-        )
+        self.thread = threading.Thread(target=self.enqueue_output, daemon=True)
         self.lock.acquire()
         self.thread.start()
 
@@ -131,22 +133,27 @@ class Poller(Waiter):
 ###############################################################################
 
 
+@functools.lru_cache(maxsize=0)
+def clearcmd():
+    return subprocess.check_output("tput clear".split(), text=True)
+
+
+@dataclass
 class Runner(ABC):
-    def __init__(self, cmd: List[str]):
+    paths: List[Path]
+    cmd: List[str]
+
+    def __post_init__(self):
         log.debug(f"Initializing {self.__class__.__name__}")
-        self.cmd = cmd
-        self.cmdstr = quotearr(cmd)
-        self.clearcmd = ""
 
     def clear(self):
         if os.name == "nt":
             os.system("cls")
         else:
-            if not self.clearcmd:
-                self.clearcmd = subprocess.check_output("tput clear".split(), text=True)
-            print(self.clearcmd, flush=True)
+            print(clearcmd(), flush=True)
 
-    def print_left_right(self, left, right):
+    @staticmethod
+    def print_left_right(left, right):
         termsize = os.get_terminal_size()
         columns = termsize.columns
         rightlen = len(right)
@@ -159,15 +166,23 @@ class Runner(ABC):
             leftlen = len(left)
         print("%s%*s" % (left, columns - leftlen, right))
 
+    @functools.lru_cache(maxsize=0)
+    def cmdstr(self):
+        return quotearr(self.cmd)
+
+    @functools.lru_cache(maxsize=0)
+    def leftstr(self):
+        pathsstr = " ".join(str(x) for x in self.paths)
+        return f"Every {pathsstr} change: {self.cmdstr()}"
+
     def event(self):
         if not args.debug:
             self.clear()
         if not args.no_title:
             self.print_left_right(
-                "Every %s change: %s" % (self.cmd[0], self.cmdstr),
-                "%s: %s" % (HOSTNAME, datetime.now().strftime("%c")),
+                self.leftstr(), f"{HOSTNAME}: {datetime.now().strftime('%c')}"
             )
-        print("+", self.cmdstr)
+        print("+", self.cmdstr())
         self.run()
 
     @abstractmethod
@@ -176,9 +191,10 @@ class Runner(ABC):
 
 
 class ShellRunner(Runner):
-    def __init__(self, cmd: List[str]):
+    def __post_init__(self):
         shell = pwd.getpwuid(os.getuid()).pw_shell
-        super().__init__([shell, "-c", " ".join(cmd)])
+        self.cmd = [shell, "-c", " ".join(cmd)]
+        super().__post_init__()
 
     def run(self):
         subprocess.run(self.cmd)
@@ -190,8 +206,9 @@ class ExecRunner(Runner):
 
 
 class PythonRunner(Runner):
-    def __init__(self, cmd: List[str]):
-        super().__init__(["python3shell", *cmd])
+    def __post_init__(self):
+        self.cmd = ["python3shell", *cmd]
+        super().__post_init__()
 
     def run(self):
         sys.argv = args.cmd
@@ -271,8 +288,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     atexit.register(killonexit)
     #
-    paths: List[Path]
-    cmd: List[str]
     if args.paths:
         paths = args.paths
         cmd = [args.path, *args.cmd]
@@ -297,11 +312,11 @@ if __name__ == "__main__":
     #
     if args.python:
         assert not args.exec
-        rr = PythonRunner(cmd)
+        rr = PythonRunner(paths, cmd)
     elif args.exec:
-        rr = ExecRunner(cmd)
+        rr = ExecRunner(paths, cmd)
     else:
-        rr = ShellRunner(cmd)
+        rr = ShellRunner(paths, cmd)
     #
     try:
         while True:
