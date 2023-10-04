@@ -31,19 +31,11 @@ function CocInstall(what)
     end
 end
 
-<<<<<<< Updated upstream
----@param cmd string
-function npm(cmd)
-	vim.cmd("!npm " .. cmd)
-end
-
-||||||| constructed merge base
-=======
+---@param what string
 function npm_install(what)
     vim.cmd("!npm install -g " .. what)
 end
 
->>>>>>> Stashed changes
 -------------------------------------------------------------------------------
 
 ---@class Lang
@@ -105,13 +97,10 @@ function Lang.ruby()
     CocInstall("coc-solargraph")
 end
 
-<<<<<<< Updated upstream
 function Lang.markdown()
-    npm("install markdownlint --save-dev")
+    npm_install("markdownlint --save-dev")
 end
 
-||||||| constructed merge base
-=======
 function Lang.perl()
     -- vim.cmd("!cpan Perl::LangugeServer")
     npm_install("perlnavigator-server")
@@ -123,7 +112,6 @@ function Lang.lua()
     CocInstall("coc-lua")
 end
 
->>>>>>> Stashed changes
 -------------------------------------------------------------------------------
 
 local kc = {}
