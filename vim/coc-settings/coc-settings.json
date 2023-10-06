@@ -37,6 +37,7 @@
   "python.jediEnabled": true,
   "python.jediPath": "/usr/bin/jedi-language-server",
 	"tabnine.priority": 98,
+  "inlayHint.enable": false,
   "inlayHint.refreshOnInsertMode": true,
   "Lua.codeLens.enable": false,
   "Lua.completion.callSnippet": "Both",
