@@ -1,13 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-main() {
-	#nmap -sn -PE -T 5 --max-rtt-timeout 100ms "$@"
-	#exec nmap -n -sn -PE -R --max-rtt-timeout 100ms "$@"
-	nmap -sP "$@"
-	#myping "$@"
-}
-
 r() {
 	echo "+ $*" >&2
 	"$@"
@@ -38,5 +31,50 @@ myping() {
 	xargs -n1 bash -c 'scan "$@"' -- <<<"$hosts" | column -t
 }
 
-main "$@"
+loop_cmd() {
+	ping -W1 "$2" |
+		while IFS= read -r line; do
+			printf "%(%H:%M:%S)T ping %-*s: %s\n" "-1" "$1" "$2" "$line"
+		done
+}
 
+loop() {
+	export -f loop_cmd
+	len=0
+	for i in "$@"; do
+		len=$((len > ${#i} ? len : ${#i}))
+	done
+	printf "%s\n" "$@" | xargs -P0 -n1 bash -c 'loop_cmd "$@"' -- "$len"
+}
+
+usage() {
+	n=$(basename "$0")
+	cat <<EOF
+$n ip...
+	Ping the range of ip addresses with nmap.
+$n loop ip...
+	Continously ping the ip addresses with ping.
+$n (-h|--help)
+EOF
+}
+
+main() {
+	case "$1" in
+	-h | --help)
+		usage
+		exit 2
+		;;
+	loop)
+		shift
+		loop "$@"
+		;;
+	*)
+		#nmap -sn -PE -T 5 --max-rtt-timeout 100ms "$@"
+		#exec nmap -n -sn -PE -R --max-rtt-timeout 100ms "$@"
+		#myping "$@"
+		nmap -sP "$@"
+		;;
+	esac
+}
+
+main "$@"
