@@ -424,11 +424,11 @@
   ;"-islack"
   ;"wmctrl -c 'Slack |' || slack")
 
-(Xbindkey '(Alt F3) "xfce4-appfinder")
-(Xbindkey
-  '(Alt F2)
-  "-iorg.xfce.appfinder"
-  "xfce4-appfinder --collapsed")
+;(Xbindkey '(Alt F3) "xfce4-appfinder")
+;(Xbindkey
+;  '(Alt F2)
+;  "-iorg.xfce.appfinder"
+;  "xfce4-appfinder --collapsed")
 
 (XbindkeyMultiple
   '((Control Shift  Alt Mod4 Mod5 Control_R)
