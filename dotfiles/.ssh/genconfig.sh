@@ -46,7 +46,7 @@ EOF
 }
 
 is_cis() {
-	[[ "$HOSTNAME" =~ \.cis\.gov\.pl$ ]]
+	[[ "$HOSTNAME" == *".cis.gov.pl" ]]
 }
 
 # {{{1 ##############################################################################
@@ -216,128 +216,6 @@ EOF
 
 # {{{1 ##############################################################################
 
-if [[ "$HOSTNAME" != gucio ]]; then
-
-cat <<EOF
-# NCBJ
-Host *.cis.gov.pl *_cis
-	User kcukrowski
-	GSSAPIAuthentication yes
-	GSSAPIDelegateCredentials yes
-EOF
-
-
-dectempl ncbj '
-Host cis-$1-raw
-	Hostname ${2:-$1.cis.gov.pl}
-	User ${3:-kcukrowski}
-	${4:+$4}
-
-Host cis-$1 $1 $1-cis $1.cis.gov.pl
-	Hostname ${2:-$1.cis.gov.pl}
-	User ${3:-kcukrowski}
-	GSSAPIAuthentication yes
-	GSSAPIDelegateCredentials yes
-	$(is_cis || echo RemoteForward 60000)
-	ExitOnForwardFailure no
-	ForwardX11 yes
-	ForwardX11Trusted yes
-	StrictHostKeyChecking no
-	${4:+$4}
-'
-# https://great-idea.atlassian.net/wiki/spaces/FMM/pages/234487859/Using+the+FMR+demo+VM
-ncbj leszcz
-ncbj dzik
-ncbj kumak
-ncbj bocian
-ncbj dudek
-ncbj jenot
-ncbj wilga
-ncbj slimak
-ncbj kaczor
-#
-ncbj usrint2         172.18.0.22
-ncbj interactive0001 172.18.128.2
-ncbj interactive0002 172.18.128.2
-ncbj ui              192.68.51.202      ''   'Port 22222'
-ncbj doc             172.18.128.2
-ncbj cms-vo          ''
-#
-ncbj jenkins         dizvm2.cis.gov.pl  root
-ncbj teptest         dizvm3.cis.gov.pl  root
-ncbj fb_core         dizvm4.cis.gov.pl  root
-ncbj fmr             dizvm5.cis.gov.pl  root
-ncbj squidproxy      dizvm6.cis.gov.pl  root
-ncbj cicd            dizvm7.cis.gov.pl  root
-ncbj proxy           dizvm8.cis.gov.pl  root
-ncbj grafana         dizvm9.cis.gov.pl  root
-ncbj zabbixserver    dizvm11.cis.gov.pl root
-ncbj gurobi          dizvm12.cis.gov.pl root
-ncbj minio           dizvm13.cis.gov.pl root
-ncbj smtp2rest       dizvm13.cis.gov.pl root
-ncbj opengrok        dizvm14.cis.gov.pl root
-ncbj tester          dizvm15.cis.gov.pl root
-ncbj deploycicd      dizvm18.cis.gov.pl root
-ncbj chronoscicd     dizvm20.cis.gov.pl root
-ncbj nexus           dizvm35.cis.gov.pl root
-
-cat <<EOF
-Host code.cis.gov.pl
-	User git
-	$([[ -e ~/.ssh/cis_code_id_rsa ]] && echo "IdentityFile ~/.ssh/cis_code_id_rsa")
-
-$([[ -e ~/.ssh/id_rsa_zwierzaki ]] && cat <<EOF2
-Match host=*.cis.gov.pl
-	IdentityFile ~/.ssh/id_rsa_zwierzaki
-EOF2
-)
-
-Match host=*.cis.gov.pl user=root
-	PasswordAuthentication no
-
-Host zwierzakauto
-	Hostname proxy.services.idea.edu.pl
-	Port 10022
-	StrictHostKeyChecking no
-	UserKnownHostsFile  ~/.ssh/zwierzakauto_known_hosts
-	ControlMaster auto
-	ControlPath  ~/.ssh/.socket_%r@%h-%p
-	ControlPersist 1w
-	User kcukrowski
-
-Host lightsail1
-	User root
-	Hostname 18.159.157.58
-Host chronossail
-	User root
-	Hostname 18.158.158.92
-Host chronosorder
-	User root
-	Hostname 3.127.144.9
-
-Host kgomulskirpi rpichronos01
-	User root
-	Hostname 10.135.0.3
-Host rpichronos02
-	User root
-	Hostname 10.135.0.5
-
-#Host chronosserver
-	#User kcukrowski
-	#Hostname 172.16.0.91
-
-Match host=*.vpn.chronos.services.idea.edu.pl
-	User root
-
-Match host=10.145.*
-	User root
-
-EOF
-
-fi
-
-# {{{1 ##############################################################################
-#
 cat <<EOF
 Host st-ssh-bastion.striketechnologies.com
 	User kcukrowski

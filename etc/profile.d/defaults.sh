@@ -14,8 +14,8 @@ prependpath /usr/sbin
 prependpath /usr/local/bin
 prependpath /usr/local/sbin
 prependpath ~/.cargo/bin
-prependpath ~~/go/bin
-prependpath ~~/.node_modules/bin
+prependpath ~/go/bin
+prependpath ~/.node_modules/bin
 prependpath "$KCDIR"/bin
 prependpath "$KCDIR"/secrets/bin
 prependpath "${XDG_CONFIG_HOME:-~/.config}"/bin
