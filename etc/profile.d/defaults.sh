@@ -1,24 +1,27 @@
 #!/bin/sh
 
-appendpath () {
+prependpath () {
 	case ":$PATH:" in
 		*:"$1":*) ;;
-		*) PATH="${PATH:+$PATH:}$1"; ;;
+		*) PATH="$1${PATH:+:$PATH}"; ;;
 	esac
 }
 
-appendpath "$HOME"/bin
-appendpath "$HOME"/.local/bin
-appendpath "${XDG_CONFIG_HOME:-"$HOME"/.config}"/bin
-appendpath "$KCDIR"/secrets/bin
-appendpath "$KCDIR"/bin
-appendpath "$HOME"/.cargo/bin
-appendpath /usr/local/sbin
-appendpath /usr/local/bin
-appendpath /usr/sbin
-appendpath /usr/bin
-appendpath /sbin
-appendpath /bin
+prependpath /bin
+prependpath /sbin
+prependpath /usr/bin
+prependpath /usr/sbin
+prependpath /usr/local/bin
+prependpath /usr/local/sbin
+prependpath ~/.cargo/bin
+prependpath ~~/go/bin
+prependpath ~~/.node_modules/bin
+prependpath "$KCDIR"/bin
+prependpath "$KCDIR"/secrets/bin
+prependpath "${XDG_CONFIG_HOME:-~/.config}"/bin
+prependpath ~/.local/bin
+prependpath ~/bin
+unset -f prependpath
 export PATH
 
 # https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
@@ -43,10 +46,7 @@ fi
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 
 # https://wiki.archlinux.org/index.php/Node.js
-appendpath "$HOME/.node_modules/bin"
 export npm_config_prefix="$HOME/.node_modules"
-
-unset -f appendpath
 
 # locale ##############################################################################
 

@@ -531,7 +531,6 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug 'aduros/ai.vim'
 		" Plug 'madox2/vim-ai'
 		Plug 'kamilcuk/kai.nvim'
-		Plug 'kamilcuk/VimRepressPy3'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		if executable('yarn')
@@ -542,9 +541,9 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'mzlogin/vim-markdown-toc'
 		"
 		Plug 'junegunn/vader.vim'
-		if has('nvim')
-			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
-		endif
+		"if has('nvim')
+			"Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
+		"endif
 		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
 		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
@@ -557,6 +556,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		endif
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'kamilcuk/VimRepressPy3'
 		" KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin Too slow
 		" Plug 'mg979/vim-visual-multi' " No - overwrites <C-n> taken by NetrdTree
 		" Plug 'honza/vim-snippets' " vim-snipmate default snippets
@@ -676,12 +676,12 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					"\ 'coc-coverage',
 					"\ 'coc-highlight',
 					"\ 'coc-vimlsp',
+					"\ 'coc-tabnine',
 		let g:coc_global_extensions	= [
 					\ 'coc-yank',
 					\ 'coc-diagnostic',
 					\ 'coc-lists',
 					\ 'coc-snippets',
-					\ 'coc-tabnine',
 					\ 'coc-json',
 					\ ]
 		"let g:coc_filetype_map = {

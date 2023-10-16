@@ -12,8 +12,8 @@ r() {
 build() {
 	,nice -p $$
 	if [[ ! -e "$builddir" ]]; then
-		mkdir -p "$builddir"
-		git clone https://github.com/neovim/neovim.git "$builddir"
+		r mkdir -vp "$builddir"
+		r git clone https://github.com/neovim/neovim.git "$builddir"
 	fi
 	oldversion=$(_nvim -V1 -v) || true
 	r git -C "$builddir" tag -d nightly
@@ -23,7 +23,9 @@ build() {
 	r make -C "$builddir" CMAKE_BUILD_TYPE=RelWithDebInfo VERBOSE=1 cmake nvim
 	newversion=$("$buildnvim" -V1 -v)
 	echo "sdiff oldversion newversion"
-	sdiff <(cat <<<"$oldversion") - <<<"$newversion"
+	r sdiff <(cat <<<"$oldversion") - <<<"$newversion"
+	r mkdir -vp ~/.local/bin
+	r ln -svf "$0" ~/.local/bin/nvim
 	echo SUCCESS
 }
 
@@ -35,7 +37,7 @@ _nvim() {
 	elif hash vim 2>/dev/null; then
 		exec vim "$@"
 	elif hash vi 2>/dev/null; then
-		exec vim "$@"
+		exec vi "$@"
 	fi
 }
 
