@@ -67,13 +67,11 @@ else
 	text=""
 fi
 
+nohup bash -xc "$*" >/dev/null </dev/null 2>&1 &
 if hash notify-send 2>/dev/null >/dev/null; then
 	notify-send -u low -i "$g_icon" -t 2000 "xbindkeys" "$(cat <<EOF
 ${text:+<big><b>    $(html-quote <<<"$text")</b></big>
 }<small>Running: <tt>$(html-quote <<<"$*")</tt></small>
 EOF
 )"
-fi &
-bash -x -c "$*"
-wait
-
+fi

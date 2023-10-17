@@ -3,7 +3,11 @@
 prependpath () {
 	case ":$PATH:" in
 		*:"$1":*) ;;
-		*) PATH="$1${PATH:+:$PATH}"; ;;
+		*)
+			if [ -r "$1" ]; then
+				PATH="$1${PATH:+:$PATH}"
+			fi
+			;;
 	esac
 }
 
