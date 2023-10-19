@@ -1,2 +1,12 @@
 #!/bin/sh
-exec tmux new-session -AX -c ~ -s tmux
+ver=$(tmux -V)
+IFS=' ' read -r _ ver <<EOF
+$ver
+EOF
+args=-X
+case "$ver" in
+2.7)
+	args=""
+	;;
+esac
+exec tmux new-session -A $args -c ~ -s tmux
