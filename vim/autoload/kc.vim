@@ -205,3 +205,27 @@ function! kc#log(str) abort
 		call writefile([msg], myfile, "a")
 	endif
 endfunction
+
+" Escape/unescape & < > HTML entities in range (default current line).
+function! kc#htmlentities(line1, line2, action)
+  let search = @/
+  let range = 'silent ' . a:line1 . ',' . a:line2
+  let html = {
+			  \ "lt": "<",
+			  \ "gt": ">",
+			  \ "quot": "\"",
+			  \ }
+  if a:action == 0  " must convert &amp; last
+	for [key, value] in items(html)
+		execute range . 'sno/&' . key . ';/' . value . '/eg'
+	endfor
+    execute range . 'sno/&amp;/&/eg'
+  else              " must convert & first
+    execute range . 'sno/&/&amp;/eg'
+	for [key, value] in items(html)
+		execute range . 'sno/&' . value . ';/' . key . '/eg'
+	endfor
+  endif
+  nohl
+  let @/ = search
+endfunction
