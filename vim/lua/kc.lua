@@ -51,7 +51,7 @@ function Lang.python()
     vim.cmd("!pipx install isort")
     vim.cmd("!pipx install pyflyby")
     vim.cmd("!pipx runpip pyflyby install --upgrade black")
-    vim.cmd("!pipx install pyright")
+    npm_install("pyright")
     CocInstall("coc-pyright coc-yaml")
 end
 
