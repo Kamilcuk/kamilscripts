@@ -505,11 +505,11 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 
 	if v:version >= 800
 		command! -nargs=+ -bar KcPlug8 call plug#(<args>)
-		if executable('npm') && executable('yarn')
+		if has('nvim') && executable('npm') && executable('yarn')
 			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
 		else
 			command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
-			call kc#log('No node or npm or yarn')
+			call kc#log('No nvim or npm or yarn')
 		endif
 	else
 		command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800

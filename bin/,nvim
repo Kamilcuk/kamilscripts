@@ -22,7 +22,11 @@ build() {
 		r mkdir -vp "$builddir"
 		r git clone https://github.com/neovim/neovim.git "$builddir"
 	fi
-	oldversion=$(_nvim -V1 -v) || true
+	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
+		oldversion=$(env VIM="$installdir/share/nvim/runtime" "$installnvim" -V1 -v) || true
+	else
+		oldversion=system
+	fi
 	r git -C "$builddir" tag -d nightly stable
 	r git -C "$builddir" fetch --all --tags --prune
 	r git -C "$builddir" checkout tags/nightly
@@ -41,7 +45,7 @@ build() {
 	#
 	# Create a symlink to this script to run nvim with set VIM runtime.
 	r mkdir -vp ~/.local/bin
-	r ln -svf "$0" ~/.local/bin/nvim
+	r ln -svf "$installnvim" ~/.local/bin/nvim
 	echo SUCCESS
 }
 
