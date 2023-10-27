@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Iterable, List
+from typing import IO, Iterable, List, Optional
 
 ON_POSIX = "posix" in sys.builtin_module_names
 HOSTNAME = socket.gethostname()
@@ -105,6 +105,7 @@ class Inotify(Waiter):
 
     def wait(self):
         self.lock.acquire()
+        self.lock.acquire(timeout=0.1)
 
 
 class Poller(Waiter):
@@ -175,34 +176,51 @@ class Runner(ABC):
         pathsstr = " ".join(str(x) for x in self.paths)
         return f"Every {pathsstr} change: {self.cmdstr()}"
 
+    @abstractmethod
+    def before_event_cb(self):
+        pass
+
     def event(self):
+        self.before_event_cb()
         if not args.debug:
             self.clear()
         if not args.no_title:
             self.print_left_right(
                 self.leftstr(), f"{HOSTNAME}: {datetime.now().strftime('%c')}"
             )
-        print("+", self.cmdstr())
-        self.run()
+        print(f"+ {self.cmdstr()}")
+        self.run_cb()
 
     @abstractmethod
-    def run(self):
+    def run_cb(self):
         raise NotImplementedError()
 
 
-class ShellRunner(Runner):
+@dataclass
+class ExecRunner(Runner):
+    pp: Optional[subprocess.Popen] = None
+
+    def before_event_cb(self):
+        if self.pp is not None:
+            log.debug(f"killing {self.pp}")
+            self.pp.terminate()
+            self.pp.wait()
+            self.pp = None
+
+    def run_cb(self):
+        if args.killonchange:
+            log.debug("STARTING POPEN")
+            self.pp = subprocess.Popen(self.cmd)
+        else:
+            subprocess.run(self.cmd)
+
+
+@dataclass
+class ShellRunner(ExecRunner):
     def __post_init__(self):
         shell = pwd.getpwuid(os.getuid()).pw_shell
         self.cmd = [shell, "-c", " ".join(cmd)]
         super().__post_init__()
-
-    def run(self):
-        subprocess.run(self.cmd)
-
-
-class ExecRunner(Runner):
-    def run(self):
-        subprocess.run(self.cmd)
 
 
 class PythonRunner(Runner):
@@ -210,7 +228,10 @@ class PythonRunner(Runner):
         self.cmd = ["python3shell", *cmd]
         super().__post_init__()
 
-    def run(self):
+    def before_event_cb(self):
+        pass
+
+    def run_cb(self):
         sys.argv = args.cmd
         try:
             exec(open(args.cmd[0], "r").read())
@@ -285,8 +306,12 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(funcName)s:%(lineno)d %(message)s",
+        level=logging.DEBUG if args.debug else logging.INFO,
+    )
     atexit.register(killonexit)
+    log.debug(f"args = {args}")
     #
     if args.paths:
         paths = args.paths
