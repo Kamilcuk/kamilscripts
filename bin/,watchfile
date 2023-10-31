@@ -104,6 +104,7 @@ class Inotify(Waiter):
             pass
 
     def wait(self):
+        assert self.proc.poll() is None, f"Inotifywait exited with {self.proc.returncode}!"
         self.lock.acquire()
         self.lock.acquire(timeout=0.1)
 

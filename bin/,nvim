@@ -10,6 +10,8 @@ installdir="$dir"/install
 # Installed nvim executable location inside installation directory.
 installnvim="$installdir"/bin/nvim
 
+runinstallnvim=(env VIM="$installdir/share/nvim/runtime" "$installnvim")
+
 r() {
 	echo "+ $*" >&2
 	"$@"
@@ -23,7 +25,7 @@ build() {
 		r git clone https://github.com/neovim/neovim.git "$builddir"
 	fi
 	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
-		oldversion=$(env VIM="$installdir/share/nvim/runtime" "$installnvim" -V1 -v) || true
+		oldversion=$("${runinstallnvim[@]}" -V1 -v) || true
 	else
 		oldversion=system
 	fi
@@ -46,12 +48,14 @@ build() {
 	# Create a symlink to this script to run nvim with set VIM runtime.
 	r mkdir -vp ~/.local/bin
 	r ln -svf "$installnvim" ~/.local/bin/nvim
+	echo "SUCCESS compiling nvim, updating plugins..."
+	"${runinstallnvim[@]}" +CocUpdate +PlugInstall +UpdateRemotePlugins +PlugUpgrade +PlugUpdate +qa
 	echo SUCCESS
 }
 
 _nvim() {
 	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
-		exec env VIM="$installdir/share/nvim/runtime" "$installnvim" "$@"
+		exec "${runinstallnvim[@]}" "$@"
 	elif hash nvim 2>/dev/null; then
 		exec nvim "$@"
 	elif hash vim 2>/dev/null; then
