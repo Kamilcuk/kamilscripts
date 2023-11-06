@@ -68,20 +68,39 @@ class Inotify(Waiter):
     def __init__(self, paths: List[Path]):
         self.lock = threading.Lock()
         self.paths = paths
-        # cmd = "inotifywait -qme close_write,moved_to --format %f".split()
+        #
+        pp = subprocess.run(
+            "inotifywait --help".split(), stdout=subprocess.PIPE, text=True
+        )
+        assert pp.returncode in [0, 1], f"{pp}"
+        assert pp.stdout
+        self.version = int(pp.stdout.splitlines()[0].split()[1].split(".")[0])
+        log.debug(f"Detected inotifywait version {self.version}")
+        version3_cmd = "--format %w%f"
+        version4_cmd = "--format %w%f%0 --no-newline"
         cmd = [
-            *"inotifywait -rqme create,modify,close_write,moved_to --format %w%f%0 --no-newline".split(),
+            *"inotifywait -rqme create,modify,close_write,moved_to".split(),
+            *(version3_cmd if self.version <= 3 else version4_cmd).split(),
             *[str(p.parent if p.is_file() else p) for p in self.paths],
         ]
         log.debug(f"+ {cmd}")
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        self.thread = threading.Thread(target=self.enqueue_output, daemon=True)
+        self.thread = threading.Thread(target=self.__enqueue_output, daemon=True)
         self.lock.acquire()
         self.thread.start()
 
-    def enqueue_output(self):
+    def __reader(self):
         assert self.proc.stdout
-        for line in readbytelines(self.proc.stdout, b"\0"):
+        if self.version <= 3:
+            for line in self.proc.stdout:
+                yield line.decode().rstrip("\n")
+        else:
+            for line in readbytelines(self.proc.stdout, b"\0"):
+                yield line
+        self.proc.stdout.close()
+
+    def __enqueue_output(self):
+        for line in self.__reader():
             line = Path(line)
             for path in self.paths:
                 if path.is_file():
@@ -95,7 +114,6 @@ class Inotify(Waiter):
                     break
             else:
                 log.debug(f"Received {line} but not matched against {self.paths}")
-        self.proc.stdout.close()
 
     def signal(self):
         try:
@@ -104,7 +122,9 @@ class Inotify(Waiter):
             pass
 
     def wait(self):
-        assert self.proc.poll() is None, f"Inotifywait exited with {self.proc.returncode}!"
+        assert (
+            self.proc.poll() is None
+        ), f"{self.proc} exited with {self.proc.returncode}!"
         self.lock.acquire()
         self.lock.acquire(timeout=0.1)
 
@@ -331,8 +351,8 @@ if __name__ == "__main__":
     if not args.poll:
         try:
             waiter = Inotify(paths)
-        except FileNotFoundError:
-            log.debug("inotifywait was not found, using polling method")
+        except FileNotFoundError as e:
+            log.debug(f"inotifywait was not found, using polling method: {e}")
     if waiter is None:
         waiter = Poller(paths)
     #
