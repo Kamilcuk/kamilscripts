@@ -355,6 +355,7 @@ if 0 && empty($TMUX)
 		set termguicolors
 	endif
 endif
+set termguicolors
 
 " netrw
 let g:netrw_home = $XDG_CACHE_HOME.'/vim'
@@ -534,16 +535,14 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		if executable('yarn')
-			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install' }
+			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
 		endif
-		"Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
-		Plug 'folke/neodev.nvim'
-		Plug 'mzlogin/vim-markdown-toc'
+		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] }
 		"
 		Plug 'junegunn/vader.vim'
-		"if has('nvim')
-			"Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
-		"endif
+		if has('nvim')
+			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
+		endif
 		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
 		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
 		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
@@ -556,6 +555,8 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		endif
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
+		" Plug 'folke/neodev.nvim'
 		" Plug 'kamilcuk/VimRepressPy3'
 		" KcPlug8 'kamykn/spelunker.vim' " Improved vim spelling plugin Too slow
 		" Plug 'mg979/vim-visual-multi' " No - overwrites <C-n> taken by NetrdTree
@@ -612,7 +613,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		"
 		KcPlugCoc 'neoclide/coc.nvim', { 'branch': 'release' } " coc-nvim, for all
 		KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
-		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
+		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'for': ['c', 'cpp'], 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
 		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
 		"Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
@@ -1377,20 +1378,23 @@ if 1
 endif
 
 " https://github.com/neoclide/coc-highlight
-if !kc#plugin#enabled('semshi')
-	autocmd CursorHold ?* silent call CocActionAsync('highlight')
-elseif exists('CocActionAsync')
-	" Exclude python filetype, semshi is providing highlighting.
-	function! CocHighlightExceptPython() abort
-		if &filetype ==? 'python'
-			return
-		endif
-		call CocActionAsync('highlight')
-	endfunction
-	autocmd CursorHold ?* silent call CocHighlightExceptPython()
+if exists('CocActionAsync')
+	if ! kc#plugin#enabled('semshi')
+		autocmd CursorHold ?* silent call CocActionAsync('highlight')
+	else
+		" Exclude python filetype, semshi is providing highlighting.
+		function! CocHighlightExceptPython() abort
+			if &filetype ==? 'python'
+				return
+			endif
+			call CocActionAsync('highlight')
+		endfunction
+		autocmd CursorHold ?* silent call CocHighlightExceptPython()
+	endif
 endif
 
 if kc#plugin#enabled('coc-fzf')
+	nnoremap <silent><nowait> `` :<C-u>CocFzfList<CR>
 	" Mapping from https://github.com/antoinemadec/coc-fzf
 	nnoremap <silent><nowait> <space>a  :<C-u>CocFzfList diagnostics<CR>
 	nnoremap <silent><nowait> <space>e  :<C-u>CocFzfList extensions<CR>

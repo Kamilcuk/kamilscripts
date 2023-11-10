@@ -29,7 +29,7 @@ build() {
 	else
 		oldversion=system
 	fi
-	r git -C "$builddir" tag -d nightly stable
+	r git -C "$builddir" tag -d nightly stable || :
 	r git -C "$builddir" fetch --all --tags --prune
 	r git -C "$builddir" checkout tags/nightly
 	r rm -vf "$builddir"/build/.ran-cmake
