@@ -9,7 +9,7 @@ bc() {
 		BC_ENV_ARGS=" -q -l $(echo "$KCDIR"/etc/bc.d/*.bc)"
 	fi
 	if hash rlwrap 2>/dev/null; then
-		BC_ENV_ARGS="$BC_ENV_ARGS" LC_ALL=C rlwrap -a -H "$HOME"/.cache/bc_history bc "$@"
+		BC_ENV_ARGS="$BC_ENV_ARGS" LC_ALL=C rlwrap -a -H ~/.cache/bc_history bc "$@"
 	else
 		BC_ENV_ARGS="$BC_ENV_ARGS" LC_ALL=C command bc "$@"
 	fi

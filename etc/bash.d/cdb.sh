@@ -6,7 +6,8 @@
 #fi
 
 cdb() {
-	local cdb_dir=${CDB_DIR:-"$HOME/.cache/cdb"}
+	local cdb_dir
+	cdb_dir=${CDB_DIR:-~.cache/cdb}
 	case "${1:-}" in
 	-u|--unmark|-g|--get)
 		if (($# != 2)); then "cdb: Wrong number of arguments: $#" >&2; return 2; fi
@@ -137,7 +138,8 @@ EOF
 
 # shellcheck disable=2207
 _cdb_completion() {
-	local cdb_dir=${CDB_DIR:-"$HOME/.cache/cdb"}
+	local cdb_dir
+	cdb_dir=${CDB_DIR:-~/.cache/cdb}
 	# if ((COMP_CWORD > 2)); then return; fi
 	if ((COMP_CWORD == 1)); then
   		case "${COMP_WORDS[COMP_CWORD]}" in

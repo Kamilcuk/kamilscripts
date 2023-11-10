@@ -2,7 +2,7 @@
 # kamilscripts etc/profile
 
 for _i in \
-		"${XDG_CONFIG_HOME:-$HOME/.config}"/profile.d/*.sh \
+		"${XDG_CONFIG_HOME:-~/.config}"/profile.d/*.sh \
 		~/.profile_*
 do
 	if [ -e "$_i" ]; then
@@ -19,23 +19,21 @@ fi
 # find KCDIR
 for _i in \
 		/usr/lib/kamilscripts \
-		"$HOME"/.kamilscripts \
-		"$HOME"/.config/kamilscripts/kamilscripts \
-		"$HOME"/.config/kamilscripts \
+		~/.kamilscripts \
+		~/.config/kamilscripts/kamilscripts \
+		~/.config/kamilscripts \
 ; do
-	if [ -e "$_i" ] && [ -e "$_i"/.git ] && [ -e "$_i"/bin ]; then
+	if [ -r "$_i" ] && [ -r "$_i"/.git ] && [ -r "$_i"/bin ]; then
 		KCDIR=$(readlink -f "$_i")
 		break
 	fi
 done
 unset _i
 
-if [ -z "$KCDIR" ]; then
-	echo "KCDIR not found" >&2
+if [ -z "${KCDIR:-}" ]; then
+	echo "kamilscripts/etc/profile: KCDIR not found" >&2
 	return
 fi
-
-##################
 
 for _i in "$KCDIR"/etc/profile.d/*.sh; do
 	if [ -r "$_i" ]; then

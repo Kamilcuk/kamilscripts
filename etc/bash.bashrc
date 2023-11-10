@@ -78,8 +78,9 @@ for _i in \
 done
 unset _i
 
+# When an interactive shell that is not a login shell is started, Bash reads and executes commands from ~/.bashrc
 for _i in \
-		"${XDG_CONFIG_HOME:-$HOME/.config}"/bash.d/*.sh \
+		"${XDG_CONFIG_HOME:-~/.config}"/bash.d/*.sh \
 		~/.bashrc_*
 do
 	if [[ -e "$_i" ]]; then

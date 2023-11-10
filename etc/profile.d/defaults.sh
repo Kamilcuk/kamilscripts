@@ -50,7 +50,7 @@ fi
 export PACKAGER="Kamil Cukrowski <kamilcukrowski@gmail.com>"
 
 # https://wiki.archlinux.org/index.php/Node.js
-export npm_config_prefix="$HOME/.node_modules"
+export npm_config_prefix=~/.node_modules
 
 # locale ##############################################################################
 

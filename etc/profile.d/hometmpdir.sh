@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # shellcheck disable=2088
-if [ -e "$HOME" ]; then
+if [ -e ~ ]; then
 	(
 
 logp() {
@@ -33,8 +33,8 @@ create_new() {
 }
 
 dirname=".$(id -u).home.tmp.dir"
-if [ ! -L "$HOME"/tmp ]; then
-	if [ ! -e "$HOME"/tmp ]; then
+if [ ! -L ~/tmp ]; then
+	if [ ! -e ~/tmp ]; then
 		# Does not exists -> create one
 		create_new
 	else
@@ -44,7 +44,7 @@ if [ ! -L "$HOME"/tmp ]; then
 	fi
 else
 	# Is a symlink -> is it our symlink?
-	linkdest=$(readlink "$HOME"/tmp)
+	linkdest=$(readlink ~/tmp)
 	if [ "${linkdest##*/}" != "$dirname" ]; then
 		logp "~/tmp is a symlink but not to where I want, bailing out. $linkdest $dirname"
 		exit 1
