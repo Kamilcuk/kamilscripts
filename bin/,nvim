@@ -24,6 +24,7 @@ build() {
 		r mkdir -vp "$builddir"
 		r git clone https://github.com/neovim/neovim.git "$builddir"
 	fi
+	cd "$builddir"
 	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
 		oldversion=$("${runinstallnvim[@]}" -V1 -v) || true
 	else
