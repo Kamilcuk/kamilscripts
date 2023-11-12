@@ -65,3 +65,6 @@ preprocessor
 PHP
 unmaintainable
 Gitlab
+SQLAlchmey
+WTFForms
+flask_restapi
