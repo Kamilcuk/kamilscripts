@@ -1,0 +1,71 @@
+#!/bin/bash
+# shellcheck disable=2317
+# https://wiki.archlinux.org/title/Proxy_server
+
+if [ -z "${BASH_VERSION:-}" ]; then
+	echo ",proxy: this script is for bash" >&2
+	return 2
+	exit 2
+fi
+
+,proxy_on() {
+	local tmp
+	if ((!$#)); then
+		cat <<EOF
+Usage: ,proxy_on http://some_proxy_to_set
+
+This script sets all PROXY_* variables to the proxy.
+EOF
+		return 1
+	fi
+	local quiet
+	while (($#)); do
+		case "$1" in
+		-q) quiet=1; ;;
+		*) break; ;;
+		esac
+		shift
+	done
+	export no_proxy="localhost,127.0.0.1,localaddress,.localdomain.com"
+	if tmp=$(hostname -d 2>/dev/null) && [[ -n "$tmp" ]]; then
+		no_proxy+=",.$tmp"
+	fi
+	if tmp=$(hostname -i 2>/dev/null) && [[ -n "$tmp" ]]; then
+		no_proxy+=",$tmp"
+	fi
+	export \
+		NO_PROXY="$no_proxy" \
+		http_proxy="$*" https_proxy="$*" ftp_proxy="$*" \
+		HTTP_PROXY="$*" HTTPS_PROXY="$*" FTP_PROXY="$*" \
+		RSYNC_PROXY="$*" \
+		#
+	if ((!quiet)); then
+		echo ",proxy_on: Proxy environment variables set to $*"
+		env | grep -i _proxy | sort
+	fi
+}
+
+,proxy_off() {
+	local quiet
+	while (($#)); do
+		case "$1" in
+		-q) quiet=1; ;;
+		*) echo ",proxy_off: invalid argument $1" >&2; ;;
+		esac
+		shift
+	done
+	unset \
+		http_proxy https_proxy ftp_proxy no_proxy \
+		HTTP_PROXY HTTPS_PROXY FTP_PROXY NO_PROXY \
+		RSYNC_PROXY \
+		#
+	if ((!quiet)); then
+		echo ",proxy_off: Proxy environment variables unset."
+	fi
+}
+
+if ! return; then
+	echo ",proxy: this file has to be sourced!" >&2
+	env | grep -i _proxy | sort
+	exit 2
+fi

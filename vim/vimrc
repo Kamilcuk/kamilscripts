@@ -611,8 +611,8 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" Languages syntax and support and parsing {{{2
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
 		"
-		KcPlugCoc 'neoclide/coc.nvim', { 'branch': 'release' } " coc-nvim, for all
-		KcPlugCoc 'antoinemadec/coc-fzf' " Use FZF instead of coc.nvim built-in fuzzy finder
+		KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'} " coc-nvim, for all
+		KcPlugCoc 'antoinemadec/coc-fzf', {'branch': 'release'} " Use FZF instead of coc.nvim built-in fuzzy finder
 		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'for': ['c', 'cpp'], 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
 		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
 		"Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
