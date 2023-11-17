@@ -50,7 +50,7 @@ build() {
 	r mkdir -vp ~/.local/bin
 	r ln -svf "$installnvim" ~/.local/bin/nvim
 	echo "SUCCESS compiling nvim, updating plugins..."
-	"${runinstallnvim[@]}" +CocUpdate +PlugInstall +UpdateRemotePlugins +PlugUpgrade +PlugUpdate +qa
+	r "${runinstallnvim[@]}" +PlugInstall +PlugUpgrade +PlugUpdate +CocUpdate +UpdateRemotePlugins +'sleep 0.1' +qa
 	echo SUCCESS
 }
 
