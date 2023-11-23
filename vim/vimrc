@@ -332,7 +332,7 @@ function! LineHome()
 endfunction
 
 " https://vim.fandom.com/wiki/Cscope
-if has('cscope') && has('quickfix')
+if 0 && has('cscope') && has('quickfix')
 	set cscopetag
 	if v:version >= 800
 		set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
@@ -358,13 +358,15 @@ endif
 set termguicolors
 
 " netrw
+let g:loaded_netrw = 1 " disable netrw
+let g:loaded_netrwPlugin = 1 " disable netrw
 let g:netrw_home = $XDG_CACHE_HOME.'/vim'
 let g:netrw_dirhistmax = 0
 " Disable netrw gx mapping., search openbrowser-open
 let g:netrw_nogx = 0
 
 " See :help doxygen.vim
-let g:load_doxygen_syntax=1
+let g:load_doxygen_syntax=1 " Automatically load doxygen for C, C++, C#, IDL and PHP
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 if exists('+CmdlineEnter')
@@ -379,24 +381,26 @@ endif
 " Disable paste
 augroup Cancel_Paste
 	autocmd!
-	autocmd InsertLeave * if &paste | set nopaste | echo 'nopaste' | endif
+	if !g:gui_neovim_running
+		autocmd InsertLeave * if &paste | set nopaste | echo 'nopaste' | endif
+	endif
 augroup END
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 " Reload vim and config automatically
 if 0
-augroup UpdateVim
-	autocmd!
-	autocmd UpdateVim BufWritePost ~/vimrc source ~/vimrc | redraw | silent doautocmd ColorScheme
-	if has('gui_running')
-		if filereadable($MYGVIMRC)
-			source $MYGVIMRC | echo 'Source .gvimrc'
+	augroup UpdateVim
+		autocmd!
+		autocmd UpdateVim BufWritePost ~/vimrc source ~/vimrc | redraw | silent doautocmd ColorScheme
+		if has('gui_running')
+			if filereadable($MYGVIMRC)
+				source $MYGVIMRC | echo 'Source .gvimrc'
+			endif
 		endif
-	endif
-	autocmd FocusLost * :wa
-	autocmd VimResized * redraw!
-	autocmd VimResized * wincmd =
-augroup END
+		autocmd FocusLost * :wa
+		autocmd VimResized * redraw!
+		autocmd VimResized * wincmd =
+	augroup END
 endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
@@ -465,6 +469,7 @@ if 0
 	" https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
 	command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
 endif
+" profile vim
 command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file *
 
 " }}}
@@ -535,7 +540,9 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
-		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
+		if !empty($TMUX)
+			Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
+		endif
 		if executable('yarn') && has('nvim')
 			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
 		endif
@@ -933,7 +940,7 @@ if kc#plugin#enabled('ack.vim')
 	endif
 endif
 
-if 0 || kc#plugin#enabled('gen_tags.vim')
+if 0 && kc#plugin#enabled('gen_tags.vim')
 	let g:loaded_gentags#ctags = 0
 	let g:gen_tags#gtags_auto_gen = 1
 	let g:gen_tags#gtags_auto_update = 1
@@ -956,7 +963,7 @@ if kc#plugin#enabled('golden-ratio')
 	"nnoremap <C-w>+ <C-w><Bar><C-w>_
 endif
 
-if 0 || kc#plugin#enabled('gutentags')
+if 0 && kc#plugin#enabled('gutentags')
 	let g:gutentags_dont_load = 1
 	let g:gutentags_ctags_exclude = [
 		\ '*.git', '*.svg', '*.hg', '.git', '.github',
