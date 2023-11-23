@@ -381,9 +381,7 @@ endif
 " Disable paste
 augroup Cancel_Paste
 	autocmd!
-	if !g:gui_neovim_running
-		autocmd InsertLeave * if &paste | set nopaste | echo 'nopaste' | endif
-	endif
+	autocmd InsertLeave * if &paste | set nopaste | echo 'nopaste' | endif
 augroup END
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
