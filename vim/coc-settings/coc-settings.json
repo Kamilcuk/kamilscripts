@@ -19,6 +19,10 @@
   "diagnostic.showUnused": false,
 	"suggest.autoTrigger": "none",
   "suggest.minTriggerInputLength": 3,
+  "ltex.dictionary": {
+    "en-US": [":~/.kamilscripts/vim/ltex/ltex.dictionary.en-US.txt"],
+    "pl-PL": [":~/.kamilscripts/vim/ltex/ltex.dictionary.pl-PL.txt"],
+  },
   "codeLens.enable": true,
   "solargraph.checkGemVersion": false,
   "clangd.semanticHighlighting": true,

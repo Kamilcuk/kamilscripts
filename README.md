@@ -1,8 +1,8 @@
-# kamil-scripts
+# Kamil scripts
 
 My own bash scripts, configurations, etc.  
 
-# Archlinux installation
+# Arch Linux installation
 
 ```
 curl 'https://gitlab.com/Kamcuk/kamilscripts/raw/master/pkg/archlinux/autoinstall.sh?inline=false' | sudo bash
@@ -12,5 +12,3 @@ curl 'https://gitlab.com/Kamcuk/kamilscripts/raw/master/pkg/archlinux/autoinstal
 
 Author: Kamil Cukrowski `kamilcukrowski @ g#m#a#i#l#.#c#o#m`
 Licenses jointly under MIT License and Beerware License.
-
-

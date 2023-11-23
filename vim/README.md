@@ -1,6 +1,5 @@
 # plugins
 
-All inside `ebundle/*/` directories.
 
 # Links
 

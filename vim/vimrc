@@ -531,30 +531,35 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		"
 		" Plug 'aduros/ai.vim'
 		" Plug 'madox2/vim-ai'
-		Plug 'kamilcuk/kai.nvim'
+		Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		if executable('yarn')
+		Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
+		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
+		if executable('yarn') && has('nvim')
 			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
 		endif
-		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] }
-		"
-		Plug 'junegunn/vader.vim'
+		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
+		Plug 'junegunn/vader.vim' " Vimscript framework
 		if has('nvim')
-			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] }
+			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
 		endif
-		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
-		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
-		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
-		Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
-		Plug 'pappasam/vim-keywordprg-commands'
-		if executable('languagetool')
-			Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great
-		else
-			call kc#log('no languagetool')
-		endif
+		Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
+		Plug 'easymotion/vim-easymotion' " Move motions by number later \\s and observe
+		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
+		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
+		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
 	" }}}
 	" Disabled stuff {{{
+    	" Plug 'justinmk/vim-sneak' " Better highligted search /. I will use /
+		" if executable('languagetool') " Use coc-ltex
+			" Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great :LanguageToolCheck
+		" else
+			" call kc#log('no languagetool')
+		" endif
+		" Plug 'Glench/Vim-Jinja2-Syntax', { 'for': ['c'] }
+		" Plug 'arecarn/vim-selection' " vim-crunch dependency
+		" Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
 		" Plug 'dsawardekam/wordpress.vim', { 'for': ['php'] }
 		" Plug 'folke/neodev.nvim'
 		" Plug 'kamilcuk/VimRepressPy3'
@@ -582,11 +587,15 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		" Plug 'kamilcuk/vim-template', { 'dir': plugdir.'kamilcuk-vim-template' }
 		" Plug 'shumphrey/fugitive-gitlab.vim' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } An extension to fugitive.vim for gitlab support
 		" Plug 'tpope/vim-rhubarb' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } GitHub extension for fugitive.vim
+		" Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
+		" Plug 'Konfekt/FastFold' " Speed up fold vim calculation
+		" Plug 'mhinz/vim-hugefile' " Also edit large files quickly
+		" Plug 'vimwiki/vimwiki' " make notes
+		" Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
+		" Plug 'roman/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.  NIE
 	" }}}
 	" Generic additional configuration and simplifiers {{{2
-		"Plug 'Konfekt/FastFold' " Speed up fold vim calculation
 		Plug 'vim-scripts/LargeFile' " Edit large files quickly
-		"Plug 'mhinz/vim-hugefile' " Also edit large files quickly
 		Plug 'wellle/targets.vim' " Add additional text objects. ( a ( b ) c ) , place cursor on 'b' and type v2A)
 		Plug 'tpope/vim-sensible' " Defaults everyone can agree on
 		" https://github.com/subnut/visualstar.vim/blob/master/plugin/visualstar.vim
@@ -609,13 +618,14 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'tpope/vim-fugitive' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
 	" }}}
 	" Languages syntax and support and parsing {{{2
+		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
+		Plug 'jvirtanen/vim-hcl', { 'for': ['nomad', 'hcl'] }
+		Plug 'Vimjas/vim-python-pep8-indent', { 'for': ['python'] }
 		KcPlug8 'puremourning/vimspector', {'on': '<Plug>VimspectorContinue'}  " Debugger
-		"
-		KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'} " coc-nvim, for all
+		KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'} " coc-nvim, for language server
 		KcPlugCoc 'antoinemadec/coc-fzf', {'branch': 'release'} " Use FZF instead of coc.nvim built-in fuzzy finder
 		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'for': ['c', 'cpp'], 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
 		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
-		"Plug 'vim-syntastic/syntastic' " Using coc-nvim, syntastic is disabled for almost everything
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
 		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
 		Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
@@ -623,54 +633,49 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
 	" }}}
 	" Utilities commands to run and execute {{{2
-		" Ini file parser for vim, used for parsing PYTHON_GITLAB_CFG for fugitive-gitlab.vim
-		Plug 'xuhdev/vim-IniParser'
+		Plug 'xuhdev/vim-IniParser' " Ini file parser for vim, used for parsing PYTHON_GITLAB_CFG for fugitive-gitlab.vim
 		Plug 'chrisbra/NrrwRgn' " select region and copy it to new buffer with :NR !!THIS!!
-		if 0
-			Plug 'arecarn/vim-selection' " vim-crunch dependency
-			Plug 'arecarn/vim-crunch' " Calculate stuff. Select: sin(1)**2 and type <leader>p?=
-		else
-			Plug 'sk1418/HowMuch'
-		endif
-		Plug 'sbdchd/neoformat' " Neoformat and I use :Format
-		"Plug 'vimwiki/vimwiki' " make notes
-		"Plug 'mileszs/ack.vim' " Use ag/ack/ar grep faster alternatives
-		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be
-		"
+		" Plug 'sk1418/HowMuch'
+		Plug 'ri-aje/HowMuch' " :AutoCalc* \\? \?s \? \?= \?s \?=s
+		Plug 'sbdchd/neoformat' " I use :Format constantly
+		KcPlug8 'jlanzarotta/bufexplorer' " Easier buffer opening/splitting/navigating <leader>be \bt \bs \bv
 		Plug 'kamilcuk/vim-ctrlp-oldfiles', { 'on': 'CtrlP' } " Search old files with ctrlp
-		" Search ctrlp in command line also. Never used it, so disabling.
-		"Plug 'suy/vim-ctrlp-commandline', { 'on': 'CtrlP' }
+		"Plug 'suy/vim-ctrlp-commandline', { 'on': 'CtrlP' } " never used it, so disabling.
 		Plug 'FelikZ/ctrlp-py-matcher', { 'on': 'CtrlP' } " Faster ctrl-p matcher with python
-		Plug 'kien/ctrlp.vim' " File searcher. THE file searcher.
-		"
-		" Plug 'roman/golden-ratio' " Automatic resizing of Vim windows to the golden ratio.  NIE
+		Plug 'ctrlpvim/ctrlp.vim' " File searcher. THE file searcher.
 		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
 		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
 		Plug 'preservim/nerdtree', { 'on': ['NERDTreeToggle', 'NERDTreeFind'] } " The file browser.
-		Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
-		Plug 'godlygeek/tabular' " Vim script for text filtering and alignment
-		Plug 'tpope/vim-abolish' " abolish.vim: easily search for, substitute, and abbreviate multiple variants of a word
+		" Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
+		Plug 'zharmany/open-browser.vim' " Open URI with better browser 'gx'
+		Plug 'godlygeek/tabular' " :Tabularize Vim script for text filtering and alignment
+		Plug 'tpope/vim-abolish' " :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
 		Plug 'gyim/vim-boxdraw' " Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
-		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
 		Plug 'samoshkin/vim-mergetool' " Efficient way of using Vim as a Git mergetool
-		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple
-		Plug 'dhruvasagar/vim-table-mode' " print tables in markdown
-		Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings
+		Plug 'dhruvasagar/vim-table-mode' " print tables in markdown \tm (TableMode) | --- | --- |
+		Plug 'tpope/vim-eunuch' " Helpers for UNIX :SudoWrite :Delete :Remove :Rename
+		Plug 'tpope/vim-surround' " quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
+		Plug 'tpope/vim-unimpaired' " Pairs of handy bracket mappings [a [x [b [f [n
 		" For vim plugins dependencies
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
 		Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
 
 		" }}}
 	" View display visible stuff {{{2
-		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces and I think remove them too
+		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces :StripWhitespace
 		Plug 'luochen1990/rainbow' " Rainbow Parentheses
-		Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
+		"Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
+		Plug 'bagrat/vim-buffet' " Trying as faster to buftabline
+		Plug 'ryanoasis/vim-devicons' " dependency for vim-buffet for icons
 		Plug 'airblade/vim-gitgutter' " Show +/-/~ on the left when file changes in git repo
 		Plug 'NLKNguyen/papercolor-theme' " The theme that I use. Actually I modified it that much...
 		KcPlug8 'vim-airline/vim-airline' " The vimline below.
 	" }}}
 	" zzz Utilities that have to be last {{{2
 		Plug 'thaerkh/vim-workspace', { 'dir': plugdir.'vim-workspace' }
+		if has('nvim')
+			Plug 'folke/which-key.nvim'
+		endif
 	" }}}
 	" coc plugins {{{
 					"\ 'coc-groovy',
@@ -678,18 +683,25 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 					"\ 'coc-highlight',
 					"\ 'coc-vimlsp',
 					"\ 'coc-tabnine',
+					"\ 'coc-snippets',
+					"\ coc-yank Highlight yanked text.
+					"\ coc-diagnostic THE linter and diagnostics in coc for all langauges
+					"\ coc-lists More lists in Coc window when searching for stuff
 		let g:coc_global_extensions	= [
 					\ 'coc-yank',
 					\ 'coc-diagnostic',
 					\ 'coc-lists',
-					\ 'coc-snippets',
 					\ 'coc-json',
 					\ ]
+		if executable('languagetool') " Use coc-ltex
+			let g:coc_global_extensions += ['coc-ltex']
+		else
+			call kc#log('no languagetool')
+		endif
 		"let g:coc_filetype_map = {
 					"\ 'Jenkinsfile': 'groovy',
 					"\ }
 	" }}}
-
 
 	call plug#end()
 
@@ -702,6 +714,23 @@ endif
 
 " Disable default neovim SQL completion because it makes it very slow.
 let g:omni_sql_no_default_maps=0
+
+if kc#plugin#enabled('which-key.nvim')
+	lua require("which-key").setup{}
+	set timeout
+	set timeoutlen=300
+endif
+
+if kc#plugin#enabled('vim-buffet')
+	" noremap <Tab> :bn<CR> " Conflicts with ctrl+i
+	" noremap <S-Tab> :bp<CR>
+	noremap <Leader><Tab> :Bw<CR>
+	" noremap <Leader><S-Tab> :Bw!<CR>
+	noremap <C-t> :tabnew split<CR>
+	let g:buffet_show_index = 1
+	let g:buffet_separator = ''
+	let g:buffet_powerline_separators = 0
+endif
 
 if kc#plugin#enabled('vim-crunch')
 	command -nargs=* -range=0 -bang Calculate
