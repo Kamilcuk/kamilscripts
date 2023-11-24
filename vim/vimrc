@@ -149,7 +149,7 @@ if v:version >= 800
 endif
 
 if has('nvim-0.4.5')
-	set signcolumn=auto:3-9
+	set signcolumn=auto:3-5
 elseif has('nvim')
 	set signcolumn=auto:3
 elseif v:version >= 800
@@ -165,6 +165,14 @@ set visualbell
 
 " Additional unicode visual pairs.
 set matchpairs=(:),{:},[:],❰:❱,≤:≥,«:»
+
+if exists('$TMUX')
+	" Set panel name inside TMUX
+	let &t_ts="\e_"
+	let &t_fs="\e\\"
+	"let &titlestring=''
+	set title
+endif
 
 " }}}
 " Global plugin independent configuration {{{1
@@ -292,17 +300,21 @@ if filereadable(expand('~/.vim/vimrc'))
 endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
-augroup Code Comments
+augroup CodeComments
 	au!
 	" Horizontal Rule (78 char long)
 	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake,*
-				\ nnoremap <silent><buffer> <leader>hr 0i###############################################################################<ESC>^1l
+				\ nnoremap <silent><buffer> <leader>hr
+				\ 0i###############################################################################<ESC>^1l
 	autocmd FileType vim,lua
-				\ nnoremap <silent><buffer> <leader>hr 0i" -----------------------------------------------------------------------------<ESC>^1l
+				\ nnoremap <silent><buffer> <leader>hr
+				\ 0i" -----------------------------------------------------------------------------<ESC>^1l
 	autocmd FileType javascript,php,c,cpp,css
-				\ nnoremap <silent><buffer> <leader>hr 0i/* ------------------------------------------------------------------------- */<ESC>^2l
+				\ nnoremap <silent><buffer> <leader>hr
+				\ 0i/* ------------------------------------------------------------------------- */<ESC>^2l
 	autocmd FileType lua
-				\ nnoremap <silent><buffer> <leader>hr 0i-------------------------------------------------------------------------------<ESC>^1l
+				\ nnoremap <silent><buffer> <leader>hr
+				\ 0i-------------------------------------------------------------------------------<ESC>^1l
 augroup END
 
 " https://vi.stackexchange.com/questions/10728/splitting-a-line-into-two/10731
@@ -401,9 +413,10 @@ if 0
 	augroup END
 endif
 
-" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
-" Set tmux title
-if exists('$TMUX')
+if 0 && exists('$TMUX')
+	" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+	" Set tmux title
+	" Not using anymore, instead using tmux pane title set with 'set title' above.
 	augroup TmuxTitle
 		autocmd BufReadPost,FileReadPost,BufNewFile *
 					\ call system(printf(
@@ -469,6 +482,7 @@ if 0
 endif
 " profile vim
 command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file *
+command! KcReload  :source ~/.vimrc
 
 " }}}
 " Load plugins with vim-plug {{{1
@@ -512,11 +526,11 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		if has('nvim') && executable('npm') && executable('yarn')
 			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
 		else
-			command -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
+			command! -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
 			call kc#log('No nvim or npm or yarn')
 		endif
 	else
-		command -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
+		command! -nargs=+ -bar KcPlug8 " Empty. Only enable in vim version above 800
 		call kc#log('v:version < 800')
 	endif
 
@@ -723,7 +737,7 @@ let g:omni_sql_no_default_maps=0
 if kc#plugin#enabled('which-key.nvim')
 	lua require("which-key").setup{}
 	set timeout
-	set timeoutlen=300
+	set timeoutlen=1000
 endif
 
 if kc#plugin#enabled('vim-buffet')
@@ -737,14 +751,13 @@ if kc#plugin#enabled('vim-buffet')
 	let g:buffet_powerline_separators = 0
 endif
 
-if kc#plugin#enabled('vim-crunch')
+if 0 && kc#plugin#enabled('vim-crunch')
 	command -nargs=* -range=0 -bang Calculate
 				\ call crunch#command(<count>, <line1>, <line2>, <q-args>, "<bang>")
 endif
 
 if kc#plugin#enabled("HowMuch")
-	command -range -nargs=* Calculate
-				\ call HowMuch#DoWithCommand(<q-args>)
+	command -range -nargs=* Calculate call HowMuch#DoWithCommand(<q-args>)
 endif
 
 if kc#plugin#enabled('kai.nvim')
@@ -768,7 +781,8 @@ if kc#plugin#enabled('vim-keywordprg-commands')
 	augroup end
 endif
 
-if kc#plugin#enabled('vim-LanguageTool')
+if 0 && kc#plugin#enabled('vim-LanguageTool')
+	" Using coc-ltex
 	if filereadable(expand("~/Downloads/LanguageTool-5.9/languagetool-commandline.jar"))
 		let g:languagetool_jar = expand("~/Downloads/LanguageTool-5.9/languagetool-commandline.jar")
 	else
@@ -781,13 +795,13 @@ if kc#plugin#enabled('vim-LanguageTool')
 	endif
 endif
 
-if kc#plugin#enabled('vim-oscyank')
+if 0 && kc#plugin#enabled('vim-oscyank')
 	autocmd TextYankPost * if v:event.operator is 'y' && v:event.regname is '' | OSCYankReg " | endif
 endif
 
 " Disable syntastic for C and C++, where coc-clangd is used.
 " https://stackoverflow.com/questions/31818109/how-to-selectively-disable-checkers-for-certain-file-types-when-using-syntastic
-if kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
+if 0 && kc#plugin#enabled('syntastic') && kc#plugin#enabled('coc.nvim')
 	let g:syntastic_mode_map = {
 	    \ 'mode': 'active',
 	    \ 'passive_filetypes': [
@@ -867,8 +881,8 @@ endif
 "autocmd BufEnter *.cpp  let b:fswitchdst = 'h,hpp'
 "autocmd BufEnter *.hpp  let b:fswitchdst = 'cpp'
 
-" https://github.com/aperezdc/vim-template
-if kc#plugin#enabled('vim-template')
+if 0 && kc#plugin#enabled('vim-template')
+	" https://github.com/aperezdc/vim-template
 	let g:templates_no_autocmd = 1
 	let g:templates_global_name_prefix = '=template=.'
 	let g:templates_directory = [ g:kamilscripts . '/vim/templates/' ]
@@ -927,8 +941,8 @@ if kc#plugin#enabled('ctrlp.vim')
 	endif
 endif
 
-" https://github.com/ggreer/the_silver_searcher
 if kc#plugin#enabled('ack.vim')
+	" https://github.com/ggreer/the_silver_searcher
 	if executable('ag')
 		let g:ackprg = 'ag --vimgrep -u --follow'
 	elseif executable('rg')
@@ -949,7 +963,7 @@ if 0 && kc#plugin#enabled('gen_tags.vim')
 	let g:gen_tags#cache_dir = '.cache'
 endif
 
-if kc#plugin#enabled('golden-ratio')
+if 0 && kc#plugin#enabled('golden-ratio')
 	" https://github.com/roman/golden-ratio/issues/22#issuecomment-267785637
 	let g:golden_ratio_exclude_nonmodifiable = 1
 	" let b:golden_ratio_resizing_ignored = 1
@@ -1029,7 +1043,7 @@ if kc#plugin#enabled('vim-mergetool')
 	"command MLayout -nargs=1 -complete=customlist, :MergetoolToggleLayout <q-args><CR>
 endif
 
-if kc#plugin#enabled('showmarks')
+if 0 && kc#plugin#enabled('showmarks')
 	let g:showmarks_enable = 0
 	let g:showmarks_add_maps = 0
 	let g:showmarks_ignore_type = 'hpq'
@@ -1128,9 +1142,9 @@ if kc#plugin#enabled('vimwiki')
 endif
 
 if kc#plugin#enabled('vim-eunuch')
-	"delcommand W
-	"delcommand Wall
-	cmap W!! SudoWrite
+	" delcommand W
+	" delcommand Wall
+	" cmap W!! SudoWrite
 endif
 
 if kc#plugin#enabled('neoformat')
@@ -1442,6 +1456,7 @@ if kc#plugin#enabled('coc-fzf')
 endif
 
 if 1
+	" Trigger coc completion after 3 words after at least 3 seconds, no earlier.
 	" https://www.reddit.com/r/vim/comments/8urbln/cursorholdcursorholdi_with_different_updatetimes/
 	function! TriggerCocIf()
 		return &modifiable &&
@@ -1600,10 +1615,6 @@ if filereadable(getcwd().'/pdk.yaml')
 	"let &errorformat.=',       error during compilation: %m \(file: %f\, line: %l\) %.%#'
 
 	"let &makeprg="cat /tmp/1"
-endif
-
-if getcwd() =~# '/home/kamil/ncbj/chronos-ansible'
-	let &makeprg = 'ansible-playbook site.yml --diff --check'
 endif
 
 " }}}
