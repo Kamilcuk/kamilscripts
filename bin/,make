@@ -1,13 +1,20 @@
 #!/bin/sh
-nice=
-if hash nice >/dev/null 2>&1; then
-	nice+=" nice"
+if hash ,nice >/dev/null 2>&1; then
+	nice=,nice
+else
+	nice=
+	if hash nice >/dev/null 2>&1; then
+		nice="$nice nice -n 20"
+	fi
+	if hash ionice >/dev/null 2>&1; then
+		nice="$nice ionice -c2"
+	fi
 fi
-if hash ionice >/dev/null 2>&1; then
-	nice+=" ionice -c2" 	
+if ! { hash nproc 2>/dev/null 2>&1 && nproc=$(nproc) 2>/dev/null; }; then
+	if ! nproc=$(grep -c processor /proc/cpuinfo) 2>/dev/null; then
+		nproc=1
+	fi
 fi
-if ! nproc=$(grep -c processor /proc/cpuinfo) 2>/dev/null; then 
-	nproc=1
-fi
+set -x
 time $nice make -j"$nproc" --load-average="$nproc" "$@"
 

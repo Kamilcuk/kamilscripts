@@ -293,12 +293,6 @@ if &diff
 	augroup END
 endif
 
-command! VimConfig :edit ~/.vimrc
-command! VimLocalConfig :edit ~/.vim/vimrc
-if filereadable(expand('~/.vim/vimrc'))
-	source ~/.vim/vimrc
-endif
-
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 augroup CodeComments
 	au!
@@ -476,13 +470,11 @@ augroup KcDoc
 	autocmd BufWritePost g:kamilscripts.'/vim/doc/*' :helptags g:kamilscripts.'/vim/doc'
 augroup END
 
-if 0
-	" https://gist.github.com/romainl/eae0a260ab9c135390c30cd370c20cd7
-	command! -nargs=+ -complete=command -bar -range Redir silent call kc#Redir(<q-args>, <range>, <line1>, <line2>)
-endif
-" profile vim
-command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file *
+command! VimConfig :edit ~/.vimrc
+command! VimReload :source ~/.vimrc
 command! KcReload  :source ~/.vimrc
+command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file * " profile vim
+command! KcProfileEnd :profile stop
 
 " }}}
 " Load plugins with vim-plug {{{1
@@ -683,8 +675,8 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" View display visible stuff {{{2
 		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces :StripWhitespace
 		Plug 'luochen1990/rainbow' " Rainbow Parentheses
-		"Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
-		Plug 'bagrat/vim-buffet' " Trying as faster to buftabline
+		Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
+		"Plug 'bagrat/vim-buffet' " Trying as faster to buftabline. Does not show buffer number!
 		Plug 'ryanoasis/vim-devicons' " dependency for vim-buffet for icons
 		Plug 'airblade/vim-gitgutter' " Show +/-/~ on the left when file changes in git repo
 		Plug 'NLKNguyen/papercolor-theme' " The theme that I use. Actually I modified it that much...
@@ -1636,6 +1628,15 @@ if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
 		call coc#config('https.rejectUnauthorized', v:false)
 		call coc#config('http.proxyStrictSSL', v:false)
 	endif
+endif
+
+if 1
+	for i in range(1, 9)
+		exec printf('nmap <silent> <leader>0%d :b0%d<CR>', i, i)
+	endfor
+	for i in range(1, 99)
+		exec printf('nmap <silent> <leader>%d :b%d<CR>', i, i)
+	endfor
 endif
 
 
