@@ -5,18 +5,33 @@ hascmd() {
 	hash "$@" 2>/dev/null
 }
 
+case "${1:-}" in
+-h | --help)
+	cat <<EOF
+Usage:
+$1 files...
+$1 -h | --help | -i | --install
+EOF
+	exit 1
+	;;
+-i | --install)
+	set -x
+	pipx upgrade autoimport
+	pipx upgrade pyflyby
+	pipx upgrade isort
+	pipx upgrade black
+	exit
+	;;
+esac
+
 pkg=()
+if ! hascmd autoimport; then pkg+=(autoimport); fi
 if ! hascmd tidy-imports; then pkg+=(pyflyby); fi
 if ! hascmd isort; then pkg+=(isort); fi
 if ! hascmd black; then pkg+=(black); fi
 if ((${#pkg[@]})); then
-	echo "ERROR: execute pipx install ${pkg[*]}" >&2
+	echo "ERROR: execute pipx upgrade ${pkg[*]}" >&2
 	exit 2
-fi
-
-if [[ $# == 1 && ("$1" == -h || "$1" == --help) || $# -gt 1 ]]; then
-	echo "Usage: $1 file"
-	exit 1
 fi
 
 if (($# == 1)); then
@@ -25,7 +40,8 @@ fi
 
 export PYTHONWARNINGS="ignore"
 if tmp=$(
-	tidy-imports --black --quiet --replace-star-imports |
+	autoimport - |
+		tidy-imports --black --quiet --replace-star-imports |
 		isort --stdout --quiet --profile black - |
 		black --quiet -
 ); then

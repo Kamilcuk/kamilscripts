@@ -89,3 +89,7 @@ do
 	fi
 done
 unset _i
+
+,hash() {
+	hash "$@" 2>/dev/null
+}

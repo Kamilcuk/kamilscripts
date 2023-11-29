@@ -131,17 +131,14 @@ endif
 
 set exrc
 
-" I do not like mouse
-set mouse=
-augroup NoMouse
-	autocmd!
-	autocmd BufEnter ?* set mouse=
-augroup END
-
-" https://github.com/neoclide/coc.nvim
-" Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
-" delays and poor user experience.
-set updatetime=300
+if 1
+	" I do not like mouse
+	set mouse=
+	augroup NoMouse
+		autocmd!
+		autocmd BufEnter ?* set mouse=
+	augroup END
+endif
 
 " Don't pass messages to |ins-completion-menu|.
 if v:version >= 800
@@ -172,6 +169,18 @@ if exists('$TMUX')
 	let &t_fs="\e\\"
 	"let &titlestring=''
 	set title
+	if 0 && exists('$TMUX')
+		" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
+		" Set tmux title
+		" Not using anymore, instead using tmux pane title set with 'set title' above.
+		augroup TmuxTitle
+			autocmd BufReadPost,FileReadPost,BufNewFile *
+						\ call system(printf(
+						\ "tmux rename-window '%s %s'", expand("%:t"), has("nvim") ? "nvim" : "vim"
+						\ ))
+			autocmd VimLeave * call system("tmux setw automatic-rename")
+		augroup END
+	endif
 endif
 
 " }}}
@@ -263,10 +272,12 @@ augroup END
 nnoremap <leader>S :%s/\<<C-r><C-w>\>/<C-r><C-w>/g<Left><Left>
 
 " https://castel.dev/post/lecture-notes-1/
+" Run spellchecking using ctrl+l when typing
 inoremap <C-l>     <c-g>u<Esc>[s1z=`]a<c-g>u
 "nnoremap <leader>p <c-g>u<Esc>[s1z=`]a<c-g>u
 
 if 0
+	" cscope support is removed in favor of LSP
 	function g:MyCscope(arg)
 		cexpr []
 		execute 'botright copen ' get(g:, 'dispatch_quickfix_height', '')
@@ -295,8 +306,8 @@ endif
 
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 augroup CodeComments
-	au!
 	" Horizontal Rule (78 char long)
+	autocmd!
 	autocmd FileType python,perl,ruby,sh,zsh,conf,bash,yaml,make,cmake,*
 				\ nnoremap <silent><buffer> <leader>hr
 				\ 0i###############################################################################<ESC>^1l
@@ -317,6 +328,24 @@ nnoremap <leader>s i<CR><Esc>
 " https://github.com/thoughtbot/dotfiles/pull/641
 " Set tags for fugitive
 set tags^=./.git/tags;
+
+if has('nvim')
+	" Set python3 prog, just statically so it's always there to check.
+	if (!exists("g:python3_host_prog") || !executable(g:python3_host_prog)) && executable('python3')
+		let g:python3_host_prog = 'python3'
+	endif
+endif
+
+if 1
+	" use <leader>0X to switch to buffer number X
+	for i in range(1, 9)
+		exec printf('nmap <silent> <leader>0%d :b0%d<CR>', i, i)
+	endfor
+	" use <leader>XY to switch to buffer number XY
+	for i in range(1, 99)
+		exec printf('nmap <silent> <leader>%d :b%d<CR>', i, i)
+	endfor
+endif
 
 " }}}
 " Miscellaneous configuration {{{1
@@ -407,19 +436,6 @@ if 0
 	augroup END
 endif
 
-if 0 && exists('$TMUX')
-	" https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
-	" Set tmux title
-	" Not using anymore, instead using tmux pane title set with 'set title' above.
-	augroup TmuxTitle
-		autocmd BufReadPost,FileReadPost,BufNewFile *
-					\ call system(printf(
-					\ "tmux rename-window '%s %s'", expand("%:t"), has("nvim") ? "nvim" : "vim"
-					\ ))
-		autocmd VimLeave * call system("tmux setw automatic-rename")
-	augroup END
-endif
-
 " https://raw.githubusercontent.com/Akin909/Dotfiles/ee774ce0f0ce591e852e207e209c95ae3811f388/vim/configs/autocommands.vim
 if has('nvim')
 	augroup vimrc-nvim
@@ -446,6 +462,12 @@ endif
 let g:termdebug_use_prompt = 0
 let g:termdebug_wide = 163
 
+command! -bar VimConfig :edit ~/.vimrc
+command! -bar VimReload :source ~/.vimrc
+command! -bar KcReload  :source ~/.vimrc
+command! -bar KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file * " profile vim
+command! -bar KcProfileEnd :profile stop
+
 " }}}
 " GUI Settings {{{
 if has('ide')
@@ -470,44 +492,37 @@ augroup KcDoc
 	autocmd BufWritePost g:kamilscripts.'/vim/doc/*' :helptags g:kamilscripts.'/vim/doc'
 augroup END
 
-command! VimConfig :edit ~/.vimrc
-command! VimReload :source ~/.vimrc
-command! KcReload  :source ~/.vimrc
-command! KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file * " profile vim
-command! KcProfileEnd :profile stop
-
 " }}}
 " Load plugins with vim-plug {{{1
-"
-function! KcInstall()
+
+function! KcPlugInstall()
 	if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug
+		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
+			call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
+		endif
+		call kc#log('vim-plug not clonned. Execute: git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug')
 	endif
+endfunction
+
+function! KcInstall()
+	call KcPlugInstall()
 	lua package.loaded.kc = nil
 	lua require("kc").lang()
 endfunction
-command! KcInstall :source ~/.vimrc | call KcInstall()
+command! -bar KcInstall :source ~/.vimrc | call KcInstall()
 
 function! KcUpdate()
-	if exists(":PlugUpdate")
-		PlugUpdate
-	else
-		call kc#log('no CocUpdate')
-	end
-	if exists(':CocUpdate')
-		CocUpdate
-	else
-		call kc#log('no CocUpdate')
-	endif
+	for l:cmd in split('PlugUpdate --sync,CocUpdateSync,UpdateRemotePlugins,TSUpdate', ',')
+		if exists(':'.l:cmd)
+			exec l:cmd
+		else
+			call kc#log('no '.l:cmd)
+		end
+	endfor
 endfunction
-command! KcUpdate :call KcUpdate()
+command! -bar KcUpdate :call KcUpdate()
 
-if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
-	if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
-		call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
-	endif
-	call kc#log('vim-plug not clonned. Execute: git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug')
-endif
+call KcPlugInstall()
 
 if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	source ~/.vim/plugged/vim-plug/plug.vim
@@ -553,13 +568,20 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
 		Plug 'junegunn/vader.vim' " Vimscript framework
 		if has('nvim')
-			Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
+			"Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
+			Plug 'lukas-reineke/headlines.nvim'
+			Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 		endif
 		Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
 		Plug 'easymotion/vim-easymotion' " Move motions by number later \\s and observe
 		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
 		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
 		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
+		if has('nvim-0.9.4') && has('python3') && py3eval("sys.version_info.major == 3 and sys.version_info.minor >= 10")
+			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
+			Plug '3rd/image.nvim'
+		end
+		Plug 'Xuyuanp/nerdtree-git-plugin'
 	" }}}
 	" Disabled stuff {{{
     	" Plug 'justinmk/vim-sneak' " Better highligted search /. I will use /
@@ -625,8 +647,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 		Plug 'junegunn/fzf.vim' " Things you can do with fzf and Vim
 		Plug 'salcode/vim-interactive-rebase-reverse', { 'for': ['gitrebase', 'git'] } " reverse order commits during a Git rebase
-		" A Git wrapper so awesome, :G
-		Plug 'tpope/vim-fugitive' " , { 'on': ['G', 'GBrowse'], 'for': 'git' }
+		Plug 'tpope/vim-fugitive' " , { 'on': ['G', 'GBrowse'], 'for': 'git' } A Git wrapper so awesome, :G
 	" }}}
 	" Languages syntax and support and parsing {{{2
 		Plug 'martinda/Jenkinsfile-vim-syntax', { 'for': ['Jenkinsfile', 'groovy'] }
@@ -722,6 +743,21 @@ endif
 
 " }}}
 " Plugins configuration {{{1
+
+
+if kc#plugin#enabled('nvim-treesitter')
+	lua <<EOF
+	require'nvim-treesitter.configs'.setup {
+		highlight = {
+    		enable = true,
+		}
+	}
+EOF
+end
+
+if kc#plugin#enabled('headlines.nvim')
+	lua require("headlines").setup()
+end
 
 " Disable default neovim SQL completion because it makes it very slow.
 let g:omni_sql_no_default_maps=0
@@ -1216,10 +1252,13 @@ if kc#plugin#enabled('nerdtree')
 				\ '^__pycache__$',
 				\ '^[^\.]*\.egg-info$',
 				\ ]
-	augroup NERDTree
+	augroup KcNERDTree
 		autocmd!
-		" Close vim if only window is a Nerd Tree
-		autocmd BufEnter * if winnr("$") == 1 && exists("b:NERTree") && b:NERDTree.isTabTree() | q | endif
+		" Exit Vim if NERDTree is the only window remaining in the only tab.
+		autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif
+		" If another buffer tries to replace NERDTree, put it in the other window, and bring back NERDTree.
+		autocmd BufEnter * if winnr() == winnr('h') && bufname('#') =~ 'NERD_tree_\d\+' && bufname('%') !~ 'NERD_tree_\d\+' && winnr('$') > 1 |
+					\ let buf=bufnr() | buffer# | execute "normal! \<C-W>w" | execute 'buffer'.buf | endif
 	augroup END
 endif
 
@@ -1228,22 +1267,27 @@ if kc#plugin#enabled('open-browser.vim')
 	vmap gx <Plug>(openbrowser-open)
 endif
 
-" https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
-"function! KcAg(query, ...)
-  "if type(a:query) != s:TYPE.string
-    "return s:warn('Invalid query argument')
-  "endif
-  "let query = empty(a:query) ? '^(?=.)' : a:query
-  "let args = copy(a:000)
-  "let ag_opts = len(args) > 1 && type(args[0]) == s:TYPE.string ? remove(args, 0) : ''
-  "let command = ag_opts . fzf#shellescape(query)
-  "echom ag_opts.' AA '.command
-  "return call('fzf#vim#ag_raw', insert(args, command, 0))
-"endfunction
-"command! -bang -nargs=* Ag call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
-
 if kc#plugin#enabled('fzf.vim')
-	command! -bang -nargs=* AG call fzf#vim#ag(<q-args>, fzf#vim#with_preview(), <bang>0)
+	if 1
+		function! KcAg(query, ...)
+			" Allow to pass --options to AG.
+			" https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
+			if type(a:query) != v:t_string
+				return s:warn('Invalid query argument')
+			endif
+			let query = empty(a:query) ? '^(?=.)' : a:query
+			let args = copy(a:000)
+			let ag_opts = len(args) > 1 && type(args[0]) == v:t_string ? remove(args, 0) : ''
+			let command = ag_opts . fzf#shellescape(query)
+			echom 'ag '.command
+			return call('fzf#vim#ag_raw', insert(args, command, 0))
+		endfunction
+		command! -bang -nargs=* AG call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
+	else
+		command! -bang -nargs=* AG call fzf#vim#ag(<q-args>, fzf#vim#with_preview(), <bang>0)
+	endif
+	let g:fzf_layout = { 'window': { 'width': 0.99, 'height': 0.99 } }
+	" Alias :AG to :Ag because typing errors.
 endif
 
 if kc#plugin#enabled('vim-glaive')
@@ -1256,6 +1300,11 @@ endif
 " coc.nvim {{{1
 
 if kc#plugin#enabled('coc.nvim')
+
+" https://github.com/neoclide/coc.nvim
+" Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
+" delays and poor user experience.
+set updatetime=300
 
 let g:coc_config_home = g:kamilscripts . 'vim/coc-settings'
 let g:coc_default_semantic_highlight_groups = 1
@@ -1419,7 +1468,7 @@ if 1
 endif
 
 " https://github.com/neoclide/coc-highlight
-if exists('CocActionAsync')
+if exists('*CocActionAsync')
 	if ! kc#plugin#enabled('semshi')
 		autocmd CursorHold ?* silent call CocActionAsync('highlight')
 	else
@@ -1452,9 +1501,9 @@ if 1
 	" https://www.reddit.com/r/vim/comments/8urbln/cursorholdcursorholdi_with_different_updatetimes/
 	function! TriggerCocIf()
 		return &modifiable &&
-					\ exists('nvim_win_get_config') &&
-					\ exists('coc#pum#visible') &&
-					\ exists('coc#start') &&
+					\ exists('*nvim_win_get_config') &&
+					\ exists('*coc#pum#visible') &&
+					\ exists('*coc#start') &&
 					\ !coc#pum#visible() &&
 					\ nvim_win_get_config(0).relative == ''
 	endfunction
@@ -1619,26 +1668,13 @@ autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
 if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
-	if executable('python3')
-		let g:python3_host_prog = 'python3'
-	endif
-	if kc#plugin#enabled('coc.nvim')
+	if kc#plugin#enabled('coc.nvim') && exists('*coc#config')
 		call coc#config("http.proxy",  $HTTP_PROXY)
 		call coc#config("https.proxy", $HTTPS_PROXY)
 		call coc#config('https.rejectUnauthorized', v:false)
 		call coc#config('http.proxyStrictSSL', v:false)
 	endif
 endif
-
-if 1
-	for i in range(1, 9)
-		exec printf('nmap <silent> <leader>0%d :b0%d<CR>', i, i)
-	endfor
-	for i in range(1, 99)
-		exec printf('nmap <silent> <leader>%d :b%d<CR>', i, i)
-	endfor
-endif
-
 
 " }}}
 

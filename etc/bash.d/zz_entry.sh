@@ -11,9 +11,13 @@ if ! hash ps 2>/dev/null || ! [[ $(ps -o stat= -p $$ 2>/dev/null) =~ s && -t 0 ]
 
 if ((BASHLVL)); then return; fi
 
-if hash cal 2>/dev/null; then
+if hash ncal 2>/dev/null || hash cal 2>/dev/null; then
 	if hash tput 2>/dev/null; then tput setaf 2; fi
-	cal -3m
+	if hash ncal 2>/dev/null; then
+		ncal -3M
+	elif hash cal 2>/dev/null; then
+		cal -3m
+	fi
 	if hash tput 2>/dev/null; then tput sgr0; fi
 fi
 

@@ -38,7 +38,7 @@ EOF
 		http_proxy="$*" https_proxy="$*" ftp_proxy="$*" \
 		HTTP_PROXY="$*" HTTPS_PROXY="$*" FTP_PROXY="$*" \
 		RSYNC_PROXY="$*" \
-		#
+		;
 	if ((!quiet)); then
 		echo ",proxy_on: Proxy environment variables set to $*"
 		env | grep -i _proxy | sort
@@ -46,7 +46,7 @@ EOF
 }
 
 ,proxy_off() {
-	local quiet
+	local quiet vars=""
 	while (($#)); do
 		case "$1" in
 		-q) quiet=1; ;;
@@ -54,13 +54,24 @@ EOF
 		esac
 		shift
 	done
-	unset \
-		http_proxy https_proxy ftp_proxy no_proxy \
-		HTTP_PROXY HTTPS_PROXY FTP_PROXY NO_PROXY \
+	for i in \
+		NO_PROXY \
+		http_proxy https_proxy ftp_proxy \
+		HTTP_PROXY HTTPS_PROXY FTP_PROXY \
 		RSYNC_PROXY \
+	; do
+		if [[ -v "$i" ]];then
+			vars+=" $i"
+		fi
+	done
 		#
 	if ((!quiet)); then
-		echo ",proxy_off: Proxy environment variables unset."
+		if [[ -n "$vars" ]]; then
+			unset "$vars"
+			echo ",proxy_off: Proxy environment variables unset: $vars"
+		else
+			echo ",proxy_off: no environment variables were set"
+		fi
 	fi
 }
 
@@ -69,3 +80,4 @@ if ! return; then
 	env | grep -i _proxy | sort
 	exit 2
 fi
+
