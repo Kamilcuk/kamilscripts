@@ -16,5 +16,5 @@ if ! { hash nproc 2>/dev/null 2>&1 && nproc=$(nproc) 2>/dev/null; }; then
 	fi
 fi
 set -x
-time $nice make -j"$nproc" --load-average="$nproc" "$@"
+time $nice make -j"$nproc" -l"$nproc" "$@"
 

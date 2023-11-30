@@ -132,7 +132,7 @@ case "${XDG_CURRENT_DESKTOP,,}" in
 	;;
 esac
 
-if L_command_exists xbindkeys && ! pgrep xbindkeys >/dev/null; then
+if [[ $XDG_SESSION_TYPE != "wayland" ]] && L_command_exists xbindkeys && ! pgrep xbindkeys >/dev/null; then
 	run xbindkeys -p
 fi
 

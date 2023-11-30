@@ -7,6 +7,7 @@
   ],
 	"colors.enable": true,
   "semanticTokens.enable": true,
+  "hover.previewMaxHeight": 200,
   "diagnostic.errorSign": "✘",
   "diagnostic.warningSign": "⚠",
   "diagnostic.infoSign": "🛈",
