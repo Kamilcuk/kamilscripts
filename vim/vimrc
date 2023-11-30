@@ -584,7 +584,9 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		Plug 'Xuyuanp/nerdtree-git-plugin'
 	" }}}
 	" Disabled stuff {{{
-    	" Plug 'justinmk/vim-sneak' " Better highligted search /. I will use /
+		" Plug 'folke/noice.nvim' " too sloooooooow
+		" Plug 'MunifTanjim/nui.nvim' " dependency of noice
+		" Plug 'justinmk/vim-sneak' " Better highligted search /. I will use /
 		" if executable('languagetool') " Use coc-ltex
 			" Plug 'dpelle/vim-LanguageTool' " Add support for language tool, not great :LanguageToolCheck
 		" else
@@ -748,9 +750,10 @@ endif
 if kc#plugin#enabled('nvim-treesitter')
 	lua <<EOF
 	require'nvim-treesitter.configs'.setup {
+		ensure_installed = vim.split("bash python vim lua", " "),
 		highlight = {
     		enable = true,
-		}
+		},
 	}
 EOF
 end
@@ -762,6 +765,28 @@ end
 " Disable default neovim SQL completion because it makes it very slow.
 let g:omni_sql_no_default_maps=0
 
+if kc#plugin#enabled('noice.nvim')
+	lua <<EOF
+require("noice").setup({
+  lsp = {
+    -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+    override = {
+      ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+      ["vim.lsp.util.stylize_markdown"] = true,
+      ["cmp.entry.get_documentation"] = true,
+    },
+  },
+  -- you can enable a preset for easier configuration
+  presets = {
+    bottom_search = true, -- use a classic bottom cmdline for search
+    command_palette = false, -- position the cmdline and popupmenu together
+    long_message_to_split = true, -- long messages will be sent to a split
+    inc_rename = false, -- enables an input dialog for inc-rename.nvim
+    lsp_doc_border = false, -- add a border to hover docs and signature help
+  },
+})
+EOF
+endif
 if kc#plugin#enabled('which-key.nvim')
 	lua require("which-key").setup{}
 	set timeout
@@ -879,6 +904,9 @@ if kc#plugin#enabled('vim-workspace')
 	let g:workspace_create_new_tabs = 0
 	let g:workspace_session_directory = $HOME . '/.vim/sessions/'
 	let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
+	" Becuase a bug, these two populate search / history, just disable them.
+	let g:workspace_autosave_untrailtabs = 0
+	let g:workspace_autosave_untrailspaces = 0
 	if has('nvim')
 		let g:workspace_undodir = $HOME . '/.vim/undodir/'
 	else
