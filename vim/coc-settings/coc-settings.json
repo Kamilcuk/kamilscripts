@@ -57,8 +57,8 @@
   "perl.navigator.enable": true,
   "diagnostic-languageserver.enable": true,
   "diagnostic-languageserver.mergeConfig": true,
-  "diagnostic-languageserver.debug": true,
-  "diagnostic-languageserver.trace.server": "verbose",
+  "diagnostic-languageserver.debug": false,
+  "diagnostic-languageserver.trace.server": "off",
   "diagnostic-languageserver.filetypes": {
     "c": [
       "cpplint_c",

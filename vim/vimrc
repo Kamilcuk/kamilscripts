@@ -83,30 +83,25 @@ endfunction
 set spellsuggest=expr:Kc_spell_suggest_correct_word(),10
 
 " Tell vim to remember certain things when we
-let tmp = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
-if !isdirectory(fnamemodify(tmp, ':h'))
-	call mkdir(fnamemodify(tmp, ':h'), 'p')
+let &viminfofile = expand(!has('nvim') ? '~/.cache/vim/viminfo' : '~/.local/share/nvim/shada/main.shada')
+if !isdirectory(fnamemodify(&viminfofile, ':h'))
+	call mkdir(fnamemodify(&viminfofile, ':h'), 'p')
 endif
 " Remove ~/.viminfo
 if filereadable(expand('~/.viminfo'))
 	silent !mkdir -p ~/.cache/vim && mv ~/.viminfo ~/.cache/vim/viminfo.old
 endif
-let &viminfo="'100,/50,:5000,<800,@500,h,n" . tmp
-"             |    |   |     |    |    | + viminfo file path
+let &viminfo="'100,/50,:5000,<800,@500,h"
 "             |    |   |     |    |    + disable 'hlsearch' loading viminfo
 "             |    |   |     |    + items in the input-line history
 "             |    |   |     + number of lines for each register
 "             |    |   + items in the command-line history
 "             |    + search history saved
 "             + number of edited files for which marks are remembered
-unlet tmp
 
 " https://stackoverflow.com/questions/17936130/vim-undo-undo-changes-after-file-write
 if has('persistent_undo')    "check if your vim version supports it
 	set undofile             "turn on the feature
-	if !has('nvim')
-		set undodir=~/.vim/undo  "directory where the undo files will be stored
-	endif
 endif
 
 " https://vim.fandom.com/wiki/Folding
@@ -464,7 +459,6 @@ let g:termdebug_wide = 163
 
 command! -bar VimConfig :edit ~/.vimrc
 command! -bar VimReload :source ~/.vimrc
-command! -bar KcReload  :source ~/.vimrc
 command! -bar KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file * " profile vim
 command! -bar KcProfileEnd :profile stop
 
@@ -492,6 +486,9 @@ augroup KcDoc
 	autocmd BufWritePost g:kamilscripts.'/vim/doc/*' :helptags g:kamilscripts.'/vim/doc'
 augroup END
 
+command! -bar LuaConfig :execute 'edit '.g:kamilscripts.'/vim/lua/kc.lua'
+command! -bar LuaReload :lua package.loaded.kc = nil require("kc").setup()
+
 " }}}
 " Load plugins with vim-plug {{{1
 
@@ -504,12 +501,12 @@ function! KcPlugInstall()
 	endif
 endfunction
 
-function! KcInstall()
+function! KcInstall(arg)
 	call KcPlugInstall()
 	lua package.loaded.kc = nil
-	lua require("kc").lang()
+	lua require("kc").lang(vim.fn.eval('a:arg'))
 endfunction
-command! -bar KcInstall :source ~/.vimrc | call KcInstall()
+command! -bar -nargs=? KcInstall :VimReload | call KcInstall(<q-args>)
 
 function! KcUpdate()
 	for l:cmd in split('PlugUpdate --sync,CocUpdateSync,UpdateRemotePlugins,TSUpdate', ',')
@@ -559,9 +556,7 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
-		if !empty($TMUX)
-			Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
-		endif
+		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
 		if executable('yarn') && has('nvim')
 			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
 		endif
@@ -659,12 +654,12 @@ if filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		KcPlugCoc 'neoclide/coc.nvim', {'branch': 'release'} " coc-nvim, for language server
 		KcPlugCoc 'antoinemadec/coc-fzf', {'branch': 'release'} " Use FZF instead of coc.nvim built-in fuzzy finder
 		KcPlugCoc 'kamilcuk/vim-lsp-cxx-highlight', { 'for': ['c', 'cpp'], 'dir': plugdir.'kamilcuk-vim-lsp-cxx-highlight'}
-		"KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
+		" KcPlugCoc 'stefantb/vim-lsp-cxx-highlight', {'for': ['c', 'cpp'], 'dir': plugdir.'stefantb-vim-lsp-cxx-highlight'}
 		Plug 'mrk21/yaml-vim', { 'for': [ 'yml', 'yaml' ] }
 		Plug 'rodjek/vim-puppet', { 'for': [ 'puppet', 'ruby' ] }
 		Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
 		Plug 'chr4/nginx.vim', { 'for': 'nginx' }
-		KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
+		" KcPlug8 'lervag/vimtex', { 'for': 'tex' } " The plugin for tex
 	" }}}
 	" Utilities commands to run and execute {{{2
 		Plug 'xuhdev/vim-IniParser' " Ini file parser for vim, used for parsing PYTHON_GITLAB_CFG for fugitive-gitlab.vim
