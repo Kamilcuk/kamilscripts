@@ -7,6 +7,10 @@ local function hascmd(cmd)
 	return vim.fn.executable(cmd)
 end
 
+local function log(what)
+    print("kc.lua: " .. what)
+end
+
 ---@param cmd string
 ---@param exe fun() -> nil|string
 ---@return boolean
@@ -26,12 +30,12 @@ local function doifnocmd(cmd, exe)
 end
 
 local function lcmd(what)
-	print(what)
+	log(what)
 	vim.cmd(what)
 end
 
 local function execute(what)
-	print("!" .. what)
+	log("!" .. what)
 	os.execute(what)
 end
 
@@ -99,7 +103,7 @@ function Lang.lua()
 	TSInstall("lua")
 	npm_install("lua-fmt")
 	doifnocmd("stylua", function()
-		print("Install cargo and then cargo install stylua")
+		log("Install cargo and then cargo install stylua")
 	end)
 	CocInstall("coc-lua")
 end
@@ -156,13 +160,13 @@ end
 local kc = {}
 
 function kc.lang(arg)
-	print(vim.inspect(arg))
-	local filetype = arg and arg or vim.bo.filetype
+	log(vim.inspect(arg))
+	local filetype = arg and arg ~= "" and arg or vim.bo.filetype
 	assert(filetype ~= nil and filetype ~= "", "filetype = " .. vim.inspect(filetype))
-	print("Setuping " .. vim.inspect(filetype))
+	log("kc.lua: Setuping " .. vim.inspect(filetype))
 	local func = Lang[filetype]
 	if func == nil then
-		print("Configuration for " .. filetype .. " not found")
+		log("Configuration for " .. filetype .. " not found")
 		return nil
 	end
 	return func()

@@ -366,9 +366,27 @@ C_p() { _yay "$@"; }
 
 C_pn() { C_p --noconfirm "$@"; }
 
+modified_more_than_days() {
+	# Check if file was modified more than given number of days.
+	local tmp
+	if [[ ! -e "$1" ]]; then
+		return 2
+	fi
+	if ! tmp=$(find "$1" -mtime "+$2"); then
+		return 3
+	fi
+	[[ -n "$tmp" ]]
+}
+
+run_reflector() {
+	if hash reflector 2>/dev/null && modified_more_than_days /etc/xdg/reflector/reflector.conf 7; then
+		_sudo "${nice[@]}" reflector @/etc/xdg/reflector/reflector.conf
+	fi
+}
+
 C_pupdate() {
 	local keyrings &&
-		_sudo "${nice[@]}" reflector @/etc/xdg/reflector/reflector.conf &&
+		run_reflector &&
 		keyrings=$(pacman -Qqs '.*-keyring$') &&
 		if [[ -n "$keyrings" ]]; then
 			# shellcheck disable=2086
