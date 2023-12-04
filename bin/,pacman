@@ -378,9 +378,14 @@ modified_more_than_days() {
 	[[ -n "$tmp" ]]
 }
 
+C_reflector() {
+	_sudo "${nice[@]}" reflector @/etc/xdg/reflector/reflector.conf "$@"
+}
+
+# shellcheck disable=2120
 run_reflector() {
 	if hash reflector 2>/dev/null && modified_more_than_days /etc/xdg/reflector/reflector.conf 7; then
-		_sudo "${nice[@]}" reflector @/etc/xdg/reflector/reflector.conf
+		C_reflector "$@"
 	fi
 }
 
