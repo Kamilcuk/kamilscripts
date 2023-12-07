@@ -1564,6 +1564,7 @@ if 1
 	augroup end
 endif
 
+
 endif " kc#plugin#enabled('coc.nvim')
 
 " }}}
@@ -1688,8 +1689,8 @@ endfunction
 autocmd BufWritePost .xbindkeysrc.scm silent! call KcRestartXbindkeys()
 autocmd BufWritePost .xbindkeysrc     silent! call KcRestartXbindkeys()
 
-if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128")
-	if kc#plugin#enabled('coc.nvim') && exists('*coc#config')
+if hostname() =~# '\.striketechnologies\.com' || stridx($HTTP_PROXY, ":3128") || hostname() =~# "kcukrowski-ph"
+	if kc#plugin#enabled('coc.nvim')
 		call coc#config("http.proxy",  $HTTP_PROXY)
 		call coc#config("https.proxy", $HTTPS_PROXY)
 		call coc#config('https.rejectUnauthorized', v:false)

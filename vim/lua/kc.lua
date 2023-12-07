@@ -1,6 +1,20 @@
 -- kc.lua
 -- local vim = require('vim')
 
+---@generic N
+---@generic M
+---@param cmd boolean
+---@param a N
+---@param b M
+---@return N | M
+local function ternary(cmd, a, b)
+    if cmd then
+        return a
+    else
+        return b
+    end
+end
+
 ---@param cmd string
 ---@return boolean
 local function hascmd(cmd)
@@ -39,10 +53,23 @@ local function execute(what)
     os.execute(what)
 end
 
+local function CocGetExtensions()
+    local extensions = vim.fn.CocAction("extensionStats")
+    local ret = {}
+    for _, v in ipairs(extensions) do
+        ret[v.id] = true
+    end
+    return ret
+end
+
 ---@param what string
 function CocInstall(what)
     if vim.fn.exists(":CocInstall") then
-        lcmd(":CocInstall " .. what)
+        if not CocGetExtensions()[what] then
+            lcmd(":CocInstall " .. what)
+		else
+			log("Coc extension already installed: " .. what)
+        end
     end
 end
 
@@ -160,14 +187,20 @@ function Lang.perl()
     TSInstall("perl")
 end
 
+function Lang.javascript()
+    npm_install("js-beautify")
+    CocInstall("coc-tsserver")
+    TSInstall("javascript")
+end
+
 -------------------------------------------------------------------------------
 
 local kc = {}
 
 function kc.lang(arg)
     log(vim.inspect(arg))
-    local filetype = arg and arg ~= "" and arg or vim.bo.filetype
-    if filetype ~= nil and filetype ~= "" then
+    local filetype = (arg ~= nil and arg ~= "") and arg or vim.bo.filetype
+    if filetype == nil or filetype == "" then
         log("Ignoring filetype because empty: " .. vim.inspect(filetype))
         return nil
     end

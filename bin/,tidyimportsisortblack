@@ -40,7 +40,7 @@ fi
 
 export PYTHONWARNINGS="ignore"
 if tmp=$(
-	autoimport - |
+	#autoimport - |
 		tidy-imports --black --quiet --replace-star-imports |
 		isort --stdout --quiet --profile black - |
 		black --quiet -

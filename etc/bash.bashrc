@@ -12,15 +12,20 @@ if [[ -z "$KCDIR" ]]; then
 	. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/profile
 fi
 
-if [[ $- != *i* ]]; then return; fi
-
-# load bash dropins
-for _i in "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/bash.d/*.sh; do
+# When an interactive shell that is not a login shell is started, Bash reads and executes commands from ~/.bashrc
+for _i in \
+		"${KCDIR}"/etc/bash.d/*.sh \
+		"${XDG_CONFIG_HOME:-~/.config}"/bash.d/*.sh \
+		~/.bashrc_*
+do
 	if [[ -e "$_i" ]]; then
+		# shellcheck disable=SC1090
 		. "$_i"
 	fi
 done
 unset _i
+
+if [[ $- != *i* ]]; then return; fi
 
 # set some history variables
 export HISTSIZE=
@@ -74,18 +79,6 @@ for _i in \
 	if ! alias "${_i}" >/dev/null 2>&1; then
 		# shellcheck disable=2139
 		alias "${_i}"="nice -n 40 ionice -c 3 $_i"
-	fi
-done
-unset _i
-
-# When an interactive shell that is not a login shell is started, Bash reads and executes commands from ~/.bashrc
-for _i in \
-		"${XDG_CONFIG_HOME:-~/.config}"/bash.d/*.sh \
-		~/.bashrc_*
-do
-	if [[ -e "$_i" ]]; then
-		# shellcheck disable=SC1090
-		. "$_i"
 	fi
 done
 unset _i

@@ -7,6 +7,10 @@ if [[ -e ~/.profile ]]; then
 	. ~/.profile
 fi
 
+if [[ -e ~/.kamilscripts/etc/bash.bashrc ]]; then
+	. ~/.kamilscripts/etc/bash.bashrc
+fi
+
 if [[ -e ~/.bashrc ]]; then
 	. ~/.bashrc
 fi

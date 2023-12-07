@@ -35,6 +35,8 @@ if [ -z "${KCDIR:-}" ]; then
 	return
 fi
 
+export KCDIR
+
 for _i in "$KCDIR"/etc/profile.d/*.sh; do
 	if [ -r "$_i" ]; then
 		# shellcheck disable=SC1090
