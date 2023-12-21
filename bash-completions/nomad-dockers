@@ -1,0 +1,1 @@
+eval "$(_NOMAD_DOCKERS_COMPLETE=bash_source nomad-dockers)"

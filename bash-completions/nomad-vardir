@@ -1,0 +1,1 @@
+eval "$(_NOMAD_VARDIR_COMPLETE=bash_source nomad-vardir)"

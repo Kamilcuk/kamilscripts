@@ -391,7 +391,7 @@ run_reflector() {
 
 C_pupdate() {
 	local keyrings &&
-		run_reflector &&
+		#run_reflector &&
 		keyrings=$(pacman -Qqs '.*-keyring$') &&
 		if [[ -n "$keyrings" ]]; then
 			# shellcheck disable=2086

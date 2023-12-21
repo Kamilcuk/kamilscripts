@@ -1,9 +1,1 @@
-#!/bin/bash
-# https://click.palletsprojects.com/en/8.1.x/shell-completion/
-eval "$(
-	# Take name and uppercase complete it with variable.
-	name="${BASH_SOURCE[0]##*/}"
-	complete=${name^^}
-	complete=${complete//-/_}
-	env "_${complete}_COMPLETE=bash_source" "$name"
-)"
+eval "$(_NOMAD_WATCH_COMPLETE=bash_source nomad-watch)"
