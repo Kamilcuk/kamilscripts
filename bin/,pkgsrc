@@ -1,10 +1,17 @@
 #!/bin/bash
+# shellcheck disable=SC2120
 set -euo pipefail
 
-# be nice
-if [[ $(nice) -lt 10 ]]; then
-	exec nice -n 10 "$0" "$@"
-fi
+be_nice() {
+	if hash ,nice 2>/dev/null; then
+		,nice -p $$
+	else
+		renice 20 -p $$ >/dev/null
+		ionice -c 3 -p $$
+	fi
+}
+
+be_nice
 
 name=$(basename "$0")
 
@@ -33,7 +40,7 @@ ask() {
 rootdir=${rootdir:-~/.pkgsrc}
 pkgdir=${pkgdir:-"$rootdir/pkg"}
 srcdir=${srcdir:-"$rootdir/src"}
-export WRKOBJDIR=$rootdir/work
+export WORKOBJDIR=$rootdir/work
 export DISTDIR=$rootdir/distfiles
 export MAKE_JOBS=${MAKE_JOBS:-$(nproc)}
 export SH=/bin/bash
@@ -51,7 +58,7 @@ A general wrapper around pkgsrc to install everything and stuff
 with some generic ease what not.
 
 Variables:
-$(declare -p rootdir pkgdir srcdir WRKOBJDIR DIRSTDIR MAKE_JOBS SH mk_conf | sed 's/^/  /')
+$(declare -p rootdir pkgdir srcdir WORKOBJDIR DIRSTDIR MAKE_JOBS SH mk_conf | sed 's/^/  /')
 
 Written by Kamil Cukrowski
 Licensed jointly under Beerware and MIT License
@@ -60,7 +67,7 @@ EOF
 
 ,pkgsrc_bootstrap_download_unpack() {
 	if (($# != 0)); then fatal "Takes no arguments"; fi
-	mkdir -p "$pkgdir" "$srcdir" "$WRKOBJDIR" "$DISTDIR"
+	mkdir -p "$pkgdir" "$srcdir" "$WORKOBJDIR" "$DISTDIR"
 	if ! dir_is_empty "$srcdir"; then
 		fatal "Dir is not empty $srcdir"
 	fi
@@ -70,17 +77,19 @@ EOF
 
 ,pkgsrc_bootstrap_run() {
 	if (($# != 0)); then fatal "Takes no arguments"; fi
-	run rm -rf "$WRKOBJDIR" # no idea why
-	run "$srcdir"/bootstrap/bootstrap \
+	run rm -rf "$WORKOBJDIR" # no idea why
+	pushd "$srcdir"/bootstrap
+	run ./bootstrap \
 		--make-jobs "$MAKE_JOBS" \
 		--unprivileged \
 		--ignore-user-check \
 		--prefix "$pkgdir" \
-		--workdir "$WRKOBJDIR"
+		--workdir "$WORKOBJDIR"
+	popd
   cat <<EOF >>"$mk_conf"
 
 # Configured from $0
-WRKOBJDIR=   $WRKOBJDIR
+WORKOBJDIR=   $WORKOBJDIR
 DISTDIR=     $DISTDIR
 # EOF Configured from $0
 
@@ -136,7 +145,7 @@ EOF
 			fatal "Package $i not found"
 		fi
 		list+=("$tmp")
-	done		
+	done
 	echo "Installing ${list[*]}"
 	,pkgsrc_install "${list[@]}"
 }
@@ -156,7 +165,7 @@ EOF
 }
 
 ,pkgsrc_clean() {
-	run rm -rf "$WRKOBJDIR"
+	run rm -rf "$WORKOBJDIR"
 }
 
 ,pkgsrc_installed() {
@@ -180,7 +189,7 @@ LIB_,pkgsrc_edit_mk.add_curl_with_timeout() {
 	desc="add curl with connection timeout configuration to make.mk"
 }
 ,pkgsrc_edit_mk.add_curl_with_timeout() {
-	cat <<'EOF' >>"$conf_mk"
+	cat <<'EOF' >>"$mk_conf"
 
 FETCH_WITH_TIMEOUT=1
 .if ${FETCH_WITH_TIMEOUT} == 1
@@ -189,7 +198,7 @@ FETCH_CMD=curl
 FETCH_BEFORE_ARGS=--fail --insecure --location --remote-time --connect-timeout 5
 FETCH_AFTER_ARGS=-O
 FETCH_RESUME_ARGS=-C -
-FETCH_OUTPUT_ARGS=-o 
+FETCH_OUTPUT_ARGS=-o
 .endif
 
 EOF

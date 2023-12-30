@@ -1,14 +1,39 @@
 #!/bin/bash
 set -euo pipefail
-dest="${TMPDIR:-/tmp}"/proot
-if [[ ! -e "$dest" ]]; then
-	echo ",proot: Downloading proot executable to $dest ..." >&2
-	if hash curl 2>/dev/null >/dev/null; then
-		curl -sS --output "$dest" -L 'https://proot.gitlab.io/proot/bin/proot'
-	else
-		wget -q -O "$dest" 'https://proot.gitlab.io/proot/bin/proot'
-	fi
-	chmod +x "$dest"
-fi
-"$dest" "$@"
 
+proot_install() {
+	local dest
+	dest="$1"
+	if [[ ! -e "$dest" ]]; then
+		local destdir
+		destdir="$(dirname "$dest")"
+		local url='https://proot.gitlab.io/proot/bin/proot'
+		echo ",proot: Downloading proot executable $url to $dest ..." >&2
+		mkdir -p "$destdir"
+		if hash curl 2>/dev/null >/dev/null; then
+			curl -sS --output "$dest" -L "$url"
+		else
+			wget -q -O "$dest" "$url"
+		fi
+		chmod +x "$dest"
+	fi
+}
+
+proot_update() {
+	rm "$1"
+	proot_install "$1"
+}
+
+proot=~/.local/bin/proot
+case "${1:-}" in
+--install) proot_install "$proot" ;;
+--update) proot_update "$proot" ;;
+*)
+	if [[ ! -e "$proot" ]] && hash proot 2>/dev/null; then
+		proot=proot
+	else
+		proot_install "$proot"
+	fi
+	exec "$proot" "$@"
+	;;
+esac

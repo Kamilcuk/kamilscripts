@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEBUG=${DEBUG:-false}
+export LC_ALL=C
 
 C_logs_with_timestamp() {
 	# Convert old date format to new date format

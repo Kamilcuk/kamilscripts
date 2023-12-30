@@ -1,4 +1,1 @@
-[submodule "secrets"]
-	path = secrets
-	url = ../private/privatekamilscripts
-	branch = master
+

@@ -1,6 +1,6 @@
 #!/usr/bin/sh
 
-if [ -e "$KCDIR" ] && [ -r "$KCDIR/python" ]; then
+if false && [ -e "$KCDIR" ] && [ -r "$KCDIR/python" ]; then
 	case ":$PYTHONPATH:" in
 	*":$KCDIR/python:"*) ;;
 	*) export PYTHONPATH="$KCDIR/python${PYTHONPATH:+:$PYTHONPATH}"

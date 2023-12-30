@@ -388,8 +388,9 @@ endif
 set termguicolors
 
 " netrw
-let g:loaded_netrw = 1 " disable netrw
-let g:loaded_netrwPlugin = 1 " disable netrw
+" don't disable netrw - needed for some plugin, I do not remember which one
+" let g:loaded_netrw = 1 " disable netrw
+" let g:loaded_netrwPlugin = 2 " disable netrw
 let g:netrw_home = $XDG_CACHE_HOME.'/vim'
 let g:netrw_dirhistmax = 0
 " Disable netrw gx mapping., search openbrowser-open
@@ -553,7 +554,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
+		"Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
 		if executable('yarn') && has('nvim')
 			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
@@ -1188,6 +1189,11 @@ endif
 if kc#plugin#enabled('vimwiki')
 	let g:vimwiki_list = [{'path': '~/vimwiki/',
 						  \ 'syntax': 'markdown', 'ext': '.md'}]
+endif
+
+if kc#plugin#enabled('vim-markdown-toc')
+	let g:vmt_list_indent_text='    '
+	let g:mt_auto_update_on_save=0
 endif
 
 if kc#plugin#enabled('vim-eunuch')

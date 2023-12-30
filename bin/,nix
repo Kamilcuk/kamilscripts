@@ -1,33 +1,65 @@
 #!/bin/bash
 set -euo pipefail
 
+log() {
+	echo ",nix:" "$@" >&2
+}
+
+fatal() {
+	log "$@"
+	exit 2
+}
+
+be_nice() {
+	if hash ,nice 2>/dev/null; then
+		,nice -p $$
+	else
+		renice 39 -p $$ >/dev/null
+		ionice -c 3 -p $$
+	fi
+}
+
 # Written by Kamil Cukrowski
 if (($#)) && [[ "$1" == -* ]]; then
-	if hash ,nice 2>/dev/null >&2; then
-		nice=",nice"
-	else
-		nice="nice -n 39 ionice -c 3"
-	fi
+	be_nice
 	set -x
 	case "$1" in
-	-u|--upgrade|--update)
-		$nice nix-channel --update
-		$nice nix-env -u '*'
-		#$nice nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' $nice nix-env -u
+	--bootstrap)
+		,nix ,nix --bootstrap-in
 		;;
-	-gc-all|--gc-all|--gc)
-		$nice nix-channel --update
-		$nice nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' $nice nix-env -u
+	--bootstrap-in)
+		if [[ ! -e /nix ]]; then
+			fatal "/nix directory does not exists"
+		fi
+		if [[ ! -w /nix ]]; then
+			fatal "/nix directory is not writable"
+		fi
+		if [[ ! -e "$NIX_CONF_DIR/nix.conf" ]]; then
+			echo "sandbox = false" >"$NIX_CONF_DIR/nix.conf"
+		fi
+		export NIX_INSTALLER_NO_MODIFY_PROFILE=1
+		tmp=$(curl -L https://nixos.org/nix/install)
+		bash -s -- --no-daemon <<<"$tmp"
+		;;
+	-u | --upgrade | --update)
+		nix-channel --update
+		nix-envs -u '*'
+		#nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
+		;;
+	-gc-all | --gc-all | --gc)
+		nix-channel --update
+		nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
 		rm /nix/var/nix/gcroots/auto/*
-		$nice nix-collect-garbage -d
+		nix-collect-garbage -d
 		;;
+	-h | --help) ;;
 	*)
 		# shellcheck disable=2016
 		options=$(
 			sed '/case "$1"/,/esac/!d' "$0" |
-			grep -- '-.*)$' |
-			grep -o -- '-[-a-zA-Z]\+' |
-			paste -sd' '
+				grep -- '-.*)$' |
+				grep -o -- '-[-a-zA-Z]\+' |
+				paste -sd' '
 		)
 		echo ",nix: INVALID OPTION: $1 . Options: $options"
 		;;
@@ -36,42 +68,64 @@ if (($#)) && [[ "$1" == -* ]]; then
 fi
 
 if [[ -e /nix ]]; then
-	echo ",nix: /nix directory exists, you are already in NIX." >&2
+	log "/nix directory exists, you are already in NIX."
 	exec "$@"
 	exit "$?"
 fi
 
-# If no arguments given, run bash -l.
+# If no arguments given, run user login shell.
 if (($# == 0)); then
 	shell=$(getent passwd "$LOGNAME")
 	shell=${shell##*:}
 	shell=${shell:-/bin/bash}
 	set -- "$shell" -l
-	#set -- bash -l
 fi
 
-proot=proot
-if ! hash proot 2>/dev/null && [[ -x ~/bin/proot ]]; then
+# find proot
+if hash ,proot 2>/dev/null; then
+	proot=,proot
+elif hash proot 2>/dev/null; then
+	proot=proot
+elif [[ -x ~/bin/proot ]]; then
 	proot=~/bin/proot
+elif [[ -x ~/.local/bin/proot ]]; then
+	proot=~/.local/bin/proot
+else
+	fatal "proot not found!"
 fi
 
-TMUX_TMPDIR=/tmp/tmux-$UID-nix
-env=(
-	NIX=1
-	NIX_CONF_DIR=~/.nix/etc/nix/
-	# NIX_CONF_DIR=/nix/etc/nix
-	NIXPKGS_ALLOW_UNFREE=1
-	# https://nixos.wiki/wiki/Locales
-	LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
-	TMUX_TMPDIR="$TMUX_TMPDIR"
-)
+envs=()
+
+addenv() {
+	# shellcheck disable=SC2163
+	export "$1"
+	envs+=("$1")
+}
+
+addenv NIX=1
+# NIX_CONF_DIR=/nix/etc/nix
+addenv NIXPKGS_ALLOW_UNFREE=1
+addenv NIX_CONF_DIR=~/.nix/etc/nix/
+# https://nixos.wiki/wiki/Locales
+addenv LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
 # https://github.com/NixOS/nix/issues/3155
 tmp=/etc/ssl/certs/ca-bundle.crt
 if [[ -e "$tmp" ]]; then
-	env+=( NIX_SSL_CERT_FILE="$tmp" )
+	addenv NIX_SSL_CERT_FILE="$tmp"
 fi
+# do not mix host tmux socket with nix tmux socket
+addenv TMUX_TMPDIR=/tmp/tmux-$UID-nix
+# shellcheck disable=SC2174
+mkdir -m 700 -p "$TMUX_TMPDIR"
 
-mkdir -vp "$TMUX_TMPDIR"
+script() {
+	if [ -r ~/.nix-profile/etc/profile.d/nix.sh ]; then
+		. ~/.nix-profile/etc/profile.d/nix.sh
+	else
+		echo ",nix: ~/.nix-profile/etc/profile.d/nix.sh does not exists!" >&2
+	fi
+	exec "$@"
+}
+
 set -x
-#exec env "${env[@]}" nix-user-chroot ~/.nix sh -c '. ~/.nix-profile/etc/profile.d/nix.sh && "$@"' _ "$@"
-exec env "${env[@]}" "$proot" -b ~/.nix:/nix sh -c '. ~/.nix-profile/etc/profile.d/nix.sh && "$@"' _ "$@"
+exec env "${envs[@]}" "$proot" -b ~/.nix:/nix sh -xc "$(declare -f script)"' && script "$@"' _ "$@"

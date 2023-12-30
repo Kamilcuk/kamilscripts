@@ -5,12 +5,11 @@ import filecmp
 import fnmatch
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
-
-import kc
 
 
 def log(*nargs):
@@ -98,7 +97,7 @@ def run_on_file(file):
         if not args.no_diff or args.ok:
             subprocess.run(cmd, check=True, stdout=fp)
         if not filecmp.cmp(file, fp.name):
-            print("+", kc.shlex_join(cmd))
+            print("+", shlex.join(cmd))
             if not args.no_diff:
                 subprocess.run(
                     ["diff", "-Naur", "--color", file, fp.name],
