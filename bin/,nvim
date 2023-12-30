@@ -47,10 +47,12 @@ build() {
 	) - || true
 	#
 	# Create a symlink to this script to run nvim with set VIM runtime.
-	r mkdir -vp ~/.local/bin
+	if [[ ! -e ~/.local/bin ]]; then
+		r mkdir -vp ~/.local/bin
+	fi
 	r ln -svf "$installnvim" ~/.local/bin/nvim
 	echo "SUCCESS compiling nvim, updating plugins..."
-	r "${runinstallnvim[@]}" +PlugInstall +PlugUpgrade +PlugUpdate +CocUpdate +UpdateRemotePlugins +'sleep 0.1' +qa
+	r "${runinstallnvim[@]}" +PlugInstall +PlugUpgrade +PlugUpdate +CocUpdateSync +UpdateRemotePlugins +'sleep 1' +qa
 	echo SUCCESS
 }
 

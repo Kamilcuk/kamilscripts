@@ -1,0 +1,77 @@
+#!/bin/bash
+set -euo pipefail
+
+# Written by Kamil Cukrowski
+if (($#)) && [[ "$1" == -* ]]; then
+	if hash ,nice 2>/dev/null >&2; then
+		nice=",nice"
+	else
+		nice="nice -n 39 ionice -c 3"
+	fi
+	set -x
+	case "$1" in
+	-u|--upgrade|--update)
+		$nice nix-channel --update
+		$nice nix-env -u '*'
+		#$nice nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' $nice nix-env -u
+		;;
+	-gc-all|--gc-all|--gc)
+		$nice nix-channel --update
+		$nice nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' $nice nix-env -u
+		rm /nix/var/nix/gcroots/auto/*
+		$nice nix-collect-garbage -d
+		;;
+	*)
+		# shellcheck disable=2016
+		options=$(
+			sed '/case "$1"/,/esac/!d' "$0" |
+			grep -- '-.*)$' |
+			grep -o -- '-[-a-zA-Z]\+' |
+			paste -sd' '
+		)
+		echo ",nix: INVALID OPTION: $1 . Options: $options"
+		;;
+	esac
+	exit
+fi
+
+if [[ -e /nix ]]; then
+	echo ",nix: /nix directory exists, you are already in NIX." >&2
+	exec "$@"
+	exit "$?"
+fi
+
+# If no arguments given, run bash -l.
+if (($# == 0)); then
+	shell=$(getent passwd "$LOGNAME")
+	shell=${shell##*:}
+	shell=${shell:-/bin/bash}
+	set -- "$shell" -l
+	#set -- bash -l
+fi
+
+proot=proot
+if ! hash proot 2>/dev/null && [[ -x ~/bin/proot ]]; then
+	proot=~/bin/proot
+fi
+
+TMUX_TMPDIR=/tmp/tmux-$UID-nix
+env=(
+	NIX=1
+	NIX_CONF_DIR=~/.nix/etc/nix/
+	# NIX_CONF_DIR=/nix/etc/nix
+	NIXPKGS_ALLOW_UNFREE=1
+	# https://nixos.wiki/wiki/Locales
+	LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
+	TMUX_TMPDIR="$TMUX_TMPDIR"
+)
+# https://github.com/NixOS/nix/issues/3155
+tmp=/etc/ssl/certs/ca-bundle.crt
+if [[ -e "$tmp" ]]; then
+	env+=( NIX_SSL_CERT_FILE="$tmp" )
+fi
+
+mkdir -vp "$TMUX_TMPDIR"
+set -x
+#exec env "${env[@]}" nix-user-chroot ~/.nix sh -c '. ~/.nix-profile/etc/profile.d/nix.sh && "$@"' _ "$@"
+exec env "${env[@]}" "$proot" -b ~/.nix:/nix sh -c '. ~/.nix-profile/etc/profile.d/nix.sh && "$@"' _ "$@"
