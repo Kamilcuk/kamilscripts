@@ -1,4 +1,44 @@
 #!/bin/bash
+
+###############################################################################
+# bash completion start
+
+_comma_nix_options() {
+	local loc
+	# shellcheck disable=2016
+	loc=$(type -P ,nix) &&
+		sed '/case "$1"/,/esac/!d' "$loc" |
+		grep -- '^[[:space:]]*-.*)$' |
+			grep -o -- '-[-a-zA-Z0-9]\+' |
+			paste -sd' '
+}
+
+# shellcheck disable=2034
+_comma_nix_completion() {
+	local IFS=$' \t\n'
+	if [[ "${COMP_WORDS[COMP_CWORD]}" = -* ]] && ((COMP_CWORD == 1)); then
+		# shellcheck disable=2207
+		COMPREPLY=($(compgen -W "$(_comma_nix_options)" -- "${COMP_WORDS[COMP_CWORD]}"))
+	elif declare -f _init_completion >/dev/null; then
+		local cur prev words cword split
+		_init_completion -s || return
+		local PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin
+		local root_command="$cur"
+		_command_offset 1
+	fi
+}
+
+if (return 2>/dev/null); then
+	if (($# == 1)) && [[ "${1:-}" = "--bash-completion" ]]; then
+		complete -F _comma_nix_completion ,nix
+		return
+	else
+		echo ",nix: This script should not be sourced" >&2
+		return 2
+	fi
+fi
+
+###############################################################################
 set -euo pipefail
 
 log() {
@@ -19,10 +59,28 @@ be_nice() {
 	fi
 }
 
-# Written by Kamil Cukrowski
+help() {
+	cat <<EOF
+Usage: ,nix -OPTION
+       ,nix [command [args...]]
+
+Executes proot -b ~/.nix:/nix with a shell
+that loads nix profile from ~/.nix-profile/etc/profile.d/nix.sh
+and executes user supplied command or user login shell.
+
+Options:
+$(_comma_nix_options | fmt)
+
+Written by Kamil Cukrowski
+EOF
+}
+
+# Parse arguments
 if (($#)) && [[ "$1" == -* ]]; then
 	be_nice
-	set -x
+	if (($# > 1)); then
+		fatal "too many arguments: $*"
+	fi
 	case "$1" in
 	--bootstrap)
 		,nix ,nix --bootstrap-in
@@ -35,16 +93,33 @@ if (($#)) && [[ "$1" == -* ]]; then
 			fatal "/nix directory is not writable"
 		fi
 		if [[ ! -e "$NIX_CONF_DIR/nix.conf" ]]; then
+			log "Writing sandbox = false to nix.conf so that installation works"
+			mkdir -v -p "$NIX_CONF_DIR"
 			echo "sandbox = false" >"$NIX_CONF_DIR/nix.conf"
 		fi
 		export NIX_INSTALLER_NO_MODIFY_PROFILE=1
 		tmp=$(curl -L https://nixos.org/nix/install)
-		bash -s -- --no-daemon <<<"$tmp"
+		bash -s -- --no-daemon --no-modify-profile <<<"$tmp"
+		;;
+	--completely-remove-nix)
+		read -r -p "Are you sure you want to completely remove nix? [y] " ans
+		if [[ "$ans" != "y" ]]; then
+			fatal "The answer was not exactly 'y'"
+		fi
+		set -x
+		chmod +w ~/.nix
+		rm -rf ~/.nix .nix-channels .nix-defexpr/ .nix-profile
+		;;
+	--bash-completion)
+		echo '. ,nix --bash-completion'
 		;;
 	-u | --upgrade | --update)
 		nix-channel --update
 		nix-envs -u '*'
-		#nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
+		;;
+	--upgrade2)
+		nix-channel --update
+		nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
 		;;
 	-gc-all | --gc-all | --gc)
 		nix-channel --update
@@ -52,16 +127,11 @@ if (($#)) && [[ "$1" == -* ]]; then
 		rm /nix/var/nix/gcroots/auto/*
 		nix-collect-garbage -d
 		;;
-	-h | --help) ;;
+	-h | --help)
+		help
+		;;
 	*)
-		# shellcheck disable=2016
-		options=$(
-			sed '/case "$1"/,/esac/!d' "$0" |
-				grep -- '-.*)$' |
-				grep -o -- '-[-a-zA-Z]\+' |
-				paste -sd' '
-		)
-		echo ",nix: INVALID OPTION: $1 . Options: $options"
+		echo ",nix: INVALID OPTION: $1 . Options: $(_comma_nix_options)"
 		;;
 	esac
 	exit
@@ -94,12 +164,9 @@ else
 	fatal "proot not found!"
 fi
 
-envs=()
-
 addenv() {
 	# shellcheck disable=SC2163
 	export "$1"
-	envs+=("$1")
 }
 
 addenv NIX=1
@@ -115,17 +182,21 @@ if [[ -e "$tmp" ]]; then
 fi
 # do not mix host tmux socket with nix tmux socket
 addenv TMUX_TMPDIR=/tmp/tmux-$UID-nix
-# shellcheck disable=SC2174
-mkdir -m 700 -p "$TMUX_TMPDIR"
+if [[ ! -e "$TMUX_TMPDIR" ]]; then
+	mkdir -v -m 700 "$TMUX_TMPDIR"
+fi
+if [[ ! -e ~/.nix ]]; then
+	mkdir -v -m 700 ~/.nix
+fi
 
 script() {
 	if [ -r ~/.nix-profile/etc/profile.d/nix.sh ]; then
+		# shellcheck disable=1090
 		. ~/.nix-profile/etc/profile.d/nix.sh
 	else
-		echo ",nix: ~/.nix-profile/etc/profile.d/nix.sh does not exists!" >&2
+		echo ",nix: ~/.nix-profile/etc/profile.d/nix.sh does not exists! Consider running ,nix --bootstrap" >&2
 	fi
 	exec "$@"
 }
 
-set -x
-exec env "${envs[@]}" "$proot" -b ~/.nix:/nix sh -xc "$(declare -f script)"' && script "$@"' _ "$@"
+exec "$proot" -b ~/.nix:/nix sh -c "$(declare -f script)"' && script "$@"' _ "$@"
