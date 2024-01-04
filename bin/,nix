@@ -107,8 +107,8 @@ if (($#)) && [[ "$1" == -* ]]; then
 			fatal "The answer was not exactly 'y'"
 		fi
 		set -x
-		chmod +w ~/.nix
-		rm -rf ~/.nix .nix-channels .nix-defexpr/ .nix-profile
+		chmod -R +w ~/.nix
+		rm -r ~/.nix .nix-channels .nix-defexpr/ .nix-profile
 		;;
 	--bash-completion)
 		echo '. ,nix --bash-completion'
