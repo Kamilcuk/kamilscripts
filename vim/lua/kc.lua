@@ -67,8 +67,8 @@ function CocInstall(what)
     if vim.fn.exists(":CocInstall") then
         if not CocGetExtensions()[what] then
             lcmd(":CocInstall " .. what)
-		else
-			log("Coc extension already installed: " .. what)
+        else
+            log("Coc extension already installed: " .. what)
         end
     end
 end
@@ -205,12 +205,19 @@ function kc.lang(arg)
         return nil
     end
     log("Setuping for " .. vim.inspect(filetype))
-    local func = Lang[filetype]
-    if func == nil then
-        log("Configuration for " .. filetype .. " not found")
-        return nil
+    if filetype:lower() == "all" then
+        for name, _ in pairs(Lang) do
+            print("Setuping for " .. name)
+            Lang[name]()
+        end
+    else
+        local func = Lang[filetype]
+        if func == nil then
+            log("Configuration for " .. filetype .. " not found")
+            return nil
+        end
+        return func()
     end
-    return func()
 end
 
 function kc.setup()

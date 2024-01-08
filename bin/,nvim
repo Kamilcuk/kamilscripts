@@ -38,6 +38,7 @@ build() {
 		cmake nvim install
 	#
 	newversion=$("$installnvim" -V1 -v)
+	git -C "$builddir" log -1 HEAD
 	{
 		echo '--- new version ---'
 		echo "$newversion"
