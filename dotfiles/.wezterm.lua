@@ -6,6 +6,7 @@ return {
 		'JetBrains Mono',
 		'Noto Color Emoji',
 	},
+	font_size = 11.0,
 	automatically_reload_config = true,
 	colors = {
 		foreground = 'white',
@@ -20,7 +21,7 @@ return {
 			"#b21818",
 			"#18b218",
 			"#b26818",
-			"#1818b2",
+			"#3737ff",
 			"#b218b2",
 			"#18b2b2",
 			"#b2b2b2",
@@ -37,4 +38,6 @@ return {
 		},
 	},
 	term = "wezterm",
+    audible_bell = "Disabled",
+    cursor_blink_rate = 0,
 }
