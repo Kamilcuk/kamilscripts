@@ -57,6 +57,10 @@ build() {
 	echo SUCCESS
 }
 
+build_clean() {
+	rm -rf "$builddir"
+}
+
 _nvim() {
 	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
 		exec "${runinstallnvim[@]}" "$@"
@@ -77,6 +81,10 @@ if (($# == 1)); then
 		;;
 	--build)
 		build
+		exit
+		;;
+	--build-clean)
+		build_clean
 		exit
 		;;
 	esac

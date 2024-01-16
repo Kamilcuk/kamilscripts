@@ -574,7 +574,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		if has('nvim-0.9.4') && has('python3') && py3eval("sys.version_info.major == 3 and sys.version_info.minor >= 10")
 			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
 			Plug '3rd/image.nvim'
-		end
+		endif
 		Plug 'Xuyuanp/nerdtree-git-plugin'
 	" }}}
 	" Disabled stuff {{{
@@ -673,7 +673,9 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'ctrlpvim/ctrlp.vim' " File searcher. THE file searcher.
 		Plug 'fidian/hexmode' " Vim plugin to edit binary files in a hex mode automatically.
 		Plug 'preservim/nerdcommenter' " Comment lines with <leader>c<space>
-		Plug 'preservim/nerdtree', { 'on': ['NERDTreeToggle', 'NERDTreeFind'] } " The file browser.
+		if has('nvim')
+			Plug 'preservim/nerdtree', { 'on': ['NERDTreeToggle', 'NERDTreeFind'] } " The file browser.
+		endif
 		" Plug 'tyru/open-browser.vim' " Open URI with better browser 'gx'
 		Plug 'zharmany/open-browser.vim' " Open URI with better browser 'gx'
 		Plug 'godlygeek/tabular' " :Tabularize Vim script for text filtering and alignment
@@ -687,7 +689,6 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		" For vim plugins dependencies
 		Plug 'tpope/vim-repeat' " enable repeating supported plugin maps with .
 		Plug 'tpope/vim-scriptease' " A Vim plugin for Vim plugins
-
 		" }}}
 	" View display visible stuff {{{2
 		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces :StripWhitespace
