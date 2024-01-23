@@ -77,6 +77,7 @@ EOF
 
 # Parse arguments
 if (($#)) && [[ "$1" == -* ]]; then
+	set -x
 	be_nice
 	if (($# > 1)); then
 		fatal "too many arguments: $*"
@@ -115,15 +116,15 @@ if (($#)) && [[ "$1" == -* ]]; then
 		;;
 	-u | --upgrade | --update)
 		nix-channel --update
-		nix-envs -u '*'
+		nix-env -u '*'
 		;;
 	--upgrade2)
 		nix-channel --update
-		nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
+		nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-env -u
 		;;
 	-gc-all | --gc-all | --gc)
 		nix-channel --update
-		nix-envs -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-envs -u
+		nix-env -q --json | jq -r 'to_entries | .[].value.pname' | xargs -t -d '\n' nix-env -u
 		rm /nix/var/nix/gcroots/auto/*
 		nix-collect-garbage -d
 		;;

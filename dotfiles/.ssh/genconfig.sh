@@ -228,6 +228,12 @@ Match host="*.striketechnologies.com,*lxavt*[dp]"
 	PubkeyAcceptedKeyTypes +ssh-rsa
 	HostKeyAlgorithms +ssh-rsa
 EOF
+case $HOSTNAME in kcukrowski-ph*) cat <<EOF
+Host *
+	EscapeChar !
+EOF
+	;;
+esac
 
 # {{{1 ##############################################################################
 

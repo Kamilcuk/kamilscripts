@@ -2,43 +2,103 @@
 set -euo pipefail
 
 # Directory with all our data.
-dir=~/.cache/,nvim
+g_dir=~/.cache/,nvim
 # Directory with cloned neovim repository.
-builddir="$dir"/neovim
+g_builddir="$g_dir"/neovim
 # Installation directory where CMake installs neovim.
-installdir="$dir"/install
+g_installdir="$g_dir"/install
 # Installed nvim executable location inside installation directory.
-installnvim="$installdir"/bin/nvim
+g_installnvim="$g_installdir"/bin/nvim
 
-runinstallnvim=(env VIM="$installdir/share/nvim/runtime" "$installnvim")
+g_runinstallnvim=(env VIM="$g_installdir/share/nvim/runtime" "$g_installnvim")
+
+g_dryrun=0
+
+log() {
+	echo "$(basename "$0"): $*" >&2
+}
+
+fatal() {
+	log "FATAL: $*"
+	exit 2
+}
 
 r() {
-	echo "+ $*" >&2
-	"$@"
+	if ((g_dryrun)); then
+		echo "DRYRUN + $*" >&2
+	else
+		echo "+ $*" >&2
+		"$@"
+	fi
 }
 
 build() {
 	,nice -p $$
-	# Clone, build and install neovim repository.
-	if [[ ! -e "$builddir" ]]; then
-		r mkdir -vp "$builddir"
-		r git clone https://github.com/neovim/neovim.git "$builddir"
+	local args
+	args=$(getopt -o hn -l help,repo:,checkout:,noplugins,dryrun -- "$@")
+	eval "set -- $args"
+	c_repo=https://github.com/neovim/neovim.git
+	c_checkout=tags/nightly
+	c_plugins=1
+	while (($#)); do
+		case "$1" in
+		-h | --help)
+			log "see main --help"
+			exit 3
+			;;
+		--repo)
+			c_repo=$2
+			shift
+			;;
+		--checkout)
+			c_checkout=$2
+			shift
+			;;
+		--noplugins)
+			c_plugins=0
+			;;
+		-n | --dryrun)
+			g_dryrun=1
+			;;
+		--)
+			shift
+			break
+			;;
+		*) fatal "AAA $*" ;;
+		esac
+		shift
+	done
+	if (($#)); then
+		fatal "too many arguments"
 	fi
-	cd "$builddir"
-	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
-		oldversion=$("${runinstallnvim[@]}" -V1 -v) || true
+	###############################################################################
+	# Clone, build and install neovim repository.
+	if [[ ! -e "$g_builddir" ]]; then
+		r mkdir -vp "$g_builddir"
+		r git clone "$c_repo" "$g_builddir"
+	fi
+	cd "$g_builddir"
+	# Get old verison of vim.
+	local oldversion
+	if [[ -x "$g_installnvim" && -e "$g_builddir/runtime" ]]; then
+		oldversion=$("${g_runinstallnvim[@]}" -V1 -v) || true
 	else
 		oldversion=system
 	fi
-	r git -C "$builddir" tag -d nightly stable || :
-	r git -C "$builddir" fetch --all --tags --prune
-	r git -C "$builddir" checkout tags/nightly
-	r rm -vf "$builddir"/build/.ran-cmake
-	r make -C "$builddir" CMAKE_BUILD_TYPE=RelWithDebInfo VERBOSE=1 CMAKE_INSTALL_PREFIX="$installdir" \
+	# Clone newer version of neovim and compile.
+	r git -C "$g_builddir" remote set-url origin "$c_repo"
+	r git -C "$g_builddir" tag -d nightly stable || :
+	r git -C "$g_builddir" fetch --all --tags --prune
+	if ! r git -C "$g_builddir" checkout "origin/$c_checkout"; then
+		r git -C "$g_builddir" reset --hard "origin/$c_checkout"
+	fi
+	r rm -vf "$g_builddir"/build/.ran-cmake
+	r make -C "$g_builddir" CMAKE_BUILD_TYPE=RelWithDebInfo VERBOSE=1 CMAKE_INSTALL_PREFIX="$g_installdir" \
 		cmake nvim install
-	#
-	newversion=$("$installnvim" -V1 -v)
-	git -C "$builddir" log -1 HEAD
+	log "SUCCESS compiling nvim"
+	# Compare the versions with the old one.
+	newversion=$("$g_installnvim" -V1 -v)
+	r git -C "$g_builddir" log1 -1 HEAD || true
 	{
 		echo '--- new version ---'
 		echo "$newversion"
@@ -46,24 +106,26 @@ build() {
 		echo '--- old version ---'
 		cat <<<"$oldversion"
 	) - || true
-	#
 	# Create a symlink to this script to run nvim with set VIM runtime.
 	if [[ ! -e ~/.local/bin ]]; then
 		r mkdir -vp ~/.local/bin
 	fi
-	r ln -svf "$installnvim" ~/.local/bin/nvim
-	echo "SUCCESS compiling nvim, updating plugins..."
-	r "${runinstallnvim[@]}" +PlugInstall +PlugUpgrade +PlugUpdate +CocUpdateSync +UpdateRemotePlugins +'sleep 1' +qa
-	echo SUCCESS
+	r ln -svf "$g_installnvim" ~/.local/bin/nvim
+	log "SUCCESS installing nvim symlink to ~/.local/bin/nvim"
+	if ((c_plugins)); then
+		log "Updating plugins"
+		r "${g_runinstallnvim[@]}" +PlugInstall +PlugUpgrade +PlugUpdate +CocUpdateSync +UpdateRemotePlugins +'sleep 1' +qa
+	fi
+	log "SUCCESS"
 }
 
 build_clean() {
-	rm -rf "$builddir"
+	rm -rf "$g_builddir"
 }
 
 _nvim() {
-	if [[ -x "$installnvim" && -e "$builddir/runtime" ]]; then
-		exec "${runinstallnvim[@]}" "$@"
+	if [[ -x "$g_installnvim" && -e "$g_builddir/runtime" ]]; then
+		exec "${g_runinstallnvim[@]}" "$@"
 	elif hash nvim 2>/dev/null; then
 		exec nvim "$@"
 	elif hash vim 2>/dev/null; then
@@ -73,21 +135,19 @@ _nvim() {
 	fi
 }
 
-if (($# == 1)); then
-	case "$1" in
-	-h | --help)
-		echo "Usage: ,nvim [-h|--help|--build]"
-		echo
-		;;
-	--build)
-		build
-		exit
-		;;
-	--build-clean)
-		build_clean
-		exit
-		;;
-	esac
-fi
+case "${1:-}" in
+-h | --help)
+	echo "Usage: ,nvim [-h|--help|--build|--build-clean]"
+	echo
+	;;
+--build)
+	build "${@:2}"
+	exit
+	;;
+--build-clean)
+	build_clean "${@:2}"
+	exit
+	;;
+esac
 
 _nvim "$@"

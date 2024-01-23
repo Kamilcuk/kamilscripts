@@ -73,6 +73,19 @@ function CocInstall(what)
     end
 end
 
+local CocInstallTodo = ""
+
+---@param what string
+function CocInstallRegister(what)
+    CocInstallTodo = CocInstallTodo .. " " .. what
+end
+
+function CocInstallFlush()
+    local tmp = CocInstallTodo
+    CocInstallTodo = {}
+    CocInstall(tmp)
+end
+
 ---@param what string
 local function npm_install(what)
     vim.cmd("!npm install -g " .. what)
@@ -105,7 +118,7 @@ end
 local Lang = {}
 
 function Lang.nomad()
-    vim.cmd("!pipx install nomad-watch")
+    vim.cmd("!pipx install nomad-tools")
 end
 
 function Lang.python()
@@ -117,15 +130,15 @@ function Lang.python()
             "pipx install --force isort",
             "pipx install --force pyflyby && pipx runpip pyflyby install --upgrade black",
             "pipx install --force autoimport",
-            "pipx install --force pylava && pipx runpip pylava install pyflakes==2.4.0",
+            "pipx install --force pylava && pipx inject pylava pyflakes==2.4.0",
             "npm install -g pyright"
         }
     )
-    CocInstall("coc-pyright coc-yaml")
+    CocInstallRegister("coc-pyright coc-yaml")
 end
 
 function Lang.yaml()
-    CocInstall("coc-yaml")
+    CocInstallRegister("coc-yaml")
 end
 
 function Lang.lua()
@@ -137,21 +150,21 @@ function Lang.lua()
             log("Install cargo and then cargo install stylua")
         end
     )
-    CocInstall("coc-lua")
+    CocInstallRegister("coc-lua")
 end
 
 function Lang.vim()
-    CocInstall("coc-vimlsp")
+    CocInstallRegister("coc-vimlsp")
     TSInstall("vim")
 end
 
 function Lang.groovy()
-    CocInstall("coc-groovy")
+    CocInstallRegister("coc-groovy")
     TSInstall("groovy")
 end
 
 function Lang.c()
-    CocInstall("coc-clangd coc-cmake")
+    CocInstallRegister("coc-clangd coc-cmake")
     TSInstall("c")
 end
 
@@ -166,12 +179,12 @@ function Lang.cpp()
 end
 
 function Lang.tex()
-    CocInstall("coc-vimtext")
-    TSInstall("tex")
+    -- CocInstallRegister("coc-vimtex")
+    -- TSInstall("latex")
 end
 
 function Lang.ruby()
-    CocInstall("coc-solargraph")
+    CocInstallRegister("coc-solargraph")
     TSInstall("ruby")
 end
 
@@ -183,13 +196,13 @@ end
 function Lang.perl()
     -- vim.cmd("!cpan Perl::LangugeServer")
     npm_install("perlnavigator-server")
-    CocInstall("coc-perl")
+    CocInstallRegister("coc-perl")
     TSInstall("perl")
 end
 
 function Lang.javascript()
     npm_install("js-beautify")
-    CocInstall("coc-tsserver")
+    CocInstallRegister("coc-tsserver")
     TSInstall("javascript")
 end
 
@@ -216,8 +229,9 @@ function kc.lang(arg)
             log("Configuration for " .. filetype .. " not found")
             return nil
         end
-        return func()
+        func()
     end
+    CocInstallFlush()
 end
 
 function kc.setup()

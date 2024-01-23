@@ -551,10 +551,13 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		"
 		" Plug 'aduros/ai.vim'
 		" Plug 'madox2/vim-ai'
-		Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
+		" Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
-		"Plug 'mbbill/undotree' " :UndotreeToggle visualize undo
+		if has('nvim')
+			Plug 'Robitx/gp.nvim'
+		endif
+		" Plug 'mbbill/undotree' " :UndotreeToggle visualize undo " conflicts with something
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
 		if executable('yarn') && has('nvim')
 			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
@@ -562,8 +565,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
 		Plug 'junegunn/vader.vim' " Vimscript framework
 		if has('nvim')
-			"Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
-			Plug 'lukas-reineke/headlines.nvim'
+			" Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
 			Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 		endif
 		Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
@@ -578,6 +580,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'Xuyuanp/nerdtree-git-plugin'
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'lukas-reineke/headlines.nvim' " The headlines conflict with some terminal configurations.
 		" Plug 'folke/noice.nvim' " too sloooooooow
 		" Plug 'MunifTanjim/nui.nvim' " dependency of noice
 		" Plug 'justinmk/vim-sneak' " Better highligted search /. I will use /
@@ -741,6 +744,12 @@ endif
 " }}}
 " Plugins configuration {{{1
 
+
+if kc#plugin#enabled('gp.nvim')
+	lua <<EOF
+	require("gp").setup()
+EOF
+end
 
 if kc#plugin#enabled('nvim-treesitter')
 	lua <<EOF
