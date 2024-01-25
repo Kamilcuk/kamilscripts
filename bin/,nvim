@@ -32,6 +32,18 @@ r() {
 	fi
 }
 
+build_help() {
+	cat <<EOF
+,nvim --build [OPTIONS]
+
+Options: -h -n --help --repo --checkout --noplugins --dryrun
+
+Examples:
+	,nvim --build --checkout master
+
+EOF
+}
+
 build() {
 	,nice -p $$
 	local args
@@ -43,7 +55,7 @@ build() {
 	while (($#)); do
 		case "$1" in
 		-h | --help)
-			log "see main --help"
+			build_help
 			exit 3
 			;;
 		--repo)
@@ -89,7 +101,7 @@ build() {
 	r git -C "$g_builddir" remote set-url origin "$c_repo"
 	r git -C "$g_builddir" tag -d nightly stable || :
 	r git -C "$g_builddir" fetch --all --tags --prune
-	if ! r git -C "$g_builddir" checkout "origin/$c_checkout"; then
+	if ! r git -C "$g_builddir" checkout "$c_checkout"; then
 		r git -C "$g_builddir" reset --hard "origin/$c_checkout"
 	fi
 	r rm -vf "$g_builddir"/build/.ran-cmake

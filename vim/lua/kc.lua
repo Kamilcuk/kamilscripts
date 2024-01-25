@@ -105,12 +105,18 @@ end
 
 ---@param list string[]
 local function parallelcmd(list)
-    local cmd = ""
-    cmd = ""
-    for _, i in ipairs(list) do
-        cmd = cmd .. " '" .. i:gsub("^!", ""):gsub("'", "\\'") .. "'"
+    if false then
+        local cmd = ""
+        cmd = ""
+        for _, i in ipairs(list) do
+            cmd = cmd .. " '" .. i:gsub("^!", ""):gsub("'", "\\'") .. "'"
+        end
+        vim.cmd("!printf \\%s\\\\n " .. cmd .. " | xargs -P$(nproc) -i bash -xc {}")
+    else
+        for _, i in ipairs(list) do
+            execute(i)
+        end
     end
-    vim.cmd("!printf \\%s\\\\n " .. cmd .. " | xargs -P$(nproc) -i bash -xc {}")
 end
 
 -------------------------------------------------------------------------------

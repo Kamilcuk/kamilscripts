@@ -493,17 +493,13 @@ command! -bar LuaReload :lua package.loaded.kc = nil require("kc").setup()
 " }}}
 " Load plugins with vim-plug {{{1
 
-function! s:KcPlugInstall() abort
+function! KcInstall(lang) abort
 	if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
 			call mkdir(expand('~/.vim/plugged/vim-plug/'), 'p')
 		endif
-		call kc#log('vim-plug not clonned. Execute: git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug')
+		!git clone https://github.com/junegunn/vim-plug ~/.vim/plugged/vim-plug
 	endif
-endfunction
-
-function! KcInstall(lang) abort
-	call s:KcPlugInstall()
 	lua package.loaded.kc = nil
 	lua require("kc").lang(vim.fn.eval('a:lang'))
 	if a:lang == ""
@@ -517,8 +513,6 @@ function! KcInstall(lang) abort
 	end
 endfunction
 command! -bar -nargs=? KcInstall :VimReload | call KcInstall(<q-args>)
-
-call s:KcPlugInstall()
 
 let plugdir = expand('~/.vim/plugged/')
 if filereadable(plugdir.'/vim-plug/plug.vim')
@@ -577,7 +571,6 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
 			Plug '3rd/image.nvim'
 		endif
-		Plug 'Xuyuanp/nerdtree-git-plugin'
 	" }}}
 	" Disabled stuff {{{
 		" Plug 'lukas-reineke/headlines.nvim' " The headlines conflict with some terminal configurations.
