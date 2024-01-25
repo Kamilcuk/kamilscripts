@@ -239,7 +239,7 @@
 (define (kc-dir-has arg) (access? (kc-dir arg)))
 (define (kc-icon-arg name)
   (let ((d (kc-dir "/icons/" name ".png")))
-    (if (access? d R_OK) (string-append "-i" d))))
+    (if (access? d R_OK) (string-append "-i" d) "")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -435,7 +435,7 @@
     (Control Shift Mod2 Mod4 Mod5 Control_R))
   "-ixfsm-suspend"
   "Suspend"
-  "systemctl suspend")
+  "sleep 0.5 && systemctl suspend")
 
 (Xbindkey
   '(Control Escape)

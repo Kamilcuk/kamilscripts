@@ -3,21 +3,21 @@
 set -euo pipefail
 export LC_ALL=C
 
+pactl_cards=$(LC_ALL=C pactl list cards)
 hdmi_port=pci-0000_01_00.1
 hdmi_port=pci-0000_05_00.1
 hdmi_port=$(
-	LC_ALL=C pactl list cards |
-		awk -v  RS='\n\n' '/"HDA NVidia"/' |
+	awk -v RS='\n\n' '/HDMI/' <<<"$pactl_cards" |
 		awk '/Name: /{print $2}' |
 		sed 's/alsa_card.//'
 )
 # hdmi_output=hdmi-stereo-extra1
 hdmi_output=$(
-	LC_ALL=C pactl list cards |
+	cat <<<"$pactl_cards" |
 		#awk -v RS='\n\n' '/alsa_card.pci-0000_01_00.1/ || /alsa_card.pci0002_00_1b.0/' |
 		#awk -v RS='\n\n' '/alsa_card.pci-0000_00_1b.0/' |
 		#awk -v  RS='\n\n' -v "re=$hdmi_port" '$0 ~ "alsa_card." re' |
-		awk -v  RS='\n\n' -v "re=$hdmi_port" '$0 ~ "alsa_card." re' |
+		awk -v RS='\n\n' '/HDMI/' |
 		awk '/output:hdmi-.*stereo.*available: yes/{gsub(/: /, " "); gsub(/output:/, ""); print $1}'
 )
 hdmi_card=alsa_card.$hdmi_port
@@ -35,12 +35,12 @@ C_info() {
 }
 
 C_fix_pulseaudio() {
-	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output" &
-	L_run pactl set-card-profile "$hdmi_card"    "output:$hdmi_output" &
-	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout &
-	L_run pactl set-default-sink combined &
-	L_run pactl set-sink-volume "$hdmi_sink" 100% &
-	L_run pactl set-sink-volume "$builtin_sink" 100% &
+	L_run pactl set-card-profile "$builtin_card" "output:$builtin_output"
+	L_run pactl set-card-profile "$hdmi_card" "output:$hdmi_output"
+	L_run pactl set-sink-port "$builtin_sink" analog-output-lineout
+	L_run pactl set-default-sink combined
+	L_run pactl set-sink-volume "$hdmi_sink" 100%
+	L_run pactl set-sink-volume "$builtin_sink" 100%
 	wait
 }
 
@@ -99,7 +99,7 @@ C_logitech_c920() {
 	,logitech_c920
 	teams=$(
 		,pulseaudio list_2 _what,_num,properties.application.process.binary |
-		awk -F'\t' '$1 ~ /Source Output/ && $3 == "teams"{ print $2 }'
+			awk -F'\t' '$1 ~ /Source Output/ && $3 == "teams"{ print $2 }'
 	)
 	if [[ -n "$teams" ]]; then
 		L_run pactl move-source-output "$teams" alsa_input.usb-046d_HD_Pro_Webcam_C920_6CDDC9BF-02.analog-stereo.echo-cancel
@@ -108,4 +108,3 @@ C_logitech_c920() {
 }
 
 . ,lib_lib C_ "$@"
-

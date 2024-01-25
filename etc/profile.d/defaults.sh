@@ -1,13 +1,13 @@
 #!/bin/sh
 
-prependpath () {
+prependpath() {
 	case ":$PATH:" in
-		*:"$1":*) ;;
-		*)
-			if [ -r "$1" ]; then
-				PATH="$1${PATH:+:$PATH}"
-			fi
-			;;
+	*:"$1":*) ;;
+	*)
+		if [ -r "$1" ]; then
+			PATH="$1${PATH:+:$PATH}"
+		fi
+		;;
 	esac
 }
 
@@ -55,7 +55,7 @@ export npm_config_prefix=~/.node_modules
 # locale ##############################################################################
 
 locale_supported() {
-	[ -z "$( { LC_ALL=$1 ;} 2>&1 )" ]
+	[ -z "$({ LC_ALL=$1; } 2>&1)" ]
 }
 _C_UTF="C"
 _en_US="$_C_UTF"
