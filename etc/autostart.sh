@@ -143,7 +143,7 @@ gorgo)
 	;;
 esac
 
-for i in ~/.config/kamilscripts/kamilscripts/etc/autostart/*.sh; do
+for i in ~/.kamilscripts/etc/autostart/*.sh; do
 	if [[ -e "$i" ]]; then
 		autostart_log "running user script: $i"
 		# shellcheck disable=1090

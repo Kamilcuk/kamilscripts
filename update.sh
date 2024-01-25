@@ -18,7 +18,7 @@ fi
 log "Updating submodules..."
 runlog ./submodules_update.sh
 
-f=~/.config/kamilscripts/kamilscripts
+f=~/.kamilscripts
 if [[ -e "$f" && -L "$f" ]]; then
 	log "Stowing kamilscripts..."
 	runlog ./bin/,kamilscripts.sh u -k

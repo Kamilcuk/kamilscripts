@@ -17,23 +17,14 @@ if [ -r "${KCDIR:-}" ]; then
 fi
 
 # find KCDIR
-for _i in \
-		/usr/lib/kamilscripts \
-		~/.kamilscripts \
-		~/.config/kamilscripts/kamilscripts \
-		~/.config/kamilscripts \
-; do
-	if [ -r "$_i" ] && [ -r "$_i"/.git ] && [ -r "$_i"/bin ]; then
-		KCDIR=$(readlink -f "$_i")
-		break
-	fi
-done
-unset _i
-
-if [ -z "${KCDIR:-}" ]; then
-	echo "kamilscripts/etc/profile: KCDIR not found" >&2
+_i=~/.kamilscripts
+if [ -r "$_i" ] && [ -r "$_i"/.git ] && [ -r "$_i"/bin ]; then
+	KCDIR=$(readlink -f "$_i")
+else
+	echo ".kamilscripts/etc/profile: KCDIR not found" >&2
 	return
 fi
+unset _i
 
 export KCDIR
 
