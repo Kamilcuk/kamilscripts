@@ -1,0 +1,340 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import shlex
+import subprocess
+import sys
+import tempfile
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Callable, ClassVar, Dict, Generic, List, Optional, TypeVar
+
+from typing_extensions import override
+
+# Directory with all our data.
+g_dir = Path().home() / ".cache/,builtit"
+# Installation directory where CMake installs neovim.
+g_installdir = g_dir / "install"
+g_pkgdir = g_dir / "pkg"
+g_dryrun = False
+
+log = logging.getLogger(__name__)
+
+
+###############################################################################
+
+
+def fatal(message: str):
+    log.fatal(message)
+    sys.exit(2)
+
+
+def run(
+    command: str,
+    check: bool = True,
+    input: Optional[str] = None,
+    dryrun: Optional[bool] = None,
+    stdout: Optional[int] = None,
+) -> Optional[subprocess.CompletedProcess]:
+    if g_dryrun if dryrun is None else dryrun:  # DRYRUN logic
+        log.info(f"DRYRUN + {command}")
+        return None
+    log.info(f"+ {command}")
+    r = subprocess.run(shlex.split(command), input=input, text=True, stdout=stdout)
+    if check and r.returncode:
+        exit(r.returncode)
+    return r
+
+
+def runoutput(command: str, check: bool = True) -> subprocess.CompletedProcess:
+    ret = run(command, check, dryrun=False, stdout=subprocess.PIPE)
+    assert isinstance(ret, subprocess.CompletedProcess)
+    return ret.stdout
+
+
+def q(o: Any) -> str:
+    return shlex.quote(str(o))
+
+
+###############################################################################
+
+T = TypeVar("T")
+
+
+class Register(ABC, Generic[T]):
+    _all: ClassVar[Dict[str, Dict[str, Any]]] = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "_" in cls.__name__:
+            assert len(cls.__name__.split("_")) == 2, f"{cls.__name__}"
+            assert cls.name() not in cls.all()
+            tmp: Dict[str, Any] = cls.all()
+            tmp[cls.name()] = cls
+
+    @classmethod
+    def _prefix(cls) -> str:
+        return cls.__name__.split("_")[0]
+
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__.split("_", 1)[1].lower()
+
+    @classmethod
+    def all(cls) -> Dict[str, Callable[..., T]]:
+        return Register._all.setdefault(cls._prefix(), {})
+
+    @classmethod
+    def allnames(cls) -> List[str]:
+        return sorted(list(cls.all().keys()))
+
+
+###############################################################################
+
+
+class Package(Register):
+    aliases: str = ""
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "_" in cls.__name__:
+            for a in cls.aliases.split():
+                tmp: Dict[str, Any] = cls.all()
+                tmp[a] = cls
+
+    def __init__(self, args: argparse.Namespace):
+        self.args = args
+
+    @property
+    def builddir(self) -> Path:
+        return g_pkgdir / self.name()
+
+    def git(self, cmd: str, check: bool = True):
+        run(f"git -C {q(self.builddir)} {cmd}", check=check)
+
+    def clone(self, repo: str, checkout: str = "master"):
+        repo = self.args.repo or repo
+        checkout = self.args.checkout or checkout
+        if not self.builddir.exists():
+            self.builddir.parent.mkdir(parents=True, exist_ok=True)
+            run(f"git clone {repo} {self.builddir}")
+        if args.distclean:
+            self.git("clean -fdx")
+            log.info("distclean exit")
+            exit(0)
+        self.git(f"remote set-url origin {repo}")
+        self.git(f"tag -d {checkout}", check=False)
+        self.git(f"tag -d origin/{checkout}", check=False)
+        self.git("fetch --all --tags --prune")
+        self.git(f"reset --hard {checkout}")
+
+    def run(self, cmd: List[str]):
+        raise NotImplementedError()
+
+    def build(self):
+        os.chdir(self.builddir)
+        return self._build()
+
+    def extra(self):
+        pass
+
+    def info(self):
+        gitdir = self.builddir / ".git"
+        if gitdir.exists():
+            self.git("log1 -1 HEAD")
+        self._info()
+
+    @abstractmethod
+    def _build(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _info(self):
+        raise NotImplementedError()
+
+
+class Package_neovim(Package):
+    aliases: str = "nvim n"
+    installnvim: Path = g_installdir / "bin" / "nvim"
+    installnvimcmd: str = f"env VIM={q(g_installdir)}/share/nvim VIMRUNTIME={q(g_installdir)}/share/nvim/runtime {q(installnvim)}"
+
+    @override
+    def _build(self):
+        # Move from old location
+        oldloc = Path.home() / ".cache/,nvim"
+        if oldloc.exists():
+            log.info(f"Moving old installtion from {oldloc} into {g_dir}")
+            self.builddir.parent.mkdir(parents=True, exist_ok=True)
+            run(f"mv -v {oldloc}/neovim {self.builddir}")
+            run(f"mv -v {oldloc}/install {g_installdir}")
+            os.rmdir(oldloc)
+        # Get old version of vim.
+        oldversion = (
+            runoutput(f"{self.installnvimcmd} -V1 -v")
+            if self.installnvim.exists() and (self.builddir / "runtime").exists()
+            else "system"
+        )
+        self.clone("https://github.com/neovim/neovim.git", "nightly")
+        if args.clean:
+            run(f"make -C {self.builddir} clean")
+        run(f"rm -vf {self.builddir}/build/.ran-cmake")
+        run(
+            f"make -C {self.builddir} CMAKE_BUILD_TYPE=RelWithDebInfo VERBOSE=1 "
+            f" CMAKE_INSTALL_PREFIX={g_installdir} cmake nvim install"
+        )
+        log.info("SUCCESS compiling nvim")
+        # Compare the versions with the old one.
+        newversion = runoutput(f"{self.installnvim} -V1 -v")
+        self.git("log1 -1 HEAD")
+        with tempfile.NamedTemporaryFile("w+") as a:
+            a.write(f"--- old version ---\n{oldversion}")
+            a.flush()
+            with tempfile.NamedTemporaryFile("w+") as b:
+                b.write(f"--- new version ---\n{newversion}")
+                b.flush()
+                run(f"sdiff {a.name} {b.name}", check=False)
+        # Create a symlink to this script to run nvim with set VIM runtime.
+        exedest = Path().home() / ".local/bin/nvim"
+        exedest.parent.mkdir(parents=True, exist_ok=True)
+        run(f"ln -svf {self.installnvim} {q(exedest)}")
+        log.info("SUCCESS installing nvim symlink to ~/.local/bin/nvim")
+        if not args.noplugins:
+            log.info("Updating plugins")
+            run(
+                f"{self.installnvimcmd} +PlugInstall +PlugUpdate"
+                " +CocUpdateSync +UpdateRemotePlugins +sleep 1 +qa"
+            )
+        else:
+            log.info("Skipping updating plugins")
+        log.info("SUCCESS")
+
+    @override
+    def run(self, cmd: List[str]):
+        run(f"{self.installnvimcmd} " + " ".join(q(x) for x in cmd))
+
+    @override
+    def _info(self):
+        run(f"{self.installnvimcmd} -V1 -v")
+
+
+###############################################################################
+
+
+class Command(Register["Command"]):
+    aliases: str = ""
+
+    def help(self) -> str:
+        return ""
+
+    def opts(self, subparser: argparse.ArgumentParser):
+        pass
+
+    def add_pkg_argument(self, subparser: argparse.ArgumentParser):
+        subparser.add_argument("pkg", choices=Package.allnames())
+
+    def pkg(self) -> Package:
+        return Package.all()[args.pkg](args)
+
+    @abstractmethod
+    def main(self, args: argparse.Namespace):
+        return NotImplementedError()
+
+
+class Command_build(Command):
+    aliases: str = "b"
+
+    @override
+    def opts(self, subparser: argparse.ArgumentParser):
+        self.add_pkg_argument(subparser)
+        subparser.add_argument("--repo", help="repository")
+        subparser.add_argument("--checkout", help="tag to checkout")
+        subparser.add_argument(
+            "--noplugins", action="store_true", help="do not install plugins"
+        )
+        subparser.add_argument("--clean", action="store_true")
+        subparser.add_argument("--distclean", action="store_true")
+
+    @override
+    def main(self, args: argparse.Namespace):
+        self.pkg()._build()
+
+
+class Command_clean(Command):
+    @override
+    def opts(self, subparser: argparse.ArgumentParser):
+        self.add_pkg_argument(subparser)
+
+    @override
+    def main(self, args: argparse.Namespace):
+        run(f"rm -rf {self.pkg().builddir}")
+
+
+class Command_run(Command):
+    @override
+    def opts(self, subparser: argparse.ArgumentParser):
+        self.add_pkg_argument(subparser)
+
+    @override
+    def main(self, args: argparse.Namespace):
+        self.pkg().run(args.args)
+
+
+class Command_info(Command):
+    aliases = "i"
+
+    @override
+    def opts(self, subparser: argparse.ArgumentParser):
+        self.add_pkg_argument(subparser)
+
+    @override
+    def main(self, args: argparse.Namespace):
+        self.pkg().info()
+
+
+class Command_list(Command):
+    alises = "l"
+
+    @override
+    def main(self, args: argparse.Namespace):
+        for i in g_pkgdir.glob("*/"):
+            print(i.name)
+
+
+class Command_superclean(Command):
+    @override
+    def main(self, args: argparse.Namespace):
+        if not g_dir.exists():
+            log.info(f"{g_dir} does not exists")
+            exit()
+        answer = input(f"Are you sure you want to remote {g_dir} ? [y] ")
+        if answer == "y":
+            run(f"chmod -R +w {q(g_dir)}")
+            run(f"rm -r --one-file-system {q(g_dir)}")
+
+
+###############################################################################
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    run(f",nice -p {os.getpid()}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--dry-run")
+    subparsers = parser.add_subparsers(dest="mode")
+    for name, cls in sorted(Command.all().items()):
+        obj: Command = cls()
+        subparser = subparsers.add_parser(
+            name, help=obj.help(), aliases=obj.aliases.split()
+        )
+        subparser.set_defaults(obj=obj)
+        obj.opts(subparser)
+    args = parser.parse_args()
+    if not args.mode:
+        parser.print_usage()
+        exit(1)
+    if args.dry_run:
+        g_dryrun = True
+    # print(args)
+    obj: Command = args.obj
+    obj.main(args)
