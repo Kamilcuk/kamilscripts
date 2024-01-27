@@ -549,17 +549,18 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		if has('nvim')
-			Plug 'Robitx/gp.nvim'
+			Plug 'Robitx/gp.nvim' " Talk with AI with neovim
 		endif
-		" Plug 'mbbill/undotree' " :UndotreeToggle visualize undo " conflicts with something
+		if has('nvim') && has('python3') && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 8')
+			Plug 'TobinPalmer/pastify.nvim', {'for': ['markdown']} " Paste images into markdown from neovim
+		endif
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
 		if executable('yarn') && has('nvim')
-			Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install', 'for': ['markdown'] }
+			Plug 'iamcco/markdown-preview.nvim', {'do': 'cd app && yarn install', 'for': ['markdown']}
 		endif
 		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
 		Plug 'junegunn/vader.vim' " Vimscript framework
 		if has('nvim')
-			" Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
 			Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 		endif
 		Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
@@ -567,12 +568,17 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
 		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
 		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
-		if has('nvim-0.9.4') && has('python3') && py3eval("sys.version_info.major == 3 and sys.version_info.minor >= 10")
-			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
-			Plug '3rd/image.nvim'
-		endif
+		try
+			if has('nvim-0.9.4') && has('python3') && py3eval('import importlib; sys.version_info.major == 3 and sys.version_info.minor >= 10 and importlib.find_loader("jupyter_client") is not None')
+				Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
+				Plug '3rd/image.nvim'
+			endif
+		catch
+		endtry
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
+		" Plug 'mbbill/undotree' " :UndotreeToggle visualize undo " conflicts with something
 		" Plug 'lukas-reineke/headlines.nvim' " The headlines conflict with some terminal configurations.
 		" Plug 'folke/noice.nvim' " too sloooooooow
 		" Plug 'MunifTanjim/nui.nvim' " dependency of noice
@@ -741,6 +747,12 @@ endif
 if kc#plugin#enabled('gp.nvim')
 	lua <<EOF
 	require("gp").setup()
+EOF
+end
+
+if kc#plugin#enabled('pastify.nvim')
+	lua <<EOF
+	require('pastify').setup{}
 EOF
 end
 

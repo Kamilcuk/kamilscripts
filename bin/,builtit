@@ -125,10 +125,9 @@ class Package(Register):
             log.info("distclean exit")
             exit(0)
         self.git(f"remote set-url origin {repo}")
-        self.git(f"tag -d {checkout}", check=False)
         self.git(f"tag -d origin/{checkout}", check=False)
         self.git("fetch --all --tags --prune")
-        self.git(f"reset --hard {checkout}")
+        self.git(f"reset --hard origin/{checkout}")
 
     def run(self, cmd: List[str]):
         raise NotImplementedError()
