@@ -551,8 +551,12 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		if has('nvim')
 			Plug 'Robitx/gp.nvim' " Talk with AI with neovim
 		endif
-		if has('nvim') && has('python3') && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 8')
+		if has('nvim') && has('python3')
+					\ && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 8')
+					\ && py3eval('__import__("importlib.util").util.find_spec("PIL")')
 			Plug 'TobinPalmer/pastify.nvim', {'for': ['markdown']} " Paste images into markdown from neovim
+		else
+			call kc#log('no pastify because no PIL')
 		endif
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
 		if executable('yarn') && has('nvim')
@@ -568,13 +572,14 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
 		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
 		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
-		try
-			if has('nvim-0.9.4') && has('python3') && py3eval('import importlib; sys.version_info.major == 3 and sys.version_info.minor >= 10 and importlib.find_loader("jupyter_client") is not None')
-				Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
-				Plug '3rd/image.nvim'
-			endif
-		catch
-		endtry
+		if has('nvim-0.9.4') && has('python3')
+					\ && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 10')
+					\ && py3eval('__import__("importlib.util").util.find_spec("jupyter_client")')
+			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
+			Plug '3rd/image.nvim'
+		else
+			call kc#log('no molten because no jupyter_client ')
+		endif
 	" }}}
 	" Disabled stuff {{{
 		" Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python

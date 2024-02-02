@@ -70,6 +70,7 @@ Options:
    -a --rsyncarg ARG      Add additional arguments to rsync command line.
       --test              Run tests
       --time              Time it
+	  --image             Base alpine image reference
 
 Examples:
     $NAME --delete -f ssh://user1@server2 grafana_data -t ssh://user2@server2 grafana_data_backup
@@ -82,7 +83,7 @@ EOF
 NAME=,docker-rsync-volumes
 args=$(getopt -n "$NAME" \
 	-o hdqf:t:na: \
-	-l help,quiet,debug,from:,to:,delete,dry-run,rsyncarg:,test,time \
+	-l help,quiet,debug,from:,to:,delete,dry-run,rsyncarg:,image:,test,time \
 	-- "$@"
 )
 eval "set -- $args"
@@ -93,6 +94,7 @@ dst_volume=chronos_monitoring_grafana
 c_debug=0
 c_quiet=0
 c_time=0
+c_image="alpine:latest"
 rsyncargs=()
 while (($#)); do
 	case "$1" in
@@ -104,6 +106,7 @@ while (($#)); do
 	--delete) rsyncargs+=(--delete); ;;
 	-n|--dry-run) rsyncargs+=(--dry-run); ;;
 	-a|--rsyncarg) rsyncargs+=("$2"); shift; ;;
+	--image) c_image="$2"; shift; ;;
 	--test) run_tests; exit; ;;
 	--time) c_time=1; ;;
 	--) shift; break; ;;
@@ -176,27 +179,28 @@ log "Syncing ${src_docker_host:-localhost}:$src_volume -> ${dst_docker_host:-loc
 log "Building docker containers"
 # shellcheck disable=2030
 {
-	# The script wait-for-rsync-listen.sh block the execution until
-	# some process starts listening on rsync port 873.
-	cat > "$tmpd"/Dockerfile <<'EOF'
-FROM alpine:latest
-RUN apk add rsync socat && \
-	printf "$s\n" > /usr/local/bin/wait-for-rsync-listen.sh \
-		'#!/bin/sh' \
-		'' \
-		'for i in $(seq 20); do' \
-		'  sleep 0.1' \
-		'  if netstat -anp tcp | grep -q "0\.0\.0\.0:873 .* LISTEN "; then' \
-		'    exit 0' \
-		'  fi' \
-		'done' \
-		'exit 1'
+	dockerfile=$(cat <<EOF
+	FROM $c_image
+	RUN apk add rsync socat && \
+		printf "%s\n" > /usr/local/bin/wait-for-rsync-listen.sh \
+			'#!/bin/sh' \
+			'' \
+			'for i in \$(seq 20); do' \
+			'  sleep 0.1' \
+			'  if netstat -anp tcp | grep -q "0\.0\.0\.0:873 .* LISTEN "; then' \
+			'    exit 0' \
+			'  fi' \
+			'done' \
+			'exit 1'
 EOF
-	src_dcont=$( cd "$tmpd" && src_docker build -q . )
+	)
+	src_docker build - <<<"$dockerfile"
+	src_dcont=$(src_docker build -q - <<<"$dockerfile")
 	if [[ "$src_docker_host" == "$dst_docker_host" ]]; then
 		dst_dcont="$src_dcont"
 	else
-		dst_dcont=$( cd "$tmpd" && dst_docker build -q . )
+		dst_docker build - <<<"$dockerfile"
+		dst_dcont=$(dst_docker build -q - <<<"$dockerfile")
 	fi
 }
 

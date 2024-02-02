@@ -119,15 +119,15 @@ class Package(Register):
         checkout = self.args.checkout or checkout
         if not self.builddir.exists():
             self.builddir.parent.mkdir(parents=True, exist_ok=True)
-            run(f"git clone {repo} {self.builddir}")
+            run(f"git clone --branch={checkout} {repo} {self.builddir}")
         if args.distclean:
             self.git("clean -fdx")
             log.info("distclean exit")
             exit(0)
         self.git(f"remote set-url origin {repo}")
-        self.git(f"tag -d origin/{checkout} {checkout}", check=False)
+        self.git(f"tag -d {checkout}")
         self.git("fetch --all --tags --prune --force")
-        self.git(f"reset --hard origin/{checkout}")
+        self.git(f"reset --hard {checkout}")
 
     def run(self, cmd: List[str]):
         raise NotImplementedError()
@@ -203,7 +203,7 @@ class Package_neovim(Package):
             log.info("Updating plugins")
             run(
                 f"{self.installnvimcmd} +PlugInstall +PlugUpdate"
-                " +CocUpdateSync +UpdateRemotePlugins +sleep 1 +qa"
+                " +TSUpdateSync +CocUpdateSync +UpdateRemotePlugins +sleep 1 +qa"
             )
         else:
             log.info("Skipping updating plugins")
