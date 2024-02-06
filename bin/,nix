@@ -41,6 +41,10 @@ fi
 ###############################################################################
 set -euo pipefail
 
+dir_is_not_empty() {
+	find "$@" -mindepth 1 -maxdepth 1 | read
+}
+
 log() {
 	echo ",nix:" "$@" >&2
 }
@@ -175,7 +179,9 @@ addenv NIX=1
 addenv NIXPKGS_ALLOW_UNFREE=1
 addenv NIX_CONF_DIR=~/.nix/etc/nix/
 # https://nixos.wiki/wiki/Locales
-addenv LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
+if dir_is_not_empty /usr/lib/locale/locale-archive; then
+	addenv LOCALE_ARCHIVE=/usr/lib/locale/local-archive
+fi
 # https://github.com/NixOS/nix/issues/3155
 tmp=/etc/ssl/certs/ca-bundle.crt
 if [[ -e "$tmp" ]]; then
