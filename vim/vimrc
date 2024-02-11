@@ -490,9 +490,6 @@ augroup END
 command! -bar LuaConfig :execute 'edit '.g:kamilscripts.'/vim/lua/kc.lua'
 command! -bar LuaReload :lua package.loaded.kc = nil require("kc").setup()
 
-" }}}
-" Load plugins with vim-plug {{{1
-
 function! KcInstall(lang) abort
 	if !filereadable(expand('~/.vim/plugged/vim-plug/plug.vim'))
 		if !isdirectory(expand('~/.vim/plugged/vim-plug/'))
@@ -508,11 +505,31 @@ function! KcInstall(lang) abort
 				exec l:cmd
 			else
 				call kc#log('not exists '.l:cmd)
-			end
+			endif
 		endfor
-	end
+	endif
 endfunction
 command! -bar -nargs=? KcInstall :VimReload | call KcInstall(<q-args>)
+
+function! KcPythonHasVersion(major, minor) abort
+	if has('python3') && py3eval('sys.version_info.major == '.a:major.' and sys.version_info.minor >= '.a:minor)
+		return v:true
+	else
+		return v:false
+	endif
+endfunction
+
+function! KcPythonHasImport(import) abort
+	if has('python3') && py3eval('__import__("importlib.util").util.find_spec("'.a:import.'") is not None')
+		return v:true
+	else
+		return v:false
+	endif
+	return v:false
+endfunction
+
+" }}}
+" Load plugins with vim-plug {{{1
 
 let plugdir = expand('~/.vim/plugged/')
 if filereadable(plugdir.'/vim-plug/plug.vim')
@@ -537,29 +554,22 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 
 	" My Plugins {{{2
 		" Plug 'tpope/vim-dispatch' " Asynchronous build and test dispatcher
-		" Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' }
+		Plug 'kamilcuk/vim-dispatch', { 'dir': plugdir.'kamilcuk-vim-dispatch' } " Asynchronous build and test dispatcher
 		" KcPlug8 g:kamilscripts . 'vim/ebundle/my/dbg'
 		" Plug 'Kamilcuk/vim-auto-gcov-marker'
-		" Plug 'JonasMuehlmann/conoline.vim'
-		" Plug g:kamilscripts . 'vim/bundle/vim-dispatch' " Vim dispatch patched, see below
-		"
-		" Plug 'aduros/ai.vim'
-		" Plug 'madox2/vim-ai'
-		" Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+    	Plug 'wellle/context.vim' " Shows currently visible context.
 		if has('nvim')
 			Plug 'Robitx/gp.nvim' " Talk with AI with neovim
 		endif
-		if has('nvim') && has('python3')
-					\ && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 8')
-					\ && py3eval('__import__("importlib.util").util.find_spec("PIL")')
+		if has('nvim') && KcPythonHasVersion(3, 8) && KcPythonHasImport("PIL")
 			Plug 'TobinPalmer/pastify.nvim', {'for': ['markdown']} " Paste images into markdown from neovim
 		else
-			call kc#log('no pastify because no PIL')
+			call kc#log('no pastify because no nvim or no python3.8 or no PIL')
 		endif
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
-		if executable('yarn') && has('nvim')
+		if has('nvim') && executable('yarn')
 			Plug 'iamcco/markdown-preview.nvim', {'do': 'cd app && yarn install', 'for': ['markdown']}
 		endif
 		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
@@ -572,16 +582,18 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
 		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
 		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
-		if has('nvim-0.9.4') && has('python3')
-					\ && py3eval('sys.version_info.major == 3 and sys.version_info.minor >= 10')
-					\ && py3eval('__import__("importlib.util").util.find_spec("jupyter_client")')
+		if has('nvim-0.9.4') && KcPythonHasVersion(3, 10) && KcPythonHasImport("jupyter_client")
 			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
 			Plug '3rd/image.nvim'
 		else
-			call kc#log('no molten because no jupyter_client ')
+			call kc#log('no molten because no nvim-0.9.4 or no python3.10 or no jupyter_client ')
 		endif
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
+		" Plug 'JonasMuehlmann/conoline.vim'
+		" Plug 'aduros/ai.vim'
+		" Plug 'madox2/vim-ai'
 		" Plug 'wookayin/semshi', { 'do': ':UpdateRemotePlugins', 'for': ['python'] } " Better highlighting for python
 		" Plug 'mbbill/undotree' " :UndotreeToggle visualize undo " conflicts with something
 		" Plug 'lukas-reineke/headlines.nvim' " The headlines conflict with some terminal configurations.
@@ -748,18 +760,21 @@ endif
 " }}}
 " Plugins configuration {{{1
 
+if kc#plugin#enabled('context.vim')
+	let g:context_max_height = 3
+endif
 
 if kc#plugin#enabled('gp.nvim')
 	lua <<EOF
 	require("gp").setup()
 EOF
-end
+endif
 
 if kc#plugin#enabled('pastify.nvim')
 	lua <<EOF
 	require('pastify').setup{}
 EOF
-end
+endif
 
 if kc#plugin#enabled('nvim-treesitter')
 	lua <<EOF
@@ -770,11 +785,11 @@ if kc#plugin#enabled('nvim-treesitter')
 		},
 	}
 EOF
-end
+endif
 
 if kc#plugin#enabled('headlines.nvim')
 	lua require("headlines").setup()
-end
+endif
 
 " Disable default neovim SQL completion because it makes it very slow.
 let g:omni_sql_no_default_maps=0
@@ -801,6 +816,7 @@ require("noice").setup({
 })
 EOF
 endif
+
 if kc#plugin#enabled('which-key.nvim')
 	lua require("which-key").setup{}
 	set timeout
@@ -845,7 +861,7 @@ if kc#plugin#enabled('vim-keywordprg-commands')
 		autocmd!
 		autocmd FileType markdown,rst,tex,txt setlocal keywordprg=:DefEng
 		autocmd FileType python setlocal keywordprg=:Pydoc
-	augroup end
+	augroup END
 endif
 
 if 0 && kc#plugin#enabled('vim-LanguageTool')
@@ -1157,12 +1173,6 @@ if kc#plugin#enabled('vimspector')
 	nmap <Leader>dc :VimspectorReset<CR>
 endif
 
-if kc#plugin#enabled('Colorizer')
-	let g:colorizer_auto_color = 1
-	" sets g:colorizer_custom_colors with xterm256 colors
-	call kc#xterm256colornames#colorizer()
-endif
-
 if kc#plugin#enabled('vim-DetectSpellLang')
 	let g:detectspelllang_langs = {}
 	let g:detectspelllang_langs.aspell = [ 'en_US', 'pl_PL' ]
@@ -1203,10 +1213,10 @@ if kc#plugin#enabled('vim-dispatch')
 		" Put copen window on the lef.
 		"autocmd FileType qf wincmd L
 	augroup END
-	let g:dispatch_quickfix_height = &lines / 3
+	let g:dispatch_quickfix_height = &lines / 3 > 10 ? 10 : &lines / 3
 endif
 
-if kc#plugin#enabled('vimwiki')
+if 0 && kc#plugin#enabled('vimwiki')
 	let g:vimwiki_list = [{'path': '~/vimwiki/',
 						  \ 'syntax': 'markdown', 'ext': '.md'}]
 endif
@@ -1244,7 +1254,7 @@ if kc#plugin#enabled('neoformat')
 				\ 'args': [ 'fmt', '-' ],
 				\ 'stdin': 1,
 				\ }
-	let g:neoformat_enabled_hcl = [ 'nomad' ]
+	let g:neoformat_enabled_hcl = ['hclfmt', 'nomad']
 	"
 	let g:neoformat_policyhcl_nomad = {
 				\ 'exe': 'vault',
@@ -1255,7 +1265,7 @@ if kc#plugin#enabled('neoformat')
 	"
 	" Add `:Format` command to format current buffer.
 	"command! -nargs=0 Format :call CocAction('format')
-	" neoformat/plugin/neoformat.vim
+	" https://github.com/sbdchd/neoformat/blob/master/plugin/neoformat.vim#L6
 	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters Format
 				\ call neoformat#Neoformat(<bang>0, <q-args>, <line1>, <line2>)
 	command! -nargs=? -bar -range=% -bang -complete=customlist,neoformat#CompleteFormatters F
@@ -1325,7 +1335,8 @@ if kc#plugin#enabled('fzf.vim')
 			let query = empty(a:query) ? '^(?=.)' : a:query
 			let args = copy(a:000)
 			let ag_opts = len(args) > 1 && type(args[0]) == v:t_string ? remove(args, 0) : ''
-			let command = ag_opts . fzf#shellescape(query)
+			"let command = ag_opts . '--' . fzf#shellescape(query)
+			let command = ag_opts . query
 			echom 'ag '.command
 			return call('fzf#vim#ag_raw', insert(args, command, 0))
 		endfunction

@@ -192,9 +192,9 @@ function! kc#log(str) abort
 	" Keep a cache of printed lines in a file.
 	" In that file store printed lines. If a line was already printed,
 	" do not print it again.
-	" Remove cache after one day.
+	" Remove cache after two day.
 	let myfile = expand("~/.vim/.kccache")
-	if filereadable(myfile) && system("date +%s") - system("stat -f%c ".myfile) < 3600 * 24
+	if filereadable(myfile) && system("date +%s") - system("stat -f%c ".myfile) < 3600 * 24 * 2
 		call delete(myfile)
 	endif
 	let lines = filereadable(myfile) ? readfile(myfile) : []

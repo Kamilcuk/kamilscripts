@@ -38,18 +38,23 @@ _kc_prompt_setup() {
 
 	# Detect virtualization with the help of systemd
 	local virt
-	if
-		hash systemd-detect-virt 2>/dev/null >&2 && {
-			{ virt=$(systemd-detect-virt) && [[ -n "$virt" && "$virt" != 'none' ]] ;} ||
-			{ systemd-detect-virt -q -r 2>/dev/null && virt='chroot' ;} ||
-			{ systemd-detect-virt -q --private-users 2>/dev/null && virt='usernm' ;}
-		}
-	then
-		pre+="\\[$bold$red\\]$virt\\[$reset\\] "
+	if hash systemd-detect-virt 2>/dev/null >&2; then
+		virt=$(
+			{
+				systemd-detect-virt -c
+				systemd-detect-virt -v
+				systemd-detect-virt -q -r 2>/dev/null && echo chroot
+				systemd-detect-virt --cvm
+				systemd-detect-virt -q --private-users 2>/dev/null && echo usernm
+			} | grep -xvF none | paste -sd ' '
+		)
+		if [[ -n "$virt" ]]; then
+			pre+="\\[$bold$red\\]$virt\\[$reset\\] "
+		fi
 	fi
 
 	if [[ -n "${NIX_PROFILES:-}" && -r '/nix/' && -d '/nix/' ]]; then
-		pre+="\\[$back_magenta$white\\]nix\\[$reset\\] "
+		pre+="\\[$white\\]nix\\[$reset\\] "
 	fi
 
 	local tmp
@@ -59,11 +64,10 @@ _kc_prompt_setup() {
 
 	local hostname
 	if ! {
-			((colors)) && hash ,color 2>/dev/null &&
+		((colors)) && hash ,color 2>/dev/null &&
 			hostname="$(,color -s sha1charrainbow3 "$HOSTNAME" 2>/dev/null | sed $'s/\x1b\\[[0-9;]*m/\x01&\x02/g')" &&
 			[[ -n "$hostname" ]]
-		}
-	then
+	}; then
 		hostname="$HOSTNAME"
 	fi
 
@@ -73,8 +77,7 @@ _kc_prompt_setup() {
 		two=$'\002'
 		for i in \
 			bold standout nostandout yellow red blue green cyan reset \
-			hostname one two
-		do
+			hostname one two; do
 			echo "s~%$i%~${!i}~g"
 		done
 	)"
@@ -111,5 +114,3 @@ EOF
 }
 
 _kc_prompt_setup
-
-
