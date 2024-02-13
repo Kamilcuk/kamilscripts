@@ -11,7 +11,13 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Dict, Generic, List, Optional, TypeVar
 
-from typing_extensions import override
+try:
+    from typing import override
+except ImportError:
+
+    def override(f):
+        return f
+
 
 # Directory with all our data.
 g_dir = Path().home() / ".cache/,builtit"
@@ -157,7 +163,9 @@ class Package(Register):
 class Package_neovim(Package):
     aliases: str = "nvim n"
     installnvim: Path = g_installdir / "bin" / "nvim"
-    installnvimcmd: str = f"env VIM={q(g_installdir)}/share/nvim VIMRUNTIME={q(g_installdir)}/share/nvim/runtime {q(installnvim)}"
+    installnvimcmd: str = (
+        f"env VIM={q(g_installdir)}/share/nvim VIMRUNTIME={q(g_installdir)}/share/nvim/runtime {q(installnvim)}"
+    )
 
     @override
     def _build(self):
