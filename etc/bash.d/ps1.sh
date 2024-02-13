@@ -44,7 +44,7 @@ _kc_prompt_setup() {
 				systemd-detect-virt -c
 				systemd-detect-virt -v
 				systemd-detect-virt -q -r 2>/dev/null && echo chroot
-				systemd-detect-virt --cvm
+				systemd-detect-virt --cvm 2>/dev/null
 				systemd-detect-virt -q --private-users 2>/dev/null && echo usernm
 			} | grep -xvF none | paste -sd ' '
 		)
