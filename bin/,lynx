@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+
+import argparse
+import csv
+from pathlib import Path
+import requests
+
+def get_kursy_srednie_walut_obcych():
+    url = "https://static.nbp.pl/dane/kursy/Archiwum/archiwum_tab_a_2024.csv"
+    response = requests.get(url)
+    response.raise_for_status()
+    content = response.content
+
+    other_file = get_kursy_srednie_walut_obcych()
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--csv_file", help="Path to the LYNX csv report", required=True, type=Path)
+    args = parser.parse_args()
+    csv_file = args.csv_file
+    with csv_file.open("r") as csv_fh:
+        reader = csv.reader(csv_fh)
+        for row in reader:
+            print(row)
+
+    with other_file.open("r") as other_fh:
+        for line in other_fh:
+            print(line)
+
+
+if __name__ == "__main__":
+    main()
