@@ -63,6 +63,14 @@ be_nice() {
 	fi
 }
 
+confirm() {
+	local ans
+	read -r -p "$1 [y]" ans
+	if [[ "$ans" != "y" ]]; then
+		fatal "The answer was not exactly 'y'"
+	fi
+}
+
 help() {
 	cat <<EOF
 Usage: ,nix -OPTION
@@ -81,7 +89,6 @@ EOF
 
 # Parse arguments
 if (($#)) && [[ "$1" == -* ]]; then
-	set -x
 	be_nice
 	if (($# > 1)); then
 		fatal "too many arguments: $*"
@@ -107,13 +114,20 @@ if (($#)) && [[ "$1" == -* ]]; then
 		bash -s -- --no-daemon --no-modify-profile <<<"$tmp"
 		;;
 	--completely-remove-nix)
-		read -r -p "Are you sure you want to completely remove nix? [y] " ans
-		if [[ "$ans" != "y" ]]; then
-			fatal "The answer was not exactly 'y'"
-		fi
+		dirs=(~/.nix ~/.nix-channels ~/.nix-defexpr ~/.nix-profile ~/.local/state/nix)
+		confirm "Are you sure you want to completely remove ${dirs[*]@Q} ?"
 		set -x
 		chmod -R +w ~/.nix
-		rm -r ~/.nix .nix-channels .nix-defexpr/ .nix-profile
+		rm -vrf "${dirs[@]}"
+		;;
+	--user-nix-check)
+		set -x
+		ls -la ~/.nix ~/.nix-channels ~/.nix-defexpr ~/.nix-profile ~/.local/state/nix
+		;;
+	--user-nix-remove)
+		dirs=(~/.nix-channels ~/.nix-defexpr ~/.nix-profile ~/.local/state/nix)
+		confirm "Are you want to remove ${dirs[*]@Q} ?"
+		rm -vrf "${dirs[@]}"
 		;;
 	--bash-completion)
 		echo '. ,nix --bash-completion'
