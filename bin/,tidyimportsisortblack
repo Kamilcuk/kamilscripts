@@ -41,7 +41,7 @@ fi
 export PYTHONWARNINGS="ignore"
 if tmp=$(
 	#autoimport - |
-		tidy-imports --black --quiet --replace-star-imports |
+		tidy-imports --black --quiet --replace-star-imports 2>/dev/null |
 		isort --stdout --quiet --profile black - |
 		black --quiet -
 ); then

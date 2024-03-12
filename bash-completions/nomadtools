@@ -1,0 +1,1 @@
+eval "$(_NOMADTOOLS_COMPLETE=bash_source nomadtools)"

@@ -4,24 +4,34 @@ _cc() {
 	"${g_prefix:-}"${CC:-gcc} "$@"
 }
 
-C_show_predefined_macros_verbose() {
-	_cc -E -dN - < /dev/null
-}
+C_show_predefined_macros_verbose() (
+	set -x
+	_cc -E -dN - </dev/null
+)
 
-C_show_predefined_macros() {
-	_cc -E -dM - < /dev/null
-}
+C_show_predefined_macros() (
+	set -x
+	_cc -E -dM - </dev/null
+)
 
 . ,lib_lib -q
 while (($#)); do
 	case "$1" in
-	-c|--cc) CC="$2"; shift; ;;
-	-a|--arm-none) g_prefix=arm-none-eabi-; ;;
-	-p|--prefix) g_prefix="$2"; shift; ;;
-	--) shift; break; ;;
-	*) break; ;;
+	-c | --cc)
+		CC="$2"
+		shift
+		;;
+	-a | --arm-none) g_prefix=arm-none-eabi- ;;
+	-p | --prefix)
+		g_prefix="$2"
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
+	*) break ;;
 	esac
 	shift
 done
 . ,lib_lib C_ "$@"
-

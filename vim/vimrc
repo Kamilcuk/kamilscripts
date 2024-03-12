@@ -1,5 +1,3 @@
-" kamilscripts/vim/vimrc
-
 " Init {{{1
 
 " if get(g:, 'loaded_kamilscripts_vimrc', 0)
@@ -559,10 +557,11 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		" Plug 'Kamilcuk/vim-auto-gcov-marker'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+		Plug 'NoahTheDuke/vim-just' " syntax for justfile
 		if has('nvim')
 			Plug 'nvim-orgmode/orgmode' " keeping notes, authoring documents, computational notebooks
 		endif
-    	Plug 'wellle/context.vim' " Shows currently visible context.
+    	Plug 'wellle/context.vim' " Shows currently visible context, like entered if or function above.
 		if has('nvim')
 			Plug 'Robitx/gp.nvim' " Talk with AI with neovim
 		endif
@@ -580,11 +579,9 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		if has('nvim')
 			Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 		endif
-		Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
 		Plug 'easymotion/vim-easymotion' " Move motions by number later \\s and observe
 		Plug 'pappasam/vim-keywordprg-commands' " Lookup Python documentation using pydoc with K in normal mode
 		Plug 'kshenoy/vim-signature' " Show marks on the left and additiona m* motions
-		Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
 		if has('nvim-0.9.4') && KcPythonHasVersion(3, 10) && KcPythonHasImport("jupyter_client")
 			Plug 'benlubas/molten-nvim' " Jupiter integration in neovim
 			Plug '3rd/image.nvim'
@@ -593,6 +590,8 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		endif
 	" }}}
 	" Disabled stuff {{{
+		" Plug 'tpope/vim-commentary' " Comment with gcc gc<motion> <selection>gc
+		" Plug 'mhinz/vim-sayonara', { 'on': 'Sayonara' } " merge :bd :close :quit in one command
 		" Plug 'kamilcuk/kai.nvim' " talk with AI :AIA :AI :AIE
 		" Plug 'JonasMuehlmann/conoline.vim'
 		" Plug 'aduros/ai.vim'
