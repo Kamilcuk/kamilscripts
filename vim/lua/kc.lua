@@ -105,6 +105,7 @@ end
 
 ---@param list string[]
 local function parallelcmd(list)
+    -- disable parallel
     if false then
         local cmd = ""
         cmd = ""
@@ -122,6 +123,16 @@ end
 -------------------------------------------------------------------------------
 
 local Lang = {}
+
+function Lang.go()
+    CocInstall("coc-go")
+    TSInstall("go")
+end
+
+function Lang.sql()
+    npm_install("sql-formatter node-sql-parser")
+    CocInstall("coc-sql")
+end
 
 function Lang.nomad()
     vim.cmd("!pipx install nomad-tools")
@@ -210,6 +221,16 @@ function Lang.javascript()
     npm_install("js-beautify")
     CocInstallRegister("coc-tsserver")
     TSInstall("javascript")
+end
+
+function Lang.ansible()
+    CocInstallRegister("@yaegassy/coc-ansible")
+end
+
+function Lang.groovy()
+    CocInstallRegister("coc-groovy")
+    TSInstall("groovy")
+    npm_install("npm-groovy-lint")
 end
 
 -------------------------------------------------------------------------------

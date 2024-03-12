@@ -243,12 +243,14 @@ if 1
 	augroup END
 endif
 
-" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-" Map semicolon to colon and double semicolon to semicolon.
-" https://vim.fandom.com/wiki/Map_semicolon_to_colon
-map ; :
-noremap ;; ;
-" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+if 0
+	" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	" Map semicolon to colon and double semicolon to semicolon.
+	" https://vim.fandom.com/wiki/Map_semicolon_to_colon
+	map ; :
+	noremap ;; ;
+	" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+endif
 
 " Disable entering ex mode
 " https://stackoverflow.com/questions/1269689/to-disable-entering-ex-mode-in-vim
@@ -558,6 +560,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
 		Plug 'NoahTheDuke/vim-just' " syntax for justfile
+		Plug 'sheerun/vim-polyglot' " Solid language pack for vim
 		if has('nvim')
 			Plug 'nvim-orgmode/orgmode' " keeping notes, authoring documents, computational notebooks
 		endif
