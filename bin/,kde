@@ -6,11 +6,34 @@ C_list-shortcuts() {
 		qdbus org.kde.kglobalaccel "$c" shortcutNames |
 			awk -v c="$c" '{ print c, $0 }'
 	done |
-	if (($#)); then
-		grep -i "$@"
-	else
-		cat
-	fi
+		if (($#)); then
+			grep -i "$@"
+		else
+			cat
+		fi
+}
+
+r() {
+	echo "+ $*" >&2
+	"$@"
+}
+
+addsc() {
+	local key cmd
+	key=$1
+	cmd=$*
+	r kwriteconfig6 --file kglobalshortcutsrc --group AAA_kc \
+		--key "$cmd" "$key,none,${cmd@Q}"
+}
+
+C_install-shortcuts() {
+	addsc 'Meta+`' "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
+	addsc 'Meta+1' "pactl set-sink-volume @DEFAULT_SINK@ -2%"
+	addsc 'Meta+2' "pactl set-sink-volume @DEFAULT_SINK@ +2%"
+	addsc 'Meta+3' ",leonidas toggle_hdmi_mute"
+	addsc 'Meta+4' ",xrandr_change_brightness.sh -0.1"
+	addsc 'Meta+5' ",xrandr_change_brightness.sh +0.1"
+	addsc 'Meta+=' "soffice --calc /home/kamil/mnt/share/archive/moje_dokumenty/zestawienie.ods"
 }
 
 . ,lib_lib C_ "$@"
