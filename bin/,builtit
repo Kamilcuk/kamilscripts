@@ -225,7 +225,6 @@ class Package_neovim(Package):
     def _info(self):
         run(f"{self.installnvimcmd} -V1 -v")
 
-
 ###############################################################################
 
 

@@ -559,12 +559,16 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 		" Plug 'Kamilcuk/vim-auto-gcov-marker'
 	" }}}
 	" Staging stuff that maybe should be removed maybe not {{{
+		Plug 'ThePrimeagen/vim-be-good' " :VimBeGood
+		Plug 'felleg/TeTrIs.vim' " :Tetris
+		Plug 'vim/killersheep' " :KillKillKill
+		Plug 'pocco81/auto-save.nvim'
 		Plug 'NoahTheDuke/vim-just' " syntax for justfile
 		Plug 'sheerun/vim-polyglot' " Solid language pack for vim
 		if has('nvim')
 			Plug 'nvim-orgmode/orgmode' " keeping notes, authoring documents, computational notebooks
 		endif
-    	Plug 'wellle/context.vim' " Shows currently visible context, like entered if or function above.
+    	" Plug 'wellle/context.vim' " Shows currently visible context, like entered if or function above.
 		if has('nvim')
 			Plug 'Robitx/gp.nvim' " Talk with AI with neovim
 		endif
@@ -717,12 +721,13 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 	" View display visible stuff {{{2
 		Plug 'ntpeters/vim-better-whitespace' " Mark whitespaces :StripWhitespace
 		Plug 'luochen1990/rainbow' " Rainbow Parentheses
-		Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
 		"Plug 'bagrat/vim-buffet' " Trying as faster to buftabline. Does not show buffer number!
 		Plug 'ryanoasis/vim-devicons' " dependency for vim-buffet for icons
 		Plug 'airblade/vim-gitgutter' " Show +/-/~ on the left when file changes in git repo
 		Plug 'NLKNguyen/papercolor-theme' " The theme that I use. Actually I modified it that much...
-		KcPlug8 'vim-airline/vim-airline' " The vimline below.
+		"
+		" Plug 'ap/vim-buftabline' " Works **way** faster then papercolor tabline
+		" KcPlug8 'vim-airline/vim-airline' " The vimline below.
 	" }}}
 	" zzz Utilities that have to be last {{{2
 		Plug 'thaerkh/vim-workspace', { 'dir': plugdir.'vim-workspace' }

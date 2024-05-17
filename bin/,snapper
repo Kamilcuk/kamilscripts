@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+
+C_foreach() {
+	echo /etc/snapper/configs/* | xargs basename -a | xargs -ti snapper -c {} "$@"
+}
+
+. ,lib_lib C_ "$@"
