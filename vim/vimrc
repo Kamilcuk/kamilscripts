@@ -1011,38 +1011,66 @@ if kc#plugin#enabled('ctrlp.vim')
 	let g:ctrlp_working_path_mode = ''
 	command! CtrlPoldfiles call ctrlp#init(ctrlp#oldfiles#id())
 	let g:ctrlp_follow_symlinks = 1
-	if executable('ag')
-		" https://github.com/kien/ctrlp.vim/issues/576
-		let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
-			\ --skip-vcs-ignores
-			\ --ignore .tox/
-			\ --ignore .git/
-			\ --ignore hg/
-			\ --ignore svn/
-			\ --ignore .cache/
-			\ --ignore .vagrant/
-			\ --ignore _build/
-			\ --ignore spec/fixtures/modules/
-			\ --ignore "*.exe"
-			\ --ignore "*.so"
-			\ --ignore "*.dll"
-			\ --ignore "*.egg-info/"
-			\ --ignore ".pytest_cache/"
-			\ --ignore "__pycache__/"
-			\ --ignore ".mypy_cache/"
-			\ --files-with-matches
-			\ --max-count 50000
-			\ %s
-			\ --filename-pattern ""'
+	let g:ctrlp_user_command = [
+				\ '.git', 'cd %s && git ls-files -c --exclude-standard --recurse-submodules | grep -x -v "$( git ls-files -d --exclude-standard )" ; git ls-files -o --exclude-standard',
+				\ 'find %s -type f' ]
+	if 0
+		if executable('rg')
+			" https://github.com/kien/ctrlp.vim/issues/576
+			let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
+				\ --skip-vcs-ignores
+				\ --ignore .tox/
+				\ --ignore .git/
+				\ --ignore hg/
+				\ --ignore svn/
+				\ --ignore .cache/
+				\ --ignore .vagrant/
+				\ --ignore _build/
+				\ --ignore spec/fixtures/modules/
+				\ --ignore "*.exe"
+				\ --ignore "*.so"
+				\ --ignore "*.dll"
+				\ --ignore "*.egg-info/"
+				\ --ignore ".pytest_cache/"
+				\ --ignore "__pycache__/"
+				\ --ignore ".mypy_cache/"
+				\ --files-with-matches
+				\ --max-count 50000
+				\ %s
+				\ --filename-pattern ""'
+		elif executable('ag')
+			" https://github.com/kien/ctrlp.vim/issues/576
+			let g:ctrlp_user_command = 'ag --ignore-case --nogroup --hidden --follow
+				\ --skip-vcs-ignores
+				\ --ignore .tox/
+				\ --ignore .git/
+				\ --ignore hg/
+				\ --ignore svn/
+				\ --ignore .cache/
+				\ --ignore .vagrant/
+				\ --ignore _build/
+				\ --ignore spec/fixtures/modules/
+				\ --ignore "*.exe"
+				\ --ignore "*.so"
+				\ --ignore "*.dll"
+				\ --ignore "*.egg-info/"
+				\ --ignore ".pytest_cache/"
+				\ --ignore "__pycache__/"
+				\ --ignore ".mypy_cache/"
+				\ --files-with-matches
+				\ --max-count 50000
+				\ %s
+				\ --filename-pattern ""'
+		endif
 	endif
 endif
 
 if kc#plugin#enabled('ack.vim')
-	" https://github.com/ggreer/the_silver_searcher
-	if executable('ag')
-		let g:ackprg = 'ag --vimgrep -u --follow'
-	elseif executable('rg')
+	if executable('rg')
 		let g:ackprg = 'rg --vimgrep'
+	elseif executable('ag')
+		" https://github.com/ggreer/the_silver_searcher
+		let g:ackprg = 'ag --vimgrep -u --follow'
 	else
 		" defaults
 	endif
@@ -1360,27 +1388,26 @@ if kc#plugin#enabled('open-browser.vim')
 endif
 
 if kc#plugin#enabled('fzf.vim')
-	if 1
-		function! KcAg(query, ...)
-			" Allow to pass --options to AG.
-			" https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
-			if type(a:query) != v:t_string
-				return s:warn('Invalid query argument')
-			endif
-			let query = empty(a:query) ? '^(?=.)' : a:query
-			let args = copy(a:000)
-			let ag_opts = len(args) > 1 && type(args[0]) == v:t_string ? remove(args, 0) : ''
-			"let command = ag_opts . '--' . fzf#shellescape(query)
-			let command = ag_opts . query
-			echom 'ag '.command
-			return call('fzf#vim#ag_raw', insert(args, command, 0))
-		endfunction
-		command! -bang -nargs=* AG call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
-	else
-		command! -bang -nargs=* AG call fzf#vim#ag(<q-args>, fzf#vim#with_preview(), <bang>0)
-	endif
+	" https://github.com/junegunn/fzf.vim/blob/master/plugin/fzf.vim#L63
+	command! -bang -nargs=* RGO call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".fzf#shellescape(<q-args>), fzf#vim#with_preview(), <bang>0)',
+	"""
+	function! KcAg(query, ...)
+		" Allow to pass --options to AG.
+		" https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
+		if type(a:query) != v:t_string
+			return s:warn('Invalid query argument')
+		endif
+		let query = empty(a:query) ? '^(?=.)' : a:query
+		let args = copy(a:000)
+		let ag_opts = len(args) > 1 && type(args[0]) == v:t_string ? remove(args, 0) : ''
+		"let command = ag_opts . '--' . fzf#shellescape(query)
+		let command = ag_opts . query
+		echom 'ag '.command
+		return call('fzf#vim#ag_raw', insert(args, command, 0))
+	endfunction
+	command! -bang -nargs=* AG call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
+	"""
 	let g:fzf_layout = { 'window': { 'width': 0.99, 'height': 0.99 } }
-	" Alias :AG to :Ag because typing errors.
 endif
 
 if kc#plugin#enabled('vim-glaive')
