@@ -511,21 +511,21 @@ function! KcInstall(lang) abort
 endfunction
 command! -bar -nargs=? KcInstall :VimReload | call KcInstall(<q-args>)
 
+function! KcPythonBool(script) abort
+	try
+		return has('python3') && py3eval(a:script)
+	finally
+		call kc#log('no python3 support')
+	endtry
+	return v:false
+endfunction
+
 function! KcPythonHasVersion(major, minor) abort
-	if has('python3') && py3eval('sys.version_info.major == '.a:major.' and sys.version_info.minor >= '.a:minor)
-		return v:true
-	else
-		return v:false
-	endif
+	return KcPythonBool('sys.version_info.major == '.a:major.' and sys.version_info.minor >= '.a:minor)
 endfunction
 
 function! KcPythonHasImport(import) abort
-	if has('python3') && py3eval('__import__("importlib.util").util.find_spec("'.a:import.'") is not None')
-		return v:true
-	else
-		return v:false
-	endif
-	return v:false
+	return KcPythonBool('__import__("importlib.util").util.find_spec("'.a:import.'") is not None')
 endfunction
 
 " }}}
@@ -537,7 +537,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 
 	if v:version >= 800
 		command! -nargs=+ -bar KcPlug8 call plug#(<args>)
-		if has('nvim') && executable('npm') && executable('yarn')
+		if has('nvim') && executable('npm')
 			command! -nargs=+ -bar KcPlugCoc call plug#(<args>)
 		else
 			command! -nargs=+ -bar KcPlugCoc " Empty. Only enable when coc is able to be enabled
@@ -578,8 +578,12 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 			call kc#log('no pastify because no nvim or no python3.8 or no PIL')
 		endif
 		Plug 'christoomey/vim-tmux-navigator' " <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
-		if has('nvim') && executable('yarn')
-			Plug 'iamcco/markdown-preview.nvim', {'do': 'cd app && yarn install', 'for': ['markdown']}
+		if has('nvim')
+			if executable('npx')
+				Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && npx --yes yarn install', 'for': ['markdown']}
+			else
+				Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['markdown', 'vim-plug']}
+			endif
 		endif
 		Plug 'mzlogin/vim-markdown-toc', { 'for': ['markdown'] } " Generate table of contents for markdown :GenToc*
 		Plug 'junegunn/vader.vim' " Vimscript framework
