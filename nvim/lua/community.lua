@@ -23,4 +23,5 @@ return {
   { import = "astrocommunity.search.sad-nvim" },
   { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
   { import = "astrocommunity.editing-support.auto-save-nvim" },
+  -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
 }
