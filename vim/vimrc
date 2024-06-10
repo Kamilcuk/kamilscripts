@@ -755,6 +755,7 @@ if filereadable(plugdir.'/vim-plug/plug.vim')
 					\ 'coc-diagnostic',
 					\ 'coc-lists',
 					\ 'coc-json',
+					\ 'coc-marketplace',
 					\ ]
 		if executable('languagetool') " Use coc-ltex
 			let g:coc_global_extensions += ['coc-ltex']

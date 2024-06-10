@@ -26,5 +26,10 @@ local function lazyinstall(fail)
   require "polish"
 end
 
+vim.api.nvim_create_user_command(
+  "KcNixInstall",
+  function() vim.cmd [[!nix-env -iA nixpkgs.nvim nixpkgs.tree-sitter nixpkgs.node nixpkgs.ripgrep]] end,
+  {}
+)
 vim.api.nvim_create_user_command("KcInstall", function() lazyinstall(false) end, {})
 lazyinstall(true)

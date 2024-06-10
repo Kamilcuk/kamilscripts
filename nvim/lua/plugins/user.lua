@@ -1,8 +1,8 @@
 -- user.lua
 
-function KcPythonBool(script) return vim.fn.has "python3" and pcall(vim.fn.py3eval, script) end
+local function KcPythonBool(script) return vim.fn.has "python3" and pcall(vim.fn.py3eval, script) end
 
-function KcPythonHasVersionAndImport(major, minor, import)
+local function KcPythonHasVersionAndImport(major, minor, import)
   return KcPythonBool(([[
       sys.version.infor.major == %d
       and sys.version.info.minor >= %d
@@ -10,7 +10,26 @@ function KcPythonHasVersionAndImport(major, minor, import)
       ]]).format(major, minor, import))
 end
 
-function KcLog(what) end
+---@param data string
+local function KcLog(data)
+  -- Keep a cache of printed lines in a file.
+  -- In that file store printed lines. If a line was already printed,
+  -- do not print it again.
+  -- Remove cache after two day.
+  local myfile = vim.fn.stdpath "cache" .. "/kclogcache.txt"
+  if
+    vim.fn.filereadable(myfile) and vim.fn.system "date +%s" - vim.fn.system("stat -f%c " .. myfile) < 3600 * 24 * 2
+  then
+    vim.fn.delete(myfile)
+  end
+  local lines = vim.fn.filereadable(myfile) and vim.fn.readfile(myfile) or nil
+  -- Add current script location to the message.
+  local msg = vim.fn.substitute(vim.fn.expand "<sfile>", "..[^.]*$", "", "") .. ": " .. data
+  if vim.fn.index(lines, msg) == -1 then
+    print(msg)
+    vim.fn.writefile(msg, myfile, "a")
+  end
+end
 
 ---@type LazySpec
 return {
@@ -77,24 +96,114 @@ return {
   },
   {
     "HampusHauffman/bionic.nvim",
-    setup = function()
-      vim.cmd [[
-          augroup BionicAutocmd
-            autocmd!
-            autocmd FileType * BionicOn
-          augroup END
-        ]]
+    init = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "*",
+        callback = vim.cmd.BionicOn,
+      })
     end,
+    enabled = false,
   },
 
   "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
   "NoahTheDuke/vim-just", -- syntax for justfile
   "sheerun/vim-polyglot", -- Solid language pack for vim
+  "grafana/vim-alloy", -- Grafana Alloy language support for vim
 
   { "vim/killersheep", cmd = { "KillKillKill" } },
   { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" } },
   { "felleg/TeTrIs.vim", cmd = { "Tetris" } },
+
+  {
+    "jackMort/ChatGPT.nvim",
+    dependencies = {
+      {
+        "AstroNvim/astrocore",
+        opts = {
+          mappings = {
+            n = {
+              ["<Leader>G"] = {
+                name = "🤖ChatGPT",
+                c = { "<cmd>ChatGPT<CR>", "ChatGPT" },
+                e = { "<cmd>ChatGPTEditWithInstruction<CR>", "Edit with instruction", mode = { "n", "v" } },
+                g = { "<cmd>ChatGPTRun grammar_correction<CR>", "Grammar Correction", mode = { "n", "v" } },
+                t = { "<cmd>ChatGPTRun translate<CR>", "Translate", mode = { "n", "v" } },
+                k = { "<cmd>ChatGPTRun keywords<CR>", "Keywords", mode = { "n", "v" } },
+                d = { "<cmd>ChatGPTRun docstring<CR>", "Docstring", mode = { "n", "v" } },
+                a = { "<cmd>ChatGPTRun add_tests<CR>", "Add Tests", mode = { "n", "v" } },
+                o = { "<cmd>ChatGPTRun optimize_code<CR>", "Optimize Code", mode = { "n", "v" } },
+                s = { "<cmd>ChatGPTRun summarize<CR>", "Summarize", mode = { "n", "v" } },
+                f = { "<cmd>ChatGPTRun fix_bugs<CR>", "Fix Bugs", mode = { "n", "v" } },
+                x = { "<cmd>ChatGPTRun explain_code<CR>", "Explain Code", mode = { "n", "v" } },
+                r = { "<cmd>ChatGPTRun roxygen_edit<CR>", "Roxygen Edit", mode = { "n", "v" } },
+                l = {
+                  "<cmd>ChatGPTRun code_readability_analysis<CR>",
+                  "Code Readability Analysis",
+                  mode = { "n", "v" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
+  "ntpeters/vim-better-whitespace", -- Mark whitespaces :StripWhitespace
+  "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
+  {
+    -- :Tabularize Vim script for text filtering and alignment
+    "godlygeek/tabular",
+    cmd = { "Tabularize" },
+  },
+  "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
+  "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
+  "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
+  "dhruvasagar/vim-table-mode", -- print tables in markdown \tm (TableMode) | --- | --- |
+
+  { "mrk21/yaml-vim", ft = { "yml", "yaml" } },
+  { "rodjek/vim-puppet", ft = { "puppet", "ruby" } },
+  { "vim-ruby/vim-ruby", ft = { "ruby" } },
+  { "chr4/nginx.vim", ft = { "nginx" } },
+  { "martinda/Jenkinsfile-vim-syntax", ft = { "Jenkinsfile", "groovy" } },
+  { "jvirtanen/vim-hcl", ft = { "nomad", "hcl" } },
+  { "Vimjas/vim-python-pep8-indent", ft = { "python" } },
+
+  {
+    -- make Vim autodetect the spellcheck language
+    "konfekt/vim-DetectSpellLang",
+    ft = { "text", "markdown", "mail" },
+    cond = function()
+      if vim.fn.executable "hunspell" or vim.fn.executable "aspell" then
+        return true
+      else
+        KcLog "DetectSpellLang disabled: no hunspell and no aspell"
+        return false
+      end
+    end,
+    init = function()
+      vim.cmd [[
+        if executable("aspell")
+          let aspell_dicts = systemlist("aspell dicts")
+          let aspell_dicts = uniq(map(aspell_dicts, {key, val -> substitute(val, '-[^\n]*', '', '')}))
+          let g:detectspelllang_program = "aspell"
+          let g:detectspelllang_langs = { "aspell": aspell_dicts }
+        else
+          let output = system("env LANG=C hunspell -D")
+          let output = substitute(
+               \ output,
+                \ '.*AVAILABLE DICTIONARIES[^\n]*\n\(.*\)[^\n]*\(LOADED DICTIONARIES.*\|$\)',
+               \ '\1',
+               \ '')
+          let hunspell_dicts = map(split(output), {key, val -> substitute(val, ".*\/", "", "")})
+          let g:detectspelllang_program = "hunspell"
+          let g:detectspelllang_langs = { "hunspell": hunspell_dicts }
+        endif
+      ]]
+    end,
+  },
 
   {
     -- Paste images into markdown from neovim
@@ -111,14 +220,48 @@ return {
   },
 
   {
+    -- Install markdown preview, use npx if available.
     "iamcco/markdown-preview.nvim",
-    setup = function()
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    ft = { "markdown" },
+    build = function()
       if vim.fn.executable "npx" then
         vim.cmd [[cd app && npx --yes yarn install]]
       else
-        vim.cmd [[mkdp#util#install() ]]
+        vim.fn["mkdp#util#install"]()
       end
     end,
-    ft = "markdown",
+    init = function()
+      if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
+    end,
+  },
+
+  {
+    -- https://github.com/hrsh7th/nvim-cmp/issues/715
+    -- Latency setting
+    "hrsh7th/nvim-cmp",
+    opts = {
+      completion = {
+        autocomplete = false,
+      },
+    },
+    init = function()
+      local timer = nil
+      vim.api.nvim_create_autocmd({ "TextChangedI", "CmdlineChanged" }, {
+        pattern = "*",
+        callback = function()
+          if timer then
+            vim.loop.timer_stop(timer)
+            timer = nil
+          end
+          timer = vim.loop.new_timer()
+          timer:start(
+            500,
+            0,
+            vim.schedule_wrap(function() require("cmp").complete { reason = require("cmp").ContextReason.Auto } end)
+          )
+        end,
+      })
+    end,
   },
 }
