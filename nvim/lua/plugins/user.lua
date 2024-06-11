@@ -34,25 +34,10 @@ end
 ---@type LazySpec
 return {
   { "folke/noice.nvim", enabled = false },
-  {
-    "williamboman/mason-lspconfig.nvim",
-    opts = {
-      automatic_installation = true,
-    },
-  },
-  {
-    "jay-babu/mason-nvim-dap.nvim",
-    opts = {
-      automatic_installation = true,
-    },
-  },
-  {
-    "windwp/nvim-autopairs",
-    enabled = false,
-  },
-  {
-    "tpope/vim-eunuch",
-  },
+  { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
+  { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
+  { "windwp/nvim-autopairs", enabled = false },
+  "tpope/vim-eunuch",
 
   {
     "junegunn/fzf",
@@ -153,23 +138,11 @@ return {
   { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
   "ntpeters/vim-better-whitespace", -- Mark whitespaces :StripWhitespace
   "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
-  {
-    -- :Tabularize Vim script for text filtering and alignment
-    "godlygeek/tabular",
-    cmd = { "Tabularize" },
-  },
+  { "godlygeek/tabular", cmd = { "Tabularize" } }, -- :Tabularize Vim script for text filtering and alignment
   "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
   "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
   "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
   "dhruvasagar/vim-table-mode", -- print tables in markdown \tm (TableMode) | --- | --- |
-
-  { "mrk21/yaml-vim", ft = { "yml", "yaml" } },
-  { "rodjek/vim-puppet", ft = { "puppet", "ruby" } },
-  { "vim-ruby/vim-ruby", ft = { "ruby" } },
-  { "chr4/nginx.vim", ft = { "nginx" } },
-  { "martinda/Jenkinsfile-vim-syntax", ft = { "Jenkinsfile", "groovy" } },
-  { "jvirtanen/vim-hcl", ft = { "nomad", "hcl" } },
-  { "Vimjas/vim-python-pep8-indent", ft = { "python" } },
 
   {
     -- make Vim autodetect the spellcheck language
@@ -264,4 +237,6 @@ return {
       })
     end,
   },
+
+  "cryptomilk/nightcity.nvim",
 }

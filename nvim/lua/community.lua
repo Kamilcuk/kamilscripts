@@ -19,8 +19,8 @@ return {
   { import = "astrocommunity.lsp.lspsaga-nvim" },
   { import = "astrocommunity.pack.cpp" },
   { import = "astrocommunity.pack.lua" },
-  { import = "astrocommunity.pack.python" },
-  { import = "astrocommunity.pack.cmake" },
+  -- { import = "astrocommunity.pack.python" },
+  -- { import = "astrocommunity.pack.cmake" },
   { import = "astrocommunity.pack.bash" },
   { import = "astrocommunity.search.sad-nvim" },
   { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
@@ -29,4 +29,5 @@ return {
   { import = "astrocommunity.syntax.vim-cool" },
   { import = "astrocommunity.syntax.vim-easy-align" },
   -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
+  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
 }
