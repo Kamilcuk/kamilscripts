@@ -41,6 +41,7 @@ return {
 
   {
     "junegunn/fzf",
+    options = true,
     build = function() vim.api.nvim_call_function("fzf#install", {}) end,
   },
   {
@@ -238,5 +239,6 @@ return {
     end,
   },
 
-  "cryptomilk/nightcity.nvim",
+  -- "cryptomilk/nightcity.nvim",
+  "dasupradyumna/midnight.nvim",
 }

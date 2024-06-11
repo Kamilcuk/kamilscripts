@@ -1,6 +1,6 @@
 -- polish.lua
 
-vim.cmd.colorscheme[[nightcity]]
+vim.cmd.colorscheme[[midnight]]
 
 vim.cmd [[
 
