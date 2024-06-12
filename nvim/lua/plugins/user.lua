@@ -242,4 +242,8 @@ return {
   -- "cryptomilk/nightcity.nvim",
   "dasupradyumna/midnight.nvim",
   "tpope/vim-scriptease",
+  {
+    "HiPhish/rainbow-delimiters.nvim",
+    submodules = false,
+  },
 }
