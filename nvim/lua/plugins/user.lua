@@ -241,4 +241,5 @@ return {
 
   -- "cryptomilk/nightcity.nvim",
   "dasupradyumna/midnight.nvim",
+  "tpope/vim-scriptease",
 }
