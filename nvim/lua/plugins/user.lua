@@ -31,6 +31,8 @@ local function KcLog(data)
   end
 end
 
+local read_from_stdin = false
+
 ---@type LazySpec
 return {
   { "folke/noice.nvim", enabled = false },
@@ -41,7 +43,7 @@ return {
 
   {
     "junegunn/fzf",
-    options = true,
+    lazy = true,
     build = function() vim.api.nvim_call_function("fzf#install", {}) end,
   },
   {
@@ -246,4 +248,58 @@ return {
     "HiPhish/rainbow-delimiters.nvim",
     submodules = false,
   },
+
+  {
+    "resession.nvim",
+    enabled = false,
+  },
+  {
+    "thaerkh/vim-workspace",
+    init = function()
+      vim.cmd [[
+        let g:workspace_autosave_always = 1
+        let g:workspace_autosave_ignore = ['gitcommit', "neo-tree"]
+        let g:workspace_session_disable_on_args = 1
+        nnoremap <leader>W :ToggleWorkspace<CR>
+        let g:workspace_autocreate = 1
+        autocmd VimLeave * Neotree close
+      ]]
+    end,
+  },
+
+  --
+  -- {
+  --   "AstroNvim/astrocore",
+  --   ---@type AstroCoreOpts
+  --   opts = {
+  --     autocmds = {
+  --       -- disable alpha autostart
+  --       alpha_autostart = false,
+  --       restore_session = {
+  --         {
+  --           event = "StdinReadPost",
+  --           desc = "",
+  --           nested = true,
+  --           callback = function()
+  --             read_from_stdin = true
+  --           end,
+  --         },
+  --         {
+  --           event = "VimEnter",
+  --           desc = "Restore previous directory session if neovim opened with no arguments",
+  --           nested = true, -- trigger other autocommands as buffers open
+  --           callback = function()
+  --             -- Only load the session if nvim was started with no args
+  --             if not read_from_stdin and vim.fn.argc(-1) == 0 then
+  --               -- try to load a directory session using the current working directory
+  --               require("resession").load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
+  --             end
+  --           end,
+  --         },
+  --       },
+  --     },
+  --   },
+  -- },
+  --
+  --
 }
