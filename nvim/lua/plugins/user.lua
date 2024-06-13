@@ -257,18 +257,27 @@ return {
     "thaerkh/vim-workspace",
     init = function()
       vim.cmd [[
-        let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree"]
-        let g:workspace_session_disable_on_args = 1
-        let g:workspace_session_directory = $HOME . '/.vim/sessions/'
-        let g:workspace_undodir= $HOME . '/.vim/sessions/.undodir'
-        let g:workspace_autocreate = 1
-        nnoremap <leader>W :ToggleWorkspace<CR>
-        if exists(":Neotree")
-          autocmd VimLeave * Neotree close
-        endif
-        if exists(":NERDTreeClose")
-          autocmd VimLeave * NERDTreeClose
-        endif
+      let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
+      let g:workspace_session_disable_on_args = 1
+      let g:workspace_session_directory = $HOME . '/.vim/sessions/'
+      let g:workspace_undodir= $HOME . '/.vim/sessions/.undodir'
+      let g:workspace_autocreate = 1
+      nnoremap <leader>W :ToggleWorkspace<CR>
+      if exists(":Neotree")
+        autocmd VimLeave * Neotree close
+      endif
+      if exists(":NERDTreeClose")
+        autocmd VimLeave * NERDTreeClose
+      endif
+	    let g:workspace_create_new_tabs = 0
+	    let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
+	    " Becuase a bug, these two populate search / history, just disable them.
+	    let g:workspace_autosave_untrailtabs = 0
+	    let g:workspace_autosave_untrailspaces = 0
+	    let g:workspace_nocompatible = 0
+	    let g:workspace_session_disable_on_args = 1
+	    " https://github.com/thaerkh/vim-workspace/issues/11
+	    set sessionoptions-=blank
       ]]
     end,
   },
