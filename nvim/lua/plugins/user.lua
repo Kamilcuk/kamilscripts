@@ -257,12 +257,18 @@ return {
     "thaerkh/vim-workspace",
     init = function()
       vim.cmd [[
-        let g:workspace_autosave_always = 1
-        let g:workspace_autosave_ignore = ['gitcommit', "neo-tree"]
+        let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree"]
         let g:workspace_session_disable_on_args = 1
-        nnoremap <leader>W :ToggleWorkspace<CR>
+        let g:workspace_session_directory = $HOME . '/.vim/sessions/'
+        let g:workspace_undodir= $HOME . '/.vim/sessions/.undodir'
         let g:workspace_autocreate = 1
-        autocmd VimLeave * Neotree close
+        nnoremap <leader>W :ToggleWorkspace<CR>
+        if exists(":Neotree")
+          autocmd VimLeave * Neotree close
+        endif
+        if exists(":NERDTreeClose")
+          autocmd VimLeave * NERDTreeClose
+        endif
       ]]
     end,
   },
