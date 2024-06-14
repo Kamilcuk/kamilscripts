@@ -17,25 +17,22 @@ local function KcLog(data)
   -- do not print it again.
   -- Remove cache after two day.
   local myfile = vim.fn.stdpath "cache" .. "/kclogcache.txt"
-  if
-    vim.fn.filereadable(myfile) and vim.fn.system "date +%s" - vim.fn.system("stat -f%c " .. myfile) < 3600 * 24 * 2
-  then
-    vim.fn.delete(myfile)
+  local lines = vim.fn.filereadable(myfile) ~= 0 and vim.fn.readfile(myfile) or {}
+  local stamp = tonumber(lines[0])
+  local threshold_s = 3600 * 24 * 2
+  if not stamp or vim.fn.localtime() - stamp < threshold_s then
+    lines = {}
   end
-  local lines = vim.fn.filereadable(myfile) and vim.fn.readfile(myfile) or nil
   -- Add current script location to the message.
   local msg = vim.fn.substitute(vim.fn.expand "<sfile>", "..[^.]*$", "", "") .. ": " .. data
   if vim.fn.index(lines, msg) == -1 then
     print(msg)
-    vim.fn.writefile(msg, myfile, "a")
+    vim.fn.writefile({vim.fn.localtime(), msg}, myfile, "a")
   end
 end
-
-local read_from_stdin = false
-
 ---@type LazySpec
 return {
-  { "folke/noice.nvim", enabled = false },
+  { "folke/noice.nvim", enabled = false }, -- I hate terminal in the middle, how people work with that?
   { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
   { "windwp/nvim-autopairs", enabled = false },
@@ -249,12 +246,27 @@ return {
     submodules = false,
   },
 
+  -- { "lspsaga.nvim", opts = { rename = { in_select = false } } },
+  {
+    "nvim-lspconfig",
+    init = function()
+      if vim.fn.executable "tabby-agent" then require("lspconfig").tabby_ml.setup {} end
+    end,
+  },
+
+  {
+    "christoomey/vim-tmux-navigator",
+    lazy = False,
+  },
+
+
   {
     "resession.nvim",
     enabled = false,
   },
   {
     "thaerkh/vim-workspace",
+    enabled = true,
     init = function()
       vim.cmd [[
       let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
@@ -281,8 +293,6 @@ return {
       ]]
     end,
   },
-
-  --
   -- {
   --   "AstroNvim/astrocore",
   --   ---@type AstroCoreOpts
@@ -292,20 +302,13 @@ return {
   --       alpha_autostart = false,
   --       restore_session = {
   --         {
-  --           event = "StdinReadPost",
-  --           desc = "",
-  --           nested = true,
-  --           callback = function()
-  --             read_from_stdin = true
-  --           end,
-  --         },
-  --         {
-  --           event = "VimEnter",
+  --           event = { "VimEnter", "StdinReadPost" },
   --           desc = "Restore previous directory session if neovim opened with no arguments",
+  --           once = true, -- delete itself after executing once
   --           nested = true, -- trigger other autocommands as buffers open
-  --           callback = function()
+  --           callback = function(args)
   --             -- Only load the session if nvim was started with no args
-  --             if not read_from_stdin and vim.fn.argc(-1) == 0 then
+  --             if args.event == "VimEnter" and vim.fn.argc(-1) == 0 then
   --               -- try to load a directory session using the current working directory
   --               require("resession").load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
   --             end
@@ -315,6 +318,6 @@ return {
   --     },
   --   },
   -- },
-  --
+
   --
 }

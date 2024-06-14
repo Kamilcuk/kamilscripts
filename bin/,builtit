@@ -20,7 +20,7 @@ except ImportError:
 
 
 # Directory with all our data.
-g_dir = Path().home() / ".cache/,builtit"
+g_dir = Path().home() / ".cache/builtit"
 # Installation directory where CMake installs neovim.
 g_installdir = g_dir / "install"
 g_pkgdir = g_dir / "pkg"
@@ -278,9 +278,12 @@ class Command_clean(Command):
 
 
 class Command_run(Command):
+    aliases = "r"
+
     @override
     def opts(self, subparser: argparse.ArgumentParser):
         self.add_pkg_argument(subparser)
+        subparser.add_argument("args", nargs=-1)
 
     @override
     def main(self, args: argparse.Namespace):

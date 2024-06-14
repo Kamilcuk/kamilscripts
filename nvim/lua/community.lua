@@ -12,7 +12,7 @@ return {
   { import = "astrocommunity.diagnostics.trouble-nvim" },
   { import = "astrocommunity.editing-support.chatgpt-nvim" },
   { import = "astrocommunity.lsp.garbage-day-nvim" },
-  { import = "astrocommunity.lsp.inc-rename-nvim" },
+  -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- sreplcaed by lspsaga rename
   -- { import = "astrocommunity.lsp.lsp-lens-nvim" },
   { import = "astrocommunity.lsp.lsp-signature-nvim" },
   -- { import = "astrocommunity.diagnostics.lsp_lines-nvim" },
@@ -22,7 +22,7 @@ return {
   { import = "astrocommunity.pack.cpp" },
   { import = "astrocommunity.pack.lua" },
   { import = "astrocommunity.pack.python" },
-  { import = "astrocommunity.pack.cmake" },
+  -- { import = "astrocommunity.pack.cmake" },
   { import = "astrocommunity.pack.bash" },
   { import = "astrocommunity.search.sad-nvim" },
   { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
