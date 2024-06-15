@@ -57,14 +57,20 @@ export npm_config_prefix=~/.node_modules
 locale_supported() {
 	[ -z "$({ LC_ALL=$1; } 2>&1)" ]
 }
-_C_UTF="C"
-_en_US="$_C_UTF"
+if locale_supported C.UTF-8; then
+	_C_UTF="C.UTF-8"
+else
+	_C_UTF="C"
+fi
 if locale_supported en_US.UTF-8; then
 	_en_US="en_US.UTF-8"
+else
+	_en_US="$_C_UTF"
 fi
-_pl_PL="$_en_US"
 if locale_supported pl_PL.UTF-8; then
 	_pl_PL="pl_PL.UTF-8"
+else
+	_pl_PL="$_en_US"
 fi
 unset -f locale_supported
 
@@ -84,6 +90,6 @@ export \
 	LC_MEASUREMENT="$_pl_PL" \
 	LC_IDENTIFICATION="$_pl_PL"
 
-unset _C_UTF pl_PL en_US
+unset _C_UTF _pl_PL _en_US
 
 export CCACHE_COMPRESS=1
