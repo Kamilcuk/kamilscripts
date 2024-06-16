@@ -1,4 +1,6 @@
 -- user.lua
+-- vim: foldmethod=marker
+-- {{{1 functions
 
 ---Execute a python script and return if it executed successfully
 ---@param script string
@@ -36,26 +38,42 @@ local function KcLog(data)
   end
 end
 
+-- }}}
 ---@type LazySpec
 return {
+  -- {{{1 astronvim customization
   {
     "AstroNvim/astrocore",
     ---@type AstroCoreOpts
     opts = { -- extend the plugin options
       diagnostics = {
-        -- disable diagnostics virtual text
-        virtual_text = false,
+        virtual_text = false, -- disable diagnostics virtual text
       },
     },
   },
 
-  { "folke/noice.nvim", enabled = false }, -- I hate terminal in the middle, how people work with that?
+  {
+    "AstroNvim/astrolsp",
+    opts = {
+      features = {
+        inlay_hints = false, -- disable inlay hints globally on startup
+      },
+      formatting = {
+        format_on_save = false, -- enable or disable automatic formatting on save
+      },
+    },
+  },
+
+  { "folke/noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
   { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
-  { "windwp/nvim-autopairs", enabled = false },
+  { "windwp/nvim-autopairs", enabled = false }, -- och god no, no autopairs
+
+  -- }}}
+  -- {{{1 :commmands plugins
   {
     "tpope/vim-eunuch",
-    lazy = false,
+    lazy = false, -- Make files with shebang executables automatically
   },
 
   {
@@ -121,40 +139,6 @@ return {
     end,
   },
 
-  {
-    -- Doesn't work and makes stuff dissapear. This requires more work and is too buggy.
-    "HampusHauffman/block.nvim",
-    opts = { automatic = true },
-    enabled = false,
-  },
-
-  {
-    -- "HampusHauffman/bionic.nvim",
-    "kamilcuk/bionic.nvim",
-    branch = "fix-index-nil-value",
-    dependencies = {
-      "AstroNvim/astrocore",
-      opts = {
-        autocmds = {
-          bionic = {
-            {
-              event = "FileType",
-              pattern = "*",
-              desc = "Activate bionic",
-              callback = function() require("bionic").on() end,
-            },
-          },
-        },
-      },
-    },
-  },
-
-  "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
-  "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
-  "NoahTheDuke/vim-just", -- syntax for justfile
-  "sheerun/vim-polyglot", -- Solid language pack for vim
-  "grafana/vim-alloy", -- Grafana Alloy language support for vim
-
   { "vim/killersheep", cmd = { "KillKillKill" } },
   { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" } },
   { "felleg/TeTrIs.vim", cmd = { "Tetris" } },
@@ -195,62 +179,48 @@ return {
     },
   },
 
-  { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
-  "ntpeters/vim-better-whitespace", -- Mark whitespaces :StripWhitespace
-  "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
   { "godlygeek/tabular", cmd = { "Tabularize" } }, -- :Tabularize Vim script for text filtering and alignment
-  "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
-  "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
-  "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
-  "dhruvasagar/vim-table-mode", -- print tables in markdown \tm (TableMode) | --- | --- |
+
+  -- }}}
+  -- {{{1 UI
+
+  { "ntpeters/vim-better-whitespace", lazy = false }, -- Mark whitespaces :StripWhitespace
 
   {
-    -- make Vim autodetect the spellcheck language
-    "konfekt/vim-DetectSpellLang",
-    ft = { "text", "markdown", "mail" },
-    cond = function()
-      if vim.fn.executable "hunspell" or vim.fn.executable "aspell" then
-        return true
-      else
-        KcLog "DetectSpellLang disabled: no hunspell and no aspell"
-        return false
-      end
-    end,
-    init = function()
-      vim.cmd [[
-        if executable("aspell")
-          let aspell_dicts = systemlist("aspell dicts")
-          let aspell_dicts = uniq(map(aspell_dicts, {key, val -> substitute(val, '-[^\n]*', '', '')}))
-          let g:detectspelllang_program = "aspell"
-          let g:detectspelllang_langs = { "aspell": aspell_dicts }
-        else
-          let output = system("env LANG=C hunspell -D")
-          let output = substitute(
-               \ output,
-                \ '.*AVAILABLE DICTIONARIES[^\n]*\n\(.*\)[^\n]*\(LOADED DICTIONARIES.*\|$\)',
-               \ '\1',
-               \ '')
-          let hunspell_dicts = map(split(output), {key, val -> substitute(val, ".*\/", "", "")})
-          let g:detectspelllang_program = "hunspell"
-          let g:detectspelllang_langs = { "hunspell": hunspell_dicts }
-        endif
-      ]]
-    end,
+    "HiPhish/rainbow-delimiters.nvim",
+    submodules = false,
   },
 
   {
-    -- Paste images into markdown from neovim
-    "TobinPalmer/pastify.nvim",
-    ft = "markdown",
-    cond = function()
-      if vim.fn.has "nvim" and KcPythonHasVersionAndImport(3, 8, "PIL") then
-        return true
-      else
-        KcLog "no pastify because no nvim or no python3.8 or no PIL"
-        return false
-      end
-    end,
+    -- Doesn't work and makes stuff dissapear. This requires more work and is too buggy.
+    "HampusHauffman/block.nvim",
+    opts = { automatic = true },
+    enabled = false,
   },
+
+  {
+    -- "HampusHauffman/bionic.nvim",
+    "kamilcuk/bionic.nvim",
+    branch = "fix-index-nil-value",
+    dependencies = {
+      "AstroNvim/astrocore",
+      opts = {
+        autocmds = {
+          bionic = {
+            {
+              event = "FileType",
+              pattern = "*",
+              desc = "Activate bionic",
+              callback = function() require("bionic").on() end,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
+  "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
   {
     -- Install markdown preview, use npx if available.
@@ -269,140 +239,15 @@ return {
     end,
   },
 
-  -- {
-  --   -- https://github.com/hrsh7th/nvim-cmp/issues/715
-  --   -- Latency setting
-  --   "hrsh7th/nvim-cmp",
-  --   opts = {
-  --     completion = {
-  --       autocomplete = false,
-  --     },
-  --   },
-  --   init = function()
-  --     local timer = nil
-  --     vim.api.nvim_create_autocmd({ "TextChangedI", "CmdlineChanged" }, {
-  --       pattern = "*",
-  --       callback = function()
-  --         if timer then
-  --           vim.loop.timer_stop(timer)
-  --           timer = nil
-  --         end
-  --         timer = vim.loop.new_timer()
-  --         timer:start(
-  --           500,
-  --           0,
-  --           vim.schedule_wrap(function() require("cmp").complete { reason = require("cmp").ContextReason.Auto } end)
-  --         )
-  --       end,
-  --     })
-  --   end,
-  -- },
+  -- }}}
+  -- {{{1 Filetypes
 
-  -- "cryptomilk/nightcity.nvim",
-  "dasupradyumna/midnight.nvim",
-  "tpope/vim-scriptease",
-  {
-    "HiPhish/rainbow-delimiters.nvim",
-    submodules = false,
-  },
+  "NoahTheDuke/vim-just", -- syntax for justfile
+  "sheerun/vim-polyglot", -- Solid language pack for vim
+  "grafana/vim-alloy", -- Grafana Alloy language support for vim
 
-  -- { "lspsaga.nvim", opts = { rename = { in_select = false } } },
-  {
-    "nvim-lspconfig",
-    init = function()
-      if vim.fn.executable "tabby-agent" then require("lspconfig").tabby_ml.setup {} end
-    end,
-  },
-
-  {
-    "christoomey/vim-tmux-navigator",
-    lazy = False,
-  },
-
-  {
-    "resession.nvim",
-    enabled = false,
-  },
-  {
-    "thaerkh/vim-workspace",
-    enabled = true,
-    lazy = false,
-    init = function()
-      vim.cmd [[
-      let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
-      let g:workspace_session_disable_on_args = 1
-      let g:workspace_session_directory = stdpath("cache") . '/vim-workspace.sessions'
-      let g:workspace_undodir= stdpath("cache") . "/vim-workspace.undodir"
-      let g:workspace_autocreate = 1
-      nnoremap <leader>W :ToggleWorkspace<CR>
-      if exists(":Neotree")
-        autocmd VimLeave * Neotree close
-      endif
-      if exists(":NERDTreeClose")
-        autocmd VimLeave * NERDTreeClose
-      endif
-	    let g:workspace_create_new_tabs = 0
-	    let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
-	    " Becuase a bug, these two populate search / history, just disable them.
-	    let g:workspace_autosave_untrailtabs = 0
-	    let g:workspace_autosave_untrailspaces = 0
-	    let g:workspace_nocompatible = 0
-	    let g:workspace_session_disable_on_args = 1
-	    " https://github.com/thaerkh/vim-workspace/issues/11
-	    set sessionoptions-=blank
-      ]]
-    end,
-  },
-  -- {
-  --   "AstroNvim/astrocore",
-  --   ---@type AstroCoreOpts
-  --   opts = {
-  --     autocmds = {
-  --       -- disable alpha autostart
-  --       alpha_autostart = false,
-  --       restore_session = {
-  --         {
-  --           event = { "VimEnter" },
-  --           desc = "Restore previous directory session if neovim opened with no arguments",
-  --           nested = true, -- trigger other autocommands as buffers open
-  --           callback = function()
-  --             -- Logic copied from https://github.com/AstroNvim/AstroNvim/blob/365aa6e083dcd25fa3d1c8a2515d7e71a03d51d3/lua/astronvim/plugins/alpha.lua#L49
-  --             local should_skip
-  --             local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false)
-  --             if
-  --               vim.fn.argc() > 0 -- don't start when opening a file
-  --               or #lines > 1 -- don't open if current buffer has more than 1 line
-  --               or (#lines == 1 and lines[1]:len() > 0) -- don't open the current buffer if it has anything on the first line
-  --               or #vim.tbl_filter(function(bufnr) return vim.bo[bufnr].buflisted end, vim.api.nvim_list_bufs()) > 1 -- don't open if any listed buffers
-  --               or not vim.o.modifiable -- don't open if not modifiable
-  --             then
-  --               should_skip = true
-  --             else
-  --               for _, arg in pairs(vim.v.argv) do
-  --                 if arg == "-b" or arg == "-c" or vim.startswith(arg, "+") or arg == "-S" then
-  --                   should_skip = true
-  --                   break
-  --                 end
-  --               end
-  --             end
-  --             if should_skip then return end
-  --             -- if possible, load session
-  --             if not pcall(function() require("resession").load(vim.fn.getcwd(), { dir = "dirsession" }) end) then
-  --               -- if session was not loaded, if possible, load alpha
-  --               require("lazy").load { plugins = { "alpha-nvim" } }
-  --               if pcall(function() require("alpha").start(true) end) then
-  --                 vim.schedule(function() vim.cmd.doautocmd "FileType" end)
-  --               end
-  --             end
-  --           end,
-  --         },
-  --       },
-  --     },
-  --   },
-  -- },
-
-  -- "nanotee/nvim-lsp-basics", -- does nothing
-  -- "aznhe21/actions-preview.nvim", -- does nothing
+  -- }}}
+  -- {{{1 lsp
 
   {
     "hrsh7th/nvim-cmp",
@@ -471,5 +316,235 @@ return {
     end,
   },
 
-  --
+  -- { "lspsaga.nvim", opts = { rename = { in_select = false } } },
+  {
+    "nvim-lspconfig",
+    init = function()
+      if vim.fn.executable "tabby-agent" then
+        local is_from_npm = vim.fn.system("which tabby-agent"):find "node-modules" ~= nil
+        if is_from_npm then
+          local version = vim.fn.system "npm list -g tabby-agent | sed -n 's/.*tabby-agent@//p'"
+          if version == "1.6.0" then
+            KcLog "tabby-agent version 1.6.0 is installed which creates audit.json everywhere. Disabling. Uninstall it."
+            return
+          end
+        end
+        require("lspconfig").tabby_ml.setup {}
+      end
+    end,
+  },
+
+  -- }}}
+  -- {{{1 utils
+
+  { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
+  "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
+  "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
+  "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
+  "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
+  "dhruvasagar/vim-table-mode", -- print tables in markdown \tm (TableMode) | --- | --- |
+
+  {
+    -- make Vim autodetect the spellcheck language
+    "konfekt/vim-DetectSpellLang",
+    ft = { "text", "markdown", "mail" },
+    cond = function()
+      if vim.fn.executable "hunspell" or vim.fn.executable "aspell" then
+        return true
+      else
+        KcLog "DetectSpellLang disabled: no hunspell and no aspell"
+        return false
+      end
+    end,
+    init = function()
+      vim.cmd [[
+        if executable("aspell")
+          let aspell_dicts = systemlist("aspell dicts")
+          let aspell_dicts = uniq(map(aspell_dicts, {key, val -> substitute(val, '-[^\n]*', '', '')}))
+          let g:detectspelllang_program = "aspell"
+          let g:detectspelllang_langs = { "aspell": aspell_dicts }
+        else
+          let output = system("env LANG=C hunspell -D")
+          let output = substitute(
+               \ output,
+                \ '.*AVAILABLE DICTIONARIES[^\n]*\n\(.*\)[^\n]*\(LOADED DICTIONARIES.*\|$\)',
+               \ '\1',
+               \ '')
+          let hunspell_dicts = map(split(output), {key, val -> substitute(val, ".*\/", "", "")})
+          let g:detectspelllang_program = "hunspell"
+          let g:detectspelllang_langs = { "hunspell": hunspell_dicts }
+        endif
+      ]]
+    end,
+  },
+
+  {
+    -- Paste images into markdown from neovim
+    "TobinPalmer/pastify.nvim",
+    ft = "markdown",
+    cond = function()
+      if vim.fn.has "nvim" and KcPythonHasVersionAndImport(3, 8, "PIL") then
+        return true
+      else
+        KcLog "no pastify because no nvim or no python3.8 or no PIL"
+        return false
+      end
+    end,
+  },
+
+  { "tpope/vim-scriptease", lazy = false }, -- :Verbose
+
+  {
+    "christoomey/vim-tmux-navigator",
+    lazy = false,
+  },
+
+  { "resession.nvim", enabled = false },
+  {
+    "thaerkh/vim-workspace",
+    enabled = true,
+    lazy = false,
+    init = function()
+      vim.cmd [[
+      let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
+      let g:workspace_session_disable_on_args = 1
+      let g:workspace_session_directory = stdpath("cache") . '/vim-workspace.sessions'
+      let g:workspace_undodir= stdpath("cache") . "/vim-workspace.undodir"
+      let g:workspace_autocreate = 1
+      nnoremap <leader>W :ToggleWorkspace<CR>
+      if exists(":Neotree")
+        autocmd VimLeave * Neotree close
+      endif
+      if exists(":NERDTreeClose")
+        autocmd VimLeave * NERDTreeClose
+      endif
+	    let g:workspace_create_new_tabs = 0
+	    let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
+	    " Becuase a bug, these two populate search / history, just disable them.
+	    let g:workspace_autosave_untrailtabs = 0
+	    let g:workspace_autosave_untrailspaces = 0
+	    let g:workspace_nocompatible = 0
+	    let g:workspace_session_disable_on_args = 1
+	    " https://github.com/thaerkh/vim-workspace/issues/11
+	    set sessionoptions-=blank
+      ]]
+    end,
+  },
+
+  -- }}}
+  -- {{{1 colorscheme
+
+  -- "cryptomilk/nightcity.nvim",
+  {
+    "dasupradyumna/midnight.nvim",
+    config = function() vim.cmd.colorscheme "midnight" end,
+  },
+
+  -- }}}
+  -- {{{1 staging
+
+  -- {
+  --   -- https://github.com/hrsh7th/nvim-cmp/issues/715
+  --   -- Latency setting
+  --   "hrsh7th/nvim-cmp",
+  --   opts = {
+  --     completion = {
+  --       autocomplete = false,
+  --     },
+  --   },
+  --   init = function()
+  --     local timer = nil
+  --     vim.api.nvim_create_autocmd({ "TextChangedI", "CmdlineChanged" }, {
+  --       pattern = "*",
+  --       callback = function()
+  --         if timer then
+  --           vim.loop.timer_stop(timer)
+  --           timer = nil
+  --         end
+  --         timer = vim.loop.new_timer()
+  --         timer:start(
+  --           500,
+  --           0,
+  --           vim.schedule_wrap(function() require("cmp").complete { reason = require("cmp").ContextReason.Auto } end)
+  --         )
+  --       end,
+  --     })
+  --   end,
+  -- },
+
+  -- {
+  --   "AstroNvim/astrocore",
+  --   ---@type AstroCoreOpts
+  --   opts = {
+  --     autocmds = {
+  --       -- disable alpha autostart
+  --       alpha_autostart = false,
+  --       restore_session = {
+  --         {
+  --           event = { "VimEnter" },
+  --           desc = "Restore previous directory session if neovim opened with no arguments",
+  --           nested = true, -- trigger other autocommands as buffers open
+  --           callback = function()
+  --             -- Logic copied from https://github.com/AstroNvim/AstroNvim/blob/365aa6e083dcd25fa3d1c8a2515d7e71a03d51d3/lua/astronvim/plugins/alpha.lua#L49
+  --             local should_skip
+  --             local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false)
+  --             if
+  --               vim.fn.argc() > 0 -- don't start when opening a file
+  --               or #lines > 1 -- don't open if current buffer has more than 1 line
+  --               or (#lines == 1 and lines[1]:len() > 0) -- don't open the current buffer if it has anything on the first line
+  --               or #vim.tbl_filter(function(bufnr) return vim.bo[bufnr].buflisted end, vim.api.nvim_list_bufs()) > 1 -- don't open if any listed buffers
+  --               or not vim.o.modifiable -- don't open if not modifiable
+  --             then
+  --               should_skip = true
+  --             else
+  --               for _, arg in pairs(vim.v.argv) do
+  --                 if arg == "-b" or arg == "-c" or vim.startswith(arg, "+") or arg == "-S" then
+  --                   should_skip = true
+  --                   break
+  --                 end
+  --               end
+  --             end
+  --             if should_skip then return end
+  --             -- if possible, load session
+  --             if not pcall(function() require("resession").load(vim.fn.getcwd(), { dir = "dirsession" }) end) then
+  --               -- if session was not loaded, if possible, load alpha
+  --               require("lazy").load { plugins = { "alpha-nvim" } }
+  --               if pcall(function() require("alpha").start(true) end) then
+  --                 vim.schedule(function() vim.cmd.doautocmd "FileType" end)
+  --               end
+  --             end
+  --           end,
+  --         },
+  --       },
+  --     },
+  --   },
+  -- },
+
+  -- "nanotee/nvim-lsp-basics", -- does nothing
+  -- "aznhe21/actions-preview.nvim", -- does nothing
+
+  {
+    "timeyyy/clackclack.symphony",
+    enabled = false,
+    lazy = false,
+    config = function()
+      require("soundme"):setup {
+        debug = true,
+        theme = "clackclack",
+      }
+    end,
+  },
+
+  {
+    "timeyyy/bubbletrouble.symphony",
+    lazy = false,
+    config = function()
+      require("soundme"):setup {
+        debug = true,
+        theme = "kamil",
+      }
+    end,
+  },
+
+  -- }}}
 }

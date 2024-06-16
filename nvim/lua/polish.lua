@@ -1,7 +1,5 @@
 -- polish.lua
 
-vim.cmd.colorscheme[[midnight]]
-
 vim.cmd [[
 
 set wildmenu

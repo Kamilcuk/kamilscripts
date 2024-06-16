@@ -34,8 +34,5 @@ return {
   { import = "astrocommunity.syntax.vim-easy-align" },
   -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
   -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
-  
-
-
 
 }
