@@ -9,6 +9,8 @@ return {
   -- import/override with your plugins folder
 
   { import = "astrocommunity.completion.tabby-nvim" },
+  { import = "astrocommunity.completion.cmp-git" },
+  { import = "astrocommunity.completion.cmp-emoji" },
   { import = "astrocommunity.diagnostics.trouble-nvim" },
   { import = "astrocommunity.editing-support.chatgpt-nvim" },
   { import = "astrocommunity.lsp.garbage-day-nvim" },
@@ -25,11 +27,15 @@ return {
   -- { import = "astrocommunity.pack.cmake" },
   { import = "astrocommunity.pack.bash" },
   { import = "astrocommunity.search.sad-nvim" },
-  { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
+  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
   { import = "astrocommunity.editing-support.auto-save-nvim" },
   { import = "astrocommunity.syntax.vim-sandwich" },
   { import = "astrocommunity.syntax.vim-cool" },
   { import = "astrocommunity.syntax.vim-easy-align" },
   -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
   -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
+  
+
+
+
 }

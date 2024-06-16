@@ -1,7 +1,13 @@
 -- user.lua
 
+---Execute a python script and return if it executed successfully
+---@param script string
 local function KcPythonBool(script) return vim.fn.has "python3" and pcall(vim.fn.py3eval, script) end
 
+---Check if python version is higher than major:minor and has import.
+---@param major number
+---@param minor number
+---@param import string
 local function KcPythonHasVersionAndImport(major, minor, import)
   return KcPythonBool(([[
       sys.version.infor.major == %d
@@ -10,6 +16,7 @@ local function KcPythonHasVersionAndImport(major, minor, import)
       ]]).format(major, minor, import))
 end
 
+---Log a message once a day.
 ---@param data string
 local function KcLog(data)
   -- Keep a cache of printed lines in a file.
@@ -28,22 +35,36 @@ local function KcLog(data)
     vim.fn.writefile({ vim.fn.localtime(), msg }, myfile, "a")
   end
 end
+
 ---@type LazySpec
 return {
+  {
+    "AstroNvim/astrocore",
+    ---@type AstroCoreOpts
+    opts = { -- extend the plugin options
+      diagnostics = {
+        -- disable diagnostics virtual text
+        virtual_text = false,
+      },
+    },
+  },
+
   { "folke/noice.nvim", enabled = false }, -- I hate terminal in the middle, how people work with that?
   { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
   { "windwp/nvim-autopairs", enabled = false },
-  "tpope/vim-eunuch",
+  {
+    "tpope/vim-eunuch",
+    lazy = false,
+  },
 
   {
-    "junegunn/fzf",
-    lazy = true,
-    build = function() vim.api.nvim_call_function("fzf#install", {}) end,
-  },
-  {
     "junegunn/fzf.vim",
-    dependencies = { "junegunn/fzf" },
+    dependencies = {
+      "junegunn/fzf",
+      lazy = true,
+      build = function() vim.api.nvim_call_function("fzf#install", {}) end,
+    },
     cmd = {
       "Files",
       "GFiles",
@@ -71,21 +92,61 @@ return {
       "Filetypes",
     },
   },
+  {
+    "junegunn/fzf.vim",
+    init = function()
+      vim.cmd [[
+        " Run rg with -options.
+	      " https://github.com/junegunn/fzf.vim/blob/master/plugin/fzf.vim#L63
+	      command! -bang -nargs=* RGO call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".fzf#shellescape(<q-args>), fzf#vim#with_preview(), <bang>0)',
+	      " Run ag with -options.
+	      function! KcAg(query, ...)
+		      " Allow to pass --options to AG.
+		      " https://github.com/junegunn/fzf.vim/blob/a4ce66d72508ce7c626dd7fe1ada9c3273fb5313/autoload/fzf/vim.vim#L761
+		      if type(a:query) != v:t_string
+			      return s:warn('Invalid query argument')
+		      endif
+		      let query = empty(a:query) ? '^(?=.)' : a:query
+		      let args = copy(a:000)
+		      let ag_opts = len(args) > 1 && type(args[0]) == v:t_string ? remove(args, 0) : ''
+		      "let command = ag_opts . '--' . fzf#shellescape(query)
+		      let command = ag_opts . query
+		      echom 'ag '.command
+		      return call('fzf#vim#ag_raw', insert(args, command, 0))
+	      endfunction
+	      command! -bang -nargs=* AG call KcAg(<q-args>, fzf#vim#with_preview(), <bang>0)
+	      " Full screen for fzf.
+	      let g:fzf_layout = { 'window': { 'width': 0.99, 'height': 0.99 } }
+	      ]]
+    end,
+  },
 
   {
+    -- Doesn't work and makes stuff dissapear. This requires more work and is too buggy.
     "HampusHauffman/block.nvim",
     opts = { automatic = true },
     enabled = false,
   },
+
   {
-    "HampusHauffman/bionic.nvim",
-    init = function()
-      vim.api.nvim_create_autocmd("FileType", {
-        pattern = "*",
-        callback = vim.cmd.BionicOn,
-      })
-    end,
-    enabled = false,
+    -- "HampusHauffman/bionic.nvim",
+    "kamilcuk/bionic.nvim",
+    branch = "fix-index-nil-value",
+    dependencies = {
+      "AstroNvim/astrocore",
+      opts = {
+        autocmds = {
+          bionic = {
+            {
+              event = "FileType",
+              pattern = "*",
+              desc = "Activate bionic",
+              callback = function() require("bionic").on() end,
+            },
+          },
+        },
+      },
+    },
   },
 
   "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
@@ -106,6 +167,7 @@ return {
         opts = {
           mappings = {
             n = {
+              -- G like GPT
               ["<Leader>G"] = {
                 name = "🤖ChatGPT",
                 c = { "<cmd>ChatGPT<CR>", "ChatGPT" },
@@ -207,34 +269,34 @@ return {
     end,
   },
 
-  {
-    -- https://github.com/hrsh7th/nvim-cmp/issues/715
-    -- Latency setting
-    "hrsh7th/nvim-cmp",
-    opts = {
-      completion = {
-        autocomplete = false,
-      },
-    },
-    init = function()
-      local timer = nil
-      vim.api.nvim_create_autocmd({ "TextChangedI", "CmdlineChanged" }, {
-        pattern = "*",
-        callback = function()
-          if timer then
-            vim.loop.timer_stop(timer)
-            timer = nil
-          end
-          timer = vim.loop.new_timer()
-          timer:start(
-            500,
-            0,
-            vim.schedule_wrap(function() require("cmp").complete { reason = require("cmp").ContextReason.Auto } end)
-          )
-        end,
-      })
-    end,
-  },
+  -- {
+  --   -- https://github.com/hrsh7th/nvim-cmp/issues/715
+  --   -- Latency setting
+  --   "hrsh7th/nvim-cmp",
+  --   opts = {
+  --     completion = {
+  --       autocomplete = false,
+  --     },
+  --   },
+  --   init = function()
+  --     local timer = nil
+  --     vim.api.nvim_create_autocmd({ "TextChangedI", "CmdlineChanged" }, {
+  --       pattern = "*",
+  --       callback = function()
+  --         if timer then
+  --           vim.loop.timer_stop(timer)
+  --           timer = nil
+  --         end
+  --         timer = vim.loop.new_timer()
+  --         timer:start(
+  --           500,
+  --           0,
+  --           vim.schedule_wrap(function() require("cmp").complete { reason = require("cmp").ContextReason.Auto } end)
+  --         )
+  --       end,
+  --     })
+  --   end,
+  -- },
 
   -- "cryptomilk/nightcity.nvim",
   "dasupradyumna/midnight.nvim",
@@ -248,7 +310,7 @@ return {
   {
     "nvim-lspconfig",
     init = function()
-      -- if vim.fn.executable "tabby-agent" then require("lspconfig").tabby_ml.setup {} end
+      if vim.fn.executable "tabby-agent" then require("lspconfig").tabby_ml.setup {} end
     end,
   },
 
@@ -256,7 +318,6 @@ return {
     "christoomey/vim-tmux-navigator",
     lazy = False,
   },
-
 
   {
     "resession.nvim",
@@ -270,8 +331,8 @@ return {
       vim.cmd [[
       let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
       let g:workspace_session_disable_on_args = 1
-      let g:workspace_session_directory = $HOME . '/.vim/sessions/'
-      let g:workspace_undodir= $HOME . '/.vim/sessions/.undodir'
+      let g:workspace_session_directory = stdpath("cache") . '/vim-workspace.sessions'
+      let g:workspace_undodir= stdpath("cache") . "/vim-workspace.undodir"
       let g:workspace_autocreate = 1
       nnoremap <leader>W :ToggleWorkspace<CR>
       if exists(":Neotree")
@@ -339,6 +400,76 @@ return {
   --     },
   --   },
   -- },
+
+  -- "nanotee/nvim-lsp-basics", -- does nothing
+  -- "aznhe21/actions-preview.nvim", -- does nothing
+
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = { "hrsh7th/cmp-nvim-lua", lazy = true },
+    opts = function(_, opts)
+      if not opts.sources then opts.sources = {} end
+      table.insert(opts.sources, { name = "nvim_lua" })
+    end,
+  },
+
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = { "lukas-reineke/cmp-under-comparator", lazy = true },
+    opts = function(_, opts)
+      local cmp = require "cmp"
+      local find = function(tbl, elem)
+        for i, v in ipairs(tbl) do
+          if v == elem then return i end
+        end
+        return nil
+      end
+      opts.sorting = opts.sorting or {}
+      opts.sorting.comparators = opts.sorting.comparators or cmp.get_config().sorting.comparators
+      -- Find element in comparators we will position ourselves after.
+      local pos = find(opts.sorting.comparators, cmp.config.compare.recently_used)
+      if pos == nil then pos = find(opts.sorting.comparators, cmp.config.compare.score) end
+      if pos == nil then pos = 3 end
+      table.insert(opts.sorting.comparators, pos + 1, require("cmp-under-comparator").under)
+    end,
+  },
+
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = {
+      "andersevenrud/cmp-tmux",
+      lazy = true,
+      cond = function() return os.getenv "TMUX" ~= nil end,
+    },
+    opts = function(_, opts)
+      if os.getenv "TMUX" == nil then return end
+      opts.sources = opts.sources or {}
+      table.insert(opts.sources, { name = "tmux" })
+    end,
+  },
+
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = { "hrsh7th/cmp-calc", lazy = true },
+    opts = function(_, opts)
+      opts.sources = opts.sources or {}
+      table.insert(opts.sources, { name = "calc" })
+    end,
+  },
+
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = { "f3fora/cmp-spell", lazy = true },
+    opts = function(_, opts)
+      opts.sources = opts.sources or {}
+      table.insert(opts.sources, { name = "spell" })
+    end,
+  },
 
   --
 }
