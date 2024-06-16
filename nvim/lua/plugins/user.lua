@@ -523,28 +523,28 @@ return {
   -- "nanotee/nvim-lsp-basics", -- does nothing
   -- "aznhe21/actions-preview.nvim", -- does nothing
 
-  {
-    "timeyyy/clackclack.symphony",
-    enabled = false,
-    lazy = false,
-    config = function()
-      require("soundme"):setup {
-        debug = true,
-        theme = "clackclack",
-      }
-    end,
-  },
-
-  {
-    "timeyyy/bubbletrouble.symphony",
-    lazy = false,
-    config = function()
-      require("soundme"):setup {
-        debug = true,
-        theme = "kamil",
-      }
-    end,
-  },
+  -- {
+  --   "timeyyy/clackclack.symphony",
+  --   enabled = false,
+  --   lazy = false,
+  --   config = function()
+  --     require("soundme"):setup {
+  --       debug = true,
+  --       theme = "clackclack",
+  --     }
+  --   end,
+  -- },
+  --
+  -- {
+  --   "timeyyy/bubbletrouble.symphony",
+  --   lazy = false,
+  --   config = function()
+  --     require("soundme"):setup {
+  --       debug = true,
+  --       theme = "oxygen",
+  --     }
+  --   end,
+  -- },
 
   -- }}}
 }

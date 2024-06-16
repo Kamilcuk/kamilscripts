@@ -5,35 +5,37 @@ local Job = require "plenary.job"
 -------------------------------------------------------------------------------
 
 ---@class SoundmeTheme
----@field public path string
----@field public dir string
+---@field public prefix string?
+---@field public suffix string?
 ---@field public events table<string, string>
 
 ---@class SoundmeOpts
 ---@field public debug boolean?
 ---@field public command string[]?
----@field public theme string
+---@field public theme string|SoundmeTheme
 
 -------------------------------------------------------------------------------
 
 ---@class Soundme
 ---@field public c SoundmeOpts
 ---@field public theme SoundmeTheme
----@field public dir string
+---@field public path string
+---@field public command string[]
 local M = {}
 
----@type string[]
+---@type string[][]
 M.PLAYERS = {
-  "aplay",
-  "paplay",
+  { "aplay" },
+  { "paplay" },
+  { "vlc", "--quiet" },
+  { "mpv" },
 }
 
 ---@type table<string, SoundmeTheme>
 M.PRESETS = {
 
   clackclack = {
-    path = "clackclack.symphony",
-    dir = "autoload",
+    prefix = "clackclack.symphony/autoload/",
     events = {
       CursorMoved = "pat.wav",
       CursorMovedI = "keyboard_slow.wav",
@@ -50,8 +52,7 @@ M.PRESETS = {
   },
 
   bubbletrouble = {
-    path = "bubbletrouble.symphony",
-    dir = "autoload",
+    prefix = "bubbletrouble.symphony/autoload/",
     events = {
       CursorMoved = "plop.wav",
       CursorMovedI = "bub.wav",
@@ -62,14 +63,35 @@ M.PRESETS = {
   },
 
   kamil = {
-    path = "bubbletrouble.symphony",
-    dir = "autoload",
+    prefix = "bubbletrouble/autoload/",
     events = {
       -- CursorMoved = "plop.wav",
       -- CursorMovedI = "bub.wav",
       WinEnter = "techno.wav",
       InsertEnter = "bubble.wav",
       InsertLeave = "mouth_pop.wav",
+    },
+  },
+
+  freedesktop = {
+    prefix = "/usr/share/sounds/freedesktop/stereo/",
+    suffix = ".oga",
+    events = {
+      WinEnter = "service-login",
+      InsertEnter = "power-plug",
+      InsertLeave = "power-unplug",
+      BufWritePost = "complete",
+    },
+  },
+
+  oxygen = {
+    prefix = "/usr/share/sounds/oxygen/stereo/",
+    suffix = ".ogg",
+    events = {
+      WinEnter = "desktop-login-short",
+      InsertEnter = "power-plug",
+      InsertLeave = "power-unplug",
+      BufWritePost = "completion-success",
     },
   },
 }
@@ -79,33 +101,49 @@ function M:log(msg)
   if self.c.debug then print("soundme: " .. msg) end
 end
 
+local function string_endswith(str, suffix) return str:sub(-#suffix) == suffix end
+
+---@param path string
+---@return string?
+local function find_path(path)
+  if path:sub(1, 1) == "/" then
+    return path
+  else
+    local slash = path:find "/"
+    local plugin = slash and path:sub(1, slash - 1) or path
+    local sub = slash and path:sub(slash) or ""
+    local rt = vim.api.nvim_list_runtime_paths()
+    for _, v in ipairs(rt) do
+      if string_endswith(v, "/" .. plugin) then return v .. sub end
+    end
+  end
+  return nil
+end
+
 ---@param opts SoundmeOpts?
 function M:setup(opts)
   self.c = opts or {}
   --
-  if self.c.theme == nil then
-    self:log "no theme"
-    return
-  elseif type(self.c.theme) == "string" then
-    self.theme = M.PRESETS[self.c.theme]
-  else
-    error "TODO"
-  end
-  --
-  local rt = vim.api.nvim_list_runtime_paths()
-  for _, v in ipairs(rt) do
-    if v:find("/" .. self.theme.path) then
-      self.dir = v
-      break
+  if self.theme == nil then
+    if self.c.theme == nil then
+      self:log "no theme"
+      return
+    elseif type(self.c.theme) == "string" then
+      self.theme = M.PRESETS[self.c.theme]
+    else
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      self.theme = self.c.theme
     end
   end
-  if self.dir == nil then error("Theme " .. self.theme.path .. " not found in runtimepaths: " .. vim.inspect(rt)) end
-  self.dir = self.dir .. "/" .. (self.theme.dir and self.theme.dir .. "/" or "")
+  assert(self.theme ~= nil)
   --
   self.command = self.c.command or self.command
   if self.command == nil then
     for _, v in ipairs(self.PLAYERS) do
-      if vim.fn.executable(v) then self.command = { v } end
+      if vim.fn.executable(v[1]) ~= 0 then
+        self.command = { unpack(v) }
+        break
+      end
     end
   end
   if self.command == nil then
@@ -113,15 +151,15 @@ function M:setup(opts)
     return
   end
   --
-  for _, v in pairs(self.theme.events) do
-    if not vim.fn.filereadable(self.dir .. v) then error("File is not readable: " .. self.dir .. v) end
-  end
-  --
   local group = vim.api.nvim_create_augroup("soundme", {})
-  for k, v in pairs(self.theme.events) do
-    vim.api.nvim_create_autocmd(k, {
+  for event, file in pairs(self.theme.events) do
+    file = (self.theme.prefix or "") .. file .. (self.theme.suffix or "")
+    local path = find_path(file)
+    assert(path ~= nil, "File for event " .. event .. " not found in runtimepath: " .. file)
+    assert(vim.fn.filereadable(path), "File for event " .. event .. " does not exists: " .. path)
+    vim.api.nvim_create_autocmd(event, {
       group = group,
-      callback = function() self:play(self.dir .. v) end,
+      callback = function() self:play(path) end,
     })
   end
   --
@@ -134,10 +172,7 @@ function M:play(file)
   if self.command == nil then return end
   if not vim.fn.filereadable(file) then return end
   ---@type string[]
-  local cmd = {
-    unpack(self.command),
-    file,
-  }
+  local cmd = { unpack(self.command), file }
   Job:new({
     command = cmd[1],
     args = { unpack(cmd, 2) },
