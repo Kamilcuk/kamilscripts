@@ -146,6 +146,7 @@ function M:setup(opts)
       end
     end
   end
+  self.command = nil
   if self.command == nil then
     self:log "Could not determine command to play sound with"
     return

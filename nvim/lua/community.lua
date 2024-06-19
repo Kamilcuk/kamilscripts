@@ -8,11 +8,11 @@ return {
   "AstroNvim/astrocommunity",
   -- import/override with your plugins folder
 
-  { import = "astrocommunity.completion.tabby-nvim" },
+  -- { import = "astrocommunity.completion.tabby-nvim" },
   { import = "astrocommunity.completion.cmp-git" },
   { import = "astrocommunity.completion.cmp-emoji" },
   { import = "astrocommunity.diagnostics.trouble-nvim" },
-  { import = "astrocommunity.editing-support.chatgpt-nvim" },
+  -- { import = "astrocommunity.editing-support.chatgpt-nvim" },
   { import = "astrocommunity.lsp.garbage-day-nvim" },
   -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- sreplcaed by lspsaga rename
   -- { import = "astrocommunity.lsp.lsp-lens-nvim" },

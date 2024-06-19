@@ -145,6 +145,7 @@ return {
 
   {
     "jackMort/ChatGPT.nvim",
+    enabled = false,
     dependencies = {
       {
         "AstroNvim/astrocore",
@@ -284,13 +285,8 @@ return {
   {
     "hrsh7th/nvim-cmp",
     optional = true,
-    dependencies = {
-      "andersevenrud/cmp-tmux",
-      lazy = true,
-      cond = function() return os.getenv "TMUX" ~= nil end,
-    },
+    dependencies = { "andersevenrud/cmp-tmux", lazy = true },
     opts = function(_, opts)
-      if os.getenv "TMUX" == nil then return end
       opts.sources = opts.sources or {}
       table.insert(opts.sources, { name = "tmux" })
     end,
@@ -545,6 +541,40 @@ return {
   --     }
   --   end,
   -- },
+
+  { "mzlogin/vim-markdown-toc", ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
+  { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
+  {
+    "gyim/vim-boxdraw",
+    config = function()
+      vim.api.nvim_create_user_command("Boxdraw", function()
+        if vim.tbl_contains(vim.opt.virtualedit:get(), "all") then
+          print "Exiting boxdraw mode"
+          vim.opt.virtualedit:remove "all"
+        else
+          vim.opt.virtualedit:append "all"
+          print [[
+Entered boxdraw mode
+Ctrl+b   Select rectangular area with ctrl+v
+o   Switch between corners
+gc  Restore selection
+I   Insert before each line in block
++o                      Draw a rectangle, clear its contents with whitespace.
++O                      Draw a rectangle, fill it with a label.
++c                      Fill the rectangle with a label.
++- or +_                Draw a line that ends with a horizontal line:
++> or +<                Draw a line that ends with a horizontal arrow:
+++> or ++<              Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line:
++|                      Draw a line that ends with a vertical line:
++^, +v or +V            Draw a line that ends with a vertical arrow.
+++^, ++v or ++V         Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line:
++io                     Select current rectangle, without borders.
++ao                     Select current rectangle, with borders.
+]]
+        end
+      end, {})
+    end,
+  }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
 
   -- }}}
 }
