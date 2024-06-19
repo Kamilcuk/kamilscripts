@@ -385,7 +385,8 @@ C_aur_html_repos() {
 
 C_url_to_dir() {
 	local out ret
-	if out=$(sed -E <&0 '
+	if out=$(
+		sed -E '
 		# check input
 		\|^([^@]+@\|https?://)([^:/]+)[:/](.+)$|!{
 			s/.*/regex not matched/p
@@ -400,7 +401,7 @@ C_url_to_dir() {
 			s/.*/internal error: two empty dirs/p
 			q2
 		}
-		'
+		' <&0
 	); then
 		echo "$out"
 	else
@@ -438,6 +439,12 @@ C_backup_git() {
 		L_run git --git-dir="$dest/$dir" remote set-url origin "$url"
 		L_run git --git-dir="$dest/$dir" remote update
 	done <<<"$repos"
+}
+
+C_bisect_steps() {
+	git bisect visualize --oneline |
+		wc -l |
+		perl -MPOSIX -lne 'print "Bisecting: ".floor(($_-1)/2)." revisions left to test after this (roughly ".(floor(log($_-1)/log(2))-1)." steps)" if $_'
 }
 
 ###############################################################################

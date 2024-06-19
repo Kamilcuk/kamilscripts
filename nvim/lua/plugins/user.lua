@@ -316,7 +316,7 @@ return {
   {
     "nvim-lspconfig",
     init = function()
-      if vim.fn.executable "tabby-agent" then
+      if false and vim.fn.executable "tabby-agent" then
         local is_from_npm = vim.fn.system("which tabby-agent"):find "node-modules" ~= nil
         if is_from_npm then
           local version = vim.fn.system "npm list -g tabby-agent | sed -n 's/.*tabby-agent@//p'"

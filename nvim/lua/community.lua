@@ -8,7 +8,7 @@ return {
   "AstroNvim/astrocommunity",
   -- import/override with your plugins folder
 
-  -- { import = "astrocommunity.completion.tabby-nvim" },
+  { import = "astrocommunity.completion.tabby-nvim" },
   { import = "astrocommunity.completion.cmp-git" },
   { import = "astrocommunity.completion.cmp-emoji" },
   { import = "astrocommunity.diagnostics.trouble-nvim" },
