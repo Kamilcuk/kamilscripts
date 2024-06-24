@@ -289,13 +289,13 @@ local disabled = {
     enabled = false,
     lazy = false,
     config = function()
-      require("soundme"):setup {
+      require("k.,soundme"):setup {
         debug = true,
         theme = "clackclack",
       }
     end,
   },
-  --
+
   {
     "timeyyy/bubbletrouble.symphony",
     lazy = false,
@@ -631,7 +631,9 @@ return {
   -- {{{1 staging
 
   { "mzlogin/vim-markdown-toc", ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
+
   { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
+
   {
     "mkirc/vim-boxdraw",
     config = function()
@@ -712,8 +714,3 @@ p                paste yanked block replace with current selection
 
   -- }}}
 }
-
-+-----------+
-|           |
-+-----------+
-
