@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import os.path
+import re
+import subprocess
+import tempfile
+from typing import List
+
+
+def list_files_recursive(path: str = ".") -> List[str]:
+    ret: List[str] = []
+    for entry in os.listdir(path):
+        full_path = os.path.join(path, entry)
+        if os.path.isdir(full_path):
+            ret.extend(list_files_recursive(full_path))
+        else:
+            ret.append(full_path)
+    return ret
+
+
+def main():
+    log = logging.getLogger(__name__)
+    parser = argparse.ArgumentParser(
+        description="""
+    For each given file in arguments, if the file contains the given regex PATTERN,
+    print the diff of the change and replace the PATTERN by REPLACEMENT in the file.
+    """,
+        epilog="Written by Kamil Cukrowski. Under GPL",
+    )
+    parser.add_argument(
+        "-q", "-s", "--quiet", "--silent", action="store_true", help="Be quiet"
+    )
+    parser.add_argument(
+        "--dry-run", "-n", action="store_true", help="Do not change the files"
+    )
+    parser.add_argument("-c", "--confirm", action="store_true", help="Confirm change")
+    parser.add_argument(
+        "-g", "--git", action="store_true", help="Use git ls-files to list the files"
+    )
+    parser.add_argument(
+        "-R", "--non-recursive", action="store_true", help="Do not traverse directories"
+    )
+    parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("pattern", type=re.compile)
+    parser.add_argument("replacement")
+    parser.add_argument("files", nargs="*")
+    args = parser.parse_args()
+    logging.basicConfig(
+        level=(
+            logging.DEBUG
+            if args.debug
+            else logging.WARN if args.quiet else logging.INFO
+        )
+    )
+
+    # Get initial list of files.
+    infiles: List[str] = args.files
+    if args.git:
+        infiles += subprocess.check_output(
+            "git ls-files --cached --others --exclude-standard -z".split(), text=True
+        ).split("\x00")
+
+    # Scan directories recursively.
+    files: List[str] = []
+    for file in infiles:
+        if not args.non_recursive and os.path.isdir(file):
+            files.extend(list_files_recursive(file))
+        else:
+            files.append(file)
+
+    replacements: int = 0
+    for file in files:
+        if file == "":
+            continue
+        with open(file) as old:
+            try:
+                data = old.read()
+            except Exception:
+                log.warning(f"Ignoring binary file: {file}")
+                continue
+        new_string, number_of_subs_made = args.pattern.subn(args.replacement, data)
+        if number_of_subs_made:
+            replacements += 1
+            root, ext = os.path.splitext(os.path.basename(file))
+            log.debug(f"Handling {file}")
+            with tempfile.NamedTemporaryFile(
+                "tw",
+                prefix=f"new_{root}",
+                suffix=ext,
+                dir=os.path.dirname(file),
+                delete=False,
+            ) as new:
+                try:
+                    new.write(new_string)
+                    new.flush()
+                    if not args.quiet:
+                        subprocess.run("diff --color -u".split() + [file, new.name])
+                    if not args.dry_run:
+                        if not args.confirm or input(
+                            "Make the change? [y/yes]"
+                        ).strip().lower() in ["y", "yes", "1"]:
+                            os.rename(new.name, file)
+                finally:
+                    try:
+                        os.remove(new.name)
+                    except FileNotFoundError:
+                        pass
+    if replacements == 0:
+        log.info("No files found to replace")
+        exit(2)
+    else:
+        log.info(
+            f"SUCCESS. {'Would replace' if args.dry_run else 'Replaced'} text in {replacements} files"
+        )
+
+
+if __name__ == "__main__":
+    main()
