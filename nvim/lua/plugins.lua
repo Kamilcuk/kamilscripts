@@ -681,11 +681,13 @@ return {
       end
       --
       vim.api.nvim_create_user_command("Boxdraw", function()
-        if vim.tbl_contains(vim.opt.virtualedit:get(), "all") then
+        if vim.g.boxdraw_enabled ~= nil then
           print "Exiting boxdraw mode"
-          vim.opt.virtualedit:remove "all"
+          vim.opt.virtualedit = vim.g.boxdraw_enabled
+          vim.g.boxdraw_enabled = nil
         else
-          vim.opt.virtualedit:append "all"
+          vim.g.boxdraw_enabled = vim.opt.virtualedit
+          vim.opt.virtualedit = "all"
           print [[
 Entered boxdraw mode
 Ctrl+b           Select rectangular area with ctrl+v
