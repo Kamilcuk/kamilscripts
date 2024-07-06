@@ -1,6 +1,153 @@
 local min = math.min
 local max = math.max
 
+function block_pos(y1, x1, y2, x2)
+    -- Returns y, x, height, width
+    return math.min(y1,y2), math.min(x1,x2), math.max(y1,y2) - math.min(y1,y2) + 1, math.max(x1,x2) - math.min(x1,x2) + 1
+end
+
+function split_nl(line)
+    -- Returns the contents of the line without the newline, and the newline if exists.
+    if string.len(line) > 0 and string.sub(line, -1) == '\n' then
+        return string.sub(line, 1, -2), string.sub(line, -1)
+    else
+        return line, ''
+    end
+end
+
+function expand_line(line, width)
+    -- Ensures that line is at least `width` character long.
+    local content, nl = split_nl(line)
+    if string.len(content) < width then
+        content = content .. string.rep(' ', width - string.len(content))
+    end
+    return content .. nl
+end
+
+function replace_at(line, pos, s)
+    -- Replaces part of the line starting at `pos`.
+    line = expand_line(line, pos + string.len(s))
+    return string.sub(line, 1, pos - 1) .. s .. string.sub(line, pos + string.len(s))
+end
+
+function overwrite_at(line, pos, s)
+    -- Write `s` into line at given `pos`, merging line conjunctions and skipping whitespaces.
+    s = string.gsub(s, '%s*$', '')
+    line = expand_line(line, pos + string.len(s))
+    local content, nl = split_nl(line)
+
+    local result = ''
+    for i = 1, string.len(content) do
+        local c = string.sub(content, i, i)
+        if pos <= i and i < pos + string.len(s) then
+            local C = string.sub(s, i - pos, i - pos)
+            if C == ' ' then
+                result = result .. c
+            elseif (C == '-' or C == '+') and (c == '|' or c == '+') or (C == '|' or C == '+') and (c == '-' or c == '+') then
+                result = result .. '+'
+            else
+                result = result .. C
+            end
+        else
+            result = result .. c
+        end
+    end
+    return result .. nl
+end
+
+function merge_block(lines, y, x, block, merge_fn)
+    -- Merges a rectangular block on the given lines using a merge function.
+    local h = #block
+    local w = 0
+    for _, line in ipairs(block) do
+        w = math.max(w, string.len(line))
+    end
+
+    for l = 1, #lines do
+        local line = lines[l]
+        local content, nl = split_nl(line)
+
+        if h > 0 and w > 0 and y <= l and l < y + h then
+            coroutine.yield(merge_fn(content, x, block[l - y + 1]) .. nl)
+        else
+            coroutine.yield(line .. nl)
+        end
+    end
+end
+
+function replace_block(lines, y, x, block)
+    -- Replaces a rectangular block inside the given lines.
+    return merge_block(lines, y, x, block, replace_at)
+end
+
+function overwrite_block(lines, y, x, block)
+    -- Writes a rectangular block into the given lines, except whitespaces.
+    return merge_block(lines, y, x, block, overwrite_at)
+end
+
+function line(pattern, w)
+    -- Returns pattern enlarged to fit width `w`
+    local result = pattern:sub(1, 1) .. string.rep(pattern:sub(2, 2), math.max(1, w-2)) .. pattern:sub(3, 3)
+    return result:sub(1, w)
+end
+
+function align_h(line, width, where)
+    -- Returns fixed-width, aligned text. Text is truncated if longer than width.
+    line, nl = split_nl(line)
+    if where == 'left' then
+        return string.format('%-' .. width .. 's', line:sub(1, width)) .. nl
+    elseif where == 'right' then
+        return string.format('%' .. width .. 's', line:sub(1, width)) .. nl
+    else
+        return string.format('%' .. width .. 's', line:sub(1, width)) .. nl
+    end
+end
+
+function align_v(lines, height, where, empty)
+    -- Adds empty lines before/after the given `lines` according to alignment.
+    local truncated_lines = {}
+    for i = 1, height do
+        if lines[i] then
+            table.insert(truncated_lines, lines[i])
+        else
+            break
+        end
+    end
+
+    if where == 'top' then
+        for i = 1, height - #truncated_lines do
+            table.insert(truncated_lines, empty)
+        end
+    elseif where == 'bottom' then
+        for i = 1, height - #truncated_lines do
+            table.insert(truncated_lines, 1, empty)
+        end
+    else
+        for i = 1, (height - #truncated_lines) / 2 do
+            table.insert(truncated_lines, 1, empty)
+        end
+        for i = 1, height - #truncated_lines do
+            table.insert(truncated_lines, empty)
+        end
+    end
+
+    return truncated_lines
+end
+
+function char_at(lines, y, x, default)
+    -- Returns the character at the given position, or default if it is out of bounds.
+    if not (0 <= y and y < #lines) then
+        return default
+    end
+    local line = lines[y + 1]
+    if not (0 <= x and x < #line) then
+        return default
+    end
+    return line:sub(x + 1, x + 1)
+end
+
+-------------------------------------------------------------------------------
+
 ---@param x string
 ---@return number
 local function len(x) return x:len() end
@@ -47,12 +194,11 @@ local function find_box(lines, y1, x1, y2, x2)
     -- Select top -
     local sy = min(y1,y2)
     while not ("|+\n"):find(char_at(lines, y2, ex, '\n')) do
-        ex = ex - 1
+        sy = sy - 1
     end
-    while char_at(lines, sy, sx, '\n') not in '-+\n':
-        sy -= 1
     -- Select bottom -
     local ey = max(y1,y2)
+    while not ("|+\n"):find(char_at(lines, ey, ex, '\n')) do
     while char_at(lines, ey, ex, '\n') not in '-+\n':
         ey += 1
     return sy, sx, ey, ex
