@@ -1,5 +1,25 @@
 -- polish.lua
 
+require("lint").linters.nomad = {
+  name = "nomad",
+  cmd = "nomad",
+  stdin = false,
+  append_fname = true,
+  args = { "job", "validate" },
+  stream = "both",
+  ignore_exitcode = false,
+  parser = require("lint.parser").from_pattern(
+    "[^:]*:(%d+).*: (.+)",
+    { "col", "message" },
+    {},
+    { severity = vim.diagnostic.severity.ERROR },
+    { lnum_offset = 1 }
+  ),
+}
+require('lint').linters_by_ft = {
+	hcl = {"nomad",}
+}
+
 vim.cmd [[
 
 set wildmenu
