@@ -1,5 +1,6 @@
 -- polish.lua
 
+-- Add nomad as a linter for hcl files.
 require("lint").linters.nomad = {
   name = "nomad",
   cmd = "nomad",
@@ -19,6 +20,10 @@ require("lint").linters.nomad = {
 require('lint').linters_by_ft = {
 	hcl = {"nomad",}
 }
+
+-- restart pyright automatically
+
+
 
 vim.cmd [[
 

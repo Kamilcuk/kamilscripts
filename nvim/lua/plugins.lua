@@ -510,7 +510,7 @@ return {
   -- {{{1 Filetypes
 
   "NoahTheDuke/vim-just", -- syntax for justfile
-  "sheerun/vim-polyglot", -- Solid language pack for vim
+  -- "sheerun/vim-polyglot", -- Solid language pack for vim
   "grafana/vim-alloy", -- Grafana Alloy language support for vim
 
   -- }}}
