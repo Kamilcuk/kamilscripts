@@ -639,45 +639,66 @@ return {
     config = function()
       local ok, wk = pcall(require, "which-key")
       if ok then
-        wk.register({
-          ["<C-b>"] = "Select rectangular area with ctrl+v",
-          ["o"] = "Switch between corners",
-          ["g"] = {
-            ["c"] = "Restore selection",
+        wk.add {
+          mode = "v",
+          { "<C-b>", desc = "Select rectangular area with ctrl+v" },
+          { "o", desc = "Switch between corners" },
+          {
+            "g",
+            { "c", desc = "Restore selection" },
           },
-          ["I"] = "Insert before each line in block",
-          ["+"] = {
-            ["o"] = "Draw a rectangle, clear its contents with whitespace",
-            ["O"] = "Draw a rectangle, fill it with a label",
-            ["c"] = "Fill the rectangle with a label",
-            ["-"] = "Draw a line that ends with a horizontal line",
-            ["_"] = "Draw a line that ends with a horizontal line",
-            [">"] = "Draw a line that ends with a horizontal arrow",
-            ["<"] = "Draw a line that ends with a horizontal arrow",
-            ["|"] = "Draw a line that ends with a vertical line",
-            ["^"] = "Draw a line that ends with a vertical arrow",
-            ["v"] = "Draw a line that ends with a vertical arrow",
-            ["V"] = "Draw a line that ends with a vertical arrow",
-            ["+"] = {
-              "Draw with arrow on both sides of the line",
-              [">"] = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              ["<"] = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              ["^"] = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              ["v"] = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              ["V"] = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+          { "I", desc = "Insert before each line in block" },
+          {
+            "+",
+            { "o", desc = "Draw a rectangle, clear its contents with whitespace" },
+            { "O", desc = "Draw a rectangle, fill it with a label" },
+            { "c", desc = "Fill the rectangle with a label" },
+            { "-", desc = "Draw a line that ends with a horizontal line" },
+            { "_", desc = "Draw a line that ends with a horizontal line" },
+            { ">", desc = "Draw a line that ends with a horizontal arrow" },
+            { "<", desc = "Draw a line that ends with a horizontal arrow" },
+            { "|", desc = "Draw a line that ends with a vertical line" },
+            { "^", desc = "Draw a line that ends with a vertical arrow" },
+            { "v", desc = "Draw a line that ends with a vertical arrow" },
+            { "V", desc = "Draw a line that ends with a vertical arrow" },
+            {
+              "+",
+              desc = "Draw with arrow on both sides of the line",
+              {
+                ">",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "<",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "^",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "v",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "V",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
             },
-            ["i"] = {
-              "Select inside",
-              ["o"] = "Select current rectangle, without borders",
+            {
+              "i",
+              desc = "Select inside",
+              { "o", desc = "Select current rectangle, without borders" },
             },
-            ["a"] = {
-              "Select all",
-              ["o"] = "Select current rectangle, with borders",
+            {
+              "a",
+              desc = "Select all",
+              { "o", desc = "Select current rectangle, with borders" },
             },
             -- extra
-            ["~"] = "Draw a diagonal line",
+            { "~", desc = "Draw a diagonal line" },
           },
-        }, { mode = "v" })
+        }
       end
       --
       vim.api.nvim_create_user_command("Boxdraw", function()
