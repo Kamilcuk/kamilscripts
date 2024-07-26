@@ -1,5 +1,50 @@
 -- polish.lua
 
+---@class LinterSpec
+---@field [1] string
+---@field pattern? string
+---@field [2] string[]
+---@field groups? string[]
+---@field [3] table<string, vim.diagnostic.Severity>
+---@field severity_map? table<string, vim.diagnostic.Severity>
+---@field [4] table
+---@field defaults? table
+---@field [5] {col_offset?: integer, end_col_offset?: integer, lnum_offset?: integer, end_lnum_offset?: integer}
+---@field opts? {col_offset?: integer, end_col_offset?: integer, lnum_offset?: integer, end_lnum_offset?: integer}
+---@field col_offset? integer
+---@field end_col_offset? integer
+---@field lnum_offset? integer
+---@field end_lnum_offset? integer
+
+---@class LintersSpec
+---@field defaults? table
+
+---@param patterns LinterSpec[]|LintersSpec
+local function from_patterns(patterns)
+  return function(output, bufnr)
+    local diagnostics = {}
+    for _, pattern in ipairs(patterns) do
+      local args = {
+        pattern.pattern or pattern[1],
+        pattern.groups or pattern[2],
+        pattern.severity_map or pattern[3],
+        pattern.defaults or pattern[4] or patterns.defaults,
+        pattern.opts or pattern[5] or {
+          col_offset = pattern.col_offset,
+          end_col_offset = pattern.end_col_offset,
+          lnum_offset = pattern.lnum_offset,
+          end_lnum_offset = pattern.end_lnum_offset,
+        },
+      }
+      local result = require("lint.parser").from_pattern(unpack(args))(output, bufnr)
+      for _, diagnostic in ipairs(result) do
+        table.insert(diagnostics, diagnostic)
+      end
+    end
+    return diagnostics
+  end
+end
+
 -- Add nomad as a linter for hcl files.
 require("lint").linters.nomad = {
   name = "nomad",
@@ -9,21 +54,23 @@ require("lint").linters.nomad = {
   args = { "job", "validate" },
   stream = "both",
   ignore_exitcode = false,
-  parser = require("lint.parser").from_pattern(
-    "[^:]*:(%d+).*: (.+)",
-    { "col", "message" },
-    {},
-    { severity = vim.diagnostic.severity.ERROR },
-    { lnum_offset = 1 }
-  ),
+  parser = from_patterns {
+    defaults = { severity = vim.diagnostic.severity.ERROR },
+    {
+      "[^:]+:(%d+): (.+)",
+      { "lnum", "message" },
+    },
+    {
+      "[^:]+:(%d+),(%d+)-(%d+): (.+)",
+      { "lnum", "col", "col_end", "message" },
+    },
+  },
 }
-require('lint').linters_by_ft = {
-	hcl = {"nomad",}
+require("lint").linters_by_ft = {
+  hcl = { "nomad" },
 }
 
 -- restart pyright automatically
-
-
 
 vim.cmd [[
 

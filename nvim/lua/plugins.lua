@@ -332,7 +332,7 @@ return {
   { import = "astrocommunity.lsp.lspsaga-nvim" },
   { import = "astrocommunity.pack.cpp" },
   { import = "astrocommunity.pack.lua" },
-  { import = "astrocommunity.pack.python" },
+  { import = "astrocommunity.pack.python-ruff" },
   -- { import = "astrocommunity.pack.cmake" },
   { import = "astrocommunity.pack.bash" },
   { import = "astrocommunity.search.sad-nvim" },
