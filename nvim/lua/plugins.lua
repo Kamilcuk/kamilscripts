@@ -49,6 +49,7 @@ local function KcLog(data)
 end
 
 -- }}}
+
 -- {{{1 disabled
 -- selene: allow(unused_variable)
 ---@diagnostic disable-next-line: unused-local
@@ -307,17 +308,24 @@ local disabled = {
     end,
   },
 
+  -- makes vim sooooo slow
+  -- "sheerun/vim-polyglot", -- Solid language pack for vim
+
   --
 }
 -- }}}
+
 ---@type LazySpec
 return {
-  --- {{{1 astrocommunity
+  -- {{{1 astrocommunity
 
   "AstroNvim/astrocommunity",
   -- import/override with your plugins folder
 
-  { import = "astrocommunity.completion.tabby-nvim" },
+  {
+    import = "astrocommunity.completion.tabby-nvim",
+    cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
+  },
   { import = "astrocommunity.completion.cmp-git" },
   { import = "astrocommunity.completion.cmp-emoji" },
   { import = "astrocommunity.diagnostics.trouble-nvim" },
@@ -391,7 +399,10 @@ return {
     dependencies = {
       "junegunn/fzf",
       lazy = true,
-      build = function() vim.api.nvim_call_function("fzf#install", {}) end,
+      build = function()
+        vim.cmd [[Lazy load fzf.vim]]
+        vim.fn["fzf#install"]()
+      end,
     },
     cmd = {
       "Files",
@@ -463,6 +474,28 @@ return {
   {
     "HiPhish/rainbow-delimiters.nvim",
     submodules = false,
+    enabled = false,
+  },
+  {
+    "luochen1990/rainbow",
+    lazy = false,
+    init = function()
+      vim.g.rainbow_active = 1
+      vim.g.rainbow_conf = {
+        ["parentheses"] = {
+          "start=/(/ end=/)/ fold",
+          "start=/\\[/ end=/\\]/ fold",
+          "start=/{/ end=/}/ fold",
+          "start=/«/ end=/»/",
+        },
+      }
+      vim.cmd [[
+	        " auto syntax * call rainbow_main#load()
+	        " auto colorscheme * call rainbow_main#load()
+	        " auto VimEnter * call rainbow_main#load()
+	      ]]
+      vim.api.nvim_set_hl(0, "@punctuation.bracket", { link = "" })
+    end,
   },
 
   {
@@ -494,10 +527,11 @@ return {
     "iamcco/markdown-preview.nvim",
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
     ft = { "markdown" },
-    build = function()
+    build = function(plugin)
       if vim.fn.executable "npx" then
-        vim.cmd [[cd app && npx --yes yarn install]]
+        vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
       else
+        vim.cmd [[Lazy load markdown-preview.nvim]]
         vim.fn["mkdp#util#install"]()
       end
     end,
@@ -510,7 +544,6 @@ return {
   -- {{{1 Filetypes
 
   "NoahTheDuke/vim-just", -- syntax for justfile
-  -- "sheerun/vim-polyglot", -- Solid language pack for vim
   "grafana/vim-alloy", -- Grafana Alloy language support for vim
 
   -- }}}
@@ -523,6 +556,15 @@ return {
     opts = function(_, opts)
       opts.sources = opts.sources or {}
       table.insert(opts.sources, { name = "tmux", options = { all_panes = true } })
+    end,
+  },
+  {
+    "hrsh7th/nvim-cmp",
+    optional = true,
+    dependencies = { "quangnguyen30192/cmp-nvim-tags", lazy = true },
+    opts = function(_, opts)
+      opts.sources = opts.sources or {}
+      table.insert(opts.sources, { name = "tags" })
     end,
   },
 
@@ -629,6 +671,14 @@ return {
 
   -- }}}
   -- {{{1 staging
+
+  {
+    "leath-dub/snipe.nvim",
+    keys = {
+      {"gB", function () require("snipe").open_buffer_menu() end, desc = "Open Snipe buffer menu"}
+    },
+    opts = {}
+  },
 
   { "mzlogin/vim-markdown-toc", ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
 

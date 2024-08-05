@@ -1,5 +1,7 @@
 -- polish.lua
 
+vim.opt.exrc = true
+
 ---@class LinterSpec
 ---@field [1] string
 ---@field pattern? string

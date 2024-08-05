@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 
 
 def log(*nargs):
@@ -90,12 +91,26 @@ def files_generator():
     return files
 
 
+@contextmanager
+def temporary_file_to_move_to(file):
+    with tempfile.NamedTemporaryFile(dir=os.path.dirname(file), delete=False) as fp:
+        try:
+            yield fp
+        finally:
+            fp.close()
+            if os.path.exists(fp.name):
+                os.unlink(fp.name)
+
+
 def run_on_file(file):
     global args, changed
     cmd = ["sed"] + (["-E"] if args.regexp_extended else []) + [args.script, file]
-    with tempfile.NamedTemporaryFile() as fp:
+    with temporary_file_to_move_to(file) as fp:
         if not args.no_diff or args.ok:
-            subprocess.run(cmd, check=True, stdout=fp)
+            try:
+                subprocess.run(cmd, check=True, stdout=fp)
+            except subprocess.CalledProcessError as e:
+                exit(e.returncode)
         if not filecmp.cmp(file, fp.name):
             print("+", shlex.join(cmd))
             if not args.no_diff:
@@ -103,7 +118,7 @@ def run_on_file(file):
                     ["diff", "-Naur", "--color", file, fp.name],
                 )
             if args.ok:
-                shutil.copyfile(fp.name, file)
+                shutil.move(fp.name, file)
             changed = changed + 1
         # else:
         # log("+", cmd)
