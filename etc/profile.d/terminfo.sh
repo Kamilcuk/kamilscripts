@@ -25,11 +25,9 @@ fi
 			name=${i%.terminfo}
 			file=~/.terminfo/${i:0:1}/$name
 			if [[ ! -e "$file" || "$i" -nt "$file" ]] && ! ihas "$name"; then
-				files+=("$i")
+				tic -x -o ~/.terminfo "$i"
 			fi
 		done
-		if ((${#files[@]})); then
-			tic -x -o ~/.terminfo "${files[@]}"
-		fi
+		unset i
 	fi
 )

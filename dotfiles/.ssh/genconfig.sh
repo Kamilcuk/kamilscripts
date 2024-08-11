@@ -187,8 +187,9 @@ Host netemera
 
 Host perun
 	#Hostname karta.dyzio.pl
-	Hostname kamcuk.top
-	# 2a02:c207:2050:3924::1 207.180.196.233
+	#Hostname kamcuk.top
+	# 2a02:c207:2050:3924::1
+	Hostname 207.180.196.233
 	Port 60022
 	ForwardX11 yes
 
