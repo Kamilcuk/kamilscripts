@@ -98,8 +98,10 @@ def temporary_file_to_move_to(file):
             yield fp
         finally:
             fp.close()
-            if os.path.exists(fp.name):
+            try:
                 os.unlink(fp.name)
+            except FileNotFoundError:
+                pass
 
 
 def run_on_file(file):
@@ -136,7 +138,9 @@ for file in files:
 
 CYAN = "\033[33m"
 RESET = "\033[0m"
-if args.ok:
+if not changed:
+    print(CYAN + "No files to change." + RESET)
+elif args.ok:
     print(CYAN + "Changed", changed, "files." + RESET)
 else:
     print(

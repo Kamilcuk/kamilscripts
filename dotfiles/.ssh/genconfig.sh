@@ -202,6 +202,11 @@ Host mx1
 	Hostname 192.168.21.12
 	User kamil
 
+Host weles
+	Hostname 212.90.120.55
+	User root
+	Port 60022
+
 EOF
 
 fi # is_cis
