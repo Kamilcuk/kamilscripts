@@ -675,9 +675,9 @@ return {
   {
     "leath-dub/snipe.nvim",
     keys = {
-      {"gB", function () require("snipe").open_buffer_menu() end, desc = "Open Snipe buffer menu"}
+      { "gB", function() require("snipe").open_buffer_menu() end, desc = "Open Snipe buffer menu" },
     },
-    opts = {}
+    opts = {},
   },
 
   { "mzlogin/vim-markdown-toc", ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
@@ -784,6 +784,15 @@ p                paste yanked block replace with current selection
       end, {})
     end,
   }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
+
+  {
+    "inkarkat/vim-EnhancedJumps",
+    lazy = false,
+    dependencies = {
+      "inkarkat/vim-ingo-library",
+      lazy = false,
+    },
+  },
 
   -- }}}
 }

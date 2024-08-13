@@ -1,0 +1,1 @@
+eval "$(logcli --completion-script-bash)"

@@ -15,3 +15,5 @@ autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C /usr/bin/nomad nomad
 
 complete -o nospace -C /home/kamil/go/bin/nomad nomad
+
+complete -o nospace -C /scratch/kcukrowski/xshared/bin/terraform terraform
