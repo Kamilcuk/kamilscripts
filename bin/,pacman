@@ -292,7 +292,7 @@ C_autoremove() {
 	done
 }
 
-if hash ,nice 2>/dev/null; then
+if false && hash ,nice 2>/dev/null; then
 	nice=(",nice")
 else
 	nice=(nice -n 20 ionice -c 3)
