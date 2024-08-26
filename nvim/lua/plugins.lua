@@ -112,7 +112,7 @@ local disabled = {
     optional = true,
     dependencies = { "hrsh7th/cmp-nvim-lua", lazy = true },
     opts = function(_, opts)
-      if not opts.sources then opts.sources = {} end
+      opts.sources = opts.sources or {}
       table.insert(opts.sources, { name = "nvim_lua" })
     end,
   },
@@ -666,6 +666,7 @@ return {
   -- "cryptomilk/nightcity.nvim",
   {
     "dasupradyumna/midnight.nvim",
+    -- enabled = false,
     config = function() vim.cmd.colorscheme "midnight" end,
   },
 
@@ -792,6 +793,14 @@ p                paste yanked block replace with current selection
       "inkarkat/vim-ingo-library",
       lazy = false,
     },
+  },
+
+  {
+    "nvim-notify",
+    opts = function(_, opts)
+      opts.render = "wrapped-compact"
+      opts.stages = "static"
+    end,
   },
 
   -- }}}
