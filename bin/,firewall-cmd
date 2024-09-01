@@ -1,0 +1,17 @@
+#!/bin/bash
+firewall-cmd "$@" |
+	while IFS= read line; do
+		if [[ ! $line = *services:* ]]; then
+			echo "$line"
+		else
+			read -r -a a <<<"$line"
+			{
+				echo "  ${a[0]}"
+				unset a[0]
+				for i in "${a[@]}"; do
+					port=$(firewall-cmd --info-service $i | sed -n 's/.*ports: *//p')
+					echo "$i($port)"
+				done
+			} | paste -sd' '
+		fi
+	done

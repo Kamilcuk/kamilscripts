@@ -338,11 +338,13 @@ return {
   { import = "astrocommunity.lsp.nvim-lsp-file-operations" },
   { import = "astrocommunity.lsp.nvim-lint" },
   { import = "astrocommunity.lsp.lspsaga-nvim" },
-  { import = "astrocommunity.pack.cpp" },
-  { import = "astrocommunity.pack.lua" },
-  { import = "astrocommunity.pack.python-ruff" },
-  -- { import = "astrocommunity.pack.cmake" },
-  { import = "astrocommunity.pack.bash" },
+
+  -- { import = "astrocommunity.pack.cpp" },
+  -- { import = "astrocommunity.pack.lua" },
+  -- { import = "astrocommunity.pack.python-ruff" },
+  -- -- { import = "astrocommunity.pack.cmake" },
+  -- { import = "astrocommunity.pack.bash" },
+
   { import = "astrocommunity.search.sad-nvim" },
   -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
   { import = "astrocommunity.editing-support.auto-save-nvim" },
