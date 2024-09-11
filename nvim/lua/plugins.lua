@@ -790,6 +790,7 @@ p                paste yanked block replace with current selection
 
   {
     "inkarkat/vim-EnhancedJumps",
+    enabled = false,
     lazy = false,
     dependencies = {
       "inkarkat/vim-ingo-library",
