@@ -806,5 +806,22 @@ p                paste yanked block replace with current selection
     end,
   },
 
+  {
+    "AstroNvim/astrolsp",
+    opts = {
+      config = {
+        basedpyright = {
+          settings = {
+            basedpyright = {
+              analysis = {
+                typeCheckingMode = "standard",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
   -- }}}
 }
