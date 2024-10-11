@@ -58,7 +58,7 @@ Numeric = Union[int, float]
 
 
 def sizeof_fmt(num, suffix="B"):
-    for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+    for unit in ("", "K", "M", "G", "T", "P", "E", "Z"):
         if abs(num) < 1024.0:
             return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
@@ -134,7 +134,7 @@ def parse_ifconfig(data: str) -> Interfaces:
         "\n\n" + data,
         re.MULTILINE | re.DOTALL,
     ):
-        ret.its[i.group(1)] = Interface(i.group(1), int(i.group(2)), int(i.group(3)))
+        ret.its[i.group(1)] = Interface(i.group(1), int(i.group(2)) * 8, int(i.group(3)) * 8)
     logging.debug(f"extracted {len(list(ret.its.values()))} interfaces")
     return ret
 
@@ -164,16 +164,17 @@ def main():
             log.debug(
                 f"{new.get('br0')} | {state.get('br0')} | {speed.get('br0')} | {now} | {start} {now - start}"
             )
-            table = []
+            table = [["name", "rx", "tx"]]
             for it in speed.its.values():
                 table.append(
-                    {
-                        "name": it.name,
-                        "rx": sizeof_fmt(it.rxbytes) + "/s",
-                        "tx": sizeof_fmt(it.txbytes) + "/s",
-                    }
+                    [
+                        it.name,
+                        sizeof_fmt(it.rxbytes) + "/s",
+                        sizeof_fmt(it.txbytes) + "/s",
+                    ]
                 )
-            print(tabulate(table, headers="keys") + "\n")
+            for it in table:
+                print(f"{it[0]:6s} {it[1]:>11s} {it[2]:>11s}")
             #
             state = new.copy()
             start = now

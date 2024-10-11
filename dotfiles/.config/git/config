@@ -1,5 +1,6 @@
 [user]
-	name = Kamil Cukrowski
+	name = Kamil Cukrowski from root@leonidas
+	email = kamilcukrowski@gmail.com
 [push]
 	default = simple
 [github]

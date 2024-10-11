@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import logging
 import os
+import argparse
+import subprocess
 import re
 import sys
 from dataclasses import dataclass
@@ -35,7 +37,10 @@ class Section:
         return ret
 
     def is_signed_by_tu(self):
-        return any(re.match("Key-ID:.*TU", line) for line in self.comment.splitlines())
+        return any(
+            re.match("Key-ID:.*TU[.]?", line) or re.match("Key-ID:.*Not needed.*", line)
+            for line in self.comment.splitlines()
+        )
 
     def is_valid(self):
         assert "\n" not in self.name
@@ -134,6 +139,15 @@ def partition(
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=("download", "parse"))
+    args = parser.parse_args()
+    if args.mode == "download":
+        subprocess.check_call(
+            "curl -sS https://wiki.archlinux.org/title/Unofficial_user_repositories >./_unofficial_user_repositories.html",
+            shell=True,
+        )
+        exit()
     logging.basicConfig(level=logging.DEBUG)
     os.chdir(Path(__file__).parent)
     pagef = Path("_unofficial_user_repositories.html")

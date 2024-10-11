@@ -1,6 +1,7 @@
 -- polish.lua
 
 vim.opt.exrc = true
+vim.opt.wrap = true
 
 ---@class LinterSpec
 ---@field [1] string

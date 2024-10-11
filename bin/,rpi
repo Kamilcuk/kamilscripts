@@ -1,53 +1,99 @@
-#!/usr/bin/env python3
+#!/usr/bin/bash
+set -euo pipefail
 
-provision_script = """
-set -xeuo pipefail
+umount_all() {
+    local mounts
+    mounts=$(findmnt -lvnR --real --output TARGET "$1" | tac)
+    for i in $mounts; do
+        while mountpoint "$i" && ! umount "$i"; do
+            sleep 1
+        done
+    done
+}
 
-cat <<EOF >/etc/apt/apt.conf.d/01norecommend
+find_rpi_disc() {
+    exit 1
+}
+
+trap_exit() {
+    for i in "$ROOT"/*; do
+        if mountpoint "$i"; then
+            umount "$i"
+        fi
+    done
+    umount "$ROOT"
+    umount ./sdb2/* ./sdb2 || :
+    umount ./sdb2/* ./sdb2 || :
+}
+
+provision_script() {
+    set -xeuo pipefail
+
+    cat <<EOF >/etc/apt/apt.conf.d/01norecommend
 APT::Install-Recommends "0";
 APT::Install-Suggests "0";
 EOF
 
-apt-get install -y tmux neovim git
+    apt-get install -y tmux neovim git
 
-systemctl disable --now rsyslog
+    systemctl disable --now rsyslog
 
-apt-get remove -y rsyslog
+    apt-get remove -y rsyslog
 
-sed -i 's/#Storage=auto/Storage=persistent/' /etc/systemd/journald.conf
+    sed -i 's/#Storage=auto/Storage=persistent/' /etc/systemd/journald.conf
 
-sed -i 's/#SplitMode=uid/SplitMode=none/' /etc/systemd/journald.conf
+    sed -i 's/#SplitMode=uid/SplitMode=none/' /etc/systemd/journald.conf
 
-systemctl enable --now systemd-journald
+    systemctl enable --now systemd-journald
 
-if id kamil >/dev/null && [[ ! -e /home/kamil/.ssh/id_rsa ]]; then
-    sudo -u kamil ssh-keygen -N ""
-fi
+    if id kamil >/dev/null && [[ ! -e /home/kamil/.ssh/id_rsa ]]; then
+        sudo -u kamil ssh-keygen -N ""
+    fi
 
-if [[ ! ~/.ssh/id_rsa ]]; then
-    ssh-keygen -N ""
-fi
+    if [[ ! ~/.ssh/id_rsa ]]; then
+        ssh-keygen -N ""
+    fi
 
-systemctl disable --now apt-daily-upgrade.timer
+    systemctl disable --now apt-daily-upgrade.timer
 
-git clone git@gitlab.com:Kamcuk/kamilscripts.git ~/.kamilscripts
+    git clone git@gitlab.com:Kamcuk/kamilscripts.git ~/.kamilscripts
 
-~/.kamilscripts/bin/,kamilscripts.sh -k
+    ~/.kamilscripts/bin/,kamilscripts.sh -k
 
-cat <<EOF >/etc/systemd/network/wlan0.network
+    cat <<EOF >/etc/systemd/network/wlan0.network
 [Match]
 Name=wlan0
 [Network]
 DHCP=yes
 EOF
 
-cat <<EOF >/etc/systemd/network/eth0.network
+    cat <<EOF >/etc/systemd/network/eth0.network
 [Match]
 Name=eth0
 [Network]
 DHCP=yes
 EOF
 
+}
 
-"""
+###############################################################################
 
+cmd_chroot() {
+    disc=$1
+    shift
+    L_assert "(($# == 0))"
+    file "$disc" "$disc"1 "$disc"2
+    file "$disc"3 && exit 1
+    umount_all /mnt/rpi
+    cd "$(dirname "$(readlink -f "$0")")"
+    fsck -y "$disc"2
+    trap 'umount_all /mnt/rpi' EXIT
+    mkdir -vp /mnt/rpi/boot
+    mount "$disc"2 /mnt/rpi
+    file /mnt/rpi/bin/ls
+    cp /usr/bin/qemu-arm-static ./rpi/bin
+    mount "$disc"1 /mnt/rpi/boot
+    exec arch-chroot /mnt/rpi
+}
+
+. lib_lib.sh cmd_ "$@"

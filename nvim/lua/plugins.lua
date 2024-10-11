@@ -683,7 +683,16 @@ return {
     opts = {},
   },
 
-  { "mzlogin/vim-markdown-toc", ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
+  { "mzlogin/vim-markdown-toc", enabled = false, ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
+  { "preservim/vim-markdown", enabled = false, ft = "markdown" },
+  {
+    "hedyhli/markdown-toc.nvim",
+    ft = "markdown", -- Lazy load on markdown filetype
+    cmd = { "Mtoc" }, -- Or, lazy load on "Mtoc" command
+    opts = {
+      -- Your configuration here (optional)
+    },
+  },
 
   { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
 
@@ -821,6 +830,18 @@ p                paste yanked block replace with current selection
         },
       },
     },
+  },
+
+  "tpope/vim-dispatch",
+
+  {
+    "jedrzejboczar/exrc.nvim",
+    dependencies = { "neovim/nvim-lspconfig" }, -- (optional)
+    config = true,
+  },
+
+  {
+
   },
 
   -- }}}
