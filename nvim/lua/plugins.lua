@@ -840,9 +840,7 @@ p                paste yanked block replace with current selection
     config = true,
   },
 
-  {
-
-  },
+  "pranavpudasaini/vim-hcl",
 
   -- }}}
 }
