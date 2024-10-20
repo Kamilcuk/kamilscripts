@@ -860,5 +860,7 @@ p                paste yanked block replace with current selection
 
   { "alpha-nvim", enabled = true },
 
+  "pranavpudasaini/vim-hcl",
+
   -- }}}
 }
