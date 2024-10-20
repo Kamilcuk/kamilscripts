@@ -858,5 +858,7 @@ p                paste yanked block replace with current selection
     end,
   },
 
+  { "alpha-nvim", enabled = true },
+
   -- }}}
 }
