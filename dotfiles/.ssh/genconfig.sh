@@ -204,7 +204,7 @@ Host mx1
 
 Host weles
 	Hostname 212.90.120.55
-	User root
+	User kamil
 	Port 60022
 
 EOF

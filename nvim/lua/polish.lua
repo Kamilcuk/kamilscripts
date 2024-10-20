@@ -243,3 +243,18 @@ set path+=**
 cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 
 ]]
+
+-- https://www.reddit.com/r/AstroNvim/comments/1f89958/how_to_remove_please_install_notifications/
+local notify = require "notify"
+local orig_notify = getmetatable(notify).__call
+setmetatable(notify, {
+  __call = function(_, m, l, o)
+    if
+      string.find(m, "please install sad")
+      or string.find(m, 'vim.tbl_islist is deprecated. Run ":checkhealth vim.deprecated" for more information')
+    then
+      return
+    end
+    return orig_notify(_, m, l, o)
+  end,
+})
