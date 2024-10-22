@@ -8,7 +8,7 @@ if declare -f ,hash >/dev/null 2>&1; then
 fi
 
 # re-load profile if not already sourced
-if [[ -z "$KCDIR" ]]; then
+if [[ ! -d "$KCDIR" ]]; then
 	. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/profile
 fi
 
