@@ -258,3 +258,4 @@ setmetatable(notify, {
     return orig_notify(_, m, l, o)
   end,
 })
+

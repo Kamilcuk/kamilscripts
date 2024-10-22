@@ -1,1 +1,0 @@
-eval "$(_NOMAD_GITLAB_RUNNER_COMPLETE=bash_source nomad-gitlab-runner)"

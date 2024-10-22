@@ -1,1 +1,0 @@
-eval "$(_NOMADT_COMPLETE=bash_source nomadt)"

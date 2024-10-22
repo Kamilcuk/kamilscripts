@@ -1,0 +1,36 @@
+#!/bin/bash
+
+CMD_convert_to_black_and_white() {
+	input=$1
+	output=$2
+	shift 2
+	L_assert "(($# == 0))"
+	L_run gs \
+		-sOutputFile="$output" \
+		-sDEVICE=pdfwrite \
+		-dBlackText -dBlackVector \
+		-dNOPAUSE -dBATCH \
+		"$input"
+}
+
+CMD_convert_to_black_and_white2() {
+	input=$1
+	output=$2
+	shift 2
+	L_assert "(($# == 0))"
+	L_run gs -o "$output" -sDEVICE=pdfwrite \
+		-c "/osetrgbcolor {/setrgbcolor} bind def /setrgbcolor {pop [0 0 0] osetrgbcolor} def" \
+		-f "$input"
+}
+
+CMD_compress() {
+  L_assert "(($# == 2 || $# == 3))"
+  input=$1
+  output=$2
+  setting=${3:-screen}
+  L_assert "[[ '$setting' =~ (screen|ebook|prepress|printer|default) ]]"
+	L_run gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/"$setting" \
+		-dNOPAUSE -dQUIET -dBATCH -sOutputFile="$output" "$input"
+}
+
+. lib_lib.sh CMD_ "$@"

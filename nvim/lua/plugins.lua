@@ -368,6 +368,9 @@ return {
       diagnostics = {
         virtual_text = false, -- disable diagnostics virtual text
       },
+      autocmds = {
+        alpha_autostart = false,
+      },
     },
   },
 
@@ -380,9 +383,21 @@ return {
       formatting = {
         format_on_save = false, -- enable or disable automatic formatting on save
       },
+      config = {
+        basedpyright = {
+          settings = {
+            basedpyright = {
+              analysis = {
+                typeCheckingMode = "standard",
+              },
+            },
+          },
+        },
+      },
     },
   },
 
+  { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
   { "folke/noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
   { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
@@ -524,27 +539,30 @@ return {
   "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
-  {
-    -- Install markdown preview, use npx if available.
-    "iamcco/markdown-preview.nvim",
-    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    ft = { "markdown" },
-    build = function(plugin)
-      if vim.fn.executable "npx" then
-        vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
-      else
-        vim.cmd [[Lazy load markdown-preview.nvim]]
-        vim.fn["mkdp#util#install"]()
-      end
-    end,
-    init = function()
-      if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
-    end,
-  },
+  { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
+  { "markdown-preview.nvim", init = function() vim.g.mkdp_auto_close = 0 end },
+  -- {
+  --   -- Install markdown preview, use npx if available.
+  --   "iamcco/markdown-preview.nvim",
+  --   cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+  --   ft = { "markdown" },
+  --   build = function(plugin)
+  --     if vim.fn.executable "npx" then
+  --       vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
+  --     else
+  --       vim.cmd [[Lazy load markdown-preview.nvim]]
+  --       vim.fn["mkdp#util#install"]()
+  --     end
+  --   end,
+  --   init = function()
+  --     if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
+  --   end,
+  -- },
 
   -- }}}
   -- {{{1 Filetypes
 
+  "pranavpudasaini/vim-hcl",
   "NoahTheDuke/vim-just", -- syntax for justfile
   "grafana/vim-alloy", -- Grafana Alloy language support for vim
 
@@ -574,6 +592,9 @@ return {
   -- {{{1 utils
 
   -- { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
+  {
+    "tpope/vim-dispatch", -- <leader>`
+  },
   "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
   "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
   "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
@@ -678,20 +699,43 @@ return {
   {
     "leath-dub/snipe.nvim",
     keys = {
-      { "gB", function() require("snipe").open_buffer_menu() end, desc = "Open Snipe buffer menu" },
+      { "<leader>fB", function() require("snipe").open_buffer_menu() end, desc = "Open Snipe buffer menu" },
     },
     opts = {},
   },
 
-  { "mzlogin/vim-markdown-toc", enabled = false, ft = { "markdown" } }, -- Generate table of contents for markdown :GenToc*
-  { "preservim/vim-markdown", enabled = false, ft = "markdown" },
   {
+    -- Does not work with properly with undo
+    -- Generate table of contents for markdown :GenToc*
+    "mzlogin/vim-markdown-toc",
+    ft = { "markdown" },
+    enabled = true,
+    cmd = { "GenTocGFM", "GenTocRedcarpet", "GenTocGitLab", "GenTocMarked", "UpdateToc", "RemoveToc" },
+    init = function()
+      local tmp = { "GenTocGFM", "GenTocRedcarpet", "GenTocGitLab", "GenTocMarked", "UpdateToc", "RemoveToc" }
+      for _, i in ipairs(tmp) do
+        vim.api.nvim_create_user_command("Markdown" .. i, i .. " <args>", {})
+      end
+      vim.g.vmt_auto_update_on_save = 0
+    end,
+  },
+  {
+    -- useless for me
+    "preservim/vim-markdown",
+    enabled = false,
+    ft = "markdown",
+  },
+  {
+    -- Does not work with properly with undo
     "hedyhli/markdown-toc.nvim",
+    enabled = false,
     ft = "markdown", -- Lazy load on markdown filetype
-    cmd = { "Mtoc" }, -- Or, lazy load on "Mtoc" command
+    cmd = { "Mtoc", "MarkdownTableOfContent" }, -- Or, lazy load on "Mtoc" command
     opts = {
       -- Your configuration here (optional)
+      auto_update = false,
     },
+    init = function() vim.api.nvim_create_user_command("MarkdownTableOfContent", "Mtoc <args>", { nargs = 1 }) end,
   },
 
   { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
@@ -798,6 +842,7 @@ p                paste yanked block replace with current selection
   }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
 
   {
+    -- it doesn't exactly work correctly, and is too noisy
     "inkarkat/vim-EnhancedJumps",
     enabled = false,
     lazy = false,
@@ -808,31 +853,16 @@ p                paste yanked block replace with current selection
   },
 
   {
+    -- make nvim-notify smaller. I would make it even smaller smaller
     "nvim-notify",
     opts = function(_, opts)
       opts.render = "wrapped-compact"
+      -- Added in my lua path.
+      opts.render = "my-wrapped-compact"
+      opts.render = "my-wrapped-minimal"
       opts.stages = "static"
     end,
   },
-
-  {
-    "AstroNvim/astrolsp",
-    opts = {
-      config = {
-        basedpyright = {
-          settings = {
-            basedpyright = {
-              analysis = {
-                typeCheckingMode = "standard",
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  "tpope/vim-dispatch",
 
   {
     "jedrzejboczar/exrc.nvim",
@@ -858,9 +888,14 @@ p                paste yanked block replace with current selection
     end,
   },
 
-  { "alpha-nvim", enabled = true },
-
-  "pranavpudasaini/vim-hcl",
+  {
+    "astrocore",
+    opts = function(_, opts)
+      local maps = opts.mappings
+      maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
+      maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
+    end,
+  },
 
   -- }}}
 }

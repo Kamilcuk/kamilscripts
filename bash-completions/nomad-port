@@ -1,1 +1,0 @@
-eval "$(_NOMAD_PORT_COMPLETE=bash_source nomad-port)"
