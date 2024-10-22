@@ -861,6 +861,8 @@ p                paste yanked block replace with current selection
       opts.render = "my-wrapped-compact"
       opts.render = "my-wrapped-minimal"
       opts.stages = "static"
+      opts.top_down = false
+      opts.fps = 1
     end,
   },
 
