@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # function hist is declared in bash.d/hist.sh
-if declare -f ,hist >/dev/null 2>&1; then
+if declare -f ,hash >/dev/null 2>&1; then
 	# already sourced - just ignore
 	# hist function is defined below
 	return
