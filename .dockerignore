@@ -1,3 +1,5 @@
+Dockerfile
+public
 .owncloudsync.log*
 .sync*
 *.swp
