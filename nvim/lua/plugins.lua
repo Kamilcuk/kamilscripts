@@ -369,7 +369,7 @@ return {
         virtual_text = false, -- disable diagnostics virtual text
       },
       autocmds = {
-        alpha_autostart = false,
+        alpha_autostart = false, -- disable entry screen
       },
     },
   },
@@ -398,10 +398,12 @@ return {
   },
 
   { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
+  { "goolord/alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
   { "folke/noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
   { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
   { "windwp/nvim-autopairs", enabled = false }, -- och god no, no autopairs
+  { "kdheepak/lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
 
   -- }}}
   -- {{{1 :commmands plugins
@@ -540,7 +542,10 @@ return {
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
   { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
-  { "markdown-preview.nvim", init = function() vim.g.mkdp_auto_close = 0 end },
+  {
+    "markdown-preview.nvim",
+    init = function() vim.g.mkdp_auto_close = 0 end,
+  },
   -- {
   --   -- Install markdown preview, use npx if available.
   --   "iamcco/markdown-preview.nvim",
@@ -897,6 +902,13 @@ p                paste yanked block replace with current selection
       maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
       maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
     end,
+  },
+
+  "tpope/vim-fugitive", -- git plugin
+
+  {
+    "MagicDuck/grug-far.nvim", -- find adn replace plugin
+    opts = {},
   },
 
   -- }}}
