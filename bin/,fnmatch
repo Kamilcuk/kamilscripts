@@ -86,7 +86,7 @@ def parse_args():
         ' If there is more then one argument, stdin is ignored and arguments are globbed.'
         ' Internally fnmatch(3) is used to do the globbing.'
         ,
-        epilog="Written by Kamil Cukrowski 2021. Licensed jointly under MIT License and Beerware License.")
+        epilog="Written by Kamil Cukrowski 2021. This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3..")
     parser.add_argument('-0', '-z', '-Z', '--zero', dest='delim', action='store_const', const=b'\0', default=b'\n',
             help="line delimiter is NUL, not newline");
     parser.add_argument('-f', '--file', dest='file', type=argparse.FileType('rb', 0), help="input file")

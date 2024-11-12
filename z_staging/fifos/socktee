@@ -5,7 +5,7 @@
 # This version uses sockets.
 # Either binds to a network socket or to socket file.
 # Uses a compilable file to compile.
-# SPDX-License-Identifier: MIT AND Beerware
+# SPDX-License-Identifier: GPL-3.0
 # See help() function in C source file below for help.
 
 NAME=socktee

@@ -1,1 +1,247 @@
-,fnmatch
+#!/usr/bin/env python3
+
+import ctypes
+import argparse
+import sys
+from subprocess import run, PIPE
+
+def test_unit():
+    p = run(['bash', '-s', sys.argv[0]], input="""
+            fail=0
+            unittest() {
+                echo -n "test on line $(caller | cut -d' ' -f1): "
+                if diff -Naur "$1" "$2"; then
+                    echo "ok"
+                else
+                    fail=1
+                    echo "failed!"
+                fi
+            }
+            exe="$1"
+
+            unittest \
+        		<( seq 100 | "$exe" '*1' ) \
+        		<( seq 100 | grep -x '.*1' )
+
+        	unittest \
+        		<( seq 100 | tr '\\n' '\\0' | "$exe" -Z '*1' ) \
+        		<( seq 100 | tr '\\n' '\\0' | grep -x -a -zZ '.*1' )
+
+            unittest \
+                <( "$exe" 'a*' abc def adef ) \
+                <( printf "%s\\n" abc adef )
+
+            unittest \
+                <( "$exe" -z 'a*' abc def adef ) \
+                <( printf "%s\\0" abc adef )
+
+            unittest <( "$exe" -e 'a+(b)' abbb a b ) <( printf "%s\\n" abbb )
+
+            wait
+
+            exit "$fail"
+            """, encoding='ascii')
+    sys.exit(p.returncode)
+
+# sed -n 's/#\s*define\s*\(FNM_\w*\)\s*\([^/]*\).*/\1 = \2/ p' /usr/include/fnmatch.h
+FNM_PATHNAME = (1 << 0)
+FNM_NOESCAPE = (1 << 1)
+FNM_PERIOD = (1 << 2)
+FNM_FILE_NAME = FNM_PATHNAME
+FNM_LEADING_DIR = (1 << 3)
+FNM_CASEFOLD = (1 << 4)
+FNM_EXTMATCH = (1 << 5)
+FNM_NOMATCH = 1
+FNM_NOSYS = (-1)
+
+
+class Myfnmatch:
+    def __init__(self, args):
+        self._fnmatch = ctypes.CDLL("libc.so.6").fnmatch
+        self._flags = 0
+        if args.noescape:
+            self._flags |= FNM_NOESCAPE
+        if args.pathname:
+            self._flags |= FNM_PATHNAME
+        if args.period:
+            self._flags |= FNM_PERIOD
+        if args.leading_dir:
+            self._flags |= FNM_LEADING_DIR
+        if args.casefold:
+            self._flags |= FNM_CASEFOLD
+        if args.extmatch:
+            self._flags |= FNM_EXTMATCH
+        self._flags = ctypes.c_int(self._flags)
+
+    def fnmatch(self, pattern, string):
+        # print(repr(pattern), repr(string))
+        r = self._fnmatch(pattern, string, self._flags)
+        if r != 0 and r != FNM_NOMATCH:
+            raise Exception(f'fnmatch failed and returned {r}')
+        return not r
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Glob lines from stdin and print matched lines.'
+        ' If there is more then one argument, stdin is ignored and arguments are globbed.'
+        ' Internally fnmatch(3) is used to do the globbing.'
+        ,
+        epilog="Written by Kamil Cukrowski 2021. This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3..")
+    parser.add_argument('-0', '-z', '-Z', '--zero', dest='delim', action='store_const', const=b'\0', default=b'\n',
+            help="line delimiter is NUL, not newline");
+    parser.add_argument('-f', '--file', dest='file', type=argparse.FileType('rb', 0), help="input file")
+    parser.add_argument('-n', '--noescape', help="set FNM_NOESCAPE", action='store_true');
+    parser.add_argument('-p', '--pathname', help="set FNM_PATHNAME", action='store_true');
+    parser.add_argument('-.', '--period', help="set FNM_PERIOD", action='store_true');
+    parser.add_argument('-l', '--leading_dir', help="set FNM_LEADING_DIR", action='store_true');
+    parser.add_argument('-i', '--casefold', help="set FNM_CASEFOLD", action='store_true');
+    parser.add_argument('-e', '--extmatch', help="set FNM_EXTMATCH", action='store_true');
+    parser.add_argument('--test', help="run unit tests", action='store_true');
+    parser.add_argument('pattern', type=str, help='wildcard pattern')
+    parser.add_argument('strings', nargs='*', type=str, help='strings to match')
+    args = parser.parse_args()
+    if args.file and args.strings:
+        raise Exception('Dont now what to do - either read from file or use arguments')
+    return args
+
+
+def strtoraw(s):
+    return bytes(s, encoding="raw_unicode_escape")
+
+
+def check_out(s):
+    if g_myfnmatch.fnmatch(g_pattern, s):
+        sys.stdout.buffer.write(s)
+        sys.stdout.buffer.write(g_delim)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "--test":
+        test_unit()
+    g_args = parse_args()
+    g_myfnmatch = Myfnmatch(g_args)
+    g_delim = g_args.delim
+    g_pattern = strtoraw(g_args.pattern)
+    if g_args.strings:
+        for s in g_args.strings:
+            check_out(strtoraw(s))
+    else:
+        g_infile = g_args.file or sys.stdin.buffer
+        line = b""
+        while 1:
+            c = g_infile.read(1)
+            # print(c)
+            if c != g_delim and c != b'':
+                line += c
+            else:
+                check_out(line)
+                line = b""
+            if c == b'':
+                break
+
+exit
+
+"""
+Below is a shell script with a C implementation - unused.
+
+#!/bin/bash
+# /*
+
+if (($#)) && [[ "$1" == "--test" ]]; then
+
+	exit
+fi
+
+,ccrun "$(cat <<'/* EOF'
+// */
+#define _GNU_SOURCE  1
+#include <stdio.h>
+#include <fnmatch.h>
+#include <error.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifndef FNM_EXTMATCH
+#define FNM_EXTMATCH 0
+#endif
+
+#define err(fmt, ...) error(1, errno, "line %d: "fmt, __LINE__, ##__VA_ARGS__)
+
+static void usage(int status) {
+	fprintf(stderr,
+			"Usage: %s [-0zZh] [-d <delim>] [-f <file>] <glob_pattern>\n"
+			"\n"
+			"Read data from stdin and match them with glob expression.\n"
+			"\n"
+			"Options:\n"
+			"  -0 -z -Z     Set delimieter to zero byte.\n"
+			"  -d <delim>   Use first character from <delim> as delimiter.\n"
+			"  -h           Print this help and exit.\n"
+			"  -f <file>    Read from file instead of stdin.\n"
+			"\n"
+			"Written by Kamil Cukrowski\n"
+			,
+			program_invocation_name);
+	exit(status ? EXIT_FAILURE : EXIT_SUCCESS);
+}
+
+int main(int argc, char *argv[]) {
+	argv[0] = program_invocation_name = (char*)",glob";
+
+	int delim = '\n';
+	const char *inputfile = NULL;
+
+	for (int opt; (opt = getopt(argc, argv, "0zZd:hf:")) != -1;) {
+		switch(opt) {
+			case '0': case 'z': case 'Z':
+				delim = '\0'; break;
+			case 'd': delim = optarg[0]; break;
+			case 'h': usage(0); break;
+			case 'f': inputfile = optarg; break;
+			default: usage(1);
+		}
+	}
+	if (optind >= argc) err("Glob expression missing. See %s -h", program_invocation_name);
+    if (argc - optind > 1) err("Too many arguments");
+    const char *const pattern = argv[optind];
+
+	const int flags = FNM_EXTMATCH;
+
+	FILE *input = stdin;
+	if (inputfile) {
+		input = fopen(inputfile, "r");
+		if (!input) err("Could not open file: %s", inputfile);
+	}
+
+	size_t len = 0;
+	char *line = NULL;
+	ssize_t nread = 0;
+	while ((nread = getdelim(&line, &len, delim, stdin)) != -1) {
+
+		// Remove delim from end of line.
+		char *const pos = &line[nread - 1];
+		if (*pos == delim) *pos = '\0';
+
+		//printf("line=`%.*s' pattern=`%s'\n", (int)nread, line, pattern);
+		const int r = fnmatch(pattern, line, flags);
+		if (r == 0) {
+			printf("%s%c", line, delim);
+		} else if (r != FNM_NOMATCH) {
+			free(line);
+            err("fnmatch error");
+		}
+	}
+	free(line);
+
+	return EXIT_SUCCESS;
+}
+
+/* EOF
+)" -- "$@"
+
+exit
+*/
+"""
+

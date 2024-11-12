@@ -507,7 +507,7 @@ Examples:
     $n -F1- time_entries -2weeks 
 
 Written by Kamil Cukrowski 2020
-Licensed jointly under Beerware License and MIT License.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3.
 EOF
 	if (($#)); then
 		fatal "$*"

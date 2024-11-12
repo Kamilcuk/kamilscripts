@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0+
+#  SPDX-License-Identifier: GPL-3.0
 [Unit]
 Description=Systemd journal output on %I
 Documentation=man:journalctl(8)

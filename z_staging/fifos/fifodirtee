@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT AND Beerware
+# SPDX-License-Identifier: GPL-3.0
 set -euo pipefail
 
 # the name of this script

@@ -50,7 +50,7 @@ Examples:
     $NAME -q standout red
 
 Written by Kamil Cukrowski
-SPDX-License-Identifier: GPL-3.0+
+SPDX-License-Identifier: GPL-3.0
 EOF
 }
 

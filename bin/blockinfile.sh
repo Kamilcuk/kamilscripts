@@ -33,7 +33,7 @@ Examples:
 	blockinfile.sh -m "# %s customscript MANAGED BLOCK" -b "include $dir/etc/pacman.conf" /etc/pacman.conf
 
 Written by Kamil Cukrowski 2019
-Licensed jointly under MIT License and Beerware License.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3..
 EOF
 }
 

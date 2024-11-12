@@ -1072,7 +1072,7 @@ Options:
      --test[=N]     Run tests.
 
 Written by Kamil Cukrowski
-SPDX-License-Identifier: MIT and Beerware
+SPDX-License-Identifier: GPL-3.0
 EOF
 }
 
