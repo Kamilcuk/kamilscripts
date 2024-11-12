@@ -1,6 +1,6 @@
 " viewrestore.vim
 " Written by Kamil Cukrowski 2020
-" SPDX_License_Identifier: MIT and Beerware
+" SPDX-License-Identifier: GPL-3.0
 " This was a test of view restoration, doesn't work as intended, the defaults
 " are better.
 " https://vim.fandom.com/wiki/Make_views_automatic

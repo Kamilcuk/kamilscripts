@@ -47,7 +47,7 @@ Example:
 	# Do _not_ use bash variables starting with g_ - reserved for script.
 
 Written by Kamil Cukrowski
-Licensed jointly under Beerware License and MIT License
+Licensed under GPL-3.0
 EOF
 }
 

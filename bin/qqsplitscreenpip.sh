@@ -39,7 +39,7 @@ Examples:
 	$n auto
 	$n gui
 
-Written by Kamil Cukrowski (C) 2017. Under MIT license. Version 1.0.1
+Written by Kamil Cukrowski (C) 2017. Licensed under GPL-3.0. Version 1.0.1
 EOF
 cat >/dev/null <<EOF
 TODO:

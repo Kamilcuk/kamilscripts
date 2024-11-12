@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Indentifier: Beerware+MIT
+# SPDX-License-Identifier: GPL-3.0
 
 name=$(basename "$0")
 
@@ -23,7 +23,7 @@ Mode:
   pr         Permutations with repetitions
 
 Written by Kamil Cukrowski
-Licensed jointly under Beerware Licesne and MIT license.
+Licensed under GPL-3.0.
 EOF
 }
 

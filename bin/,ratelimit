@@ -14,7 +14,7 @@ Examples:
  cat /dev/urandom | $name -t 5
 
 Written by Kamil Cukrowski (C) 2019
-Licensed jointly under MIT and Beerware license
+Licensed under GPL-3.0
 """,
 )
 argp.add_argument(

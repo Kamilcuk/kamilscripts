@@ -153,7 +153,7 @@ Examples:
     $0 0
     $0 
 
-Written by: Kamil Cukrowski (c) 2017. Licensed under MIT License.
+Written by: Kamil Cukrowski (c) 2017. Licensed under GPL-3.0.
 EOF
 }
 

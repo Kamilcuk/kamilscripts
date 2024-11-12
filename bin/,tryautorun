@@ -22,7 +22,7 @@ Options:
    -h            Print this help and exit.
 
 Written by Kamil Cukrowski
-Licensed jointly under Beerware Licsense and MIT License
+Licensed under GPL-3.0
 EOF
 }
 

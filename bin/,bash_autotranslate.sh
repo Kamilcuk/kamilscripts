@@ -1037,7 +1037,7 @@ Just write me or post it on my gitlab.com page.
 
 =head1 COPYRIGHT
 
-Licensed jointly under MIT License and Beeware License.
+Licensed under GPL-3.0.
 
 =head1 SEE ALSO
 

@@ -24,7 +24,7 @@ Options:
  -e --end    Stop measuring on this breakpoint. Default: _exit
 
 Written by Kamil Cukrowski 2020
-Licensed jointly under Beerware and MIT License
+Licensed under GPL-3.0
 EOF
 }
 

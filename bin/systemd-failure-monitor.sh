@@ -25,7 +25,7 @@ Example:
 	$NAME your_email@gmail.com
 	$NAME -
 
-Written by Kamil Cukrowski (C) 2017. Under MIT License
+Written by Kamil Cukrowski (C) 2017. Licensed under GPL-3.0
 EOF
 }
 

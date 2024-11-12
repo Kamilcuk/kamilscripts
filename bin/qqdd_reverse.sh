@@ -20,7 +20,7 @@ This will seek 10M data in /dev/sda1 of 1M to the right.
 Then you run fdisk again, and recreate /dev/sda1 partition,
 but seeked 1M to the right.
 
-Written by Kamil Cukrowski. Jointly under Beerware and MIT License.
+Written by Kamil Cukrowski. Licensed under GPL-3.0.
 EOF
 }
 

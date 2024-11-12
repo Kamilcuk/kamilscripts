@@ -48,9 +48,9 @@ parser.add_argument(
     help="set this to actually make changes",
     default=False,
 )
-parser.add_argument(
-    "-D", "--no-diff", action="store_true", help="Do not display diff", default=False
-)
+parser.add_argument("-D", "--nodiff", action="store_true", help="Do not display diff")
+parser.add_argument("--sdiff", action="store_true")
+parser.add_argument("--shortdiff", action="store_true")
 parser.add_argument(
     "-g",
     "--git-ls-files",
@@ -108,17 +108,20 @@ def run_on_file(file):
     global args, changed
     cmd = ["sed"] + (["-E"] if args.regexp_extended else []) + [args.script, file]
     with temporary_file_to_move_to(file) as fp:
-        if not args.no_diff or args.ok:
+        if not args.nodiff or args.ok:
             try:
                 subprocess.run(cmd, check=True, stdout=fp)
             except subprocess.CalledProcessError as e:
                 exit(e.returncode)
         if not filecmp.cmp(file, fp.name):
             print("+", shlex.join(cmd))
-            if not args.no_diff:
-                subprocess.run(
-                    ["diff", "-Naur", "--color", file, fp.name],
-                )
+            if not args.nodiff:
+                if args.sdiff:
+                    subprocess.run(["sdiff", file, fp.name])
+                elif args.shortdiff:
+                    subprocess.run(["diff", "--color", file, fp.name])
+                else:
+                    subprocess.run(["diff", "-Naur", "--color", file, fp.name])
             if args.ok:
                 st = os.stat(file)
                 shutil.move(fp.name, file)

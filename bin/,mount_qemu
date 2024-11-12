@@ -48,7 +48,7 @@ the image after command exist.
     """,
     epilog="""
 Written by Kamil Cukrowski
-Licensed jointly under Beerware and MIT License
+Licensed under GPL-3.0
     """
 )
 def cli():

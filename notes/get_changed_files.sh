@@ -21,7 +21,7 @@ Options:
 
 	-h 	- show this help and exit
 
-Written by Kamil Cukrowski (c) 2017. Under MIT license.
+Written by Kamil Cukrowski (c) 2017. Licensed under GPL-3.0.
 EOF
 }
 

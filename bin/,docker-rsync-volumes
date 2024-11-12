@@ -76,7 +76,7 @@ Examples:
     $NAME --delete -f ssh://user1@server2 grafana_data -t ssh://user2@server2 grafana_data_backup
 
 Written by Kamil Cukrowski
-Licensed jointly under Beerware Licsense and MIT License.
+Licensed under GPL-3.0.
 EOF
 }
 

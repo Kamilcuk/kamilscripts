@@ -18,7 +18,7 @@ Options:
   -q --quiet  Print nothing
 
 Written by Kamil Cukrowski.
-Licensed jointly under Beerware and MIT license.
+Licensed under GPL-3.0.
 EOF
 }
 

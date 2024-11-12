@@ -24,7 +24,7 @@ Example:
 	First on host2 run 'netcattarpipe.sh in 10000 /c/b/' , then
 	on host1 run 'netcattarpipe.sh out host2 10000 /a/b/'
 
-Written by Kamil Cukrowski 2017. Under MIT license.
+Written by Kamil Cukrowski 2017. Licensed under GPL-3.0.
 EOF
 	exit 1
 }

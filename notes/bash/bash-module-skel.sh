@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # These are examples of bash module skeleton
-# Created by Kamil Cukrowski (C) 2017. Under MIT License
+# Created by Kamil Cukrowski (C) 2017. Licensed under GPL-3.0
 
 # module using global variable name #######################
 

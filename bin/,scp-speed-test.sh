@@ -26,7 +26,7 @@ Examples:
 	$name host@hostname 200
 	$name -S -p -C -P -B 10022 -o ConnectTimeout=4 myuser@myhostname
 
-Written by Kamil Cukrowski. Jointly under MIT License and Beetware license.
+Written by Kamil Cukrowski. Licensed under GPL-3.0.
 Based on scp-speed-test.sh from  Alec Jacobson alecjacobsonATgmailDOTcom
 EOF
 }

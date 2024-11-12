@@ -8,7 +8,7 @@ version() {
 	cat <<EOF
 catonlines.sh 0.0.1
 Written by Kamil Cukrowski 2018.
-Licensed jointly under MIT License and Beeware License.
+Licensed under GPL-3.0.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
 EOF

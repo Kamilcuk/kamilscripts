@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=2086,2206,2162,2016,2207,2034,2059,2046
 # part of qqsplitscreenpip.sh
-# Written by Kamil Cukrowski. Under MIT License.
+# Written by Kamil Cukrowski. Licensed under GPL-3.0.
 set -euo pipefail
 
 # functions ######################################################
@@ -32,7 +32,7 @@ Examples
 	$n 2:2
 	$n -d -x 1:1:3 -y 10:2:1 -s 0:0:2:2 5:10
 
-Wrtten by Kamil Cukrowski (C) 2017. Under MIT License.
+Wrtten by Kamil Cukrowski (C) 2017. Licensed under GPL-3.0.
 EOF
 }
 

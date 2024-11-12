@@ -333,7 +333,7 @@ void help(void) {
 		"   -h             - Print this text and exit.\n"
 		"\n"
 		"Written by Kamil Cukrowski 2019.\n"
-		"Licensed jointly under MIT License and Beeware License.\n"
+		"Licensed under GPL-3.0.\n"
 	);
 	exit(0);
 }

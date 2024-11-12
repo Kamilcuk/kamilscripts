@@ -1,5 +1,5 @@
 #!/bin/bash
-# Kamil Cukrowski (C) 2017. Under MIT License
+# Kamil Cukrowski (C) 2017. Licensed under GPL-3.0
 #
 # config ###################################################
 set -euo pipefail
@@ -48,7 +48,7 @@ Config:
 Examples:
 	$n /tmp/ github.com:\${UserName} gitlab.com:\${GITLAB_PRIVATE_TOKEN}
 
-Written by Kamil Cukrowski (C) 2017. Under MIT License. Version 0.1.1
+Written by Kamil Cukrowski (C) 2017. Licensed under GPL-3.0. Version 0.1.1
 EOF
 }
 

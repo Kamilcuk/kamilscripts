@@ -24,7 +24,7 @@ Options:
    -h         Print this help and exit.
 
 Written by Kamil Cukrowski.
-Licensed under MIT License and Beerware License.
+Licensed under GPL-3.0.
 EOF
 }
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=2145,2046,2086,2034,2207,2004
 # file: qqddcci.sh
-# licensed under MIT+Beerware Kamil Cukrowski 
+# Licensed under GPL-3.0
 #
 # based on http://www.chrisbot.com/uploads/1/3/8/4/13842915/ddcciv1r1.pdf
 # based on VESA(TM) DDC/CI(TM) Standard
