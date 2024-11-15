@@ -28,12 +28,12 @@ unset _i
 if [[ $- != *i* ]]; then return; fi
 
 # set some history variables, export and make them read only
-declare -x -r HISTSIZE= || :
-declare -x -r HISTFILESIZE= || :
-declare -x -r HISTFILE=~/.bash_historymy || :
-declare -x -r HISTCONTROL="ignorespace:erasedups" || :
-declare -x -r HISTIGNORE="123:234:l:ls:bg:fg:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear" || :
-declare -x -r HISTTIMEFORMAT='%FT%T ' || :
+export HISTSIZE=
+export HISTFILESIZE=
+export HISTFILE=~/.bash_historymy
+export HISTCONTROL="ignorespace:erasedups"
+export HISTIGNORE="123:234:l:ls:bg:fg:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
+export HISTTIMEFORMAT='%FT%T '
 
 shopt -s histappend # append to history, dont overwrite
 shopt -s cmdhist # multiple commands in one line
