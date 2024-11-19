@@ -12,6 +12,8 @@ if [[ ! -d "$KCDIR" ]]; then
 	. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/profile
 fi
 
+if [[ $- != *i* ]]; then return; fi
+
 # When an interactive shell that is not a login shell is started, Bash reads and executes commands from ~/.bashrc
 for _i in \
 		"${KCDIR}"/etc/bash.d/*.sh \
@@ -24,8 +26,6 @@ do
 	fi
 done
 unset _i
-
-if [[ $- != *i* ]]; then return; fi
 
 # set some history variables, export and make them read only
 export HISTSIZE=
