@@ -354,6 +354,8 @@ return {
   -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
   -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
 
+  -- { import = "astrocommunity.indent.indent-blankline-nvim" }, -- does nothing, already in astronvim
+
   { import = "astrocommunity.completion.cmp-nvim-lua" },
   { import = "astrocommunity.completion.cmp-under-comparator" },
   { import = "astrocommunity.completion.cmp-calc" },
