@@ -11,6 +11,7 @@ local function lazyinstall(fail)
       load(vim.fn.system("curl -s https://raw.githubusercontent.com/folke/lazy.nvim/main/bootstrap.lua"))()
     end
   end
+  vim.opt.rtp:prepend(lazypath)
 
   -- validate that lazy is available
   if not pcall(require, "lazy") then error(("Unable to load lazy from: %s\n"):format(lazypath)) end
