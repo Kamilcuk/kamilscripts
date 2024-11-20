@@ -1,5 +1,7 @@
 #!/bin/bash
 
+if [[ $- != *i* ]]; then return; fi
+
 # shellcheck disable=2155
 if hash nvim 2>/dev/null; then
 	export MANPAGER='nvim +Man!'

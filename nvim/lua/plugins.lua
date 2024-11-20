@@ -601,8 +601,78 @@ return {
   -- { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
   {
     "tpope/vim-dispatch", -- <leader>`
+    dependencies = {
+      "astrocore",
+      opts = {
+        mappings = {
+          n = {
+            ["<leader>r"] = { group = "Run vim-dispatch" },
+            --
+            ["<leader>rm"] = { group = "Make" },
+            ["<leader>rm<CR>"] = { [[:.Make<CR>]] },
+            ["<leader>rm<Space>"] = { [[:.Make<Space>]] },
+            ["<leader>rm!"] = { [[:.Make!]] },
+            ["<leader>rm?"] = {
+              [[:<C-U>echo ":Dispatch" dispatch#make_focus(v:count > 1 ? 0 : v:count ? line(".") : -1)<CR>]],
+              silent = true,
+            },
+            --
+            ["<leader>rd"] = { group = "Dispatch" },
+            ["<leader>rd<CR>"] = { [[:.Dispatch<CR>]] },
+            ["<leader>rd<Space>"] = { [[:.Dispatch<Space>]] },
+            ["<leader>rd!"] = { [[:.Dispatch!]] },
+            ["<leader>rd?"] = { [[:.FocusDispatch<CR>]] },
+            --
+            ["<leader>rs"] = { group = "Start" },
+            ["<leader>rs<CR>"] = { [[:.Start<CR>]] },
+            ["<leader>rs<Space>"] = { [[:.Start<Space>]] },
+            ["<leader>rs!"] = { [[:.Start!]] },
+            ["<leader>rs?"] = {
+              [[:<C-U>echo ":Start" dispatch#start_focus(v:count > 1 ? 0 : v:count ? line(".") : -1)<CR>]],
+              silent = true,
+            },
+            --
+            ["<leader>rS"] = { group = "Spawn" },
+            ["<leader>rS<CR>"] = { [[:.Spawn<CR>]] },
+            ["<leader>rS<Space>"] = { [[:.Spawn<Space>]] },
+            ["<leader>rS!"] = { [[:.Spawn!]] },
+            ["<leader>rS?"] = {
+              [[:<C-U>echo ":Spawn" dispatch#spawn_focus(v:count > 1 ? 0 : v:count ? line(".") : -1)<CR>]],
+              silent = true,
+            },
+          },
+        },
+      },
+    },
   },
-  "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
+  {
+    "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
+    enabled = false, -- using vim-sandwitch distributed as part of astronvim
+    config = function()
+      local ok, wk = pcall(require, "which-key")
+      if not ok then return end
+      wk.add {
+        mode = "n",
+        { [[cs"']], desc = [[Change " to ']] },
+        { [[cs'<q>]], desc = [[Change ' to <q>]] },
+        { [[cst"]], desc = [[Change XML tag to "]] },
+        { [[ds"]], desc = [[Remove "]] },
+        { "ysiw]", desc = "Embed word in []" },
+        { [[ysw"]], desc = [[Quote word with "]] },
+        { [[ysw']], desc = [[Quote word with ']] },
+        { [[ysw`]], desc = [[Quote word with `]] },
+        { [[ysW"]], desc = [[Quote WORD with "]] },
+        { [[ysW']], desc = [[Quote WORD with ']] },
+        { [[ysW`]], desc = [[Quote WORD with `]] },
+        { [[ysiw"]], desc = [[Quote inside word with "]] },
+        { [[ysiw']], desc = [[Quote inside word with ']] },
+        { [[ysiw`]], desc = [[Quote inside word with `]] },
+        { [[ysiW"]], desc = [[Quote inside WORD with "]] },
+        { [[ysiW']], desc = [[Quote inside WORD with ']] },
+        { [[ysiW`]], desc = [[Quote inside WORD with `]] },
+      }
+    end,
+  },
   "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
   "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
   "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
