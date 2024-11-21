@@ -698,7 +698,7 @@ return {
           let g:detectspelllang_program = "aspell"
           let g:detectspelllang_langs = { "aspell": aspell_dicts }
         else
-          let output = system("env LANG=C hunspell -D")
+          let output = system("env LC_ALL=C LANG=C hunspell -D")
           let output = substitute(
                \ output,
                 \ '.*AVAILABLE DICTIONARIES[^\n]*\n\(.*\)[^\n]*\(LOADED DICTIONARIES.*\|$\)',
