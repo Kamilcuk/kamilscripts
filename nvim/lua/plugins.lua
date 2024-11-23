@@ -983,5 +983,34 @@ p                paste yanked block replace with current selection
     opts = {},
   },
 
+  {
+    "astrocore",
+    opts = function(_, opts)
+      -- https://stackoverflow.com/a/63883912/9072753
+      local maps = opts.mappings
+      maps.n["<leader>bw"] = { group = "bwipeout" }
+      maps.n["<leader>bwN"] = {
+        "for buf in getbufinfo() | if strlen(buf.name) == 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
+        desc = "Wipeout unnamed buffers",
+      }
+      maps.n["<leader>bwU"] = {
+        "for buf in getbufinfo() | if buf.changed == 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
+        desc = "Wipeout unmodified buffers",
+      }
+      maps.n["<leader>bwB"] = {
+        "for buf in getbufinfo() | if strlen(buf.name) == 0 && buf.changed == 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
+        desc = "Wipeout unnamed and unmodified buffers",
+      }
+      maps.n["<leader>bwh"] = {
+        "for buf in getbufinfo() | if buf.hidden != 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
+        desc = "Wipeout hidden buffers",
+      }
+      maps.n["<leader>bwL"] = {
+        "for buf in getbufinfo() | if buf.loaded == 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
+        desc = "Wipeout unloaded buffers",
+      }
+    end,
+  },
+
   -- }}}
 }
