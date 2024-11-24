@@ -232,7 +232,7 @@ C_list_installed_packages() {
 }
 
 C_find_files_not_owned_by_any_packages() {
-	find /etc /usr /opt /var |
+	find ${1:-/etc /usr /opt /var} |
 		LC_ALL=C pacman -Qqo - 2>&1 >/dev/null |
 		cut -d ' ' -f 5-
 }
