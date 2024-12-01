@@ -324,6 +324,7 @@ return {
 
   {
     import = "astrocommunity.completion.tabby-nvim",
+    enabled = false,
     cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
   },
   { import = "astrocommunity.completion.cmp-git" },
@@ -1011,6 +1012,8 @@ p                paste yanked block replace with current selection
       }
     end,
   },
+
+  "github/copilot.vim",
 
   -- }}}
 }
