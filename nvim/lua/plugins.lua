@@ -1013,7 +1013,31 @@ p                paste yanked block replace with current selection
     end,
   },
 
-  "github/copilot.vim",
+  -- { import = "astrocommunity.completion.copilot-lua-cmp" },
+  {
+    "github/copilot.vim",
+    -- enabled = false,
+    init = function()
+      vim.keymap.set("i", "<C-e>", 'copilot#Accept("\\<CR>")', {
+        silent = true,
+        expr = true,
+        replace_keycodes = false,
+      })
+      vim.g.copilot_no_tab_map = true
+    end,
+  },
+
+  {
+    "nvim-treesitter",
+    opts = function(_, opts)
+      opts.highlight = opts.hightlight or {}
+      opts.highlight.disable = function(lang, buf)
+        local max_filesize = 100 * 1024 -- 100 KB
+        local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
+        if ok and stats and stats.size > max_filesize then return true end
+      end
+    end,
+  },
 
   -- }}}
 }
