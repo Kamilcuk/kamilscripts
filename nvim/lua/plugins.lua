@@ -1039,5 +1039,69 @@ p                paste yanked block replace with current selection
     end,
   },
 
+  "inkarkat/vim-AdvancedSorters",
+
+  {
+    "marcussimonsen/let-it-snow.nvim",
+    enable = false,
+    cmd = "LetItSnow",
+    opts = { delay = 100 },
+    config = function()
+      local snow = require "let-it-snow.snow"
+      local lis = require "let-it-snow"
+      local timer = vim.loop.new_timer()
+      local TIMEOUT = 50000
+      vim.on_key(function()
+        if #snow.running ~= 0 then
+          vim.schedule(function()
+            local k
+            vim.print "Stopping let-it-snow"
+            for k in pairs(snow.running) do
+              snow.end_hygge(k)
+            end
+          end)
+        end
+        timer:start(TIMEOUT, 0, function()
+          timer:stop()
+          vim.print "Starting let-it-snow"
+          vim.schedule(lis.let_it_snow)
+        end)
+      end)
+    end,
+  },
+
+  {
+    "folke/drop.nvim",
+    enabled = false,
+    opts = { screensaver = 1000 * 60 * 5, theme = "winter_wonderland" },
+  },
+
+  {
+    "eandrju/cellular-automaton.nvim",
+    cmd = { "CellularAutomaton" },
+    init = function()
+      local timer = vim.loop.new_timer()
+      local TIMEOUT = 1000 * 60 * 5
+      local running = false
+      vim.on_key(function()
+        if running then
+          running = false
+          vim.print "Stopping cellular automaton"
+          vim.schedule(require("cellular-automaton.manager").clean)
+        end
+        timer:start(TIMEOUT, 0, function()
+          running = true
+          timer:stop()
+          vim.print "Starting cellular automaton"
+          vim.schedule(function()
+            a = require("cellular-automaton").start_animation
+            -- a "game_of_life"
+            a "make_it_rain"
+          end)
+        end)
+      end)
+    end,
+  },
+
   -- }}}
 }
