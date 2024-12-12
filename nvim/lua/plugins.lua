@@ -1081,7 +1081,8 @@ p                paste yanked block replace with current selection
     cmd = { "CellularAutomaton" },
     init = function()
       local timer = vim.loop.new_timer()
-      local TIMEOUT = 1000 * 60 * 5
+      -- local TIMEOUT = 1000 * 60 * 5
+      local TIMEOUT = 1000 * 60
       local running = false
       vim.on_key(function()
         if running then

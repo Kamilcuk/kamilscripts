@@ -27,16 +27,21 @@ do
 done
 unset _i
 
+L_var_is_readonly() { ! (eval "$1=") 2>/dev/null; }
+
 # set some history variables, export and make them read only
 export HISTSIZE=
 export HISTFILESIZE=
 export HISTFILE=~/.bash_historymy
 export HISTCONTROL="ignorespace:erasedups"
 export HISTIGNORE="123:234:l:ls:bg:fg:exit:su:su -:history:hist:reboot:poweroff:mnsstat:kotekkc:rm *:wipefs *:mkfs *: *:pwd:clear"
-export HISTTIMEFORMAT='%FT%T '
+if ! L_var_is_readonly HISTTIMEFORMAT; then
+	export HISTTIMEFORMAT='%FT%T '
+fi
 
 shopt -s histappend # append to history, dont overwrite
 shopt -s cmdhist # multiple commands in one line
+set +H # disable history expansion
 
 # Aliases
 
