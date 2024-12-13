@@ -28,6 +28,7 @@ done
 unset _i
 
 L_var_is_readonly() { ! (eval "$1=") 2>/dev/null; }
+L_hash() { hash "$@" 2>/dev/null; }
 
 # set some history variables, export and make them read only
 export HISTSIZE=
@@ -47,8 +48,6 @@ set +H # disable history expansion
 
 alias ls='ls --color -F'
 alias o='less -R'
-alias rm='nice -n 40 ionice -c 3 rm --preserve-root=all --one-file-system -I'
-alias mv='nice -n 40 ionice -c 3 mv -i'
 # shellcheck disable=2285
 alias +='pushd .'
 alias -- -='popd'
@@ -59,6 +58,16 @@ alias beep='echo -en "\007"'
 alias l='command l'
 alias ll='ls -l -F --color -h --group-directories-first'
 alias watch='watch -c -d -n 1'
+
+_pre=""
+if L_hash nice; then
+	_pre="nice -n 40 "
+fi
+if L_hash ionice; then
+	_pre+="ionice -c 3 "
+fi
+alias rm="${_pre}rm --preserve-root=all --one-file-system -I"
+alias mv="${_pre}mv -i"
 for _i in \
 		make \
 		cmake \
@@ -79,10 +88,10 @@ for _i in \
 ; do
 	if ! alias "${_i}" >/dev/null 2>&1; then
 		# shellcheck disable=2139
-		alias "${_i}"="nice -n 40 ionice -c 3 $_i"
+		alias "${_i}"="${_pre}$_i"
 	fi
 done
-unset _i
+unset _i _pre
 
 ,hash() {
 	hash "$@" 2>/dev/null
