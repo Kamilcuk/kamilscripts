@@ -1030,6 +1030,7 @@ p                paste yanked block replace with current selection
   {
     "nvim-treesitter",
     opts = function(_, opts)
+      -- disable treesitter for big files
       opts.highlight = opts.hightlight or {}
       opts.highlight.disable = function(lang, buf)
         local max_filesize = 100 * 1024 -- 100 KB
@@ -1080,24 +1081,33 @@ p                paste yanked block replace with current selection
     "eandrju/cellular-automaton.nvim",
     cmd = { "CellularAutomaton" },
     init = function()
+      local highlighter = require "vim.treesitter.highlighter"
       local timer = vim.loop.new_timer()
       -- local TIMEOUT = 1000 * 60 * 5
       local TIMEOUT = 1000 * 60
-      local running = false
+      --
+      local wrapsave = nil
       vim.on_key(function()
-        if running then
-          running = false
+        if wrapsave ~= nil then
+          vim.o.wrap = wrapsave
+          wrapsave = nil
           vim.print "Stopping cellular automaton"
           vim.schedule(require("cellular-automaton.manager").clean)
         end
         timer:start(TIMEOUT, 0, function()
-          running = true
           timer:stop()
-          vim.print "Starting cellular automaton"
           vim.schedule(function()
-            a = require("cellular-automaton").start_animation
-            -- a "game_of_life"
-            a "make_it_rain"
+            -- cellular automation requires treesitter
+            local buf = vim.api.nvim_get_current_buf()
+            if highlighter.active[buf] then
+              vim.print "Starting cellular automaton"
+              -- cellular automation looks much nicer with disabled wrap
+              wrapsave = vim.o.wrap
+              vim.o.wrap = false
+              a = require("cellular-automaton").start_animation
+              -- a "game_of_life"
+              a "make_it_rain"
+            end
           end)
         end)
       end)
