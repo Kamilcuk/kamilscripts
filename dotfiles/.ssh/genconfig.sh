@@ -185,24 +185,24 @@ Host netemera
 	Hostname production-0.netemera.com
 	User kcukro
 
-Host perun
-	#Hostname karta.dyzio.pl
-	#Hostname kamcuk.top
-	# 2a02:c207:2050:3924::1
-	Hostname 207.180.196.233
-	Port 60022
-	ForwardX11 yes
-
-Host perunshare
-	Hostname kamcuk.top
-	User share
-	Port 60022
+# Host perun
+# 	#Hostname karta.dyzio.pl
+# 	#Hostname kamcuk.top
+# 	# 2a02:c207:2050:3924::1
+# 	Hostname 207.180.196.233
+# 	Port 60022
+# 	ForwardX11 yes
+#
+# Host perunshare
+# 	Hostname kamcuk.top
+# 	User share
+# 	Port 60022
 
 Host mx1
 	Hostname 192.168.21.12
 	User kamil
 
-Host weles
+Host weles perun
 	Hostname 212.90.120.55
 	User kamil
 	Port 60022

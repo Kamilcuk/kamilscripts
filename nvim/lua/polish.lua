@@ -49,31 +49,38 @@ local function from_patterns(patterns)
 end
 
 -- Add nomad as a linter for hcl files.
-require("lint").linters.nomad = {
-  name = "nomad",
-  cmd = "nomad",
-  stdin = false,
-  append_fname = true,
-  args = { "job", "validate" },
-  stream = "both",
-  ignore_exitcode = false,
-  parser = from_patterns {
-    defaults = { severity = vim.diagnostic.severity.ERROR },
-    {
-      "[^:]+:(%d+): (.+)",
-      { "lnum", "message" },
-    },
-    {
-      "[^:]+:(%d+),(%d+)-(%d+): (.+)",
-      { "lnum", "col", "col_end", "message" },
-    },
-  },
-}
-require("lint").linters_by_ft = {
-  hcl = { "nomad" },
-}
+if false then
+  local lint = pcall("require", "lint")
+  if lint then
+    lint.linters.nomad = {
+      name = "nomad",
+      cmd = "nomad",
+      stdin = false,
+      append_fname = true,
+      args = { "job", "validate" },
+      stream = "both",
+      ignore_exitcode = false,
+      parser = from_patterns {
+        defaults = { severity = vim.diagnostic.severity.ERROR },
+        {
+          "[^:]+:(%d+): (.+)",
+          { "lnum", "message" },
+        },
+        {
+          "[^:]+:(%d+),(%d+)-(%d+): (.+)",
+          { "lnum", "col", "col_end", "message" },
+        },
+      },
+    }
+    lint.linters_by_ft = {
+      hcl = { "nomad" },
+    }
+  end
+end
 
--- restart pyright automatically
+local function kc_is_loaded(plugin_name)
+  return require("lazy.core.config").plugins[plugin_name]._.loaded
+end
 
 vim.cmd [[
 
@@ -85,6 +92,8 @@ if v:version >= 800
 endif
 
 set scrolloff=6
+
+set cmdheight=1
 
 " https://stackoverflow.com/questions/36724209/disable-beep-of-linux-bash-on-windows-10
 set visualbell
@@ -258,4 +267,3 @@ setmetatable(notify, {
     return orig_notify(_, m, l, o)
   end,
 })
-

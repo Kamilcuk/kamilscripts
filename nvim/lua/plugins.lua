@@ -48,6 +48,46 @@ local function KcLog(data)
   end
 end
 
+---@param timeout_s number
+---@param start fun(): any
+---@param stop fun(any): nil
+---@param header string?
+local function KcScreensaver(timeout_s, start, stop, header)
+  local timer = vim.loop.new_timer()
+  local running = false
+  local starting = false
+  local stopping = false
+  local data = nil
+  local timeout_ms = timeout_s * 1000
+  vim.on_key(function(key, typed)
+    print(vim.fn.strftime "%c " .. "ON KEY EXEUCTED" .. key .. " " .. typed)
+    if running and not starting and not stopping then
+      print(vim.fn.strftime "%c " .. "STOPPING EXEUCTED")
+      running = false
+      stopping = true
+      vim.schedule(function()
+        -- vim.wait(100, function() return not starting end, 100)
+        if header then print(vim.fn.strftime "%c " .. "Stopping " .. header) end
+        stop(data)
+        stopping = false
+      end)
+    end
+    timer:start(timeout_ms, 0, function()
+      if not running and not starting and not stopping then
+        running = true
+        starting = true
+        timer:stop()
+        vim.schedule(function()
+          -- vim.wait(100, function() return not stopping end, 100)
+          if header then print(vim.fn.strftime "%c " .. "Starting " .. header) end
+          data = start()
+          starting = false
+        end)
+      end
+    end)
+  end)
+end
+
 -- }}}
 
 -- {{{1 disabled
@@ -365,7 +405,7 @@ return {
   -- }}}
   -- {{{1 astronvim customization
   {
-    "AstroNvim/astrocore",
+    "astrocore",
     ---@type AstroCoreOpts
     opts = { -- extend the plugin options
       diagnostics = {
@@ -544,28 +584,28 @@ return {
   "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
-  { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
-  {
-    "markdown-preview.nvim",
-    init = function() vim.g.mkdp_auto_close = 0 end,
-  },
+  -- { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
   -- {
-  --   -- Install markdown preview, use npx if available.
-  --   "iamcco/markdown-preview.nvim",
-  --   cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-  --   ft = { "markdown" },
-  --   build = function(plugin)
-  --     if vim.fn.executable "npx" then
-  --       vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
-  --     else
-  --       vim.cmd [[Lazy load markdown-preview.nvim]]
-  --       vim.fn["mkdp#util#install"]()
-  --     end
-  --   end,
-  --   init = function()
-  --     if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
-  --   end,
+  --   "markdown-preview.nvim",
+  --   init = function() vim.g.mkdp_auto_close = 0 end,
   -- },
+  {
+    -- Install markdown preview, use npx if available.
+    "iamcco/markdown-preview.nvim",
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    ft = { "markdown" },
+    build = function(plugin)
+      if vim.fn.executable "npx" then
+        vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
+      else
+        vim.cmd [[Lazy load markdown-preview.nvim]]
+        vim.fn["mkdp#util#install"]()
+      end
+    end,
+    init = function()
+      if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
+    end,
+  },
 
   -- }}}
   -- {{{1 Filetypes
@@ -648,7 +688,7 @@ return {
   },
   {
     "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
-    enabled = false, -- using vim-sandwitch distributed as part of astronvim
+    enabled = true, -- using vim-sandwitch distributed as part of astronvim
     config = function()
       local ok, wk = pcall(require, "which-key")
       if not ok then return end
@@ -731,35 +771,81 @@ return {
 
   { "christoomey/vim-tmux-navigator", lazy = false },
 
-  { "resession.nvim", enabled = false },
   {
     "thaerkh/vim-workspace",
-    enabled = true,
     priority = 10000,
     lazy = false,
-    init = function()
-      vim.cmd [[
-      let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
-      let g:workspace_session_disable_on_args = 1
-      let g:workspace_session_directory = stdpath("cache") . '/vim-workspace.sessions'
-      let g:workspace_undodir= stdpath("cache") . "/vim-workspace.undodir"
-      let g:workspace_autocreate = 1
-      " nnoremap <leader>W :ToggleWorkspace<CR>
-      autocmd VimLeave *
-          \ if exists(":Neotree") | execute 'Neotree close' | endif |
-          \ if exists(":NERDTreeClose") | execute 'NERDTreeClose' | endif
-	    let g:workspace_create_new_tabs = 0
-	    let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
-	    " Because a bug, these two populate search / history, just disable them.
-	    let g:workspace_autosave_untrailtabs = 0
-	    let g:workspace_autosave_untrailspaces = 0
-	    let g:workspace_nocompatible = 0
-	    let g:workspace_session_disable_on_args = 1
-	    " https://github.com/thaerkh/vim-workspace/issues/11
-	    set sessionoptions-=blank
-      ]]
-    end,
+    specs = {
+      { "resession.nvim", enabled = false },
+      {
+        "AstroNvim/astrocore",
+        ---@param opts AstroCoreOpts
+        opts = function(_, opts)
+          local sessionoptions = {} -- https://github.com/thaerkh/vim-workspace/issues/11
+          for _, value in ipairs(vim.tbl_get(opts, "options", "opt", "sessionoptions") or vim.opt.sessionoptions:get()) do
+            if value ~= "blank" then table.insert(sessionoptions, value) end
+          end
+          return require("astrocore").extend_tbl(opts, {
+            autocmds = {
+              autoclose_neotree = {
+                {
+                  event = "VimLeave",
+                  callback = function()
+                    if vim.fn.exists ":Neotree" == 2 then vim.cmd.Neotree "close" end
+                    if vim.fn.exists ":NERDTreeClose" == 2 then vim.cmd.NERDTreeClose() end
+                  end,
+                },
+              },
+            },
+            options = {
+              opt = { sessionoptions = sessionoptions },
+              g = {
+                workspace_autosave_ignore = { "gitcommit", "neo-tree", "nerdtree", "qf", "tagbar" },
+                workspace_session_disable_on_args = 1,
+                workspace_session_directory = vim.fn.stdpath "cache" .. "/vim-workspace.sessions",
+                workspace_undodir = vim.fn.stdpath "cache" .. "/vim-workspace.undodir",
+                workspace_autocreate = 1,
+                workspace_create_new_tabs = 0,
+                -- Because a bug, these two populate search / history, just disable them.
+                workspace_autosave_untrailtabs = 0,
+                workspace_autosave_untrailspaces = 0,
+                workspace_nocompatible = 0,
+              },
+            },
+          })
+        end,
+      },
+    },
   },
+  -- { "resession.nvim", enabled = false },
+  -- {
+  --   "thaerkh/vim-workspace",
+  --   enabled = true,
+  --   priority = 0,
+  --   lazy = false,
+  --   init = function()
+  --     vim.cmd [[
+  --     let g:workspace_autosave_ignore = ['gitcommit', "neo-tree", "nerdtree", "qf", "tagbar"]
+  --     let g:workspace_session_disable_on_args = 1
+  --     let g:workspace_session_directory = stdpath("cache") . '/vim-workspace.sessions'
+  --     let g:workspace_undodir= stdpath("cache") . "/vim-workspace.undodir"
+  --     let g:workspace_autocreate = 1
+  --     " nnoremap <leader>W :ToggleWorkspace<CR>
+  --     autocmd VimLeave *
+  --         \ if exists(":Neotree") | execute 'Neotree close' | endif |
+  --         \ if exists(":NERDTreeClose") | execute 'NERDTreeClose' | endif
+  --    let g:workspace_create_new_tabs = 0
+  --    let g:workspace_persist_undo_history = 1  " enabled = 1 (default), disabled = 0
+  --    " Because a bug, these two populate search / history, just disable them.
+  --    let g:workspace_autosave_untrailtabs = 0
+  --    let g:workspace_autosave_untrailspaces = 0
+  --    let g:workspace_nocompatible = 0
+  --    let g:workspace_session_disable_on_args = 1
+  --    " https://github.com/thaerkh/vim-workspace/issues/11
+  --    set sessionoptions-=blank
+  --     ]]
+  --   end,
+  -- },
 
   -- }}}
   -- {{{1 colorscheme
@@ -768,6 +854,8 @@ return {
   {
     "dasupradyumna/midnight.nvim",
     -- enabled = false,
+    lazy = false,
+    priority = 10000,
     config = function() vim.cmd.colorscheme "midnight" end,
   },
 
@@ -933,6 +1021,9 @@ p                paste yanked block replace with current selection
   {
     -- make nvim-notify smaller. I would make it even smaller smaller
     "nvim-notify",
+    -- load immidately
+    lazy = false,
+    priority = 1000,
     opts = function(_, opts)
       opts.render = "wrapped-compact"
       -- Added in my lua path.
@@ -1048,26 +1139,13 @@ p                paste yanked block replace with current selection
     cmd = "LetItSnow",
     opts = { delay = 100 },
     config = function()
-      local snow = require "let-it-snow.snow"
       local lis = require "let-it-snow"
-      local timer = vim.loop.new_timer()
-      local TIMEOUT = 50000
-      vim.on_key(function()
-        if #snow.running ~= 0 then
-          vim.schedule(function()
-            local k
-            vim.print "Stopping let-it-snow"
-            for k in pairs(snow.running) do
-              snow.end_hygge(k)
-            end
-          end)
+      local snow = require "let-it-snow.snow"
+      KcScreensaver(60, function() lis.let_it_snow() end, function()
+        for k in pairs(snow.running) do
+          snow.end_hygge(k)
         end
-        timer:start(TIMEOUT, 0, function()
-          timer:stop()
-          vim.print "Starting let-it-snow"
-          vim.schedule(lis.let_it_snow)
-        end)
-      end)
+      end, "let-it-snow")
     end,
   },
 
@@ -1079,40 +1157,54 @@ p                paste yanked block replace with current selection
 
   {
     "eandrju/cellular-automaton.nvim",
+    enabled = false,
     cmd = { "CellularAutomaton" },
     init = function()
-      local highlighter = require "vim.treesitter.highlighter"
-      local timer = vim.loop.new_timer()
-      -- local TIMEOUT = 1000 * 60 * 5
-      local TIMEOUT = 1000 * 60
-      --
-      local wrapsave = nil
-      vim.on_key(function()
-        if wrapsave ~= nil then
-          vim.o.wrap = wrapsave
-          wrapsave = nil
-          vim.print "Stopping cellular automaton"
-          vim.schedule(require("cellular-automaton.manager").clean)
+      KcScreensaver(60, function()
+        -- cellular automation requires treesitter
+        local buf = vim.api.nvim_get_current_buf()
+        local highlighter = require "vim.treesitter.highlighter"
+        if highlighter.active[buf] then
+          -- cellular automation looks much nicer with disabled wrap
+          local wrapsave = vim.o.wrap
+          vim.o.wrap = false
+          local a = require("cellular-automaton").start_animation
+          -- a "game_of_life"
+          a "make_it_rain"
+          return wrapsave
         end
-        timer:start(TIMEOUT, 0, function()
-          timer:stop()
-          vim.schedule(function()
-            -- cellular automation requires treesitter
-            local buf = vim.api.nvim_get_current_buf()
-            if highlighter.active[buf] then
-              vim.print "Starting cellular automaton"
-              -- cellular automation looks much nicer with disabled wrap
-              wrapsave = vim.o.wrap
-              vim.o.wrap = false
-              a = require("cellular-automaton").start_animation
-              -- a "game_of_life"
-              a "make_it_rain"
-            end
-          end)
-        end)
-      end)
+      end, function(wrapsave)
+        if wrapsave ~= nil then vim.o.wrap = wrapsave end
+        require("cellular-automaton.manager").clean()
+      end, "cellular automaton")
     end,
   },
+
+  {
+    "alanfortlink/animatedbg.nvim",
+    opts = { fps = 30 },
+    init = function()
+      if true then return end
+      KcScreensaver(
+        100,
+        function() require("animatedbg-nvim").play { animation = "matrix", duration = 32000000 } end,
+        function() require("animatedbg-nvim").stop_all() end,
+        "matrix"
+      )
+    end,
+  },
+
+  {
+    "L3MON4D3/LuaSnip",
+    -- follow latest release.
+    version = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
+    -- install jsregexp (optional!).
+    build = "make install_jsregexp",
+    dependencies = { "rafamadriz/friendly-snippets" },
+    config = function() require("luasnip.loaders.from_vscode").lazy_load() end,
+  },
+
+  { "somini/vim-textobj-fold", dependencies = "kana/vim-textobj-user" },
 
   -- }}}
 }
