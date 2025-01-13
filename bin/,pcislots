@@ -1,0 +1,13 @@
+#!/bin/sh
+set -x
+dmidecode -t slot |
+  awk -v len=$LEN '
+  /Designation:/ {designation = $2}
+  /Current Usage:/ {usage = $3}
+  /Bus Address:/ {bus = $3}
+  /Bus Address:/ && usage == "In" {
+    "lspci -s " bus | getline device_info ;
+    printf "%s : %s : %s %s\n", designation, usage, bus, device_info
+  }
+  usage == "Available" { printf "%s : %s\n", designation, usage ; usage = ""}
+'

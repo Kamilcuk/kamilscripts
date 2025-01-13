@@ -409,7 +409,8 @@ C_pacmann() { pacman --noconfirm "$@"; }
 C_yayn() { yay --noconfirm "$@"; }
 
 C_get_package_dependencies() {
-	LC_ALL=C pacman -Si "$1" |
+	L_argparse -- package ---- "$@"
+	LC_ALL=C pacman -Si "$package" |
 		sed -n '/Depends\ On/,/:/p' |
 		cut -d: -f2 |
 		tr ' ' '\n' |
@@ -509,4 +510,4 @@ C_check_packages_integrity() {
 	_sudo "${nice[@]}" paccheck --quiet
 }
 
-. ,lib_lib C_ "$@"
+. L_lib.sh cmd C_ "$@"

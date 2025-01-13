@@ -19,31 +19,28 @@ C_get-branch() {
 }
 
 C_mergeto() {
-	if (($# != 1)); then L_fatal "Needs one argument: branch name to merge to"; fi
+	L_argparse prog=",mergetopush" -- branch help="branch name to merge to" ---- "$@"
 	cur=$(C_get-branch)
-	L_run git checkout "$1"
+	L_run git checkout "$branch"
 	L_run git merge "$cur" "$@"
 	L_run git checkout "$cur"
 }
 
 C_mergetopush() {
-	if (($# != 1)); then L_fatal "Needs one argument: branch name to merge to"; fi
+	L_argparse prog=",mergetopush" -- branch help="branch name to merge to" ---- "$@"
 	cur=$(C_get-branch)
-	L_run git checkout "$1"
+	L_run git checkout "$branch"
 	L_run git merge "$cur" "$@"
 	L_run git push
 	L_run git checkout "$cur"
 }
 
 C_convertGitRepoToSubmodule() {
-	if [ "$#" = 0 ]; then
-		echo "Usage: convertGitRepoToSubmodule <submodule_directory...>" >&2
-		return 1
-	fi
+	L_argparse prog=",convertGitRepoToSubmodule" -- submodule_directory nargs="+" ---- "$@"
 	cd -- "$(C_get-root)" || exit 1
-	for i in "$@"; do
+	for i in "${submodule_directory[@]}"; do
 		origin="$(cd "$i" && git config --get remote.origin.url)"
-		L_run git submodule add "$origin" "$i"
+		echo L_run git submodule add "$origin" "$i"
 	done
 }
 
@@ -164,13 +161,8 @@ C_supersync() {
 
 C_refresh() {
 	# http://blogs.perl.org/users/ovid/2015/02/git-refresh-automatically-rebase-current-branch-onto-master.html
-	L_trap_push 'L_err "YOU HAVE STASHED CHANGES IN GIT STASH!"' ERR
-	if (($# == 0)); then
-		set -- "master"
-	elif (($# > 1)); then
-		fatal "Too many arguments"
-	fi
-	onto=$1
+	L_argparse prog=",git refresh" show_default=1 -- onto default=master ---- "$@"
+	L_trap_push 'L_error "YOU HAVE STASHED CHANGES IN GIT STASH!"' ERR
 	branch=$(git rev-parse --abbrev-ref HEAD)
 	if [[ "$branch" == "$onto" ]]; then
 		echo "Already on $onto. Exiting."
@@ -205,10 +197,8 @@ C_refresh() {
 
 C_judgerebase() {
 	# https://stackoverflow.com/questions/68313845/is-there-a-way-to-know-estimate-in-advance-the-number-of-conflicting-commits-and
-
-	oldbase="$(git merge-base "$1" "$2")"
-	oldhead="$2"
-	newbase="$3"
+	L_argparse prog=",git judgerebase" -- oldbase  -- oldhead -- newbase ---- "$@"
+	oldbase="$(git merge-base "$oldbase" "$oldhead")"
 	tmp1=$(git merge-base "$oldbase" "$newbase")
 	tmp2=$(git diff --numstat --no-renames "$tmp1" "$newbase")
 	tmp3=$(git diff --numstat --no-renames "$oldbase" "$oldhead")
@@ -235,17 +225,31 @@ C_judgerebase() {
 	exit 1
 }
 
+C_printurlforrepo() {
+	git remote -v |
+		awk '/origin.*fetch/{print $2}' |
+		sed -E '
+			s/([^/]*)@([^/]*):(.*)/https:\/\/\2\/\3/;
+		'
+}
+
+C_openurlforrepo() {
+	a=$(C_printurlforrepo) &&
+	L_setx xdg-open "$a"
+}
+
 C_removebranchesnotonremote() (
 	tmpf=$(mktemp --suffix=-branches-to-remove.txt)
+	L_trap_push 'rm -f "$tmpf"' EXIT
 	git branch --merged >"$tmpf" &&
 		"${EDITOR:-vim}" "$tmpf" &&
 		xargs -prtd '\n' git branch -d <"$tmpf"
 )
 
 C_autoaddcommitpush() {
-	if (($# > 1)); then L_fatal "too many arguments"; fi
-	local commit
-	commit=${1:-"$HOSTNAME: Updates"}
+	L_argparse prog=",git autoaddcommitpush" \
+		-- commit help="commit message" nargs="?" default="$HOSTNAME: Updates" show_default=1 \
+		---- "$@"
 	git_pull_rebase_autostash
 	L_run git add -A
 	L_run git commit -m "$commit"
@@ -257,7 +261,7 @@ git_autostash_supported() {
 }
 
 C_autosubmoduleupdate() {
-	if (($# != 0)); then L_fatal "no arguments"; fi
+	L_argparse ---- "$@"
 	L_log "Updating submodules..."
 	if git submodule --help | grep -q update | grep -q -- --remote; then
 		L_run git submodule update --remote --merge --recursive
@@ -267,6 +271,7 @@ C_autosubmoduleupdate() {
 }
 
 git_pull_rebase_autostash() {
+	L_argparse ---- "$@"
 	if git_autostash_supported; then
 		L_run git pull --rebase --autostash
 	else
@@ -282,20 +287,20 @@ git_pull_rebase_autostash() {
 }
 
 C_autoupdate() {
+	L_argparse ---- "$@"
 	L_log "Updating repository..."
-	if (($# != 0)); then L_fatal "no arguments"; fi
 	git_pull_rebase_autostash
 	C_autosubmoduleupdate "$@"
 }
 
 C_automasterrebase() {
-	if (($# != 0)); then L_fatal "no arguments"; fi
+	L_argparse ---- "$@"
 	L_run git fetch --all
 	L_run git rebase origin/master --autostash
 }
 
 C_checkoutmylastbranch() {
-	if (($# != 0)); then L_fatal "no arguments"; fi
+	L_argparse ---- "$@"
 	L_run git fetch --all
 	branch=$(
 		git branch -a --format='%(refname:short)' |
@@ -341,26 +346,22 @@ jq_get() {
 
 C_github_get_repos_username() {
 	local username
-	username=$1
+	L_argparse -- username ---- "$@"
 	paginated_curl "https://api.github.com/users/${username}/repos?per_page=100" | jq_get clone_url
 }
 
 C_github_get_repos_token() {
-	local where token
-	where=$1
-	token=$2
+	L_argparse -- where -- token ---- "$@"
 	paginated_curl "https://api.github.com/$where/repos?per_page=100" -H "Authorization: token $token" | jq_get ssh_url
 }
 
 C_gitlab_v3_projects() {
-	local token
-	token=$1
+	L_argparse -- token ---- "$@"
 	paginated_curl 'https://gitlab.com/api/v3/projects' --header "PRIVATE-TOKEN: $token" | jq_get ssh_url_to_repo
 }
 
 C_gitlab_v4_projects() {
-	local token
-	token=$1
+	L_argparse -- token ---- "$@"
 	tmp=$(paginated_curl 'https://gitlab.com/api/v4/projects?membership=true&simple=true&per_page=100' --header "PRIVATE-TOKEN: $token")
 	tmp=$(jq_get ssh_url_to_repo <<<"$tmp")
 	tmp=$(sed "s|git@gitlab.com:|https://oauth2:$token@gitlab.com/|" <<<"$tmp")
@@ -368,16 +369,14 @@ C_gitlab_v4_projects() {
 }
 
 C_aur_repos() {
-	local maintainer
-	maintainer=$1
+	L_argparse -- maintainer ---- "$@"
 	curl -sS 'https://aur.archlinux.org/rpc/?v=5&type=search&by=maintainer&arg='"$maintainer" |
 		jq -r '.results[].Name' |
 		sed 's;.*;https://aur.archlinux.org/&.git;'
 }
 
 C_aur_html_repos() {
-	local maintainer
-	maintainer=$1
+	L_argparse -- maintainer ---- "$@"
 	curl -sS 'https://aur.archlinux.org/packages/?SeB=m&K='"$maintainer" |
 		xmllint --html --xpath '//table[@class="results"]//tr/td[1]/a/@href' - |
 		tr ' ' '\n' | sed -e '/^$/d' -e 's;^href="/packages/;;' -e 's;/"$;;' |
