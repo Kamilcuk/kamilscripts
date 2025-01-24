@@ -60,9 +60,9 @@ local function KcScreensaver(timeout_s, start, stop, header)
   local data = nil
   local timeout_ms = timeout_s * 1000
   vim.on_key(function(key, typed)
-    print(vim.fn.strftime "%c " .. "ON KEY EXEUCTED" .. key .. " " .. typed)
+    -- print(vim.fn.strftime "%c " .. "ON KEY EXEUCTED" .. key .. " " .. typed)
     if running and not starting and not stopping then
-      print(vim.fn.strftime "%c " .. "STOPPING EXEUCTED")
+      -- print(vim.fn.strftime "%c " .. "STOPPING EXEUCTED")
       running = false
       stopping = true
       vim.schedule(function()
@@ -1151,7 +1151,7 @@ p                paste yanked block replace with current selection
 
   {
     "folke/drop.nvim",
-    enabled = false,
+    -- enabled = false,
     opts = { screensaver = 1000 * 60 * 5, theme = "winter_wonderland" },
   },
 
@@ -1182,14 +1182,15 @@ p                paste yanked block replace with current selection
 
   {
     "alanfortlink/animatedbg.nvim",
+    enabled = false,
     opts = { fps = 30 },
     init = function()
-      if true then return end
+      vim.g.screensaver = { delay = 60, animation = "matrix" }
       KcScreensaver(
-        100,
-        function() require("animatedbg-nvim").play { animation = "matrix", duration = 32000000 } end,
+        vim.g.screensaver.delay,
+        function() require("animatedbg-nvim").play { animation = vim.g.screensaver.animation, duration = 32000000 } end,
         function() require("animatedbg-nvim").stop_all() end,
-        "matrix"
+        vim.g.screensaver.animation
       )
     end,
   },
@@ -1205,6 +1206,19 @@ p                paste yanked block replace with current selection
   },
 
   { "somini/vim-textobj-fold", dependencies = "kana/vim-textobj-user" },
+
+  {
+    "Davidyz/inlayhint-filler.nvim",
+    enabled = false,
+    keys = {
+      {
+        "<Leader>E", -- Use whatever keymap you want.
+        function() require("inlayhint-filler").fill() end,
+        desc = "Insert the inlay-hint under cursor into the buffer.",
+        mode = { "n", "v" }, -- include 'v' if you want to use it in visual selection mode
+      },
+    },
+  },
 
   -- }}}
 }
