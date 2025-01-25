@@ -1133,67 +1133,10 @@ p                paste yanked block replace with current selection
 
   "inkarkat/vim-AdvancedSorters",
 
-  {
-    "marcussimonsen/let-it-snow.nvim",
-    enable = false,
-    cmd = "LetItSnow",
-    opts = { delay = 100 },
-    config = function()
-      local lis = require "let-it-snow"
-      local snow = require "let-it-snow.snow"
-      KcScreensaver(60, function() lis.let_it_snow() end, function()
-        for k in pairs(snow.running) do
-          snow.end_hygge(k)
-        end
-      end, "let-it-snow")
-    end,
-  },
-
-  {
-    "folke/drop.nvim",
-    -- enabled = false,
-    opts = { screensaver = 1000 * 60 * 5, theme = "winter_wonderland" },
-  },
-
-  {
-    "eandrju/cellular-automaton.nvim",
-    enabled = false,
-    cmd = { "CellularAutomaton" },
-    init = function()
-      KcScreensaver(60, function()
-        -- cellular automation requires treesitter
-        local buf = vim.api.nvim_get_current_buf()
-        local highlighter = require "vim.treesitter.highlighter"
-        if highlighter.active[buf] then
-          -- cellular automation looks much nicer with disabled wrap
-          local wrapsave = vim.o.wrap
-          vim.o.wrap = false
-          local a = require("cellular-automaton").start_animation
-          -- a "game_of_life"
-          a "make_it_rain"
-          return wrapsave
-        end
-      end, function(wrapsave)
-        if wrapsave ~= nil then vim.o.wrap = wrapsave end
-        require("cellular-automaton.manager").clean()
-      end, "cellular automaton")
-    end,
-  },
-
-  {
-    "alanfortlink/animatedbg.nvim",
-    enabled = false,
-    opts = { fps = 30 },
-    init = function()
-      vim.g.screensaver = { delay = 60, animation = "matrix" }
-      KcScreensaver(
-        vim.g.screensaver.delay,
-        function() require("animatedbg-nvim").play { animation = vim.g.screensaver.animation, duration = 32000000 } end,
-        function() require("animatedbg-nvim").stop_all() end,
-        vim.g.screensaver.animation
-      )
-    end,
-  },
+  "marcussimonsen/let-it-snow.nvim",
+  { "folke/drop.nvim", opts = { screensaver = false } },
+  "eandrju/cellular-automaton.nvim",
+  { "alanfortlink/animatedbg.nvim", opts = {} },
 
   {
     "L3MON4D3/LuaSnip",
