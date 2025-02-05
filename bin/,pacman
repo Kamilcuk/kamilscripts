@@ -420,6 +420,7 @@ C_get_package_dependencies() {
 }
 
 C_unofficial_user_repositories() {
+	L_argparse ---- "$@"
 	# curl https://wiki.archlinux.org/title/Unofficial_user_repositories |
 	cat /tmp/1 |
 		#xmllint --format --html - 2>/dev/null |
@@ -500,6 +501,7 @@ C_unofficial_user_repositories() {
 }
 
 C_install_chaotic_aur() {
+	L_argparse ---- "$@"
 	_sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
 	_sudo pacman-key --lsign-key 3056513887B78AEB
 	_sudo pacman --noconfirm -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
@@ -507,7 +509,15 @@ C_install_chaotic_aur() {
 }
 
 C_check_packages_integrity() {
+	L_argparse ---- "$@"
 	_sudo "${nice[@]}" paccheck --quiet
 }
 
 . L_lib.sh cmd C_ "$@"
+
+# . L_lib.sh
+# L_argparse \
+# 	-- func nargs=1 choices="$(L_list_functions_with_prefix_removed C_)" \
+# 	-- args nargs="*" \
+# 	---- "$@"
+# "$func" "${args[@]}"
