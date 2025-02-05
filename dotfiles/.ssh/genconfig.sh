@@ -263,14 +263,17 @@ Host *
 	#
 	ServerAliveInterval 60
 	ServerAliveCountMax 20
+	IgnoreUnknown ControlMaster,ControlPath,ControlPersist,StrictHostKeyChecking,ConnectTimeout,PubkeyAcceptedAlgorithms
 	$(ssh_check_ver '>' 6.0 '
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
 	ControlMaster auto
 	#ControlPath  ~/.ssh/.connection-%n-%r@%h:%p
 	ControlPath  ~/.ssh/.c-%C
 	ControlPersist 1h
-	StrictHostKeyChecking accept-new
 	ConnectTimeout 2
+	')
+	$(ssh_check_ver '>' 7.5 '
+	StrictHostKeyChecking accept-new
 	')
 
 EOF

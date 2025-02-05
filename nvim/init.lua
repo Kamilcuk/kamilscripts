@@ -29,4 +29,5 @@ vim.api.nvim_create_user_command(
   {}
 )
 vim.api.nvim_create_user_command("KcInstall", function() lazyinstall(false) end, {})
+
 lazyinstall(true)

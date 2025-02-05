@@ -40,3 +40,4 @@ $endif
 "\eb": vi-bword
 "\ef": vi-fword
 "\ed": "\ef\C-w"
+
