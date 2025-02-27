@@ -50,7 +50,7 @@ end
 
 local function KcEnableAtHome()
   -- if user is cukrowsk
-  return vim.fn.getenv "USER" == "cukrowsk"
+  return vim.fn.getenv "USER" ~= "cukrowsk"
 end
 
 ---@param timeout_s number
