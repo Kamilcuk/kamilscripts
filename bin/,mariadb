@@ -43,7 +43,8 @@ def mariadbarr(*sqls: str):
 
 def useropt():
     user = option("username")
-    return f"-u {shlex.quote(user)}" if user is not None else ""
+    password = option("password") or os.environ.get("MYSQL_PASSWORD") or os.environ.get("MARIADB_PASSWORD")
+    return (f" -u {shlex.quote(user)}" if user is not None else "") + (f" --password={shlex.quote(password)}" if password else "")
 
 
 ###############################################################################
@@ -52,6 +53,7 @@ def useropt():
 @click.group()
 @click.help_option("-h", "--help")
 @click.option("-u", "--username")
+@click.option("--password")
 @click.option("-n", "--dryrun", is_flag=True)
 @click.pass_context
 def cli(ctx, **kvargs):
