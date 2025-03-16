@@ -867,6 +867,71 @@ return {
   },
 
   -- }}}
+  -- {{{1 AI
+
+  -- { import = "astrocommunity.completion.copilot-lua-cmp" },
+  {
+    "github/copilot.vim",
+    enabled = false,
+    init = function()
+      -- copilot accept on ctrl+e
+      vim.keymap.set("i", "<C-e>", 'copilot#Accept("\\<CR>")', {
+        silent = true,
+        expr = true,
+        replace_keycodes = false,
+      })
+      vim.g.copilot_no_tab_map = true
+    end,
+  },
+
+  { import = "astrocommunity.completion.codeium-vim" },
+  -- {
+  --   "Exafunction/codeium.vim",
+  --   cmd = {
+  --     "Codeium",
+  --     "CodeiumEnable",
+  --     "CodeiumDisable",
+  --     "CodeiumToggle",
+  --     "CodeiumAuto",
+  --     "CodeiumManual",
+  --   },
+  --   event = "BufEnter",
+  --   dependencies = {
+  --     "AstroNvim/astrocore",
+  --     ---@type AstroCoreOpts
+  --     opts = {
+  --       mappings = {
+  --         n = {
+  --           ["<Leader>;"] = {
+  --             "<Cmd>CodeiumToggle<CR>",
+  --             noremap = true,
+  --             desc = "Toggle Codeium active",
+  --           },
+  --         },
+  --         i = {
+  --           ["<C-g>"] = {
+  --             function() return vim.fn["codeium#Accept"]() end,
+  --             expr = true,
+  --           },
+  --           ["<C-;>"] = {
+  --             function() return vim.fn["codeium#CycleCompletions"](1) end,
+  --             expr = true,
+  --           },
+  --           ["<C-,>"] = {
+  --             function() return vim.fn["codeium#CycleCompletions"](-1) end,
+  --             expr = true,
+  --           },
+  --           ["<C-x>"] = {
+  --             function() return vim.fn["codeium#Clear"]() end,
+  --             expr = true,
+  --           },
+  --         },
+  --       },
+  --     },
+  --   },
+  -- },
+
+  -- }}}
   -- {{{1 staging
 
   {
@@ -1108,20 +1173,6 @@ p                paste yanked block replace with current selection
         "for buf in getbufinfo() | if buf.loaded == 0 | silent execute 'bwipeout!' buf.bufnr | endif | end",
         desc = "Wipeout unloaded buffers",
       }
-    end,
-  },
-
-  -- { import = "astrocommunity.completion.copilot-lua-cmp" },
-  {
-    "github/copilot.vim",
-    -- enabled = false,
-    init = function()
-      vim.keymap.set("i", "<C-e>", 'copilot#Accept("\\<CR>")', {
-        silent = true,
-        expr = true,
-        replace_keycodes = false,
-      })
-      vim.g.copilot_no_tab_map = true
     end,
   },
 
