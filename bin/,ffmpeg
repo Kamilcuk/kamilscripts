@@ -1,0 +1,83 @@
+#!/bin/bash
+set -euo pipefail
+
+###############################################################################
+
+ffmpeg_generic() {
+	L_run ffmpeg -i "$1" -codec copy -movflags +faststart "$2"
+}
+C_wmv_to_mp4() { ffmpeg_generic "$@"; }
+C_mkv_to_mp4() { ffmpeg_generic "$@"; }
+CMD_convert() {
+	L_argparse -- from type=file_r -- to ---- "$@"
+	fromext=${from##*.}
+	toext=${to##*.}
+	f=C_"$fromext"_to_"$toext";
+	if ! L_fn_exists "$f"; then
+		L_fatal "Do not know how to convert $fromext to $toext"
+	fi
+	"$f" "$from" "$to"
+}
+
+###############################################################################
+
+CMD_speedup() {
+	L_argparse description="Speed up a video" \
+		-- --fin type=int help="the number of FPS in input.txt" default=25 \
+		-- --fout type=int help="the number of FPS in output.txt" default=30 \
+		-- -m type=int help="Multipler, the speed factor ou want, eg. 15 to make the video 15 times faster" default=15 \
+		-- input type=file_r \
+		-- output \
+		---- "$@"
+	L_run ffmpeg -r:v "$((fin*m))/1" -i "$input" -an -r:v "$fout/1" "$output"
+}
+
+CMD_gucio_record1() {
+	L_argparse ---- "$@"
+	L_run ffmpeg \
+		-f v4l2 -video_size 1280x720 -framerate 1 -i /dev/video2 \
+		-f pulse -i 'alsa_input.usb-JOYPLUS_CO._LTD_Newmine_Camera-02.mono-fallback' \
+		-reset_segments 1 -f segment -segment_time $((10 * 60)) -strftime 1 \
+		"output_%Y%m%dT%H%M%S.mkv"
+}
+
+CMD_gucio_speedup() {
+	L_argparse \
+		-- dir help="recorded directory" type=dir_r \
+		-- output help="output file" default=output_$(date +%Y%m%d).mp4 \
+		---- "$@"
+	list=$(printf "file '%s'\n" "$dir"/*.mkv)
+	L_run ffmpeg \
+		-f concat \
+		-r:v "$((5*1000))/1" \
+		-i <(echo "$list")
+		-fps_mode drop -map 0:v -vcodec copy
+		-an -r:v "25/1"
+		"$output"
+}
+
+CMD_gucio_record2() {
+	L_argparse \
+		-- output \
+		---- "$@"
+	L_run ffmpeg \
+		-f v4l2 -video_size 1280x720 -framerate 5 -r:v "$((5*100))/1" -i /dev/video2 \
+		-an -r:v "25/1" "$output"
+}
+
+CMD_list_formats() {
+	L_argparse \
+		-- device default=/dev/video0 \
+		---- "$@"
+	L_run ffmpeg -f v4l2 -list_formats all -i $device
+	L_run v4l2-ctl --list-formats-ext $device
+}
+
+###############################################################################
+
+. L_lib.sh
+L_argparse show_default=1 \
+	-- -n --dryrun action=store_1 dest=L_dryrun \
+	-- call=function prefix=CMD_ subcall=detect \
+	---- "$@"
+

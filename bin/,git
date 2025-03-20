@@ -6,6 +6,7 @@ gitv() {
 	command git "$@"
 }
 
+C_get_root_help="Print directory location of git root"
 C_get-root() {
 	if [[ -z "${GIT_PREFIX:-}" ]]; then
 		GIT_PREFIX=$(git rev-parse --show-toplevel)
@@ -19,7 +20,7 @@ C_get-branch() {
 }
 
 C_mergeto() {
-	L_argparse prog=",mergetopush" -- branch help="branch name to merge to" ---- "$@"
+	L_argparse -- branch help="branch name to merge to" ---- "$@"
 	cur=$(C_get-branch)
 	L_run git checkout "$branch"
 	L_run git merge "$cur" "$@"
@@ -27,7 +28,7 @@ C_mergeto() {
 }
 
 C_mergetopush() {
-	L_argparse prog=",mergetopush" -- branch help="branch name to merge to" ---- "$@"
+	L_argparse -- branch help="branch name to merge to" ---- "$@"
 	cur=$(C_get-branch)
 	L_run git checkout "$branch"
 	L_run git merge "$cur" "$@"
@@ -36,7 +37,7 @@ C_mergetopush() {
 }
 
 C_convertGitRepoToSubmodule() {
-	L_argparse prog=",convertGitRepoToSubmodule" -- submodule_directory nargs="+" ---- "$@"
+	L_argparse -- submodule_directory nargs="+" ---- "$@"
 	cd -- "$(C_get-root)" || exit 1
 	for i in "${submodule_directory[@]}"; do
 		origin="$(cd "$i" && git config --get remote.origin.url)"
@@ -59,6 +60,7 @@ C_sed_remote_detect() {
 }
 
 C_remote_get_url() {
+	L_argparse help="Print url of remote" -- origin help="origin argument" default="origin" ---- "$@"
 	export LC_ALL=C LANGUAGE=C
 	tmp=$(git remote -v show -n "${1:-origin}" | awk '/URL/{print $3;exit}')
 	# shellcheck disable=SC2016
@@ -67,7 +69,8 @@ C_remote_get_url() {
 }
 
 C_remote_protocol() {
-	C_remote_get_url "$@" | C_sed_remote_detect
+	L_argparse help="Print url of remote" -- origin help="origin argument" default="origin" ---- "$@"
+	C_remote_get_url "$origin" | C_sed_remote_detect
 }
 
 C_remote_set_to_https() {
@@ -99,13 +102,19 @@ C_remote_toggle_ssh_https() {
 	fi
 }
 
+C_version_help="Print git version as long value"
 C_version() {
+	L_argparse ---- "$@"
 	git --version | awk '{ split($3,a,"."); printf "%d%03d%03d\n", a[1], a[2], a[3] }'
 }
 
+C_version_gt_help="Compare version against git version"
 C_version_gt() {
+	L_argparse epilog="
+Example: %(prog)s 1.8.5
+	" -- version ---- "$@"
 	C_version |
-		if [[ "$1" =~ ^([0-9]*)\.([0-9]*)(\.([0-9]*))?$ ]]; then
+		if [[ "$version" =~ ^([0-9]*)\.([0-9]*)(\.([0-9]*))?$ ]]; then
 			awk \
 				-v "a=${BASH_REMATCH[1]}" \
 				-v "b=${BASH_REMATCH[2]}" \
@@ -116,10 +125,13 @@ C_version_gt() {
 		fi
 }
 
+C_autostash_supported_help="Exit with zero if --autostash comand line optin is supported"
 C_autostash_supported() {
+	L_argparse ---- "@$"
 	C_version_gt 2.6.0
 }
 
+C_any_changes_help="Exit with 0 if there are any changes against HEAD"
 C_any_changes() {
 	# https://stackoverflow.com/questions/5143795/how-can-i-check-in-a-bash-script-if-my-local-git-repository-has-changes
 	# git status --porcelain
@@ -130,6 +142,7 @@ C_push_force_with_lease_supported() {
 	C_version_gt 1.8.5
 }
 
+C_push_force_with_lease_help="push --force-with-lease if supported otherwise push --force"
 # shellcheck disable=2120
 C_push_force_with_lease() {
 	if C_push_force_with_lease_supported; then
@@ -153,6 +166,7 @@ C_qlAllAddAmendPushForce() {
 }
 
 C_supersync() {
+	L_argparse ---- "$@"
 	git pull --rebase --autostash &&
 		git add -A &&
 		git commit -m "supersync: $(date -R)" &&
@@ -197,7 +211,7 @@ C_refresh() {
 
 C_judgerebase() {
 	# https://stackoverflow.com/questions/68313845/is-there-a-way-to-know-estimate-in-advance-the-number-of-conflicting-commits-and
-	L_argparse prog=",git judgerebase" -- oldbase  -- oldhead -- newbase ---- "$@"
+	L_argparse -- oldbase  -- oldhead -- newbase ---- "$@"
 	oldbase="$(git merge-base "$oldbase" "$oldhead")"
 	tmp1=$(git merge-base "$oldbase" "$newbase")
 	tmp2=$(git diff --numstat --no-renames "$tmp1" "$newbase")
@@ -226,6 +240,7 @@ C_judgerebase() {
 }
 
 C_printurlforrepo() {
+	L_argparse ---- "$@"
 	git remote -v |
 		awk '/origin.*fetch/{print $2}' |
 		sed -E '
@@ -234,11 +249,13 @@ C_printurlforrepo() {
 }
 
 C_openurlforrepo() {
+	L_argparse ---- "$@"
 	a=$(C_printurlforrepo) &&
 	L_setx xdg-open "$a"
 }
 
 C_removebranchesnotonremote() (
+	L_argparse ---- "$@"
 	tmpf=$(mktemp --suffix=-branches-to-remove.txt)
 	L_trap_push 'rm -f "$tmpf"' EXIT
 	git branch --merged >"$tmpf" &&
@@ -247,7 +264,7 @@ C_removebranchesnotonremote() (
 )
 
 C_autoaddcommitpush() {
-	L_argparse prog=",git autoaddcommitpush" \
+	L_argparse \
 		-- commit help="commit message" nargs="?" default="$HOSTNAME: Updates" show_default=1 \
 		---- "$@"
 	git_pull_rebase_autostash
@@ -449,15 +466,8 @@ C_bisect_steps() {
 
 ###############################################################################
 
-L_dryrun=0
-if [[ "${1:-}" == -n ]]; then
-	L_dryrun=1
-	shift
-fi
-if (($# >= 2)) && [[ "${2:-}" == -n ]]; then
-	# shellcheck disable=2034
-	L_dryrun=1
-	set -- "$1" "${@:3}"
-fi
-
-. L_lib.sh cmd C_ "$@"
+. L_lib.sh
+L_argparse \
+	-- "${L_argparse_template_dryrun[@]}" \
+	-- call=function prefix=C_ subcall=detect \
+	---- "$@"
