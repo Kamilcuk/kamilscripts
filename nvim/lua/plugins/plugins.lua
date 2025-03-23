@@ -362,7 +362,7 @@ local disabled = {
 
 ---@type LazySpec
 return {
-  -- {{{1 astrocommunity
+  -- {{{1 astrocommunity astronvim modifications of configurations in astro
 
   "AstroNvim/astrocommunity",
   -- import/override with your plugins folder
@@ -388,17 +388,12 @@ return {
   -- { import = "astrocommunity.pack.cpp" },
   -- { import = "astrocommunity.pack.lua" },
   -- { import = "astrocommunity.pack.python-ruff" },
-  -- -- { import = "astrocommunity.pack.cmake" },
+  -- { import = "astrocommunity.pack.cmake" },
   -- { import = "astrocommunity.pack.bash" },
 
-  { import = "astrocommunity.search.sad-nvim" },
   -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
   { import = "astrocommunity.editing-support.auto-save-nvim" },
-  { import = "astrocommunity.syntax.vim-sandwich" },
-  { import = "astrocommunity.syntax.vim-cool" },
-  { import = "astrocommunity.syntax.vim-easy-align" },
-  -- { import = "astrocommunity.fuzzy-finder.fzf-lua" },
-  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
+  { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
 
   -- { import = "astrocommunity.indent.indent-blankline-nvim" }, -- does nothing, already in astronvim
 
@@ -445,6 +440,16 @@ return {
     },
   },
 
+  {
+    -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
+    -- Disable to speed up on larger files.
+    "RRethy/vim-illuminate",
+    event = "User AstroFile",
+    opts = {
+      large_file_cutoff = 3000,
+    },
+  },
+  { "aerial.nvim", enabled = false },
   { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
   { "goolord/alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
   { "folke/noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
@@ -452,17 +457,36 @@ return {
   { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
   { "windwp/nvim-autopairs", enabled = false }, -- och god no, no autopairs
   { "kdheepak/lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
+  { "nvim-ts-autotag", enabled = false }, -- no autoclosin
+
+  {
+    -- https://www.reddit.com/r/neovim/comments/phndpv/comment/hbl89xp/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+    "telescope.nvim",
+    dependencies = {
+      "astrocore",
+      opts = {
+        mappings = {
+          i = {
+            ["<C-Down>"] = require("telescope.actions").cycle_history_next,
+            ["<C-Up>"] = require("telescope.actions").cycle_history_prev,
+          },
+        },
+      },
+    },
+  },
 
   -- }}}
   -- {{{1 :commmands plugins
 
   {
-    "tpope/vim-eunuch",
-    lazy = false, -- Make files with shebang executables automatically
+    "tpope/vim-eunuch", -- commands like :Remove :Delete :Move :SudoWrite
+    lazy = false, -- Load always. It makes files with shebang executables automatically.
   },
 
+  { import = "astrocommunity.fuzzy-finder.fzf-lua" },
   {
     "junegunn/fzf.vim",
+    enabled = false, -- using fzf-lua
     dependencies = {
       "junegunn/fzf",
       lazy = true,
@@ -497,9 +521,6 @@ return {
       "Helptags",
       "Filetypes",
     },
-  },
-  {
-    "junegunn/fzf.vim",
     init = function()
       vim.cmd [[
         " Run rg with -options.
@@ -527,14 +548,18 @@ return {
     end,
   },
 
-  { "vim/killersheep", cmd = { "KillKillKill" } },
-  { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" } },
-  { "felleg/TeTrIs.vim", cmd = { "Tetris" } },
+  -- Games
+  { "vim/killersheep", cmd = { "KillKillKill" }, enabled = false },
+  { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" }, enabled = false },
+  { "felleg/TeTrIs.vim", cmd = { "Tetris" }, enabled = false },
 
+  -- { import = "astrocommunity.syntax.vim-easy-align" }, -- never used, like :Tabularize
   { "godlygeek/tabular", lazy = false }, -- :Tabularize Vim script for text filtering and alignment
 
   -- }}}
   -- {{{1 UI
+
+  { import = "astrocommunity.syntax.vim-cool" },  -- disable search highlight after done searching
 
   { "ntpeters/vim-better-whitespace", lazy = false }, -- Mark whitespaces :StripWhitespace
 
@@ -588,7 +613,7 @@ return {
     },
   },
 
-  "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move bewteen vim panes and tmux splits seamlessly
+  "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move between vim panes and tmux splits seamlessly
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
   -- { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
@@ -614,6 +639,109 @@ return {
     end,
   },
 
+  {
+    -- I wish something better would exists...
+    "mkirc/vim-boxdraw",
+    enabled = false, -- I use is so rarely... no reason to keep it
+    config = function()
+      local ok, wk = pcall(require, "which-key")
+      if ok then
+        wk.add {
+          mode = "v",
+          { "<C-b>", desc = "Select rectangular area with ctrl+v" },
+          { "o", desc = "Switch between corners" },
+          {
+            "g",
+            { "c", desc = "Restore selection" },
+          },
+          { "I", desc = "Insert before each line in block" },
+          {
+            "+",
+            { "o", desc = "Draw a rectangle, clear its contents with whitespace" },
+            { "O", desc = "Draw a rectangle, fill it with a label" },
+            { "c", desc = "Fill the rectangle with a label" },
+            { "-", desc = "Draw a line that ends with a horizontal line" },
+            { "_", desc = "Draw a line that ends with a horizontal line" },
+            { ">", desc = "Draw a line that ends with a horizontal arrow" },
+            { "<", desc = "Draw a line that ends with a horizontal arrow" },
+            { "|", desc = "Draw a line that ends with a vertical line" },
+            { "^", desc = "Draw a line that ends with a vertical arrow" },
+            { "v", desc = "Draw a line that ends with a vertical arrow" },
+            { "V", desc = "Draw a line that ends with a vertical arrow" },
+            {
+              "+",
+              desc = "Draw with arrow on both sides of the line",
+              {
+                ">",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "<",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "^",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "v",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "V",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+            },
+            {
+              "i",
+              desc = "Select inside",
+              { "o", desc = "Select current rectangle, without borders" },
+            },
+            {
+              "a",
+              desc = "Select all",
+              { "o", desc = "Select current rectangle, with borders" },
+            },
+            -- extra
+            { "~", desc = "Draw a diagonal line" },
+          },
+        }
+      end
+      --
+      vim.api.nvim_create_user_command("Boxdraw", function()
+        if vim.g.boxdraw_enabled ~= nil then
+          print "Exiting boxdraw mode"
+          vim.opt.virtualedit = vim.g.boxdraw_enabled
+          vim.g.boxdraw_enabled = nil
+        else
+          vim.g.boxdraw_enabled = vim.opt.virtualedit
+          vim.opt.virtualedit = "all"
+          print [[
+Entered boxdraw mode
+Ctrl+b           Select rectangular area with ctrl+v
+o                Switch between corners
+gc               Restore selection
+I                Insert before each line in block
+y                yank block
+1<Ctrl-v>        select shi area elsewhere
+p                paste yanked block replace with current selection
++o               Draw a rectangle, clear its contents with whitespace.
++O               Draw a rectangle, fill it with a label.
++c               Fill the rectangle with a label.
++- or +_         Draw a line that ends with a horizontal line:
++> or +<         Draw a line that ends with a horizontal arrow:
+++> or ++<       Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line:
++|               Draw a line that ends with a vertical line:
++^, +v or +V     Draw a line that ends with a vertical arrow.
+++^, ++v or ++V  Draw a line that ends with a vertical arrow,                                                                                                  and has an arrow on both sides of the line:
++io              Select current rectangle, without borders.
++ao              Select current rectangle, with borders.
+]]
+        end
+      end, {})
+    end,
+  }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
+
   -- }}}
   -- {{{1 Filetypes
 
@@ -633,6 +761,7 @@ return {
       table.insert(opts.sources, { name = "tmux", options = { all_panes = true } })
     end,
   },
+
   {
     "hrsh7th/nvim-cmp",
     optional = true,
@@ -644,9 +773,12 @@ return {
   },
 
   -- }}}
-  -- {{{1 utils
+  -- {{{1 utils utilities programs that do something
+
+  -- { import = "astrocommunity.search.sad-nvim" }, -- never used
 
   -- { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
+
   {
     "tpope/vim-dispatch", -- <leader>`
     dependencies = {
@@ -693,9 +825,11 @@ return {
       },
     },
   },
+
+  { import = "astrocommunity.syntax.vim-sandwich" }, -- like vim-surround
   {
     "tpope/vim-surround", --  quoting/parenthesizing made simple cs\"' cst\" ds\" ysiw] cs]} ysiw<em>
-    enabled = true, -- using vim-sandwitch distributed as part of astronvim
+    enabled = false, -- using vim-sandwich distributed as part of astronvim
     config = function()
       local ok, wk = pcall(require, "which-key")
       if not ok then return end
@@ -721,6 +855,7 @@ return {
       }
     end,
   },
+
   "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
   "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
   "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
@@ -884,7 +1019,59 @@ return {
     end,
   },
 
-  { import = "astrocommunity.completion.codeium-vim" },
+  {
+    "yetone/avante.nvim",
+    enabled = KcEnableAtHome(),
+    event = "VeryLazy",
+    lazy = false,
+    version = "*", -- Set this to "*" to always pull the latest release version, or set it to false to update to the latest code changes.
+    opts = {
+      provider = "copilot",
+    },
+    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+    build = "make",
+    -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+    dependencies = {
+      "stevearc/dressing.nvim",
+      "nvim-lua/plenary.nvim",
+      "MunifTanjim/nui.nvim",
+      --- The below dependencies are optional,
+      -- "echasnovski/mini.pick", -- for file_selector provider mini.pick
+      -- "nvim-telescope/telescope.nvim", -- for file_selector provider telescope
+      -- "hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
+      -- "ibhagwan/fzf-lua", -- for file_selector provider fzf
+      -- "nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
+      "zbirenbaum/copilot.lua", -- for providers='copilot'
+      {
+        -- support for image pasting
+        "HakonHarnes/img-clip.nvim",
+        event = "VeryLazy",
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
+      },
+      {
+        -- Make sure to set this up properly if you have lazy=true
+        "MeanderingProgrammer/render-markdown.nvim",
+        enabled = false,
+        opts = {
+          file_types = { "markdown", "Avante" },
+        },
+        ft = { "markdown", "Avante" },
+      },
+    },
+  },
+
+  -- { import = "astrocommunity.completion.codeium-vim" },
   -- {
   --   "Exafunction/codeium.vim",
   --   cmd = {
@@ -977,107 +1164,6 @@ return {
   },
 
   { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
-
-  {
-    "mkirc/vim-boxdraw",
-    config = function()
-      local ok, wk = pcall(require, "which-key")
-      if ok then
-        wk.add {
-          mode = "v",
-          { "<C-b>", desc = "Select rectangular area with ctrl+v" },
-          { "o", desc = "Switch between corners" },
-          {
-            "g",
-            { "c", desc = "Restore selection" },
-          },
-          { "I", desc = "Insert before each line in block" },
-          {
-            "+",
-            { "o", desc = "Draw a rectangle, clear its contents with whitespace" },
-            { "O", desc = "Draw a rectangle, fill it with a label" },
-            { "c", desc = "Fill the rectangle with a label" },
-            { "-", desc = "Draw a line that ends with a horizontal line" },
-            { "_", desc = "Draw a line that ends with a horizontal line" },
-            { ">", desc = "Draw a line that ends with a horizontal arrow" },
-            { "<", desc = "Draw a line that ends with a horizontal arrow" },
-            { "|", desc = "Draw a line that ends with a vertical line" },
-            { "^", desc = "Draw a line that ends with a vertical arrow" },
-            { "v", desc = "Draw a line that ends with a vertical arrow" },
-            { "V", desc = "Draw a line that ends with a vertical arrow" },
-            {
-              "+",
-              desc = "Draw with arrow on both sides of the line",
-              {
-                ">",
-                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              },
-              {
-                "<",
-                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              },
-              {
-                "^",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-              {
-                "v",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-              {
-                "V",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-            },
-            {
-              "i",
-              desc = "Select inside",
-              { "o", desc = "Select current rectangle, without borders" },
-            },
-            {
-              "a",
-              desc = "Select all",
-              { "o", desc = "Select current rectangle, with borders" },
-            },
-            -- extra
-            { "~", desc = "Draw a diagonal line" },
-          },
-        }
-      end
-      --
-      vim.api.nvim_create_user_command("Boxdraw", function()
-        if vim.g.boxdraw_enabled ~= nil then
-          print "Exiting boxdraw mode"
-          vim.opt.virtualedit = vim.g.boxdraw_enabled
-          vim.g.boxdraw_enabled = nil
-        else
-          vim.g.boxdraw_enabled = vim.opt.virtualedit
-          vim.opt.virtualedit = "all"
-          print [[
-Entered boxdraw mode
-Ctrl+b           Select rectangular area with ctrl+v
-o                Switch between corners
-gc               Restore selection
-I                Insert before each line in block
-y                yank block
-1<Ctrl-v>        select shi area elsewhere
-p                paste yanked block replace with current selection
-+o               Draw a rectangle, clear its contents with whitespace.
-+O               Draw a rectangle, fill it with a label.
-+c               Fill the rectangle with a label.
-+- or +_         Draw a line that ends with a horizontal line:
-+> or +<         Draw a line that ends with a horizontal arrow:
-++> or ++<       Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line:
-+|               Draw a line that ends with a vertical line:
-+^, +v or +V     Draw a line that ends with a vertical arrow.
-++^, ++v or ++V  Draw a line that ends with a vertical arrow,                                                                                                  and has an arrow on both sides of the line:
-+io              Select current rectangle, without borders.
-+ao              Select current rectangle, with borders.
-]]
-        end
-      end, {})
-    end,
-  }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
 
   {
     -- it doesn't exactly work correctly, and is too noisy
@@ -1222,59 +1308,7 @@ p                paste yanked block replace with current selection
     },
   },
 
-  "michaeljsmith/vim-indent-object",
-
-  {
-    "yetone/avante.nvim",
-    enabled = KcEnableAtHome(),
-    event = "VeryLazy",
-    lazy = false,
-    version = "*", -- Set this to "*" to always pull the latest release version, or set it to false to update to the latest code changes.
-    opts = {
-      provider = "copilot",
-    },
-    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-    build = "make",
-    -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
-    dependencies = {
-      "stevearc/dressing.nvim",
-      "nvim-lua/plenary.nvim",
-      "MunifTanjim/nui.nvim",
-      --- The below dependencies are optional,
-      -- "echasnovski/mini.pick", -- for file_selector provider mini.pick
-      -- "nvim-telescope/telescope.nvim", -- for file_selector provider telescope
-      -- "hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
-      -- "ibhagwan/fzf-lua", -- for file_selector provider fzf
-      -- "nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
-      "zbirenbaum/copilot.lua", -- for providers='copilot'
-      {
-        -- support for image pasting
-        "HakonHarnes/img-clip.nvim",
-        event = "VeryLazy",
-        opts = {
-          -- recommended settings
-          default = {
-            embed_image_as_base64 = false,
-            prompt_for_file_name = false,
-            drag_and_drop = {
-              insert_mode = true,
-            },
-            -- required for Windows users
-            use_absolute_path = true,
-          },
-        },
-      },
-      {
-        -- Make sure to set this up properly if you have lazy=true
-        "MeanderingProgrammer/render-markdown.nvim",
-        enabled = false,
-        opts = {
-          file_types = { "markdown", "Avante" },
-        },
-        ft = { "markdown", "Avante" },
-      },
-    },
-  },
+  "michaeljsmith/vim-indent-object", -- objects ai ii aI iI , use in python
 
   -- }}}
 }
