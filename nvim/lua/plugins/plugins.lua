@@ -362,7 +362,7 @@ local disabled = {
 
 ---@type LazySpec
 return {
-  -- {{{1 astrocommunity astronvim modifications of configurations in astro
+  -- {{{1 astrocommunity astronvim modifications of configurations in astro customizations
 
   "AstroNvim/astrocommunity",
   -- import/override with your plugins folder
@@ -372,18 +372,6 @@ return {
     enabled = false,
     cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
   },
-  { import = "astrocommunity.completion.cmp-git" },
-  { import = "astrocommunity.completion.cmp-emoji" },
-  { import = "astrocommunity.diagnostics.trouble-nvim" },
-  -- { import = "astrocommunity.editing-support.chatgpt-nvim" },
-  { import = "astrocommunity.lsp.garbage-day-nvim" },
-  -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- sreplcaed by lspsaga rename
-  -- { import = "astrocommunity.lsp.lsp-lens-nvim" },
-  { import = "astrocommunity.lsp.lsp-signature-nvim" },
-  -- { import = "astrocommunity.diagnostics.lsp_lines-nvim" },
-  { import = "astrocommunity.lsp.nvim-lsp-file-operations" },
-  { import = "astrocommunity.lsp.nvim-lint" },
-  { import = "astrocommunity.lsp.lspsaga-nvim" },
 
   -- { import = "astrocommunity.pack.cpp" },
   -- { import = "astrocommunity.pack.lua" },
@@ -391,19 +379,12 @@ return {
   -- { import = "astrocommunity.pack.cmake" },
   -- { import = "astrocommunity.pack.bash" },
 
-  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" },
+  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" }, -- disable insert hits in insert mode only. I disable inlay hits everywhere.
   { import = "astrocommunity.editing-support.auto-save-nvim" },
-  { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
+  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
 
   -- { import = "astrocommunity.indent.indent-blankline-nvim" }, -- does nothing, already in astronvim
 
-  { import = "astrocommunity.completion.cmp-nvim-lua" },
-  { import = "astrocommunity.completion.cmp-under-comparator" },
-  { import = "astrocommunity.completion.cmp-calc" },
-  { import = "astrocommunity.completion.cmp-spell" },
-
-  -- }}}
-  -- {{{1 astronvim customization
   {
     "astrocore",
     ---@type AstroCoreOpts
@@ -473,6 +454,51 @@ return {
         },
       },
     },
+  },
+
+  {
+    -- make nvim-notify smaller. I would make it even smaller smaller
+    "nvim-notify",
+    -- load immidately
+    lazy = false,
+    priority = 1000,
+    opts = function(_, opts)
+      opts.render = "wrapped-compact"
+      -- Added in my lua path.
+      opts.render = "my-wrapped-compact"
+      opts.render = "my-wrapped-minimal"
+      opts.stages = "static"
+      opts.top_down = false
+      opts.fps = 1
+    end,
+  },
+
+  {
+    -- Add buffer number in front of buffer name in the tabline.
+    "heirline.nvim",
+    opts = function(_, opts)
+      local status = require "astroui.status"
+      local ui_config = require("astroui").config
+      local function my_tabline_file_info()
+        local tmp = status.component.tabline_file_info()
+        table.insert(tmp, 2, {
+          provider = function(self) return self and self.bufnr and self.bufnr or "" end,
+          hl = { bold = true, underline = true },
+        })
+        return tmp
+      end
+      opts.tabline[2] = status.heirline.make_buflist(my_tabline_file_info())
+    end,
+  },
+
+  {
+    -- Add saerch of jump files and jumps. Usefull for finding previous files.
+    "astrocore",
+    opts = function(_, opts)
+      local maps = opts.mappings
+      maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
+      maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
+    end,
   },
 
   -- }}}
@@ -559,7 +585,7 @@ return {
   -- }}}
   -- {{{1 UI
 
-  { import = "astrocommunity.syntax.vim-cool" },  -- disable search highlight after done searching
+  { import = "astrocommunity.syntax.vim-cool" }, -- disable search highlight after done searching
 
   { "ntpeters/vim-better-whitespace", lazy = false }, -- Mark whitespaces :StripWhitespace
 
@@ -752,6 +778,22 @@ p                paste yanked block replace with current selection
   -- }}}
   -- {{{1 lsp
 
+  -- { import = "astrocommunity.completion.cmp-git" },
+  -- { import = "astrocommunity.completion.cmp-emoji" },
+  -- { import = "astrocommunity.completion.cmp-nvim-lua" },
+  { import = "astrocommunity.completion.cmp-under-comparator" }, -- sort completion better for python
+  { import = "astrocommunity.completion.cmp-calc" }, -- complete 1 + 1
+  { import = "astrocommunity.completion.cmp-spell" },
+
+  { import = "astrocommunity.lsp.garbage-day-nvim" },
+  -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- replaced by lspsaga rename
+  -- { import = "astrocommunity.lsp.lsp-lens-nvim" },
+  { import = "astrocommunity.lsp.lsp-signature-nvim" },
+  -- { import = "astrocommunity.diagnostics.lsp_lines-nvim" },
+  { import = "astrocommunity.lsp.nvim-lsp-file-operations" },
+  { import = "astrocommunity.lsp.nvim-lint" },
+  { import = "astrocommunity.lsp.lspsaga-nvim" },
+
   {
     "hrsh7th/nvim-cmp",
     optional = true,
@@ -776,6 +818,7 @@ p                paste yanked block replace with current selection
   -- {{{1 utils utilities programs that do something
 
   -- { import = "astrocommunity.search.sad-nvim" }, -- never used
+  -- { import = "astrocommunity.diagnostics.trouble-nvim" }, -- lists of places with diagnostics. space+X . Never used it.
 
   -- { "salcode/vim-interactive-rebase-reverse", ft = { "gitrebase", "git" } }, -- reverse order commits during a Git rebase
 
@@ -1002,9 +1045,12 @@ p                paste yanked block replace with current selection
   },
 
   -- }}}
-  -- {{{1 AI
+  -- {{{1 AI AI AI
 
-  -- { import = "astrocommunity.completion.copilot-lua-cmp" },
+  -- { import = "astrocommunity.editing-support.chatgpt-nvim" },
+
+  -- { import = "astrocommunity.completion.copilot-lua-cmp" }, -- github copilot.vim so much better
+
   {
     "github/copilot.vim",
     enabled = false,
@@ -1022,6 +1068,7 @@ p                paste yanked block replace with current selection
   {
     "yetone/avante.nvim",
     enabled = KcEnableAtHome(),
+    enabled = false,
     event = "VeryLazy",
     lazy = false,
     version = "*", -- Set this to "*" to always pull the latest release version, or set it to false to update to the latest code changes.
@@ -1163,7 +1210,7 @@ p                paste yanked block replace with current selection
     init = function() vim.api.nvim_create_user_command("MarkdownTableOfContent", "Mtoc <args>", { nargs = 1 }) end,
   },
 
-  { "Robitx/gp.nvim", config = true }, -- Talk with AI with neovim
+  { "Robitx/gp.nvim", enabled = false, config = true }, -- Talk with AI with neovim
 
   {
     -- it doesn't exactly work correctly, and is too noisy
@@ -1177,53 +1224,9 @@ p                paste yanked block replace with current selection
   },
 
   {
-    -- make nvim-notify smaller. I would make it even smaller smaller
-    "nvim-notify",
-    -- load immidately
-    lazy = false,
-    priority = 1000,
-    opts = function(_, opts)
-      opts.render = "wrapped-compact"
-      -- Added in my lua path.
-      opts.render = "my-wrapped-compact"
-      opts.render = "my-wrapped-minimal"
-      opts.stages = "static"
-      opts.top_down = false
-      opts.fps = 1
-    end,
-  },
-
-  {
     "jedrzejboczar/exrc.nvim",
     dependencies = { "neovim/nvim-lspconfig" }, -- (optional)
     config = true,
-  },
-
-  {
-    -- Add buffer number in front of buffer name in the tabline.
-    "heirline.nvim",
-    opts = function(_, opts)
-      local status = require "astroui.status"
-      local ui_config = require("astroui").config
-      local function my_tabline_file_info()
-        local tmp = status.component.tabline_file_info()
-        table.insert(tmp, 2, {
-          provider = function(self) return self and self.bufnr and self.bufnr or "" end,
-          hl = { bold = true, underline = true },
-        })
-        return tmp
-      end
-      opts.tabline[2] = status.heirline.make_buflist(my_tabline_file_info())
-    end,
-  },
-
-  {
-    "astrocore",
-    opts = function(_, opts)
-      local maps = opts.mappings
-      maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
-      maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
-    end,
   },
 
   "tpope/vim-fugitive", -- git plugin
