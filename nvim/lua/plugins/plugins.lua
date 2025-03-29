@@ -353,67 +353,22 @@ local disabled = {
     end,
   },
 
-  -- makes vim sooooo slow
-  -- "sheerun/vim-polyglot", -- Solid language pack for vim
-
-  --
-}
--- }}}
-
----@type LazySpec
-return {
-  -- {{{1 astrocommunity astronvim modifications of configurations in astro customizations
-
-  "AstroNvim/astrocommunity",
-  -- import/override with your plugins folder
-
   {
-    import = "astrocommunity.completion.tabby-nvim",
+    -- "HampusHauffman/bionic.nvim",
+    "kamilcuk/bionic.nvim",
+    -- This plugin causes HIGH slow down when passing code from clipboard, disabling it solves the problem.
     enabled = false,
-    cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
-  },
-
-  -- { import = "astrocommunity.pack.cpp" },
-  -- { import = "astrocommunity.pack.lua" },
-  -- { import = "astrocommunity.pack.python-ruff" },
-  -- { import = "astrocommunity.pack.cmake" },
-  -- { import = "astrocommunity.pack.bash" },
-
-  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" }, -- disable insert hits in insert mode only. I disable inlay hits everywhere.
-  { import = "astrocommunity.editing-support.auto-save-nvim" },
-  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
-
-  -- { import = "astrocommunity.indent.indent-blankline-nvim" }, -- does nothing, already in astronvim
-
-  {
-    "astrocore",
-    ---@type AstroCoreOpts
-    opts = { -- extend the plugin options
-      diagnostics = {
-        virtual_text = false, -- disable diagnostics virtual text
-      },
-      autocmds = {
-        alpha_autostart = false, -- disable entry screen
-      },
-    },
-  },
-
-  {
-    "AstroNvim/astrolsp",
-    opts = {
-      features = {
-        inlay_hints = false, -- disable inlay hints globally on startup
-      },
-      formatting = {
-        format_on_save = false, -- enable or disable automatic formatting on save
-      },
-      config = {
-        basedpyright = {
-          settings = {
-            basedpyright = {
-              analysis = {
-                typeCheckingMode = "standard",
-              },
+    branch = "fix-index-nil-value",
+    dependencies = {
+      "AstroNvim/astrocore",
+      opts = {
+        autocmds = {
+          bionic = {
+            {
+              event = "FileType",
+              pattern = "*",
+              desc = "Activate bionic",
+              callback = function() require("bionic").on() end,
             },
           },
         },
@@ -421,95 +376,14 @@ return {
     },
   },
 
-  {
-    -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
-    -- Disable to speed up on larger files.
-    "RRethy/vim-illuminate",
-    event = "User AstroFile",
-    opts = {
-      large_file_cutoff = 3000,
-    },
-  },
-  { "aerial.nvim", enabled = false },
-  { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
-  { "goolord/alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
-  { "folke/noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
-  { "williamboman/mason-lspconfig.nvim", opts = { automatic_installation = true } },
-  { "jay-babu/mason-nvim-dap.nvim", opts = { automatic_installation = true } },
-  { "windwp/nvim-autopairs", enabled = false }, -- och god no, no autopairs
-  { "kdheepak/lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
-  { "nvim-ts-autotag", enabled = false }, -- no autoclosin
+  -- makes vim sooooo slow
+  -- "sheerun/vim-polyglot", -- Solid language pack for vim
 
-  {
-    -- https://www.reddit.com/r/neovim/comments/phndpv/comment/hbl89xp/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
-    "telescope.nvim",
-    dependencies = {
-      "astrocore",
-      opts = {
-        mappings = {
-          i = {
-            ["<C-Down>"] = require("telescope.actions").cycle_history_next,
-            ["<C-Up>"] = require("telescope.actions").cycle_history_prev,
-          },
-        },
-      },
-    },
-  },
+  -- Games
+  { "vim/killersheep", cmd = { "KillKillKill" }, enabled = false },
+  { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" }, enabled = false },
+  { "felleg/TeTrIs.vim", cmd = { "Tetris" }, enabled = false },
 
-  {
-    -- make nvim-notify smaller. I would make it even smaller smaller
-    "nvim-notify",
-    -- load immidately
-    lazy = false,
-    priority = 1000,
-    opts = function(_, opts)
-      opts.render = "wrapped-compact"
-      -- Added in my lua path.
-      opts.render = "my-wrapped-compact"
-      opts.render = "my-wrapped-minimal"
-      opts.stages = "static"
-      opts.top_down = false
-      opts.fps = 1
-    end,
-  },
-
-  {
-    -- Add buffer number in front of buffer name in the tabline.
-    "heirline.nvim",
-    opts = function(_, opts)
-      local status = require "astroui.status"
-      local ui_config = require("astroui").config
-      local function my_tabline_file_info()
-        local tmp = status.component.tabline_file_info()
-        table.insert(tmp, 2, {
-          provider = function(self) return self and self.bufnr and self.bufnr or "" end,
-          hl = { bold = true, underline = true },
-        })
-        return tmp
-      end
-      opts.tabline[2] = status.heirline.make_buflist(my_tabline_file_info())
-    end,
-  },
-
-  {
-    -- Add saerch of jump files and jumps. Usefull for finding previous files.
-    "astrocore",
-    opts = function(_, opts)
-      local maps = opts.mappings
-      maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
-      maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
-    end,
-  },
-
-  -- }}}
-  -- {{{1 :commmands plugins
-
-  {
-    "tpope/vim-eunuch", -- commands like :Remove :Delete :Move :SudoWrite
-    lazy = false, -- Load always. It makes files with shebang executables automatically.
-  },
-
-  { import = "astrocommunity.fuzzy-finder.fzf-lua" },
   {
     "junegunn/fzf.vim",
     enabled = false, -- using fzf-lua
@@ -574,10 +448,168 @@ return {
     end,
   },
 
-  -- Games
-  { "vim/killersheep", cmd = { "KillKillKill" }, enabled = false },
-  { "ThePrimeagen/vim-be-good", cmd = { "VimBeGood" }, enabled = false },
-  { "felleg/TeTrIs.vim", cmd = { "Tetris" }, enabled = false },
+  {
+    import = "astrocommunity.completion.tabby-nvim",
+    enabled = false,
+    cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
+  },
+
+  --
+}
+-- }}}
+
+---@type LazySpec
+return {
+  -- {{{1 astrocommunity astronvim modifications of configurations in astro customizations
+
+  "AstroNvim/astrocommunity",
+  -- import/override with your plugins folder
+
+  -- { import = "astrocommunity.pack.cpp" },
+  -- { import = "astrocommunity.pack.lua" },
+  -- { import = "astrocommunity.pack.python-ruff" },
+  -- { import = "astrocommunity.pack.cmake" },
+  -- { import = "astrocommunity.pack.bash" },
+
+  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" }, -- disable insert hits in insert mode only. I disable inlay hits everywhere.
+  { import = "astrocommunity.editing-support.auto-save-nvim" },
+
+  {
+    "astrocore",
+    ---@type AstroCoreOpts
+    opts = { -- extend the plugin options
+      diagnostics = {
+        virtual_text = false, -- disable diagnostics virtual text
+      },
+      autocmds = {
+        alpha_autostart = false, -- disable entry screen, TODO: port to astronvim v5
+      },
+    },
+  },
+
+  {
+    "astroui",
+    opts = {
+      colorscheme = "astrodark",
+      colorscheme = "midnight",
+    },
+  },
+
+  {
+    "AstroNvim/astrolsp",
+    opts = {
+      features = {
+        inlay_hints = false, -- disable inlay hints globally on startup
+      },
+      formatting = {
+        format_on_save = false, -- enable or disable automatic formatting on save
+      },
+      config = {
+        basedpyright = {
+          settings = {
+            basedpyright = {
+              analysis = {
+                typeCheckingMode = "standard",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  {
+    -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
+    -- Disable to speed up on larger files.
+    "vim-illuminate",
+    event = "User AstroFile",
+    opts = {
+      large_file_cutoff = 3000,
+    },
+  },
+  { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
+  { "noice.nvim", enabled = true }, -- I hate terminal in the middle, how people work with that?
+  { "mason-lspconfig.nvim", opts = { automatic_installation = false } },
+  { "mason-nvim-dap.nvim", opts = { automatic_installation = false } },
+  { "nvim-autopairs", enabled = false }, -- och god no, no autopairs
+  { "lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
+  { "nvim-ts-autotag", enabled = false }, -- no autoclosin
+
+  -- astronvim v5 no nvim-notify
+  -- {
+  --   -- make nvim-notify smaller. I would make it even smaller smaller
+  --   "nvim-notify",
+  --   -- load immidately
+  --   lazy = false,
+  --   priority = 1000,
+  --   opts = function(_, opts)
+  --     opts.render = "wrapped-compact"
+  --     -- Added in my lua path.
+  --     opts.render = "my-wrapped-compact"
+  --     opts.render = "my-wrapped-minimal"
+  --     opts.stages = "static"
+  --     opts.top_down = false
+  --     opts.fps = 1
+  --   end,
+  -- },
+
+  {
+    "folke/snacks.nvim",
+    ---@type snacks.Config
+    opts = {
+      ---@type table<string, snacks.win.Config>
+      styles = {
+        notification = {
+          wo = {
+            wrap = true,
+          },
+        },
+      },
+    },
+  },
+
+  {
+    -- Add buffer number in front of buffer name in the tabline.
+    "heirline.nvim",
+    opts = function(_, opts)
+      local status = require "astroui.status"
+      local ui_config = require("astroui").config
+      local function my_tabline_file_info()
+        local tmp = status.component.tabline_file_info()
+        table.insert(tmp, 2, {
+          provider = function(self) return self and self.bufnr and self.bufnr or "" end,
+          hl = { bold = true, underline = true },
+        })
+        return tmp
+      end
+      opts.tabline[2] = status.heirline.make_buflist(my_tabline_file_info())
+    end,
+  },
+
+  {
+    "astrocore",
+    opts = function(_, opts)
+      local maps = opts.mappings
+      -- astronvim v5 no telescope.nvim
+      --     maps.n["<Leader>fj"] = { function() require("telescope.builtin").jumplist() end, desc = "Find jumps" }
+      --     maps.n["<Leader>fq"] = { function() require("k.telescope-add").jumpfilelist() end, desc = "Find jump files" }
+      maps.n["<Leader>fj"] = { function() return Snacks.picker.jumps() end, desc = "Find jumps" }
+      maps.n["<Leader>fq"] = {
+        function() return require("k.snack_jumpfiles").picker_jumpfiles() end,
+        desc = "Find jump files",
+      }
+    end,
+  },
+
+  -- }}}
+  -- {{{1 :commmands plugins
+
+  {
+    "tpope/vim-eunuch", -- commands like :Remove :Delete :Move :SudoWrite
+    lazy = false, -- Load always. It makes files with shebang executables automatically.
+  },
+
+  { import = "astrocommunity.fuzzy-finder.fzf-lua" },
 
   -- { import = "astrocommunity.syntax.vim-easy-align" }, -- never used, like :Tabularize
   { "godlygeek/tabular", lazy = false }, -- :Tabularize Vim script for text filtering and alignment
@@ -592,10 +624,11 @@ return {
   {
     "HiPhish/rainbow-delimiters.nvim",
     submodules = false,
-    enabled = false,
+    enabled = true,
   },
   {
     "luochen1990/rainbow",
+    enabled = false,
     lazy = false,
     init = function()
       vim.g.rainbow_active = 1
@@ -616,157 +649,7 @@ return {
     end,
   },
 
-  {
-    -- "HampusHauffman/bionic.nvim",
-    "kamilcuk/bionic.nvim",
-    -- This plugin causes HIGH slow down when passing code from clipboard, disabling it solves the problem.
-    enabled = false,
-    branch = "fix-index-nil-value",
-    dependencies = {
-      "AstroNvim/astrocore",
-      opts = {
-        autocmds = {
-          bionic = {
-            {
-              event = "FileType",
-              pattern = "*",
-              desc = "Activate bionic",
-              callback = function() require("bionic").on() end,
-            },
-          },
-        },
-      },
-    },
-  },
-
-  "christoomey/vim-tmux-navigator", -- <ctrl-h> <ctrl-j> move between vim panes and tmux splits seamlessly
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
-
-  -- { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
-  -- {
-  --   "markdown-preview.nvim",
-  --   init = function() vim.g.mkdp_auto_close = 0 end,
-  -- },
-  {
-    -- Install markdown preview, use npx if available.
-    "iamcco/markdown-preview.nvim",
-    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    ft = { "markdown" },
-    build = function(plugin)
-      if vim.fn.executable "npx" then
-        vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
-      else
-        vim.cmd [[Lazy load markdown-preview.nvim]]
-        vim.fn["mkdp#util#install"]()
-      end
-    end,
-    init = function()
-      if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
-    end,
-  },
-
-  {
-    -- I wish something better would exists...
-    "mkirc/vim-boxdraw",
-    enabled = false, -- I use is so rarely... no reason to keep it
-    config = function()
-      local ok, wk = pcall(require, "which-key")
-      if ok then
-        wk.add {
-          mode = "v",
-          { "<C-b>", desc = "Select rectangular area with ctrl+v" },
-          { "o", desc = "Switch between corners" },
-          {
-            "g",
-            { "c", desc = "Restore selection" },
-          },
-          { "I", desc = "Insert before each line in block" },
-          {
-            "+",
-            { "o", desc = "Draw a rectangle, clear its contents with whitespace" },
-            { "O", desc = "Draw a rectangle, fill it with a label" },
-            { "c", desc = "Fill the rectangle with a label" },
-            { "-", desc = "Draw a line that ends with a horizontal line" },
-            { "_", desc = "Draw a line that ends with a horizontal line" },
-            { ">", desc = "Draw a line that ends with a horizontal arrow" },
-            { "<", desc = "Draw a line that ends with a horizontal arrow" },
-            { "|", desc = "Draw a line that ends with a vertical line" },
-            { "^", desc = "Draw a line that ends with a vertical arrow" },
-            { "v", desc = "Draw a line that ends with a vertical arrow" },
-            { "V", desc = "Draw a line that ends with a vertical arrow" },
-            {
-              "+",
-              desc = "Draw with arrow on both sides of the line",
-              {
-                ">",
-                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              },
-              {
-                "<",
-                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
-              },
-              {
-                "^",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-              {
-                "v",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-              {
-                "V",
-                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
-              },
-            },
-            {
-              "i",
-              desc = "Select inside",
-              { "o", desc = "Select current rectangle, without borders" },
-            },
-            {
-              "a",
-              desc = "Select all",
-              { "o", desc = "Select current rectangle, with borders" },
-            },
-            -- extra
-            { "~", desc = "Draw a diagonal line" },
-          },
-        }
-      end
-      --
-      vim.api.nvim_create_user_command("Boxdraw", function()
-        if vim.g.boxdraw_enabled ~= nil then
-          print "Exiting boxdraw mode"
-          vim.opt.virtualedit = vim.g.boxdraw_enabled
-          vim.g.boxdraw_enabled = nil
-        else
-          vim.g.boxdraw_enabled = vim.opt.virtualedit
-          vim.opt.virtualedit = "all"
-          print [[
-Entered boxdraw mode
-Ctrl+b           Select rectangular area with ctrl+v
-o                Switch between corners
-gc               Restore selection
-I                Insert before each line in block
-y                yank block
-1<Ctrl-v>        select shi area elsewhere
-p                paste yanked block replace with current selection
-+o               Draw a rectangle, clear its contents with whitespace.
-+O               Draw a rectangle, fill it with a label.
-+c               Fill the rectangle with a label.
-+- or +_         Draw a line that ends with a horizontal line:
-+> or +<         Draw a line that ends with a horizontal arrow:
-++> or ++<       Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line:
-+|               Draw a line that ends with a vertical line:
-+^, +v or +V     Draw a line that ends with a vertical arrow.
-++^, ++v or ++V  Draw a line that ends with a vertical arrow,                                                                                                  and has an arrow on both sides of the line:
-+io              Select current rectangle, without borders.
-+ao              Select current rectangle, with borders.
-]]
-        end
-      end, {})
-    end,
-  }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
 
   -- }}}
   -- {{{1 Filetypes
@@ -954,7 +837,133 @@ p                paste yanked block replace with current selection
 
   { "tpope/vim-scriptease", lazy = false }, -- :Verbose
 
-  { "christoomey/vim-tmux-navigator", lazy = false },
+  { "christoomey/vim-tmux-navigator", lazy = false }, -- <ctrl-h> <ctrl-j> move between vim panes and tmux splits seamlessly
+
+  -- { import = "astrocommunity.markdown-and-latex.markdown-preview-nvim" },
+  -- {
+  --   "markdown-preview.nvim",
+  --   init = function() vim.g.mkdp_auto_close = 0 end,
+  -- },
+  {
+    -- Install markdown preview, use npx if available.
+    "iamcco/markdown-preview.nvim",
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    ft = { "markdown" },
+    build = function(plugin)
+      if vim.fn.executable "npx" then
+        vim.cmd("!cd " .. plugin.dir .. " && cd app && npx --yes yarn install")
+      else
+        vim.cmd [[Lazy load markdown-preview.nvim]]
+        vim.fn["mkdp#util#install"]()
+      end
+    end,
+    init = function()
+      if vim.fn.executable "npx" then vim.g.mkdp_filetypes = { "markdown" } end
+    end,
+  },
+
+  {
+    -- I wish something better would exists...
+    "mkirc/vim-boxdraw",
+    enabled = false, -- I use is so rarely... no reason to keep it
+    config = function()
+      local ok, wk = pcall(require, "which-key")
+      if ok then
+        wk.add {
+          mode = "v",
+          { "<C-b>", desc = "Select rectangular area with ctrl+v" },
+          { "o", desc = "Switch between corners" },
+          {
+            "g",
+            { "c", desc = "Restore selection" },
+          },
+          { "I", desc = "Insert before each line in block" },
+          {
+            "+",
+            { "o", desc = "Draw a rectangle, clear its contents with whitespace" },
+            { "O", desc = "Draw a rectangle, fill it with a label" },
+            { "c", desc = "Fill the rectangle with a label" },
+            { "-", desc = "Draw a line that ends with a horizontal line" },
+            { "_", desc = "Draw a line that ends with a horizontal line" },
+            { ">", desc = "Draw a line that ends with a horizontal arrow" },
+            { "<", desc = "Draw a line that ends with a horizontal arrow" },
+            { "|", desc = "Draw a line that ends with a vertical line" },
+            { "^", desc = "Draw a line that ends with a vertical arrow" },
+            { "v", desc = "Draw a line that ends with a vertical arrow" },
+            { "V", desc = "Draw a line that ends with a vertical arrow" },
+            {
+              "+",
+              desc = "Draw with arrow on both sides of the line",
+              {
+                ">",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "<",
+                desc = "Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line",
+              },
+              {
+                "^",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "v",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+              {
+                "V",
+                desc = "Draw a line that ends with a vertical arrow,  and has an arrow on both sides of the line",
+              },
+            },
+            {
+              "i",
+              desc = "Select inside",
+              { "o", desc = "Select current rectangle, without borders" },
+            },
+            {
+              "a",
+              desc = "Select all",
+              { "o", desc = "Select current rectangle, with borders" },
+            },
+            -- extra
+            { "~", desc = "Draw a diagonal line" },
+          },
+        }
+      end
+      --
+      vim.api.nvim_create_user_command("Boxdraw", function()
+        if vim.g.boxdraw_enabled ~= nil then
+          print "Exiting boxdraw mode"
+          vim.opt.virtualedit = vim.g.boxdraw_enabled
+          vim.g.boxdraw_enabled = nil
+        else
+          vim.g.boxdraw_enabled = vim.opt.virtualedit
+          vim.opt.virtualedit = "all"
+          print [[
+Entered boxdraw mode
+Ctrl+b           Select rectangular area with ctrl+v
+o                Switch between corners
+gc               Restore selection
+I                Insert before each line in block
+y                yank block
+1<Ctrl-v>        select shi area elsewhere
+p                paste yanked block replace with current selection
++o               Draw a rectangle, clear its contents with whitespace.
++O               Draw a rectangle, fill it with a label.
++c               Fill the rectangle with a label.
++- or +_         Draw a line that ends with a horizontal line:
++> or +<         Draw a line that ends with a horizontal arrow:
+++> or ++<       Draw a line that ends with a horizontal arrow, and has an arrow on both sides of the line:
++|               Draw a line that ends with a vertical line:
++^, +v or +V     Draw a line that ends with a vertical arrow.
+++^, ++v or ++V  Draw a line that ends with a vertical arrow,                                                                                                  and has an arrow on both sides of the line:
++io              Select current rectangle, without borders.
++ao              Select current rectangle, with borders.
+]]
+        end
+      end, {})
+    end,
+  }, -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
 
   {
     "thaerkh/vim-workspace",
@@ -1036,12 +1045,12 @@ p                paste yanked block replace with current selection
   -- {{{1 colorscheme
 
   -- "cryptomilk/nightcity.nvim",
+  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
   {
     "dasupradyumna/midnight.nvim",
-    -- enabled = false,
+    enabled = true,
     lazy = false,
     priority = 10000,
-    config = function() vim.cmd.colorscheme "midnight" end,
   },
 
   -- }}}
