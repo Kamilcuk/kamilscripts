@@ -344,6 +344,7 @@ local disabled = {
 
   {
     "timeyyy/bubbletrouble.symphony",
+    enabled = false,
     lazy = false,
     config = function()
       require("soundme"):setup {
@@ -454,6 +455,26 @@ local disabled = {
     cond = function() return vim.fn.filereadable(vim.fn.expand "~/.tabby-client/agent/config.toml") ~= 0 end,
   },
 
+  {
+    -- make nvim-notify smaller. I would make it even smaller smaller
+    "nvim-notify",
+    enabled = false, -- astronvim v5 no nvim-notify
+    -- load immidately
+    lazy = false,
+    priority = 1000,
+    opts = function(_, opts)
+      opts.render = "wrapped-compact"
+      -- Added in my lua path.
+      opts.render = "my-wrapped-compact"
+      opts.render = "my-wrapped-minimal"
+      opts.stages = "static"
+      opts.top_down = false
+      opts.fps = 1
+    end,
+  },
+
+  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" }, -- disable insert hits in insert mode only. I disable inlay hits everywhere.
+
   --
 }
 -- }}}
@@ -463,16 +484,10 @@ return {
   -- {{{1 astrocommunity astronvim modifications of configurations in astro customizations
 
   "AstroNvim/astrocommunity",
-  -- import/override with your plugins folder
-
-  -- { import = "astrocommunity.pack.cpp" },
-  -- { import = "astrocommunity.pack.lua" },
-  -- { import = "astrocommunity.pack.python-ruff" },
-  -- { import = "astrocommunity.pack.cmake" },
-  -- { import = "astrocommunity.pack.bash" },
-
-  -- { import = "astrocommunity.recipes.astrolsp-no-insert-inlay-hints" }, -- disable insert hits in insert mode only. I disable inlay hits everywhere.
+  -- https://astronvim.github.io/astrocommunity/
+  -- https://github.com/AstroNvim/astrocommunity/tree/main/lua/astrocommunity
   { import = "astrocommunity.editing-support.auto-save-nvim" },
+  { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
 
   {
     "astrocore",
@@ -483,6 +498,11 @@ return {
       },
       autocmds = {
         alpha_autostart = false, -- disable entry screen, TODO: port to astronvim v5
+      },
+      features = {
+        large_buf = {
+          lines = 3000, -- = 10000, -- max number of lines (or false to disable check)
+        },
       },
     },
   },
@@ -534,24 +554,7 @@ return {
   { "nvim-autopairs", enabled = false }, -- och god no, no autopairs
   { "lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
   { "nvim-ts-autotag", enabled = false }, -- no autoclosin
-
-  -- astronvim v5 no nvim-notify
-  -- {
-  --   -- make nvim-notify smaller. I would make it even smaller smaller
-  --   "nvim-notify",
-  --   -- load immidately
-  --   lazy = false,
-  --   priority = 1000,
-  --   opts = function(_, opts)
-  --     opts.render = "wrapped-compact"
-  --     -- Added in my lua path.
-  --     opts.render = "my-wrapped-compact"
-  --     opts.render = "my-wrapped-minimal"
-  --     opts.stages = "static"
-  --     opts.top_down = false
-  --     opts.fps = 1
-  --   end,
-  -- },
+  { "todo-comments.nvim", enabled = false }, -- todo comments are not important
 
   {
     "folke/snacks.nvim",
@@ -602,17 +605,19 @@ return {
   },
 
   -- }}}
-  -- {{{1 :commmands plugins
+  -- {{{1 :commmands plugins that add various :commands to be executed
 
   {
     "tpope/vim-eunuch", -- commands like :Remove :Delete :Move :SudoWrite
     lazy = false, -- Load always. It makes files with shebang executables automatically.
   },
 
-  { import = "astrocommunity.fuzzy-finder.fzf-lua" },
+  -- { import = "astrocommunity.fuzzy-finder.fzf-lua" }, -- using snacks.nvim
 
   -- { import = "astrocommunity.syntax.vim-easy-align" }, -- never used, like :Tabularize
   { "godlygeek/tabular", lazy = false }, -- :Tabularize Vim script for text filtering and alignment
+
+  { import = "astrocommunity.editing-support.refactoring-nvim" }, -- :Refactor command
 
   -- }}}
   -- {{{1 UI
@@ -621,11 +626,7 @@ return {
 
   { "ntpeters/vim-better-whitespace", lazy = false }, -- Mark whitespaces :StripWhitespace
 
-  {
-    "HiPhish/rainbow-delimiters.nvim",
-    submodules = false,
-    enabled = true,
-  },
+  { import = "astrocommunity.editing-support.rainbow-delimiters-nvim" },
   {
     "luochen1990/rainbow",
     enabled = false,
@@ -652,14 +653,15 @@ return {
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
   -- }}}
-  -- {{{1 Filetypes
+  -- {{{1 Filetypes additional support for syntax of specific file extensions and languages.
 
   "pranavpudasaini/vim-hcl",
   "NoahTheDuke/vim-just", -- syntax for justfile
   "grafana/vim-alloy", -- Grafana Alloy language support for vim
+  -- { import = "astrocommunity.lsp.nvim-java" }, -- enable for java
 
   -- }}}
-  -- {{{1 lsp
+  -- {{{1 LSP Configuration related to autocompletion.
 
   -- { import = "astrocommunity.completion.cmp-git" },
   -- { import = "astrocommunity.completion.cmp-emoji" },
