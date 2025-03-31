@@ -508,14 +508,6 @@ return {
   },
 
   {
-    "astroui",
-    opts = {
-      colorscheme = "astrodark",
-      colorscheme = "midnight",
-    },
-  },
-
-  {
     "AstroNvim/astrolsp",
     opts = {
       features = {
@@ -1046,14 +1038,19 @@ p                paste yanked block replace with current selection
   -- }}}
   -- {{{1 colorscheme
 
-  -- "cryptomilk/nightcity.nvim",
-  -- { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
   {
-    "dasupradyumna/midnight.nvim",
-    enabled = true,
-    lazy = false,
-    priority = 10000,
+    "astroui",
+    opts = {
+      -- colorscheme = "astrodark",
+      -- colorscheme = "midnight",
+      colorscheme = "onedark_dark",
+      -- colorscheme = "onedark",
+    },
   },
+  -- { import = "astrocommunity.colorscheme.catppuccin" },
+  { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
+  -- "cryptomilk/nightcity.nvim",
+  -- { "dasupradyumna/midnight.nvim", lazy = false, priority = 10000 },
 
   -- }}}
   -- {{{1 AI AI AI
