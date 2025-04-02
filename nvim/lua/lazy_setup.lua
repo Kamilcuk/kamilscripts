@@ -12,6 +12,7 @@ require("lazy").setup({
     },
   },
   { import = "plugins" },
+  { import = "local", enabled = function() return pcall(require, "local") end },
 } --[[@as LazySpec]], {
   -- Configure any other `lazy.nvim` configuration options here
   ui = { backdrop = 100 },

@@ -273,6 +273,7 @@ return {
   -- }}}
   -- {{{1 LSP Configuration related to autocompletion.
 
+
   -- Delay blink.cmp completion by 1 second.
   {
     "saghen/blink.cmp",
