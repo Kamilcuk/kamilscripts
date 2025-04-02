@@ -9,7 +9,7 @@ local M = {}
 ---@return any The timer object that waits for the screensaver.
 function M.run_screensaving(delay_ms, start, stop, header)
   ---@diagnostic disable-next-line: undefined-field
-  local timer = vim.loop.new_timer()
+  local timer = vim.uv.new_timer()
   local running = false
   local starting = false
   local stopping = false

@@ -166,10 +166,10 @@ return {
         pattern = "*",
         callback = function()
           if timer then
-            vim.loop.timer_stop(timer)
+            vim.uv.timer_stop(timer)
             timer = nil
           end
-          timer = vim.loop.new_timer()
+          timer = vim.uv.new_timer()
           timer:start(
             500,
             0,
