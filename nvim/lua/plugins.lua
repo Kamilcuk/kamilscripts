@@ -431,6 +431,27 @@ return {
     },
   },
 
+  {
+    "Saghen/blink.cmp",
+    opts = function(_, opts)
+      local function under_comparator(entry1, entry2)
+        local _, entry1_under = entry1.label:find "^_+"
+        local _, entry2_under = entry2.label:find "^_+"
+        entry1_under = entry1_under or 0
+        entry2_under = entry2_under or 0
+        if entry1_under > entry2_under then
+            return true
+        elseif entry1_under < entry2_under then
+            return false
+        end
+      end
+      opts.fuzzy = opts.fuzzy or {}
+      -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
+      opts.fuzzy.sorts = opts.fuzzy.sorts or { "score", "sort_text" }
+      table.insert(opts.fuzzy.sorts, 1, under_comparator)
+    end,
+  },
+
   { import = "astrocommunity.lsp.garbage-day-nvim" },
   -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- replaced by lspsaga rename
   -- { import = "astrocommunity.lsp.lsp-lens-nvim" },
