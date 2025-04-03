@@ -205,6 +205,8 @@ let g:load_doxygen_syntax=1 " Automatically load doxygen for C, C++, C#, IDL and
 command! -bar VimConfig :edit ~/.config/nvim/lua/plugins/user.lua
 command! -bar KcProfile :profile start ~/tmp/vimprofile.log | profile func * | profile file * " profile vim
 command! -bar KcProfileEnd :profile stop
+command! -bar -nargs=1 KcLazyConfig :Verbose = require("lazy.core.config").plugins[<f-args>]
+
 
 " Disable default neovim SQL completion because it makes it very slow.
 " :help sql-completion-maps
