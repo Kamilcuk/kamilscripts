@@ -93,17 +93,28 @@ local function KcScreensaver(timeout_s, start, stop, header)
   end)
 end
 
+---@param txt string
+---@return string[]
+local function KcSplit(txt)
+  local r = {}
+  for w in txt:gmatch "%S+" do
+    table.insert(r, w)
+  end
+  return r
+end
+
 -- }}}
 
 ---@type LazySpec
 return {
   -- {{{1 astrocommunity astronvim modifications of configurations in astro customizations
-
-  "AstroNvim/astrocommunity",
+  -- https://github.com/AstroNvim/AstroNvim
+  -- https://docs.astronvim.com/configuration/v5_migration/
   -- https://astronvim.github.io/astrocommunity/
   -- https://github.com/AstroNvim/astrocommunity/tree/main/lua/astrocommunity
+
+  "AstroNvim/astrocommunity",
   { import = "astrocommunity.editing-support.auto-save-nvim" },
-  { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
 
   {
     "astrocore",
@@ -146,6 +157,7 @@ return {
     },
   },
 
+  { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
     -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
     -- Disable to speed up on larger files.
@@ -155,14 +167,35 @@ return {
       large_file_cutoff = 3000,
     },
   },
+
   { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
-  { "noice.nvim", enabled = false }, -- I hate terminal in the middle, how people work with that?
   { "mason-lspconfig.nvim", opts = { automatic_installation = false } },
   { "mason-nvim-dap.nvim", opts = { automatic_installation = false } },
   { "nvim-autopairs", enabled = false }, -- och god no, no autopairs
   { "lazygit.nvim", enabled = false }, -- I have no idea how to use it, I like the tpope plugin
   { "nvim-ts-autotag", enabled = false }, -- no autoclosin
   { "todo-comments.nvim", enabled = false }, -- todo comments are not important
+
+  {
+    -- I hate terminal in the middle, how people work with that?
+    "noice.nvim",
+    opts = function(_, opts)
+      opts.cmdline = opts.cmdline or {}
+      opts.cmdline.view = "cmdline"
+      opts.cmdline.format = {
+        cmdline = false,
+        search_down = false,
+        search_up = false,
+        filter = false,
+        lua = false,
+        help = false,
+        input = false,
+      }
+      opts.presets = opts.presets or {}
+      opts.presets.bottom_search = true
+      return opts
+    end,
+  },
 
   {
     "snacks.nvim",
@@ -184,7 +217,6 @@ return {
     "heirline.nvim",
     opts = function(_, opts)
       local status = require "astroui.status"
-      local ui_config = require("astroui").config
       local function my_tabline_file_info()
         local tmp = status.component.tabline_file_info()
         table.insert(tmp, 2, {
@@ -213,16 +245,26 @@ return {
   },
 
   {
-    "nvim-treesitter",
+    "neo-tree.nvim",
     opts = function(_, opts)
-      -- disable treesitter for big files
-      opts.highlight = opts.hightlight or {}
-      opts.highlight.disable = function(lang, buf)
-        local max_filesize = 100 * 1024 -- 100 KB
-        local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(buf))
-        return false
-        -- return ok and stats and stats.size > max_filesize
-      end
+      opts.filesystem = vim.tbl_deep_extend("keep", opts.filesystem or {}, {
+        filtered_items = {
+          always_show = {},
+          always_show_by_pattern = {},
+          newer_show = {},
+          newer_show_by_pattern = {},
+          hide_dotfiles = false,
+        },
+      })
+      vim.list_extend(
+        opts.filesystem.filtered_items.always_show,
+        KcSplit ".gitignore .github .gitlab .gitlab-runner-local .gitlab-ci.yml local.lua"
+      )
+      vim.list_extend(
+        opts.filesystem.filtered_items.newer_show,
+        KcSplit "__pycache__ .ruff_cache .tox .cache .nox .eggs"
+      )
+      vim.list_extend(opts.filesystem.filtered_items.newer_show_by_pattern, KcSplit "*.egg-info *.egg")
     end,
   },
 
@@ -273,18 +315,18 @@ return {
   -- }}}
   -- {{{1 LSP Configuration related to autocompletion.
 
-
   -- Delay blink.cmp completion by 1 second.
   {
     "saghen/blink.cmp",
     opts = function(_, opts)
-      local delay_ms = 1000
+      local delay_ms = 5000
       -- disable auto_show
       opts.completion = opts.completion or {}
       opts.completion.menu = opts.completion.menu or {}
       opts.completion.menu.auto_show = false
       -- setup timer
       local timer = vim.uv.new_timer()
+      assert(timer)
       vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
         callback = function()
           timer:stop()
@@ -322,7 +364,7 @@ return {
           },
         },
       })
-      table.insert(opts.sources.default, "tmux")
+      vim.list_extend(opts.sources.default, { "tmux" })
     end,
   },
 
@@ -345,7 +387,7 @@ return {
           },
         },
       })
-      table.insert(opts.sources.default, "git")
+      vim.list_extend(opts.sources.default, { "git" })
     end,
   },
 
@@ -379,7 +421,7 @@ return {
           },
         },
       })
-      table.insert(opts.sources.default, "spell")
+      vim.list_extend(opts.sources.default, { "spell" })
       opts.fuzzy = opts.fuzzy or {}
       opts.fuzzy.sorts = opts.fuzzy.sorts or {}
       table.insert(

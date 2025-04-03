@@ -618,4 +618,20 @@ p                paste yanked block replace with current selection
       vim.api.nvim_set_hl(0, "@punctuation.bracket", { link = "" })
     end,
   },
+
+  {
+    -- using { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
+    "nvim-treesitter",
+    opts = function(_, opts)
+      -- disable treesitter for big files
+      opts.highlight = opts.hightlight or {}
+      opts.highlight.disable = function(lang, buf)
+        local max_filesize = 100 * 1024 -- 100 KB
+        local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+        return false
+        -- return ok and stats and stats.size > max_filesize
+      end
+    end,
+  },
+
 }
