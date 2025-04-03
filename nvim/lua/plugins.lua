@@ -251,8 +251,8 @@ return {
         filtered_items = {
           always_show = {},
           always_show_by_pattern = {},
-          newer_show = {},
-          newer_show_by_pattern = {},
+          never_show = {},
+          never_show_by_pattern = {},
           hide_dotfiles = false,
         },
       })
@@ -261,10 +261,10 @@ return {
         KcSplit ".gitignore .github .gitlab .gitlab-runner-local .gitlab-ci.yml local.lua"
       )
       vim.list_extend(
-        opts.filesystem.filtered_items.newer_show,
+        opts.filesystem.filtered_items.never_show,
         KcSplit "__pycache__ .ruff_cache .tox .cache .nox .eggs"
       )
-      vim.list_extend(opts.filesystem.filtered_items.newer_show_by_pattern, KcSplit "*.egg-info *.egg")
+      vim.list_extend(opts.filesystem.filtered_items.never_show_by_pattern, KcSplit "*.egg-info *.egg")
     end,
   },
 
