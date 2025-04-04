@@ -117,14 +117,11 @@ return {
   { import = "astrocommunity.editing-support.auto-save-nvim" },
 
   {
-    "astrocore",
+    "AstroNvim/astrocore",
     ---@type AstroCoreOpts
     opts = { -- extend the plugin options
       diagnostics = {
         virtual_text = false, -- disable diagnostics virtual text
-      },
-      autocmds = {
-        alpha_autostart = false, -- disable entry screen, TODO: port to astronvim v5
       },
       features = {
         large_buf = {
@@ -156,6 +153,8 @@ return {
       },
     },
   },
+
+  { "snacks.nvim", opts = { dashboard = { enabled = false } } }, -- disable entry dashboard by astronvim
 
   { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
@@ -348,6 +347,22 @@ return {
   -- Use tmux from all panels.
   { "blink.cmp", opts = { sources = { providers = { tmux = { opts = { all_panes = true } } } } } },
 
+  -- This is fine.
+  -- { "blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
+
+  {
+    "blink.cmp",
+    opts = {
+      completion = {
+        menu = {
+          draw = {
+            columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "kind" }, { "source_name" } },
+          },
+        },
+      },
+    },
+  },
+
   {
     "Kaiser-Yang/blink-cmp-git",
     lazy = true,
@@ -431,26 +446,16 @@ return {
     },
   },
 
-  {
-    "Saghen/blink.cmp",
-    opts = function(_, opts)
-      local function under_comparator(entry1, entry2)
-        local _, entry1_under = entry1.label:find "^_+"
-        local _, entry2_under = entry2.label:find "^_+"
-        entry1_under = entry1_under or 0
-        entry2_under = entry2_under or 0
-        if entry1_under > entry2_under then
-            return true
-        elseif entry1_under < entry2_under then
-            return false
-        end
-      end
-      opts.fuzzy = opts.fuzzy or {}
-      -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
-      opts.fuzzy.sorts = opts.fuzzy.sorts or { "score", "sort_text" }
-      table.insert(opts.fuzzy.sorts, 1, under_comparator)
-    end,
-  },
+  -- { "kamilcuk/blink-cmp-under-comparator" },
+  -- {
+  --   "Saghen/blink.cmp",
+  --   opts = function(_, opts)
+  --     opts.fuzzy = opts.fuzzy or {}
+  --     -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
+  --     opts.fuzzy.sorts = opts.fuzzy.sorts or require("blink.cmp.config").fuzzy.sorts or { "score", "sort_text" }
+  --     opts.fuzzy.sorts = { "exact", "score", require("blink-cmp-under-comparator").under, "sort_text", "kind", "label" }
+  --   end,
+  -- },
 
   { import = "astrocommunity.lsp.garbage-day-nvim" },
   -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- replaced by lspsaga rename
@@ -605,7 +610,7 @@ return {
 
   {
     import = "astrocommunity.markdown-and-latex.markdown-preview-nvim",
-    enabled = function() return vim.fn.executable "yarn" or vim.fn.executable "npx" end,
+    enabled = function() return vim.fn.executable "yarn" == 1 or vim.fn.executable "npx" == 1 end,
   },
 
   { import = "astrocommunity.session.vim-workspace" },
@@ -781,10 +786,7 @@ return {
     config = true,
   }, -- :Exrc* and other utilities
 
-  {
-    "MagicDuck/grug-far.nvim", -- find and replace plugin
-    opts = {},
-  },
+  { "MagicDuck/grug-far.nvim", opts = {} }, -- find and replace plugin
 
   {
     "astrocore",
@@ -815,18 +817,7 @@ return {
     end,
   },
 
-  "inkarkat/vim-AdvancedSorters",
-
-  {
-    "L3MON4D3/LuaSnip",
-    -- follow latest release.
-    version = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
-    -- install jsregexp (optional!).
-    build = "make install_jsregexp",
-    dependencies = { "rafamadriz/friendly-snippets" },
-    config = function() require("luasnip.loaders.from_vscode").lazy_load() end,
-  },
-
+  "inkarkat/vim-AdvancedSorters", -- :Sort* :Recorder* :Uniq* Sorting of certain areas or by special needs.
   "michaeljsmith/vim-indent-object", -- objects ai ii aI iI , use in python
 
   -- }}}

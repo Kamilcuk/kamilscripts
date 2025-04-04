@@ -253,6 +253,7 @@ cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 
 au BufNewFile,BufRead Jenkinsfile setf groovy tabstop=4 ofttabstop=-1 shiftwidth=0 smartindent cpuoptions+=I smartindent cindent
 
+
 ]]
 
 -- https://www.reddit.com/r/AstroNvim/comments/1f89958/how_to_remove_please_install_notifications/
