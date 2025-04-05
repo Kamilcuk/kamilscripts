@@ -12,6 +12,7 @@ require("lazy").setup({
     },
   },
   { import = "plugins" },
+  { import = "plugins_home", enabled = vim.env.USER ~= "cukrowsk" },
   { import = "local", enabled = function() return pcall(require, "local") end },
 } --[[@as LazySpec]], {
   -- Configure any other `lazy.nvim` configuration options here
