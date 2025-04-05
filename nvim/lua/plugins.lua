@@ -340,7 +340,7 @@ return {
   {
     "Saghen/blink.cmp",
     opts = function(_, opts)
-      local delay_ms = 5000
+      local delay_ms = 1000
       -- disable auto_show
       opts.completion = opts.completion or {}
       opts.completion.menu = opts.completion.menu or {}
