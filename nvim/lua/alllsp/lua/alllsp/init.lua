@@ -16,11 +16,11 @@ end
 ---@field lsps string[]? All language server protocol configuration available in nvim-lspconfig.
 ---@field formatters string[]? All formatters configurations available in none-ls.nvim
 ---@field diagnostics string[]? All diagnostics utilities configurations available in none-ls.nvim
----@field accept string[]? An optional list of utilities to accept. Used to drastically reduce the startup time.
----@field ignore string[]? A list of ignored modules. They do not work mostly.
+---@field accept_lsps string[]? An optional list of utilities to accept. Used to drastically reduce the startup time.
+---@field ignore_lsps string[]? A list of ignored modules. They do not work mostly.
 -- Is it unclear to me how to properly handle like python3 -m module.
 -- I do not want to handle it, it would drastically increase startup time.
----@field ignore_cmds string[]? List of ignored commands. Bottom line, this is a list of interpreters.
+---@field ignore_executables string[]? List of ignored commands. Bottom line, this is a list of interpreters.
 
 ---@type Config
 M.config = {
@@ -118,26 +118,48 @@ M.config = {
   write_good yamllint zsh
   ]],
 
-  accept = {},
-  ignore = M.shsplit [[
-  bufls ruff_lsp # deprecated
-  # dunno how to handle
-  esbonio   # python3
-  groovyls  # java
-  flow   # npx
-  nextflow_ls  # dotnet
-  turtle_ls  # node
-  perlls  # perl
-  ]],
-  ignore_cmds = M.shsplit [[
-  java python python3 sh bash dotnet npx node perl
-  ]],
+  accept_lsps = nil,
+  ignore_lsps = {
+    bufls = true, -- deprecated
+    ruff_lsp = true, -- deprecated
+    esbonio = true, -- python3
+    groovyls = true, -- java
+    flow = true, -- npx
+    nextflow_ls = true, -- dotnet
+    turtle_ls = true, -- node
+    perlls = true, -- perl
+  },
+  ignore_executables = {
+    R = true,
+    dotnet = true,
+    java = true,
+    julia = true,
+    nc = true,
+    node = true,
+    npx = true,
+    perl = true,
+    python = true,
+    python3 = true,
+    racket = true,
+  },
 }
 
 ---@param args Config?
 function M.setup(args)
   M.config = vim.tbl_deep_extend("force", M.config, args or {})
-  vim.api.nvim_create_user_command("AllLspInfo", M.show, {})
+  --
+  local function complete(arglead, _, _)
+    return vim
+      .iter(M)
+      :filter(function(subcmd) return subcmd:find("command_" .. arglead) == 1 end)
+      :map(function(subcmd) return subcmd:gsub("command_", "") end)
+      :totable()
+  end
+  vim.api.nvim_create_user_command(
+    "AllLsp",
+    function(opts) M["command_" .. opts.args]() end,
+    { nargs = 1, complete = complete }
+  )
 end
 
 ---@param str string the path string
@@ -153,8 +175,8 @@ function M._check_command(cmd)
   if
     type(cmd) == "table"
     and type(cmd[1]) == "string"
-    and not vim.list_contains(M.config.ignore_cmds, cmd[1])
-    and not vim.list_contains(M.config.ignore_cmds, basename(cmd[1]))
+    and not M.config.ignore_executables[cmd[1]]
+    and not M.config.ignore_executables[basename(cmd[1])]
   then
     local v = M._execache[cmd[1]]
     if v == nil then
@@ -166,6 +188,8 @@ function M._check_command(cmd)
   return false
 end
 
+---@alias Mod any
+
 ---@class SomeRet
 ---@field cmd string[]
 
@@ -173,12 +197,12 @@ end
 ---@param data string[]
 ---@param section string Import module to check if it is importable.
 ---@param get_cmd fun(any): string[]
----@return [string, string[], any]
+---@return [string, string[], Mod]
 function M._get_allowed(data, section, get_cmd)
   local ret = {}
   for _, name in ipairs(data) do
-    if next(M.config.accept) == nil or vim.list_contains(M.config.accept, name) then
-      if next(M.config.ignore) == nil or not vim.list_contains(M.config.ignore, name) then
+    if not M.config.accept_lsps or M.config.accept_lsps[name] then
+      if not M.config.ignore_lsps or not M.config.ignore_lsps[name] then
         local ok, mod = pcall(require, section .. "." .. name)
         if ok then
           local cmd = get_cmd(mod)
@@ -208,6 +232,7 @@ end
 -- Abstract none-ls generation
 ---@param data string[]
 ---@param section string
+---@return Mod[]
 function M._for_none_ls(data, section)
   return M._get_allowed(
     data,
@@ -216,11 +241,14 @@ function M._for_none_ls(data, section)
   )
 end
 
+---@return Mod[]
 function M._for_none_ls_diagnostics() return M._for_none_ls(M.config.diagnostics, "diagnostics") end
 
+---@return Mod[]
 function M._for_none_ls_formatters() return M._for_none_ls(M.config.formatters, "formatting") end
 
 -- Generate a list of modules read to use for none-ls sources configuration.
+---@return Mod[]
 function M.for_none_ls()
   local ret = M._for_none_ls_diagnostics()
   vim.list_extend(ret, M._for_none_ls_formatters())
@@ -233,7 +261,7 @@ function M._show(what, data)
 end
 
 -- Show what is enabled and what is not.
-function M.show()
+function M.command_show()
   M._show("lspconfig", M._for_lspconfig())
   M._show("null-ls formatters", M._for_none_ls_formatters())
   M._show("null-ls diagnostics", M._for_none_ls_diagnostics())

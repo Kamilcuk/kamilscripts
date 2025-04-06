@@ -10,6 +10,7 @@ local M = {}
 function M.run_screensaving(delay_ms, start, stop, header)
   ---@diagnostic disable-next-line: undefined-field
   local timer = vim.uv.new_timer()
+  assert(timer)
   local running = false
   local starting = false
   local stopping = false

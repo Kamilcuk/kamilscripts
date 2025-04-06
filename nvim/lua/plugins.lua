@@ -475,16 +475,17 @@ return {
   { import = "astrocommunity.lsp.nvim-lint" },
   { import = "astrocommunity.lsp.lspsaga-nvim" },
 
+  { "alllsp", dir = vim.fn.expand "~/.kamilscripts/nvim/lua/alllsp", opts = {} },
   {
     "AstroNvim/astrolsp",
     opts = function(_, opts)
-      opts.servers = require("astrocore").list_insert_unique(opts.servers, require("k.auto_lsp_nvim").for_lspconfig())
+      opts.servers = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_lspconfig())
     end,
   },
   {
     "nvimtools/none-ls.nvim",
     opts = function(_, opts)
-      opts.sources = require("astrocore").list_insert_unique(opts.servers, require("k.auto_lsp_nvim").for_none_ls())
+      opts.sources = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_none_ls())
     end,
   },
 
