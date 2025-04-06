@@ -154,7 +154,7 @@ return {
     },
   },
 
-  { "snacks.nvim", enabled = false, opts = { dashboard = { enabled = false } } }, -- disable entry dashboard by astronvim
+  { "snacks.nvim", opts = { dashboard = { enabled = false } } }, -- disable entry dashboard by astronvim
 
   { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
