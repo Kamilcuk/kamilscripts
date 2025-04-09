@@ -88,7 +88,7 @@ set wildmode=longest,list
 if v:version >= 800
 	set shortmess+=c
 endif
-set shortmess+=I " enable intro messages
+set shortmess-=I " enable intro messages
 
 set scrolloff=6
 
