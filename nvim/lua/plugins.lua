@@ -706,7 +706,7 @@ return {
     config = true,
   }, -- :Exrc* and other utilities
 
-  { "MagicDuck/grug-far.nvim", opts = {} }, -- find and replace plugin
+  { "MagicDuck/grug-far.nvim", enabled = vim.fn.has("nvim-0.10") == 1, opts = {} }, -- find and replace plugin
 
   {
     "astrocore",
