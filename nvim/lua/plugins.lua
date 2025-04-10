@@ -706,7 +706,7 @@ return {
     config = true,
   }, -- :Exrc* and other utilities
 
-  { "MagicDuck/grug-far.nvim", enabled = vim.fn.has("nvim-0.10") == 1, opts = {} }, -- find and replace plugin
+  { "MagicDuck/grug-far.nvim", enabled = vim.fn.has "nvim-0.10" == 1, opts = {} }, -- find and replace plugin
 
   {
     "astrocore",
@@ -739,6 +739,34 @@ return {
 
   "inkarkat/vim-AdvancedSorters", -- :Sort* :Recorder* :Uniq* Sorting of certain areas or by special needs.
   "michaeljsmith/vim-indent-object", -- objects ai ii aI iI , use in python
+
+  {
+    "nvzone/menu",
+    lazy = true,
+    dependencies = {
+      { "nvzone/volt", lazy = true },
+      {
+        "astrocore",
+        opts = function(_, opts)
+          local maps = opts.mappings
+          maps.n["<leader>m"] = {
+            function() require("menu").open "default" end,
+            desc = "Open menu",
+          }
+          maps.n["<RightMouse>"] = {
+            function()
+              require("menu.utils").delete_old_menus()
+              vim.cmd.exec '"normal! \\<RightMouse>"'
+              local buf = vim.api.nvim_win_get_buf(vim.fn.getmousepos().winid)
+              local options = vim.bo[buf].ft == "NvimTree" and "nvimtree" or "default"
+              require("menu").open(options, { mouse = true })
+            end,
+          }
+          maps.v["<RightMouse>"] = maps.n["<RightMouse>"]
+        end,
+      },
+    },
+  },
 
   -- }}}
 }
