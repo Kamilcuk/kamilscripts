@@ -16,8 +16,8 @@ end
 ---@field lsps string[]? All language server protocol configuration available in nvim-lspconfig.
 ---@field formatters string[]? All formatters configurations available in none-ls.nvim
 ---@field diagnostics string[]? All diagnostics utilities configurations available in none-ls.nvim
----@field accept_lsps string[]? An optional list of utilities to accept. Used to drastically reduce the startup time.
----@field ignore_lsps string[]? A list of ignored modules. They do not work mostly.
+---@field accept string[]? An optional list of utilities to accept. Used to drastically reduce the startup time.
+---@field ignore string[]? A list of ignored modules. They do not work mostly.
 -- Is it unclear to me how to properly handle like python3 -m module.
 -- I do not want to handle it, it would drastically increase startup time.
 ---@field ignore_executables string[]? List of ignored commands. Bottom line, this is a list of interpreters.
@@ -118,8 +118,8 @@ M.config = {
   write_good yamllint zsh
   ]],
 
-  accept_lsps = nil,
-  ignore_lsps = {
+  accept = nil,
+  ignore = {
     bufls = true, -- deprecated
     ruff_lsp = true, -- deprecated
     esbonio = true, -- python3
@@ -201,8 +201,8 @@ end
 function M._get_allowed(data, section, get_cmd)
   local ret = {}
   for _, name in ipairs(data) do
-    if not M.config.accept_lsps or M.config.accept_lsps[name] then
-      if not M.config.ignore_lsps or not M.config.ignore_lsps[name] then
+    if not M.config.accept or M.config.accept[name] then
+      if not M.config.ignore or not M.config.ignore[name] then
         local ok, mod = pcall(require, section .. "." .. name)
         if ok then
           local cmd = get_cmd(mod)

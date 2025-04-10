@@ -158,6 +158,20 @@ return {
 
   { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
+    "nvim-treesitter",
+    opts = {
+      highlight = {
+        disable = function(lang, buf)
+          local max_filesize = 300 * 1024 -- 300 KB
+          local max_lines = 5000
+          if vim.api.nvim_buf_line_count(buf) > max_lines then return true end
+          local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+          return ok and stats and stats.size > max_filesize
+        end,
+      },
+    },
+  },
+  {
     -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
     -- Disable to speed up on larger files.
     "vim-illuminate",
@@ -475,7 +489,11 @@ return {
   { import = "astrocommunity.lsp.nvim-lint" },
   { import = "astrocommunity.lsp.lspsaga-nvim" },
 
-  { "alllsp", dir = vim.fn.expand "~/.kamilscripts/nvim/lua/alllsp", opts = {} },
+  {
+    "alllsp",
+    dir = vim.fn.expand "~/.kamilscripts/nvim/lua/alllsp",
+    opts = { ignore = { black = true } },
+  },
   {
     "AstroNvim/astrolsp",
     opts = function(_, opts)

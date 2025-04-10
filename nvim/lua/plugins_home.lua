@@ -8,17 +8,27 @@ return {
 
   -- { import = "astrocommunity.completion.copilot-lua-cmp" }, -- github copilot.vim so much better
 
+  -- {
+  --   "github/copilot.vim",
+  --   init = function()
+  --     -- copilot accept on ctrl+e
+  --     vim.keymap.set("i", "<C-e>", 'copilot#Accept("\\<CR>")', {
+  --       silent = true,
+  --       expr = true,
+  --       replace_keycodes = false,
+  --     })
+  --     vim.g.copilot_no_tab_map = true
+  --   end,
+  -- },
+  { import = "astrocommunity.completion.avante-nvim" },
   {
-    "github/copilot.vim",
-    init = function()
-      -- copilot accept on ctrl+e
-      vim.keymap.set("i", "<C-e>", 'copilot#Accept("\\<CR>")', {
-        silent = true,
-        expr = true,
-        replace_keycodes = false,
-      })
-      vim.g.copilot_no_tab_map = true
-    end,
+    "avante.nvim",
+    opts = {
+      provider = "claude",
+      behavior = {
+        enable_claude_text_editor_tool_mode = true,
+      },
+    },
   },
 
   -- {
