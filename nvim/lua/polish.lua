@@ -173,17 +173,6 @@ nnoremap <leader>s i<CR><Esc>
 " Set tags for fugitive
 set tags^=./.git/tags;
 
-if 1
-	" use <leader>0X to switch to buffer number X
-	for i in range(1, 9)
-		exec printf('nmap <silent> <leader>0%d :b0%d<CR>', i, i)
-	endfor
-	" use <leader>XY to switch to buffer number XY
-	for i in range(1, 99)
-		exec printf('nmap <silent> <leader>%d :b%d<CR>', i, i)
-	endfor
-endif
-
 " Duplicate the bahavior of Home key as in Eclipse, that I'm used to.
 "jump to first non-whitespace on line, jump to begining of line if already at first non-whitespace
 "https://superuser.com/questions/301109/move-cursor-to-beginning-of-non-whitespace-characters-in-a-line-in-vim

@@ -328,6 +328,7 @@ return {
   },
 
   { import = "astrocommunity.editing-support.rainbow-delimiters-nvim" },
+  { "rainbow-delimiters.nvim", submodules = false },
   -- {
   --   "saghen/blink.pairs",
   --   version = "v0.2.0", -- (recommended) only required with prebuilt binaries
@@ -741,27 +742,25 @@ return {
   "michaeljsmith/vim-indent-object", -- objects ai ii aI iI , use in python
 
   {
-    "nvzone/menu",
-    lazy = true,
+    -- "nvzone/menu",
+    "kamilcuk/menu",
+    dir = (function()
+      local dir = vim.fn.fnamemodify("~/myprojects/menu", ":p")
+      if vim.fn.isdirectory(dir) then return dir end
+    end)(),
+    opts = {
+      border = true,
+      nested_space = 0,
+    },
     dependencies = {
-      { "nvzone/volt", lazy = true },
+      { "nvzone/volt" },
       {
         "astrocore",
         opts = function(_, opts)
+          local handler = require("menu").handler
           local maps = opts.mappings
-          maps.n["<leader>m"] = {
-            function() require("menu").open "default" end,
-            desc = "Open menu",
-          }
-          maps.n["<RightMouse>"] = {
-            function()
-              require("menu.utils").delete_old_menus()
-              vim.cmd.exec '"normal! \\<RightMouse>"'
-              local buf = vim.api.nvim_win_get_buf(vim.fn.getmousepos().winid)
-              local options = vim.bo[buf].ft == "NvimTree" and "nvimtree" or "default"
-              require("menu").open(options, { mouse = true })
-            end,
-          }
+          maps.n["<leader>m"] = { function() handler { mouse = false } end, desc = "Open menu" }
+          maps.n["<RightMouse>"] = { function() handler { mouse = true } end }
           maps.v["<RightMouse>"] = maps.n["<RightMouse>"]
         end,
       },
