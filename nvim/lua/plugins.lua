@@ -750,7 +750,7 @@ return {
     end)(),
     opts = {
       border = true,
-      nested_space = 0,
+      nested_col = 0,
     },
     dependencies = {
       { "nvzone/volt" },
