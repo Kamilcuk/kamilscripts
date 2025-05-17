@@ -353,10 +353,11 @@ return {
 
   -- Delay blink.cmp completion by 1 second.
   {
-    "Saghen/blink.cmp",
+    "blink.cmp",
     opts = function(_, opts)
       local delay_ms = 1000
       -- disable auto_show
+      opts.sources = opts.sources or {}
       opts.completion = opts.completion or {}
       opts.completion.menu = opts.completion.menu or {}
       opts.completion.menu.auto_show = false
@@ -365,6 +366,7 @@ return {
       assert(timer)
       vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
         callback = function()
+          if #vim.fn.expand "<cword>" < (opts.sources.min_keyword_length or 4) then return end
           timer:stop()
           timer:start(delay_ms or 1000, 0, function()
             timer:stop()
@@ -378,9 +380,20 @@ return {
     end,
   },
 
+  -- Disable UP and Down completion.
+  {
+    "blink.cmp",
+    opts = function(_, opts)
+      -- https://github.com/AstroNvim/AstroNvim/blob/91af3dc567ebf1a62916021f8094d5ffad848c7c/lua/astronvim/plugins/blink.lua#L92
+      opts.keymap = opts.keymap or {}
+      opts.keymap["<Up>"] = nil
+      opts.keymap["<Down>"] = nil
+    end,
+  },
+
   { import = "astrocommunity.completion.blink-cmp-tmux" },
-  -- Use tmux from all panels.
-  { "blink.cmp", opts = { sources = { providers = { tmux = { opts = { all_panes = true } } } } } },
+  -- Use tmux from all panels. Tmux should be last.
+  { "blink.cmp", opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } } },
 
   -- This is fine.
   -- { "blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
@@ -388,9 +401,21 @@ return {
   {
     "blink.cmp",
     opts = {
+      cmdline = {
+        completion = {
+          list = { selection = { preselect = false, auto_insert = false } },
+        },
+      },
+    },
+  },
+
+  {
+    "blink.cmp",
+    opts = {
       completion = {
         menu = {
           draw = {
+            -- When presetting completions, show where they are coming from.
             columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "kind" }, { "source_name" } },
           },
         },
@@ -398,88 +423,69 @@ return {
     },
   },
 
-  {
-    "Kaiser-Yang/blink-cmp-git",
-    lazy = true,
-    dependencies = { "nvim-lua/plenary.nvim" },
-    specs = {
-      "Saghen/blink.cmp",
-      optional = true,
-      opts = {
-        sources = {
-          default = { "git" },
-          providers = {
-            git = {
-              module = "blink-cmp-git",
-              name = "Git",
-            },
-          },
-        },
-      },
-    },
-  },
+  -- { import = "astrocommunity.completion.blink-cmp-git" },
 
-  {
-    "ribru17/blink-cmp-spell",
-    lazy = true,
-    specs = {
-      {
-        "Saghen/blink.cmp",
-        optional = true,
-        opts = {
-          sources = {
-            default = { "spell" },
-            providers = {
-              spell = {
-                name = "Spell",
-                module = "blink-cmp-spell",
-                opts = {
-                  -- EXAMPLE: Only enable source in `@spell` captures, and disable it
-                  -- in `@nospell` captures.
-                  enable_in_context = function()
-                    local curpos = vim.api.nvim_win_get_cursor(0)
-                    local captures = vim.treesitter.get_captures_at_pos(0, curpos[1] - 1, curpos[2] - 1)
-                    local in_spell_capture = false
-                    for _, cap in ipairs(captures) do
-                      if cap.capture == "spell" then
-                        in_spell_capture = true
-                      elseif cap.capture == "nospell" then
-                        return false
-                      end
-                    end
-                    return in_spell_capture
-                  end,
-                  use_cmp_spell_sorting = true,
-                },
-              },
-            },
-          },
-        },
-      },
-      -- {
-      --   "Saghen/blink.cmp",
-      --   optional = true,
-      --   opts = function(_, opts)
-      --     opts.fuzzy = opts.fuzzy or {}
-      --     -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
-      --     opts.fuzzy.sorts = opts.fuzzy.sorts or { "score", "sort_text" }
-      --     table.insert(
-      --       opts.fuzzy.sorts,
-      --       1,
-      --       -- It is recommended to put the "label" sorter as the primary sorter for the
-      --       -- spell source.
-      --       -- If you set use_cmp_spell_sorting to true, you may want to skip this step.
-      --       function(a, b)
-      --         if a.source_id == "spell" and b.source_id == "spell" then
-      --           return require("blink.cmp.fuzzy.sort").label(a, b)
-      --         end
-      --       end
-      --       -- Preserve normal default order, which we fall back to
-      --     )
-      --   end,
-      -- },
-    },
-  },
+  -- {
+  --   "ribru17/blink-cmp-spell",
+  --   lazy = true,
+  --   specs = {
+  --     {
+  --       "Saghen/blink.cmp",
+  --       optional = true,
+  --       opts = {
+  --         sources = {
+  --           default = { "spell" },
+  --           providers = {
+  --             spell = {
+  --               name = "Spell",
+  --               module = "blink-cmp-spell",
+  --               opts = {
+  --                 -- EXAMPLE: Only enable source in `@spell` captures, and disable it
+  --                 -- in `@nospell` captures.
+  --                 enable_in_context = function()
+  --                   local curpos = vim.api.nvim_win_get_cursor(0)
+  --                   local captures = vim.treesitter.get_captures_at_pos(0, curpos[1] - 1, curpos[2] - 1)
+  --                   local in_spell_capture = false
+  --                   for _, cap in ipairs(captures) do
+  --                     if cap.capture == "spell" then
+  --                       in_spell_capture = true
+  --                     elseif cap.capture == "nospell" then
+  --                       return false
+  --                     end
+  --                   end
+  --                   return in_spell_capture
+  --                 end,
+  --                 use_cmp_spell_sorting = true,
+  --               },
+  --             },
+  --           },
+  --         },
+  --       },
+  --     },
+  --     -- {
+  --     --   "Saghen/blink.cmp",
+  --     --   optional = true,
+  --     --   opts = function(_, opts)
+  --     --     opts.fuzzy = opts.fuzzy or {}
+  --     --     -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
+  --     --     opts.fuzzy.sorts = opts.fuzzy.sorts or { "score", "sort_text" }
+  --     --     table.insert(
+  --     --       opts.fuzzy.sorts,
+  --     --       1,
+  --     --       -- It is recommended to put the "label" sorter as the primary sorter for the
+  --     --       -- spell source.
+  --     --       -- If you set use_cmp_spell_sorting to true, you may want to skip this step.
+  --     --       function(a, b)
+  --     --         if a.source_id == "spell" and b.source_id == "spell" then
+  --     --           return require("blink.cmp.fuzzy.sort").label(a, b)
+  --     --         end
+  --     --       end
+  --     --       -- Preserve normal default order, which we fall back to
+  --     --     )
+  --     --   end,
+  --     -- },
+  --   },
+  -- },
 
   { import = "astrocommunity.lsp.garbage-day-nvim" },
   -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- replaced by lspsaga rename
