@@ -398,16 +398,16 @@ return {
   -- This is fine.
   -- { "blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
 
-  {
-    "blink.cmp",
-    opts = {
-      cmdline = {
-        completion = {
-          list = { selection = { preselect = false, auto_insert = false } },
-        },
-      },
-    },
-  },
+  -- {
+  --   "blink.cmp",
+  --   opts = {
+  --     cmdline = {
+  --       completion = {
+  --         list = { selection = { preselect = false, auto_insert = false } },
+  --       },
+  --     },
+  --   },
+  -- },
 
   {
     "blink.cmp",

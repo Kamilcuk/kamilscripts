@@ -464,6 +464,21 @@ C_bisect_steps() {
 		perl -MPOSIX -lne 'print "Bisecting: ".floor(($_-1)/2)." revisions left to test after this (roughly ".(floor(log($_-1)/log(2))-1)." steps)" if $_'
 }
 
+C_extract_one_file_from_repository() {
+	local files=() args=()
+	L_argparse description="
+		Extract one file with commit history from repository.
+		https://stackoverflow.com/questions/7375528/how-to-extract-one-file-with-commit-history-from-a-git-repo-with-index-filter
+		" -- -f action=append_const dest=args const=-f -- files nargs=+ ---- "$@"
+	export FILES="${files[*]}"
+	L_setx git filter-branch "${args[@]}" --index-filter '
+		git read-tree --empty
+		git reset $GIT_COMMIT -- $FILES
+  ' -- --all -- $FILES
+}
+
+
+
 ###############################################################################
 
 . L_lib.sh
