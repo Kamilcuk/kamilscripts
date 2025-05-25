@@ -20,14 +20,47 @@ return {
   --     vim.g.copilot_no_tab_map = true
   --   end,
   -- },
-  { import = "astrocommunity.completion.avante-nvim" },
+  -- { import = "astrocommunity.completion.avante-nvim" },
+  -- {
+  --   "avante.nvim",
+  --   opts = {
+  --     provider = "claude",
+  --     behavior = {
+  --       enable_claude_text_editor_tool_mode = true,
+  --     },
+  --   },
+  -- },
+
+  -- This is chat api
+  { import = "astrocommunity/completion/minuet-ai-nvim" },
   {
-    "avante.nvim",
+    "minuet-ai.nvim",
+    enabled = vim.env.TOGETHER_API_KEY,
     opts = {
-      provider = "claude",
-      behavior = {
-        enable_claude_text_editor_tool_mode = true,
+      provider = "openai_fim_compatible",
+      n_completions = 1,
+      provider_options = {
+        openai_fim_compatible = {
+          api_key = "TOGETHER_API_KEY",
+          name = "Ollama",
+          end_point = "https://api.together.xyz/v1/completions",
+          model = "Qwen/Qwen2.5-Coder-32B-Instruct",
+          optional = {
+            max_tokens = 56,
+            top_p = 0.9,
+          },
+        },
       },
+      cmp = { enable_auto_complete = false },
+      blink = { enable_auto_complete = false },
+      virtualtext = {
+        auto_trigger_ft = { "*" },
+        keymap = {
+          accept = "<C-e>",
+        },
+      },
+      throttle = 3000,
+      debounce = 500,
     },
   },
 
