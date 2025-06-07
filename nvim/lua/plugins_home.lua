@@ -20,16 +20,26 @@ return {
   --     vim.g.copilot_no_tab_map = true
   --   end,
   -- },
-  -- { import = "astrocommunity.completion.avante-nvim" },
-  -- {
-  --   "avante.nvim",
-  --   opts = {
-  --     provider = "claude",
-  --     behavior = {
-  --       enable_claude_text_editor_tool_mode = true,
-  --     },
-  --   },
-  -- },
+
+  { import = "astrocommunity.completion.avante-nvim" },
+  {
+    "avante.nvim",
+    enabled = vim.env.TOGETHER_API_KEY,
+    opts = {
+      -- provider = "claude",
+      -- behavior = { enable_claude_text_editor_tool_mode = true },
+      provider = "together",
+      providers = {
+        together = {
+          __inherited_from = "openai",
+          endpoint = "https://api.together.xyz/v1/",
+          api_key_name = "TOGETHER_API_KEY",
+          model = "Qwen/QwQ-32B",
+        },
+      },
+    },
+  },
+
 
   -- This is chat api
   { import = "astrocommunity/completion/minuet-ai-nvim" },
@@ -58,6 +68,7 @@ return {
         keymap = {
           accept = "<C-e>",
         },
+        show_on_completion_menu = true,
       },
       throttle = 3000,
       debounce = 500,
