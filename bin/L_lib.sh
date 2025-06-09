@@ -22,10 +22,11 @@
 # Globals [[[
 # @section globals
 # @description some global variables
-# @note stable
 
 # @description Version of the library
-L_LIB_VERSION=0.1.9
+L_LIB_VERSION=0.1.10
+# @description The location of L_lib.sh file
+L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
 L_NAME=${0##*/}
 if [[ "$0" == */* ]]; then
@@ -43,7 +44,6 @@ fi
 # Variables without `L_ANSI_` prefix are set or empty depending on `L_color_detect function.
 # The `L_color_detect` function can be used to detect if the terminal and user wishes to have output with colors.
 # @example echo "$L_RED""hello world""$L_RESET"
-# @note stable
 
 # @description Text to be evaled to enable colors.
 _L_COLOR_SWITCH="
@@ -318,7 +318,6 @@ L_ansi_24bit_bg() { printf '\E[48;2;%d;%d;%dm' "$@"; }
 # has [[[
 # @section has
 # @description Set of integer variables for checking if Bash has specific feature.
-# @note stable
 
 # Bash version expressed as a hexadecimal integer variable with digits 0xMMIIPP,
 # where MM is major part, II is minor part and PP is patch part of version.
@@ -366,6 +365,7 @@ L_HAS_MAPFILE_D=$L_HAS_BASH4_4
 # @description The declare builtin no longer displays array variables using the compound
 # assignment syntax with quotes; that will generate warnings when re-used as
 # input, and isn't necessary.
+# Declare -p on Bash<4.4 adds extra $'\001' before $'\001' and $'\177' bytes.
 L_HAS_DECLARE_WITH_NO_QUOTES=$L_HAS_BASH4_4
 # @description Bash 4.3 introduced declare -n nameref
 L_HAS_NAMEREF=$L_HAS_BASH4_3
@@ -380,7 +380,7 @@ L_HAS_EXTGLOB_IN_TESTTEST=$L_HAS_BASH4_1
 L_HAS_TEST_V=$L_HAS_BASH4_1
 # @description `printf -v' can now assign values to array indices.
 L_HAS_PRINTF_V_ARRAY=$L_HAS_BASH4_1
-# @description Bash 4.0 introduced declare -A var=$([a]=b)
+# @description Bash 4.0 introduced declare -A var=([a]=b)
 L_HAS_ASSOCIATIVE_ARRAY=$L_HAS_BASH4_0
 # @description Bash 4.0 introduced mapfile
 L_HAS_MAPFILE=$L_HAS_BASH4_0
@@ -417,12 +417,18 @@ L_HAS_ARRAY=$L_HAS_BASH1_14_7
 # stdlib [[[
 # @section stdlib
 # @description Some base simple definitions for every occasion.
-# @note stable
 
-L_assert_fail() {
+
+# @description Print stacktrace, the message and exit.
+# @arg $1 Message to print.
+# @example test -r file || L_die "File does not exist"
+# @see L_assert
+# @see L_exit
+# @see L_check
+L_die() {
 	set +x
-	L_print_traceback >&2
-	printf "%s: assertion (%s) failed%s\n" "$L_NAME" "$(L_quote_printf "${@:2}")" "${1:+: $1}" >&2
+	L_print_traceback 1 >&2
+	printf "%s\n" "$*" >&2
 	exit 249
 }
 
@@ -443,7 +449,36 @@ L_assert_fail() {
 #   L_assert 'var has to matcha glob' L_glob_match "$var" "*glob*"
 L_assert() {
 	if ! "${@:2}"; then
-		L_assert_fail "$@"
+		L_die "$L_NAME: ERROR: assertion ($(L_quote_printf "${@:2}")) failed${1:+: $1}"
+	fi
+}
+
+# @description If argument is not given, then exit with 0.
+# If the argument exists, print the message to standard error and exit with 1
+# @example test -r file || L_exit "file is not readable"
+# @see L_die
+# @see L_assert
+# @see L_check
+L_exit() {
+	if [[ -n "$*" ]]; then
+		set +x
+		printf "%s\n" "$*" >&2
+		exit 1
+	else
+		exit 0
+	fi
+}
+
+# @descrpition If command fails, print a message and exit with 1.
+# Check L_assert for more info.
+# The difference is, L_assert prints the error message and stacktrace on error.
+# Thid function only prints the error message with program name on error.
+# @see L_die
+# @see L_assert
+# @see L_check
+L_check() {
+	if ! "${@:2}"; then
+		L_exit "$L_NAME: ERROR: $1"
 	fi
 }
 
@@ -465,14 +500,14 @@ L_regex_match() { [[ "$1" =~ $2 ]]; }
 # @description Produce a string that is a regex escaped version of the input.
 # @option -v <var> variable to set
 # @arg $@ string to escape
-L_regex_escape() { L_handle_v "$@"; }
+L_regex_escape() { L_handle_v_scalar "$@"; }
 L_regex_escape_v() { L_v=${*//?/[&]}; }
 
 # @description Get all matches of a regex to an array.
 # @option -v <var> variable to set
 # @arg $1 string to match
 # @arg $2 regex to match
-L_regex_findall() { L_handle_v "$@"; }
+L_regex_findall() { L_handle_v_array "$@"; }
 L_regex_findall_v() {
 	L_v=()
 	while L_regex_match "$1" "($2)(.*)"; do
@@ -564,13 +599,13 @@ L_unsetx() {
 else
 	L_setx() {
 		# shellcheck disable=SC2064
-		trap "$(shopt -po xtrace)" RETURN
+		trap "$(shopt -po xtrace || :)" RETURN
 		set -x
 		"$@"
 	}
 	L_unsetx() {
 		# shellcheck disable=SC2064
-		trap "$(shopt -po xtrace)" RETURN
+		trap "$(shopt -po xtrace || :)" RETURN
 		set +x
 		"$@"
 	}
@@ -605,7 +640,7 @@ fi
 # @description Produce a string that is a glob escaped version of the input.
 # @option -v <var> variable to set
 # @arg $@ string to escape
-L_glob_escape() { L_handle_v "$@"; }
+L_glob_escape() { L_handle_v_scalar "$@"; }
 L_glob_escape_v() { L_v="${*//[[?*\]/[&]}"; }  # $[
 
 # @description Return 0 if the argument is a function
@@ -653,6 +688,10 @@ L_var_is_notnull() { [[ -n "${!1:+yes}" ]]; }
 
 if ((0 && L_HAS_QEPAa_EXPANSIONS)); then
 	# These do not work with unset variables under set -u, instead the shell exits.
+	# These do not work on __unset__ but declared variables.
+	# For example: declere -A var
+	# Is already a variable, but it is not set.
+	# But if a varible is not declared, then @a will _exit_ the shell.
 	# If calling a subshell, you might as well just call declare.
 	L_var_is_notarray() { [[ "${!1@a}" != *[aA]* ]]; }
 	L_var_is_array() { [[ "${!1@a}" == *a* ]]; }
@@ -694,80 +733,166 @@ L_raise() { kill -s "$1" "${BASHPID:-$$}"; }
 # @description Wrapper function for handling -v arguments to other functions.
 # It calls a function called `<caller>_v` with arguments, but without `-v <var>`.
 # The function `<caller>_v` should set the variable nameref L_v to the returned value.
-#   just: L_v=$value
-#   or: L_v=(a b c)
-# When the caller function is called without -v, the values of L_v is printed to stdout with a newline.
+# When the caller function is called without -v, the value of L_v is printed to stdout with a newline.
 # Otherwise, the value is a nameref to user requested variable and nothing is printed.
+#
+# The fucntion L_handle_v_scalar handles only scalar value of `L_v` or 0-th index of `L_v` array.
+# To assign an array, prefer L_handle_v_array.
+#
 # @option -v <var> variable to set
 # @arg $@ arbitrary function arguments
 # @exitcode Whatever exitcode does the `<caller>_v` funtion exits with.
 # @example:
-#    L_hello() { L_handle_v "$@"; }
+#    L_hello() { L_handle_v_arr "$@"; }
+#    L_hello_v() { L_v="hello world"; }
+#    L_hello          # outputs 'hello world'
+#    L_hello -v var   # assigns var="hello world"
+# @see L_handle_v_array
+# shellcheck disable=SC2317
+L_handle_v_scalar() {
+	local L_v
+	case "${1:-}" in
+	-v?*)
+		if [[ "${2:-}" == -- ]]; then
+			if "${FUNCNAME[1]}"_v "${@:3}"; then
+				printf -v "${1##-v}" "%s" "${L_v:-}" || return $?
+			else
+				local _L_r=$?
+				printf -v "${1##-v}" "%s" "${L_v:-}" || return $?
+				return "$_L_r"
+			fi
+		else
+			if "${FUNCNAME[1]}"_v "${@:2}"; then
+				printf -v "${1##-v}" "%s" "${L_v:-}" || return $?
+			else
+				local _L_r=$?
+				printf -v "${1##-v}" "%s" "${L_v:-}" || return $?
+				return "$_L_r"
+			fi
+		fi
+		;;
+	-v)
+		if [[ "${3:-}" == -- ]]; then
+			if "${FUNCNAME[1]}"_v "${@:4}"; then
+				printf -v "$2" "%s" "${L_v:-}" || return $?
+			else
+				local _L_r=$?
+				printf -v "$2" "%s" "${L_v:-}" || return $?
+				return "$_L_r"
+			fi
+		else
+			if "${FUNCNAME[1]}"_v "${@:3}"; then
+				printf -v "$2" "%s" "${L_v:-}" || return $?
+			else
+				local _L_r=$?
+				printf -v "$2" "%s" "${L_v:-}" || return $?
+				return "$_L_r"
+			fi
+		fi
+		;;
+	--)
+		if "${FUNCNAME[1]}"_v "${@:2}"; then
+			${L_v+printf} ${L_v+"%s\n"} ${L_v+"$L_v"} || return $?
+		else
+			local _L_r=$?
+			${L_v+printf} ${L_v+"%s\n"} ${L_v+"$L_v"} || return $?
+			return "$_L_r"
+		fi
+		;;
+	*)
+		if "${FUNCNAME[1]}"_v "$@"; then
+			${L_v+printf} ${L_v+"%s\n"} ${L_v+"$L_v"} || return $?
+		else
+			local _L_r=$?
+			${L_v+printf} ${L_v+"%s\n"} ${L_v+"$L_v"} || return $?
+			return "$_L_r"
+		fi
+	esac
+}
+
+# @description Version of L_handle_v_scalar for arrays.
+# The options and arguments and exitcode is the same as L_handle_v_scalar.
+#
+# This additionally supports assignment to arrays. This is not possible with L_handle_v_scalar.
+#
+# The function L_handle_v_scalar is slightly faster and uses `printf -v` to assign the result.
+# On newer Bash, `printf -v` can assign to array and associative arrays variable indexes.
+#
+# In constract, `L_handle_v_array` has to first assert if the string is a valid variable name.
+# Only then it uses `eval` with an array assignment syntax to assign the result to the user requsted variable.
+#
+# @example:
+#    L_hello() { L_handle_v_arr "$@"; }
 #    L_hello_v() { L_v=(hello world); }
 #    L_hello          # outputs two lines 'hello' and 'world'
 #    L_hello -v var   # assigns var=(hello world)
-L_handle_v() {
-	local L_v _L_r=0
+# @see L_handle_v_scalar.
+# shellcheck disable=SC2317
+L_handle_v_array() {
+	local L_v
 	case "${1:-}" in
 	-v?*)
 		if ! L_is_valid_variable_name "${1##-v}"; then
-			L_assert_fail "not a valid identifier: ${1##-v}" || return $?
+			L_die "not a valid identifier: ${1##-v}" || return $?
 		fi
 		if [[ "${2:-}" == -- ]]; then
-			"${FUNCNAME[1]}"_v "${@:3}" || _L_r=$?
+			if "${FUNCNAME[1]}"_v "${@:3}"; then
+				eval "${1##-v}"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+			else
+				local _L_r=$?
+				eval "${1##-v}"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+				return "$_L_r"
+			fi
 		else
-			"${FUNCNAME[1]}"_v "${@:2}" || _L_r=$?
+			if "${FUNCNAME[1]}"_v "${@:2}"; then
+				eval "${1##-v}"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+			else
+				local _L_r=$?
+				eval "${1##-v}"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+				return "$_L_r"
+			fi
 		fi
-		eval "${1##-v}"'=(${L_v[@]+"${L_v[@]}"})'
 		;;
 	-v)
 		if ! L_is_valid_variable_name "${2:-}"; then
-			L_assert_fail "not a valid identifier: $2"
+			L_die "not a valid identifier: $2"
 		fi
 		if [[ "${3:-}" == -- ]]; then
-			"${FUNCNAME[1]}"_v "${@:4}" || _L_r=$?
+			if "${FUNCNAME[1]}"_v "${@:4}"; then
+				eval "$2"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+			else
+				local _L_r=$?
+				eval "$2"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+				return "$_L_r"
+			fi
 		else
-			"${FUNCNAME[1]}"_v "${@:3}" || _L_r=$?
+			if "${FUNCNAME[1]}"_v "${@:3}"; then
+				eval "$2"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+			else
+				local _L_r=$?
+				eval "$2"'=(${L_v[@]+"${L_v[@]}"})' || return $?
+				return "$_L_r"
+			fi
 		fi
-		eval "$2"'=(${L_v[@]+"${L_v[@]}"})'
 		;;
 	--)
-		"${FUNCNAME[1]}"_v "${@:2}" || _L_r=$?
-		${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"}
+		if "${FUNCNAME[1]}"_v "${@:2}"; then
+			${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"} || return $?
+		else
+			local _L_r=$?
+			${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"} || return $?
+			return "$_L_r"
+		fi
 		;;
 	*)
-		"${FUNCNAME[1]}"_v "$@" || _L_r=$?
-		${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"}
-	esac ||
-		return $? &&
-		return "$_L_r"
-}
-
-# @description L_handle_v implementation using getopts. I think it is slower.
-_L_handle_v_getopts() {
-	local OPTIND OPTARG OPTERR L_v=() _L_r=0 _L_v=""
-	while getopts v: _L_r; do
-		case $_L_r in
-		v) _L_v="$OPTARG" ;;
-		?) printf "Usage: %s [-v var] args ...\n" "${FUNCNAME[1]}" >&2; exit 2 ;;
-		esac
-	done
-	shift "$((OPTIND-1))"
-	"${FUNCNAME[1]}"_v "$@" || _L_r=$?
-	case "${#L_v[@]}/$_L_v" in
-	*/)
-		${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"} ;;
-	0/*)
-		if L_var_is_array "$_L_v"; then eval "$_L_v=()"; fi ;;
-	1/*)
-		printf -v "$_L_v" "%s" "${L_v:-}" ;;
-	*/*)
-		if ! L_is_valid_variable_name "$2"; then
-			L_assert_fail "not a valid identifier: $2"
+		if "${FUNCNAME[1]}"_v "$@"; then
+			${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"} || return $?
+		else
+			local _L_r=$?
+			${L_v[@]+printf} ${L_v[@]+"%s\n"} ${L_v[@]+"${L_v[@]}"} || return $?
+			return "$_L_r"
 		fi
-		eval "$2"'=("${L_v[@]}")'
-	esac &&
-	return "$_L_r"
+	esac
 }
 
 # shellcheck disable=SC2059
@@ -858,16 +983,6 @@ L_sudo() {
 	L_run "${sudo[@]}" "$@"
 }
 
-# @option -v <var> var
-# @arg $1 path
-L_basename() { L_handle_v "$@"; }
-L_basename_v() { L_v=${*##*/}; }
-
-# @option -v <var> var
-# @arg $1 path
-L_dirname() { L_handle_v "$@"; }
-L_dirname_v() { case "$*" in [./]) L_v=$* ;; */*) L_v=${*%/*} ;; esac }
-
 # ]]]
 # exit_to [[[
 # @section exit_to
@@ -927,7 +1042,128 @@ L_exit_to_10() {
 # path [[[
 # @section path
 
-# @description Append a path to path variable is not already there.
+# @description The filename
+# @option -v <var> var
+# @arg $1 path
+L_basename() { L_handle_v_scalar "$@"; }
+L_basename_v() { L_v=${*##*/}; }
+
+# @description parent of the path
+# @option -v <var> var
+# @arg $1 path
+L_dirname() { L_handle_v_scalar "$@"; }
+L_dirname_v() {
+	case "$*" in
+	..) L_v=. ;;
+	?*/*) L_v=${*%/*} ;;
+	/*) L_v=/ ;;
+	*) L_v=. ;;
+	esac
+}
+
+# @description The last dot-separated portion of the final component, if any.
+# @option -v <var> var
+# @arg $1 path
+# @see https://en.cppreference.com/w/cpp/filesystem/path/extension.html
+L_extension() { L_handle_v_scalar "$@"; }
+L_extension_v() {
+	L_basename_v "$*"
+	case $L_v in
+	.|..) L_v="" ;;
+	?*.*) L_v=.${L_v##*.} ;;
+	*) L_v="" ;;
+	esac
+}
+
+# @description A list of the path’s suffixes, often called file extensions.
+# @option -v <var> var
+# @arg $1 path
+# @see https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.suffixes
+L_extensions() { L_handle_v_array "$@"; }
+L_extensions_v() {
+	local _L_ext=""
+	while
+		L_extension -v _L_ext "$*"
+		[[ -n "$_L_ext" ]]
+	do
+		L_v=( "$_L_ext" ${L_v[@]:+"${L_v[@]}"} )
+		set -- "${*%"$_L_ext"}"
+	done
+}
+
+# @description The final path component, without its suffix:
+# @option -v <var> var
+# @arg $1 path
+# @see https://en.cppreference.com/w/cpp/filesystem/path/stem
+L_stem() { L_handle_v_scalar "$@"; }
+L_stem_v() {
+	L_basename_v "$*"
+	case $L_v in
+	.|..) ;;
+	?*.*) L_v=${L_v%.*} ;;
+	esac
+}
+
+# @description Return whether the path is absolute or not.
+L_is_absolute() { [[ "${1::1}" == / ]]; }
+
+# @description Replace multiple slashes by one slash.
+# @option -v <var> var
+# @arg $1 path
+L_normalize_path() { L_handle_v_scalar "$@"; }
+# shellcheck disable=SC2064
+L_normalize_path_v() {
+	trap "$(shopt -p extglob || :)" RETURN
+	shopt -s extglob
+	L_v=${1//+(\/)/\/}
+}
+# L_normalize_path_v() {
+# 	L_v=$1
+# 	while [[ "$L_v" == *"//"* ]]; do
+# 		L_v=${L_v//\/\//\/}
+# 	done
+# }
+
+# @description Compute a version of the original path relative to the path represented by other path.
+# @option -v <var> var
+# @arg $1 original path
+# @arg $2 other path
+# @see https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.relative_to
+# @see https://stackoverflow.com/a/12498485/9072753
+L_relative_to() { L_handle_v_scalar "$@"; }
+# shellcheck disable=SC2179
+L_relative_to_v() {
+  local _L_current="${1:+"$2"}"
+  local _L_target="${1:-"$2"}"
+  if [[ "$_L_target" == . ]]; then
+  	_L_target=/
+  else
+  	_L_target="/${_L_target##/}"
+  fi
+  if [[ "$_L_current" == . ]]; then
+  	_L_current=/
+  else
+  	_L_current="${_L_current:="/"}"
+  	_L_current="/${_L_current##/}"
+  fi
+  local _L_appendix="${_L_target##/}"
+  L_v=''
+  while
+    _L_appendix="${_L_target#"$_L_current"/}"
+    [[ "$_L_current" != '/' && "$_L_appendix" == "$_L_target" ]]
+  do
+    if [ "$_L_current" = "$_L_appendix" ]; then
+      L_v="${L_v:-.}"
+      L_v="${L_v#/}"
+      return 0
+    fi
+    _L_current="${_L_current%/*}"
+    L_v+="${L_v:+/}.."
+  done
+  L_v+="${L_v:+${_L_appendix:+/}}${_L_appendix#/}"
+}
+
+# @description Append a path to path variable if not already there.
 # @arg $1 Variable name. For example PATH
 # @arg $2 Path to append. For example /usr/bin
 # @arg [$3] Optional path separator. Default: ':'
@@ -969,7 +1205,6 @@ L_path_remove() {
 # string [[[
 # @section string
 # @description Collection of functions to manipulate strings.
-# @note stable
 
 # @description Return 0 if the string happend to be something like true.
 # Return 0 when argument is case-insensitive:
@@ -1159,7 +1394,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 # @description Output a string with the same quotating style as does bash in set -x
 # @option -v <var> variable to set
 # @arg $@ arguments to quote
-L_quote_setx() { L_handle_v "$@"; }
+L_quote_setx() { L_handle_v_scalar "$@"; }
 L_quote_setx_v() {
 	L_v=$(
 		{ BASH_XTRACEFD=2 PS4='+ '; set -x; } 2>/dev/null >&2
@@ -1174,18 +1409,18 @@ L_quote_setx_v() {
 # Use this for more arguments, like `printf -v var "%q " "$@"` results in a trailing space.
 # @option -v <var> variable to set
 # @arg $@ arguments to quote
-L_quote_printf() { L_handle_v "$@"; }
+L_quote_printf() { L_handle_v_scalar "$@"; }
 L_quote_printf_v() { printf -v L_v " %q" "$@"; L_v=${L_v:1}; }
 
 # @description Output a string with the same quotating style as does /bin/printf
 # @option -v <var> variable to set
 # @arg $@ arguments to quote
-L_quote_bin_printf() { L_handle_v "$@"; }
+L_quote_bin_printf() { L_handle_v_scalar "$@"; }
 L_quote_bin_printf_v() { L_v=$(exec printf " %q" "$@"); L_v=${L_v:1}; }
 
 # @description Convert a string to a number.
 # @option -v <var> variable to set
-L_strhash() { L_handle_v "$@"; }
+L_strhash() { L_handle_v_scalar "$@"; }
 L_strhash_v() {
 	if L_hash cksum; then
 		L_v=$(cksum <<<"$*")
@@ -1204,7 +1439,7 @@ L_strhash_v() {
 
 # @description Convert a string to a number in pure bash.
 # @option -v <var> variable to set
-L_strhash_bash() { L_handle_v "$@"; }
+L_strhash_bash() { L_handle_v_scalar "$@"; }
 L_strhash_bash_v() {
 	local _L_c
 	L_v=0
@@ -1224,22 +1459,22 @@ L_strstr() {
 # @description
 # @option -v <var> variable to set
 # @arg $1 String to operate on.
-L_strupper() { L_handle_v "$@"; }
+L_strupper() { L_handle_v_scalar "$@"; }
 
 # @description
 # @option -v <var> variable to set
 # @arg $1 String to operate on.
-L_strlower() { L_handle_v "$@"; }
+L_strlower() { L_handle_v_scalar "$@"; }
 
 # @description Capitalize first character of a string.
 # @option -v <var> variable to set
 # @arg $1 String to operate on
-L_capitalize() { L_handle_v "$@"; }
+L_capitalize() { L_handle_v_scalar "$@"; }
 
 # @description Lowercase first character of a string.
 # @option -v <var> variable to set
 # @arg $1 String to operate on
-L_uncapitalize() { L_handle_v "$@"; }
+L_uncapitalize() { L_handle_v_scalar "$@"; }
 
 if ((L_HAS_LOWERCASE_UPPERCASE_EXPANSION)); then
 	L_strupper_v() { L_v=${1^^}; }
@@ -1311,7 +1546,7 @@ fi
 # @option -v <var> variable to set
 # @arg $1 <str> String to operate on.
 # @arg [$2] <str> Optional glob to strip, default is [:space:]
-L_strip() { L_handle_v "$@"; }
+L_strip() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC2295
 L_strip_v() {
 	L_v=${1#"${1%%[!${2:-[:space:]}]*}"}
@@ -1322,7 +1557,7 @@ L_strip_v() {
 # @option -v <var> variable to set
 # @arg $1 <str> String to operate on.
 # @arg [$2] <str> Optional glob to strip, default is [:space:]
-L_lstrip() { L_handle_v "$@"; }
+L_lstrip() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC2295
 L_lstrip_v() {
 	L_v="${1#"${1%%[!${2:-[:space:]}]*}"}"
@@ -1332,7 +1567,7 @@ L_lstrip_v() {
 # @option -v <var> variable to set
 # @arg $1 String to operate on.
 # @arg [$2] <str> Optional glob to strip, default is [:space:]
-L_rstrip() { L_handle_v "$@"; }
+L_rstrip() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC2295
 L_rstrip_v() {
 	# shellcheck disable=SC2295
@@ -1343,7 +1578,7 @@ L_rstrip_v() {
 # @description list functions with prefix
 # @option -v <var> variable to set
 # @arg $1 prefix
-L_list_functions_with_prefix() { L_handle_v "$@"; }
+L_list_functions_with_prefix() { L_handle_v_array "$@"; }
 # shellcheck disable=SC2207
 L_list_functions_with_prefix_v() {
 	local IFS=$'\n'
@@ -1354,7 +1589,7 @@ L_list_functions_with_prefix_v() {
 # @option -v <var> var
 # @arg $1 prefix
 # @see L_list_functions_with_prefix
-L_list_functions_with_prefix_removed() { L_handle_v "$@"; }
+L_list_functions_with_prefix_removed() { L_handle_v_array "$@"; }
 L_list_functions_with_prefix_removed_v() {
 	L_list_functions_with_prefix_v "$@"
 	L_v=("${L_v[@]/#"$1"}")
@@ -1368,7 +1603,7 @@ L_list_functions_with_prefix_removed_v() {
 # @example
 #    L_json_escape -v tmp "some string"
 #    echo "{\"key\":$tmp}" | jq .
-L_json_escape() { L_handle_v "$@"; }
+L_json_escape() { L_array_handle_v "$@"; }
 L_json_escape_v() {
 	L_v=$*
 	L_v=${L_v//\\/\\\\}
@@ -1413,7 +1648,7 @@ L_json_escape_v() {
 # @option -v <var> Store the result in the array var.
 # @arg $1 prefix
 # @arg $@ elements
-L_abbreviation() { L_handle_v "$@"; }
+L_abbreviation() { L_handle_v_array "$@"; }
 L_abbreviation_v() {
 	local cur=$1 IFS=$'\n'
 	shift
@@ -1480,7 +1715,7 @@ L_float_cmp() {
 #   name=John
 #   declare -A age=([John]=42)
 #   L_percent_format "Hello, %(name)s! You are %(age[John])10s years old.\n"
-L_percent_format() { L_handle_v "$@"; }
+L_percent_format() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC2059
 L_percent_format_v() {
 	local _L_fmt=$1 _L_args=("")
@@ -1507,7 +1742,7 @@ L_percent_format_v() {
 #  name=John
 #  declare -A age=([John]=42)
 #  L_fstring 'Hello, {name}! You are {age[John]:10s} years old.\n'
-L_fstring() { L_handle_v "$@"; }
+L_fstring() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC2059
 L_fstring_v() {
 	local _L_fmt="$*" _L_args=("") _L_tmp
@@ -1535,7 +1770,7 @@ L_fstring_v() {
 
 # @description Convert a string to hex dump.
 # @option -v <var> Output variable
-L_hexdump() { L_handle_v "$@"; }
+L_hexdump() { L_handle_v_scalar "$@"; }
 L_hexdump_v() {
 	if L_hash xxd; then
 		L_v=$(printf "%s" "$*" | xxd -p)
@@ -1550,7 +1785,7 @@ L_hexdump_v() {
 
 # @description Encode a string in percent encoding.
 # @option -v <var> Output variable
-L_urlencode() { L_handle_v "$@"; }
+L_urlencode() { L_handle_v_scalar "$@"; }
 L_urlencode_v() {
 	local _L_i _L_a="$*" LC_ALL=C _L_c
 	L_v=""
@@ -1565,7 +1800,7 @@ L_urlencode_v() {
 
 # @description Decode percent encoding.
 # @option -v <var> Output variable
-L_urldecode() { L_handle_v "$@"; }
+L_urldecode() { L_handle_v_scalar "$@"; }
 L_urldecode_v() {
 	local _L_a="$*" LC_ALL=C
 	L_v=""
@@ -1580,7 +1815,7 @@ L_urldecode_v() {
 
 # @description Escape characters for html.
 # @option -v <var> Output variable
-L_html_escape() { L_handle_v "$@"; }
+L_html_escape() { L_handle_v_scalar "$@"; }
 L_html_escape_v() {
 	L_v="$*"
 	L_v=${L_v//"&"/"&amp;"}
@@ -1599,7 +1834,7 @@ L_html_escape_v() {
 # @note I think this should be removed.
 # @example L_str_replace -v string "$string" "&" "&amp;" "<" "&lt;"
 # @see L_html_escape
-L_str_replace() { L_handle_v "$@"; }
+L_str_replace() { L_handle_v_scalar "$@"; }
 L_str_replace_v() {
 	L_v="$1"
 	shift
@@ -1613,7 +1848,7 @@ L_str_replace_v() {
 # @option -v <var> Output variable
 # @arg $1 String.
 # @arg $2 Character to count in string.
-L_str_count() { L_handle_v "$@"; }
+L_str_count() { L_handle_v_scalar "$@"; }
 L_str_count_v() {
 	# This method is _MUCH_ faster then using [^"$2"].
 	L_v="${1//"$2"}"
@@ -1629,7 +1864,7 @@ L_str_count_v() {
 # @option -v <var> Output variable
 # @arg $1 <var array nameref
 # @example L_array_len arr
-L_array_len() { L_handle_v "$@"; }
+L_array_len() { L_handle_v_scalar "$@"; }
 
 if ((L_HAS_NAMEREF)); then
 
@@ -1854,7 +2089,7 @@ L_array_filter_eval() {
 #   arr=("Hello" "World")
 #   L_array_join -v res arr ", "
 #   echo "$res"  # prints Hello, World
-L_array_join() { L_handle_v "$@"; }
+L_array_join() { L_handle_v_scalar "$@"; }
 L_array_join_v() {
 	local _L_arr="$1[@]"
 	L_args_join_v "$2" ${!_L_arr:+"${!_L_arr}"}
@@ -1864,11 +2099,46 @@ L_array_join_v() {
 # @option -v <var> Output variable
 # @arg $1 <var> array nameref
 # @see L_args_andjoin
-L_array_andjoin() { L_handle_v "$@"; }
+L_array_andjoin() { L_handle_v_scalar "$@"; }
 L_array_andjoin_v() {
 	local _L_arr="$1[@]"
 	L_args_andjoin_v ${!_L_arr+"${!_L_arr}"}
 }
+
+# @description Serialize an array to string representation.
+# @option -v <var> Output variable
+# @arg $1 <var> array nameref
+# @see L_array_from_string
+L_array_to_string() { L_handle_v_scalar "$@"; }
+L_array_to_string_v() {
+	L_v=$(LC_ALL=C declare -p "$1")
+}
+
+if ((L_HAS_DECLARE_WITH_NO_QUOTES)); then
+# @description Deserialize an array from string.
+# @arg $1 <var> array nameref
+# @arg $2 str result from L_array_to_string
+# @see L_array_to_string
+# @example
+#   arr=(1 2 3)
+#   L_array_to_string -v tmp
+#   L_array_from_string arr2 "$tmp"
+#   echo "${arr2[@]}"
+L_array_from_string() {
+  L_assert "invalid declare output: $2" L_extglob_match "$2" "$_L_DECLARE_P_ARRAY_EXTGLOB"
+  local -a _L_tmp="${2#*=}"
+  L_array_assign "$1" ${_L_tmp[@]:+"${_L_tmp[@]}"}
+}
+else
+	L_array_from_string() {
+  	L_assert "invalid declare output: $2" L_extglob_match "$2" "$_L_DECLARE_P_ARRAY_EXTGLOB"
+  	local _L_tmp
+  	_L_tmp="${2//$'\001\001'/$'\001'}"
+  	_L_tmp="${_L_tmp//$'\001\177'/$'\177'}"
+  	eval "local -a _L_tmp=${_L_tmp#*=}"
+  	L_array_assign "$1" ${_L_tmp[@]:+"${_L_tmp[@]}"}
+	}
+fi
 
 # ]]]
 # args [[[
@@ -1883,7 +2153,7 @@ L_array_andjoin_v() {
 # @example
 #   L_args_join -v res ", " "Hello" "World"
 #   echo "$res"  # prints Hello, World
-L_args_join() { L_handle_v "$@"; }
+L_args_join() { L_handle_v_scalar "$@"; }
 L_args_join_v() {
 	printf -v L_v "${1//%/%%}%s" "${@:2}"
 	L_v=${L_v:${#1}}
@@ -1892,7 +2162,7 @@ L_args_join_v() {
 # @description Join arguments with ", " and last with " and "
 # @option -v <var> Output variable
 # @arg $@ arguments to join
-L_args_andjoin() { L_handle_v "$@"; }
+L_args_andjoin() { L_handle_v_scalar "$@"; }
 L_args_andjoin_v() {
 	case "$#" in
 	0) L_v="" ;;
@@ -1931,7 +2201,7 @@ L_args_contain() {
 # @example
 #   L_args_index -v res "World" "Hello" "World"
 #   echo "$res"  # prints 1
-L_args_index() { L_handle_v "$@"; }
+L_args_index() { L_handle_v_scalar "$@"; }
 L_args_index_v() {
 	local _L_needle=$1 _L_start=$# IFS=$'\x1D'
 	if [[ "${*//"$IFS"}" == "$*" ]]; then
@@ -1957,7 +2227,7 @@ L_args_index_v() {
 # @option -v <var> var
 # @arg $@ int arguments
 # @example L_max -v max 1 2 3 4
-L_max() { L_handle_v "$@"; }
+L_max() { L_handle_v_scalar "$@"; }
 # shellcheck disable=SC1105,SC2094,SC2035
 # @set L_v
 L_max_v() {
@@ -1975,7 +2245,7 @@ L_max_v() {
 # @option -v <var> var
 # @arg $@ int arguments
 # @example L_min -v min 1 2 3 4
-L_min() { L_handle_v "$@"; }
+L_min() { L_handle_v_scalar "$@"; }
 # shellcheck disable=1105,2094,2035
 # @set L_v
 L_min_v() {
@@ -2080,7 +2350,7 @@ L_table() {
 #     yes
 #     $ if L_args_contain 7 "${tmp[@]}"; then echo "yes"; else echo "no"; fi
 #     no
-L_parse_range_list() { L_handle_v "$@"; }
+L_parse_range_list() { L_handle_v_array "$@"; }
 L_parse_range_list_v() {
 	local _L_max=$1 _L_list _L_i _L_j _L_k _L_t
 	shift
@@ -2107,13 +2377,11 @@ L_parse_range_list_v() {
 	done
 }
 
-# @description extglob that matches declare -p output from array or associative array
 if ((L_HAS_DECLARE_WITH_NO_QUOTES)); then
-_L_DECLARE_P_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])=(\[?*\]=*)"
-_L_DECLARE_P_EMPTY_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])=(*)"
+	# @description extglob that matches declare -p output from array or associative array
+	_L_DECLARE_P_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])=\(@(|\[?*\]=?*)\)"
 else
-_L_DECLARE_P_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])='(\[?*\]=*)'"
-_L_DECLARE_P_EMPTY_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])='(*)'"
+	_L_DECLARE_P_ARRAY_EXTGLOB="declare -[aA]*([a-zA-Z]) [a-zA-Z_]*([a-zA-Z_0-9-])='\(@(|\[?*\]=?*)\)'"
 fi
 
 # @description Add stuff to output from pretty_print
@@ -2449,6 +2717,7 @@ L_version_cmp() {
 	'=='|'-eq') [[ "$1" == $3 ]] ;;
 	'!='|'-ne') [[ "$1" != $3 ]] ;;
 	*)
+		local op res='=' i max a=() b=() accuracy="${4:-3}"
 		case "$2" in
 		'-le') op='<=' ;;
 		'-lt') op='<' ;;
@@ -2459,7 +2728,6 @@ L_version_cmp() {
 			L_error "L_version_cmp: invalid second argument: $op"
 			return 2
 		esac
-		local res='=' i max a=() b=() accuracy="${4:-3}"
 		IFS=' .-()' read -r -a a <<<"$1"
 		IFS=' .-()' read -r -a b <<<"$3"
 		max=$(( ${#a[@]} > ${#b[@]} ? ${#a[@]} : ${#b[@]} ))
@@ -3225,7 +3493,7 @@ _L_TRAP_L_init() {
 # @description Convert trap name to number
 # @option -v <var> var
 # @arg $1 trap name or trap number
-L_trap_to_number() { L_handle_v "$@"; }
+L_trap_to_number() { L_handle_v_scalar "$@"; }
 L_trap_to_number_v() {
 	case "$1" in
 	[0-9]*) L_v=$1 ;;
@@ -3242,7 +3510,7 @@ L_trap_to_number_v() {
 # @option -v <var> var
 # @arg $1 signal name or signal number
 # @example L_trap_to_name -v var 0 && L_assert '' test "$var" = EXIT
-L_trap_to_name() { L_handle_v "$@"; }
+L_trap_to_name() { L_handle_v_scalar "$@"; }
 L_trap_to_name_v() {
 	case "$1" in
 	[0-9]*)
@@ -3261,7 +3529,7 @@ L_trap_to_name_v() {
 #   trap 'echo hi' EXIT
 #   L_trap_get -v var EXIT
 #   L_assert '' test "$var" = 'echo hi'
-L_trap_get() { L_handle_v "$@"; }
+L_trap_get() { L_handle_v_scalar "$@"; }
 L_trap_get_v() {
 	L_v=$(trap -p "$1") &&
 		local -a _L_tmp="($L_v)" &&
@@ -3661,7 +3929,7 @@ L_unittest_arreq() {
 	while (($#)); do
 		if ! _L_unittest_internal "$(printf "%s[%d]=%q == %q" "$_L_n" "$_L_i" "${_L_arr[_L_i]}" "$1")" "" \
 				[ "${_L_arr[_L_i]}" == "$1" ]; then
-			_L_unittest_showdiff "$1" "$2"
+			_L_unittest_showdiff "$1" "${_L_arr[_L_i]}"
 			return 1
 		fi
 		((++_L_i))
@@ -3782,7 +4050,7 @@ L_map_set() {
 #    L_map_set var a 1
 #    L_map_get -v tmp var a
 #    echo "$tmp"  # outputs: 1
-L_map_get() { L_handle_v "$@"; }
+L_map_get() { L_handle_v_scalar "$@"; }
 L_map_get_v() {
 	printf -v L_v "%q" "$2"
 	# Remove anything in front of the newline followed by key followed by space.
@@ -3850,13 +4118,13 @@ L_map_append() {
 #   L_map_set var b 2
 #   L_map_keys -v tmp var
 #   echo "${tmp[@]}"  # outputs: 'a b'
-L_map_keys() { L_handle_v "$@"; }
+L_map_keys() { L_handle_v_array "$@"; }
 L_map_keys_v() {
 	local _L_map
 	_L_map=${!1}
 	_L_map=${_L_map//$'\t'/ # }$'\n'
 	local -a _L_tmp="($_L_map)"
-	L_v=("${_L_tmp[@]}")
+	L_v=(${_L_tmp[@]+"${_L_tmp[@]}"})
 }
 
 # @description List all values in the map.
@@ -3868,14 +4136,14 @@ L_map_keys_v() {
 #    L_map_set var b 2
 #    L_map_values -v tmp var
 #    echo "${tmp[@]}"  # outputs: '1 2'
-L_map_values() { L_handle_v "$@"; }
+L_map_values() { L_handle_v_array "$@"; }
 L_map_values_v() {
 	local _L_map
 	_L_map=${!1}
 	_L_map=${_L_map//$'\n'/ # }
 	_L_map=${_L_map//$'\t'/$'\n'}
 	local -a _L_tmp="($_L_map)"
-	L_v=("${_L_tmp[@]}")
+	L_v=(${_L_tmp[@]+"${_L_tmp[@]}"})
 }
 
 # @description List items on newline separated key value pairs.
@@ -3887,7 +4155,7 @@ L_map_values_v() {
 #   L_map_set var b 2
 #   L_map_items -v tmp var
 #   echo "${tmp[@]}"  # outputs: 'a 1 b 2'
-L_map_items() { L_handle_v "$@"; }
+L_map_items() { L_handle_v_array "$@"; }
 L_map_items_v() {
 	local -a _L_tmp="(${!1})"
 	L_v=("${_L_tmp[@]}")
@@ -3979,7 +4247,7 @@ L_asa_is_empty() {
 # @arg $2 key
 # @arg [$3] optional default value
 # @exitcode 1 if no key found and no default value
-L_asa_get() { L_handle_v "$@"; }
+L_asa_get() { L_handle_v_scalar "$@"; }
 L_asa_get_v() {
 	if L_var_is_set "$1[$2]"; then
 		eval "L_v=\${$1[\"\$2\"]}"
@@ -3994,7 +4262,7 @@ L_asa_get_v() {
 # @description get the length of associative array
 # @option -v <var> var
 # @arg $1 associative array nameref
-L_asa_len() { L_handle_v "$@"; }
+L_asa_len() { L_handle_v_array "$@"; }
 L_asa_len_v() {
 	L_assert "" L_var_is_associative "$1"
 	eval "L_v=(\"\${#$1[@]}\")"
@@ -4003,7 +4271,7 @@ L_asa_len_v() {
 # @description get keys of an associative array in a sorted
 # @option -v <var> var
 # @arg $1 associative array nameref
-L_asa_keys_sorted() { L_handle_v "$@"; }
+L_asa_keys_sorted() { L_handle_v_array "$@"; }
 L_asa_keys_sorted_v() {
 	L_assert "" test "$#" = 1
 	L_assert "" L_var_is_associative "$1"
@@ -4063,8 +4331,8 @@ fi
 L_asa_from_declare() {
 	L_assert "not an associative array: $1" L_var_is_associative "$1"
 	# L_assert '' L_regex_match "${!3}" "^[^=]*=[(].*[)]$"
-	L_assert "source nameref does not match $_L_DECLARE_P_EMPTY_ARRAY_EXTGLOB: $3" \
-		L_glob_match "$3" "$_L_DECLARE_P_EMPTY_ARRAY_EXTGLOB"
+	L_assert "source nameref does not match $_L_DECLARE_P_ARRAY_EXTGLOB: $3" \
+		L_extglob_match "$3" "$_L_DECLARE_P_ARRAY_EXTGLOB"
 	L_asa_from_declare_unsafe "$@"
 }
 
@@ -4113,7 +4381,6 @@ fi
 # argparse [[[
 # @section argparse
 # @description argument parsing in bash
-# @note stable
 
 # @description Print argument parsing error and exit.
 # @env L_NAME
@@ -6277,26 +6544,36 @@ L_argparse() {
 
 # @description Check if file descriptor is open.
 # @arg $1 file descriptor
+# shellcheck disable=SC2188
 L_is_fd_open() {
-	# shellcheck disable=SC2188
 	{ >&"$1"; } 2>/dev/null
 }
 
+if ((L_HAS_VARIABLE_FD)); then
 # @description Get free file descriptors
 # @arg $@ variables to assign with the file descriptor numbers
 L_get_free_fd() {
 	local _L_fd
-	for _L_fd in {18..1023}; do
-		if ! L_is_fd_open "$_L_fd"; then
-			printf -v "$1" "%d" "$_L_fd"
-			if (($# == 1)); then
-				return
-			fi
-			shift
-		fi
+	for _L_fd; do
+		exec {_L_fd}>/dev/null
+		printf -v "$1" "%d" "$_L_fd"
 	done
-	return 1
 }
+else
+	L_get_free_fd() {
+		local _L_fd
+		for _L_fd in {18..1023}; do
+			if ! L_is_fd_open "$_L_fd"; then
+				printf -v "$1" "%d" "$_L_fd"
+				if (($# == 1)); then
+					return
+				fi
+				shift
+			fi
+		done
+		return 1
+	}
+fi
 
 # @description Open two connected file descriptors.
 # This intenrally creates a temporary file with mkfifo
@@ -6340,6 +6617,8 @@ _L_proc_init_setup_redir() {
 	if [[ -n "$mode" ]]; then
 		L_printf_append _L_cmd " %s" "$redir"
 		case "$mode" in
+		null) L_printf_append _L_cmd "/dev/null" ;;
+		close) L_printf_append _L_cmd "%s" "&-" ;;
 		input)
 			L_assert 'you can only input string to stdin' test "$redir" = "<"
 			L_printf_append _L_cmd " <(printf %s %q)" "$val"
@@ -6349,7 +6628,7 @@ _L_proc_init_setup_redir() {
 		pipe)
 			L_pipe fd "${TMPDIR:-/tmp}/L_proc_${val}_XXXXXXXX"
 			# Pipe file descriptors are inverted depending on the direction.
-			if [[ "$redir" == "<" ]]; then
+			if [[ "$redir" == "0<" ]]; then
 				fd=("${fd[1]}" "${fd[0]}")
 			fi
 			_L_toclose+=" ${fd[1]}>&-"
@@ -6364,9 +6643,8 @@ _L_proc_init_setup_redir() {
 			L_assert "file does not exists: $val" test -e "$val"
 			L_printf_append _L_cmd "%q" "$val"
 			;;
-		fd)
-			L_printf_append _L_cmd "&%d" "$val"
-			;;
+		fd) L_printf_append _L_cmd "&%d" "$val" ;;
+		*) L_assert "Invalid argument for $redir: $mode" false ;;
 		esac
 	fi
 	printf -v "$3" "%s" "$ret"
@@ -6375,14 +6653,18 @@ _L_proc_init_setup_redir() {
 # @description
 # Process open. Coproc replacement.
 #
-# The options are in three groups:
-#   -I and -i for stdin,
-#   -O and -o fr stdout,
-#   -E and -e for stderr.
+# The input/output options are in three groups:
+#
+#   - -I and -i for stdin,
+#   - -O and -o for stdout,
+#   - -E and -e for stderr.
 #
 # Uppercase letter option specifies the mode for the file descriptor.
 #
-# There are following modes available that you can give to -I -O and -E:
+# There are following modes available that you can give to uppercase options -I -O and -E:
+#
+#   - null - redirect to or from /dev/null
+#   - close - close the file descriptor >&-
 #   - input - -i specifies the string to forward to stdin. Only allowed for -I.
 #   - stdout - connect file descriptor to stdout. -o or -e value are ignored.
 #   - stderr - connect file descriptor to stderr. -o or -e value are ignored.
@@ -6390,7 +6672,8 @@ _L_proc_init_setup_redir() {
 #   - file - connect file descriptor to file specified by -i -o or -e option
 #   - fd - connect file descriptor to another file descriptor specified by -i -o or -e option
 #
-# The first argument specifies an output variable that will be assigned as an array with the following indexes:
+# There first argument specifies an output variable that will be assigned as an array with the following indexes:
+#
 #   - [0] - if -Ipipe will store the file descriptor connected to stdin of the program, otherwise empty.
 #   - [1] - if -Opipe will store the file descriptor connected to stdout of the program, otherwise empty.
 #   - [2] - if -Epipe will store the file descriptor connected to stderr of the program, otherwise empty.
@@ -6398,7 +6681,7 @@ _L_proc_init_setup_redir() {
 #   - [4] - stores the generated command.
 #   - [5] - stores exitcode.
 #
-# You can use getters L_proc_get_* to extract the data from array elements.
+# You should use getters `L_proc_get_*` to extract the data from proc array elements.
 #
 # @option -I <str> stdin mode
 # @option -i <str> string for -Iinput, file for -Ifile, fd for -Ifd
@@ -6418,7 +6701,7 @@ _L_proc_init_setup_redir() {
 #   echo "$line"
 #   echo "$exitcode"
 L_proc_popen() {
-	local _L_inmode="" _L_in="" _L_outmode="" _L_out="" _L_errmode="" _L_err="" _L_opt="" _L_v OPTIND OPTARG OPTERR _L_cmd _L_toclose="" _L_dryrun=0 _L_i _L_addpipe=()
+	local _L_inmode="" _L_in="" _L_outmode="" _L_out="" _L_errmode="" _L_err="" _L_opt="" _L_v OPTIND OPTARG OPTERR _L_cmd="" _L_toclose="" _L_dryrun=0 _L_i _L_addpipe=()
 	# Parse arguments.
 	while getopts "i:I:o:O:e:E:p:n" _L_opt; do
 		case "$_L_opt" in
@@ -6440,11 +6723,17 @@ L_proc_popen() {
 	L_assert "destination variable is empty: $_L_v" test -n "$_L_v"
 	L_assert "no command to execute" test "$#" -ne 0
 	# Setup redirections.
-	_L_proc_init_setup_redir "<" "$_L_inmode" "_L_in"
-	_L_proc_init_setup_redir ">" "$_L_outmode" "_L_out"
+	_L_proc_init_setup_redir "0<" "$_L_inmode" "_L_in"
+	_L_proc_init_setup_redir "1>" "$_L_outmode" "_L_out"
 	_L_proc_init_setup_redir "2>" "$_L_errmode" "_L_err"
 	# Execute command.
-	eval "$_L_cmd &"
+	_L_cmd+=" &"
+	if (( _L_dryrun )); then
+		bash -n -c "$_L_cmd"
+		echo "$_L_cmd"
+	else
+		eval "$_L_cmd"
+	fi
 	# Cleanup.
 	if [[ -n "$_L_toclose" ]]; then
 		eval "exec ${_L_toclose}"
@@ -6456,37 +6745,37 @@ L_proc_popen() {
 # @description Get file descriptor for stdin of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_stdin() { L_handle_v "$@"; }
+L_proc_get_stdin() { L_handle_v_scalar "$@"; }
 L_proc_get_stdin_v() { L_v="$1[0]"; L_v="${!L_v}"; }
 
 # @description Get file descriptor for stdout of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_stdout() { L_handle_v "$@"; }
+L_proc_get_stdout() { L_handle_v_scalar "$@"; }
 L_proc_get_stdout_v() { L_v="$1[1]"; L_v="${!L_v}"; }
 
 # @description Get file descriptor for stderr of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_stderr() { L_handle_v "$@"; }
+L_proc_get_stderr() { L_handle_v_scalar "$@"; }
 L_proc_get_stderr_v() { L_v="$1[2]"; L_v="${!L_v}"; }
 
 # @description Get PID of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_pid() { L_handle_v "$@"; }
+L_proc_get_pid() { L_handle_v_scalar "$@"; }
 L_proc_get_pid_v() { L_v="$1[3]"; L_v="${!L_v}"; }
 
 # @description Get command of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_cmd() { L_handle_v "$@"; }
+L_proc_get_cmd() { L_handle_v_scalar "$@"; }
 L_proc_get_cmd_v() { L_v="$1[4]"; L_v="${!L_v}"; }
 
 # @description Get exitcode of L_proc.
 # @option -v <var> variable to set
 # @arg $1 L_proc variable
-L_proc_get_exitcode() { L_handle_v "$@"; }
+L_proc_get_exitcode() { L_handle_v_scalar "$@"; }
 L_proc_get_exitcode_v() { L_v="$1[5]"; L_v="${!L_v}"; }
 
 # @description Write printf formatted string to coproc.
@@ -6648,6 +6937,73 @@ L_proc_wait() {
 	fi
 }
 
+# @description Read from multiple file descriptors at the same time.
+# @arg -t <timeout> Timeout in seconds.
+# @arg -p <timeout> Poll timeout. The read -t argument value. Default: 0.01
+# @arg $1 <int> file descriptor to read from
+# @arg $2 <var> variable to assign the output of
+# @arg $@ Pairs of variables and file descriptors.
+L_read_fds() {
+	local _L_vars=() _L_fds=() _L_i _L_ret _L_line OPTIND OPTARG OPTERR _L_timeout="" _L_poll=0.05 IFS=""
+	while getopts t:p _L_i; do
+		case "$_L_i" in
+		t) _L_timeout="$OPTARG" ;;
+		p) _L_poll="$OPTARG" ;;
+		*) return 2 ;;
+		esac
+	done
+	shift $((OPTIND-1))
+	# The lowest timeout in read in <Bash4.0 is 1 second, cause it is an integer.
+	if ((!L_HAS_BASH4_0)); then
+		_L_poll=${_L_poll%.*}
+		if ((_L_poll <= 0)); then
+			_L_poll=1
+		fi
+	fi
+	# Collect arguments into arrays.
+	while (($#)); do
+		_L_fds+=("$1")
+		_L_vars+=("$2")
+		printf -v "$2" "%s" ""
+		shift 2
+	done
+	# If set, timeout is not the end time stamp.
+	_L_timeout=${_L_timeout:+$((SECONDS + _L_timeout))}
+	while ((${#_L_fds[@]})); do
+		if [[ -n "$_L_timeout" ]]; then
+			# If this is last file descriptor, the read timeout is equal to global timeout.
+			if ((${#_L_fds[@]} == 1)); then
+				_L_poll=$((_L_timeout - SECONDS))
+			fi
+			# This check is done after calculation, so we know _L_poll is positive above.
+			if ((SECONDS >= _L_timeout)); then
+				return 128
+			fi
+		else
+			# If this is last single file descriptor, do not timeout the read.
+			if ((${#_L_fds[@]} == 1)); then
+				_L_poll=""
+			fi
+		fi
+		#
+		for _L_i in "${!_L_fds[@]}"; do
+			L_exit_to _L_ret read -r ${_L_poll:+-t"$_L_poll"} -u"${_L_fds[_L_i]}" _L_line
+			if ((_L_ret > 128)); then
+				# read timeout
+				L_printf_append "${_L_vars[_L_i]}" "%s" "$_L_line"
+			elif ((_L_ret == 0)); then
+				# read success
+				L_printf_append "${_L_vars[_L_i]}" "%s" "$_L_line"$'\n'
+			else
+				# other error - remove fd
+				L_printf_append "${_L_vars[_L_i]}" "%s" "$_L_line"
+				unset "_L_fds[_L_i]"
+				unset "_L_vars[_L_i]"
+			fi
+		done
+	done
+}
+
 # @description Communicate with L_proc.
 # @option -i <str> Send string to stdin.
 # @option -o <var> Assign stdout to this variable.
@@ -6656,9 +7012,13 @@ L_proc_wait() {
 # @option -k Kill L_proc after communication.
 # @option -v <var> Assign exitcode to this variable.
 # @arg $1 L_proc variable
-# @exitcode 0 if communication was successful
+# @exitcode
+#   0 on success.
+#   2 on invalid options.
+#   128 on timeout when reading output.
+#   130 on timeout when waiting for process to terminate.
 L_proc_communicate() {
-	local OPTIND OPTARG OPTERR _L_tmp _L_opt _L_input="" _L_output="" _L_error="" _L_timeout="" L_v _L_stdin _L_stdout _L_stderr _L_pid _L_kill=0 IFS="" _L_v
+	local OPTIND OPTARG OPTERR _L_tmp=() _L_opt _L_input="" _L_output="" _L_error="" _L_timeout="" L_v _L_stdin _L_stdout _L_stderr _L_pid _L_kill=0 IFS="" _L_v
 	while getopts "i:o:e:t:kv:" _L_opt; do
 		case "$_L_opt" in
 		i) _L_input="$OPTARG" ;;
@@ -6675,18 +7035,29 @@ L_proc_communicate() {
 		L_proc_printf "$1" "%s" "$_L_input"
 	fi
 	L_proc_close_stdin "$1"
+	# Collect stdout and stderr to read from.
 	if [[ -n "$_L_output" ]]; then
 		L_proc_get_stdout_v "$1"
-		_L_tmp=$(${_L_timeout:+timeout} ${_L_timeout:+"$_L_timeout"} cat <&"$L_v")
-		printf -v "$_L_output" "%s" "$_L_tmp"
+		if [[ -n "$L_v" ]]; then
+			_L_tmp+=("$L_v" "$_L_output")
+		fi
+	else
+		L_proc_close_stdout "$1"
 	fi
-	L_proc_close_stdout "$1"
 	if [[ -n "$_L_error" ]]; then
 		L_proc_get_stderr_v "$1"
-		_L_tmp=$(${_L_timeout:+timeout} ${_L_timeout:+"$_L_timeout"} cat <&"$L_v")
-		printf -v "$_L_error" "%s" "$_L_tmp"
+		if [[ -n "$L_v" ]]; then
+			_L_tmp+=("$L_v" "$_L_error")
+		fi
+	else
+		L_proc_close_stderr "$1"
 	fi
+	if [[ -n "$_L_output" || -n "$_L_error" ]]; then
+		L_read_fds ${_L_timeout:+-t"$_L_timeout"} "${_L_tmp[@]}" || return 128
+	fi
+	L_proc_close_stdout "$1"
 	L_proc_close_stderr "$1"
+	#
 	if ((_L_kill)); then
 		L_proc_kill "$1"
 	fi
@@ -6955,7 +7326,7 @@ _L_lib_main() {
 		;;
 	test)
 		set -euo pipefail
-		_L_pre=""
+		local _L_pre=""
 		printf -v _L_pre "%s\n" "${!_L_@}"
 		L_trap_err_enable
 		_L_lib_run_tests "$@"
