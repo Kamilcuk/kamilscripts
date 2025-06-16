@@ -1,0 +1,14 @@
+#!/bin/bash
+. L_lib.sh
+CMD_auto_smaller() {
+  L_argparse -- files nargs="+" ---- "$@"
+  for file in "${files[@]}"; do
+    ext="${file##*.}"
+    if L_hash jpegoptim; then
+      jpegoptim "$file" 
+    else
+      L_setx magick convert -strip -interlace Plane -gaussian-blur 1.05 -quality 80% "$file" "$(dirname "$file")/$(basename "$file")_smaller.$ext"
+    fi
+  done
+}
+L_argparse -- call=function prefix=CMD_ subcall=detect ---- "$@"

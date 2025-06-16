@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=0.1.10
+L_LIB_VERSION=0.1.11
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -418,14 +418,13 @@ L_HAS_ARRAY=$L_HAS_BASH1_14_7
 # @section stdlib
 # @description Some base simple definitions for every occasion.
 
-
 # @description Print stacktrace, the message and exit.
 # @arg $1 Message to print.
-# @example test -r file || L_die "File does not exist"
+# @example test -r file || L_panic "File does not exist"
 # @see L_assert
 # @see L_exit
 # @see L_check
-L_die() {
+L_panic() {
 	set +x
 	L_print_traceback 1 >&2
 	printf "%s\n" "$*" >&2
@@ -449,21 +448,36 @@ L_die() {
 #   L_assert 'var has to matcha glob' L_glob_match "$var" "*glob*"
 L_assert() {
 	if ! "${@:2}"; then
-		L_die "$L_NAME: ERROR: assertion ($(L_quote_printf "${@:2}")) failed${1:+: $1}"
+		L_panic "$L_NAME: ERROR: assertion ($(L_quote_printf "${@:2}")) failed${1:+: $1}"
 	fi
 }
 
-# @description If argument is not given, then exit with 0.
-# If the argument exists, print the message to standard error and exit with 1
-# @example test -r file || L_exit "file is not readable"
-# @see L_die
+# @description Print the arguments to standard error and exit wtih 248.
+# @example test -r file || L_die "File is not readable"
+# @see L_panic
+# @see L_exit
+# @see L_check
+# @see L_assert
+L_die() {
+	printf "%s\n" "$*" >&2
+	exit 248
+}
+
+# @description If argument is not given or an empty string, then exit with 0.
+# If arguments are not an empty string, print the message to standard error and exit with 247.
+# @example
+# 	err=()
+# 	test -r file || err+=("file is not readable")
+# 	test -f file || err+=("file is not a file")
+# 	L_exit "${err[@]}"
+# @see L_panic
 # @see L_assert
 # @see L_check
 L_exit() {
 	if [[ -n "$*" ]]; then
 		set +x
 		printf "%s\n" "$*" >&2
-		exit 1
+		exit 247
 	else
 		exit 0
 	fi
@@ -473,7 +487,7 @@ L_exit() {
 # Check L_assert for more info.
 # The difference is, L_assert prints the error message and stacktrace on error.
 # Thid function only prints the error message with program name on error.
-# @see L_die
+# @see L_panic
 # @see L_assert
 # @see L_check
 L_check() {
@@ -631,7 +645,7 @@ L_extglob_match() { [[ "$1" == $2 ]]; }
 else
 	# shellcheck disable=SC2053,SC2064
 	L_extglob_match() {
-		trap "$(shopt -p extglob)" RETURN
+		trap "$(shopt -p extglob || :)" RETURN
 		shopt -s extglob
 		[[ "$1" == $2 ]]
 	}
@@ -641,7 +655,7 @@ fi
 # @option -v <var> variable to set
 # @arg $@ string to escape
 L_glob_escape() { L_handle_v_scalar "$@"; }
-L_glob_escape_v() { L_v="${*//[[?*\]/[&]}"; }  # $[
+L_glob_escape_v() { L_v="${*//[[?*\]/[&]}"; }  # ]
 
 # @description Return 0 if the argument is a function
 # @arg $1 function name
@@ -663,11 +677,61 @@ L_command_exists() { command -v "$@" >/dev/null 2>&1; }
 # @see L_command_exists
 L_hash() { hash "$@" >/dev/null 2>&1; }
 
-# @description Return 0 if current script sourced.
-L_is_sourced() { [[ "${BASH_SOURCE[0]}" != "$0" ]]; }
-
 # @description Return 0 if current script is not sourced.
-L_is_main() { [[ "${BASH_SOURCE[0]}" == "$0" ]]; }
+L_is_main() { ! L_is_sourced; }
+
+# @description Return 0 if current script sourced.
+# Comparing BASH_SOURCE to $0 only works, when BASH_SOURCE is different from $0.
+# When calling `.` or `source` builtin it will be added as an "source" into `FUNCNAME` array.
+# This function returns false, if there exists a source elemtn in FUNCNAME array.
+L_is_sourced() {
+	local IFS=" "
+	[[ " ${FUNCNAME[*]} " == *" source "* ]]
+	# [[ "${BASH_SOURCE[0]}" != "$0" ]];
+}
+
+# @description Return true if sourced script was passed any arguments.
+# When you source a script and do not pass any arguments, the arguments are equal to the parent scope.
+#
+#     $ set -- a b c ; source <(echo 'echo "$@"')          # script sourced with no arguments
+#     a b c
+#     $ set -- a b c ; source <(echo 'echo "$@"') d e f    # script sourced with arguments
+#     d e f
+#
+# It is hard to detect if the script arguments are real arguments passed to `source` command or not.
+# This function detect the case.
+#
+# @example
+#    if L_is_main; then
+#       main
+#       exit $?
+#    elif L_has_sourced_arguments; then
+#       sourced_main "$@"
+#       return $?
+#    else
+#       sourced_main
+#       return $?
+#    fi
+#
+# @noargs
+# @see https://stackoverflow.com/a/79201438/9072753
+# @see https://stackoverflow.com/questions/61103034/avoid-command-line-arguments-propagation-when-sourcing-bash-script/73791073#73791073
+# @see https://unix.stackexchange.com/questions/568747/bash-builtin-variables-bash-argv-and-bash-argc
+L_has_sourced_arguments() {
+	# Check if we are sourced.
+	local IFS=' '
+	if [[ " ${FUNCNAME[*]} " != *" source "* ]]; then
+		return 2
+	fi
+	# Find the source function position.
+	local i
+	for i in "${!FUNCNAME[@]}"; do
+		if [[ "${FUNCNAME[i]}" == "source" ]]; then
+			break
+		fi
+	done
+	[[ "${BASH_ARGV[0]:-}" != "${BASH_SOURCE[i]}" ]]
+}
 
 # @description Return 0 if running in bash shell.
 # Portable with POSIX shell.
@@ -702,28 +766,28 @@ if ((0 && L_HAS_QEPAa_EXPANSIONS)); then
 else
 # @description Return 0 if variable is not set or is not an array neither an associative array
 # @arg $1 variable nameref
-L_var_is_notarray() { [[ "$(declare -p "$1" 2>/dev/null || :)" == "declare -"[^aA]* ]]; }
+L_var_is_notarray() { [[ "$(declare -p "$1" 2>/dev/null || :)" == declare\ -[^aA]* ]]; }
 
-# @description
+# @description Success if variable is an indexed integer array, not an associative array.
 # @arg $1 variable nameref
 # @exitcode 0 if variable is an array, nonzero otherwise
-L_var_is_array() { [[ "$(declare -p "$1" 2>/dev/null || :)" == "declare -a"* ]]; }
+L_var_is_array() { [[ "$(declare -p "$1" 2>/dev/null || :)" == declare\ -a* ]]; }
 
 # @description Return 0 if variable is an associative array
 # @arg $1 variable nameref
-L_var_is_associative() { [[ "$(declare -p "$1" 2>/dev/null || :)" == "declare -A"* ]]; }
+L_var_is_associative() { [[ "$(declare -p "$1" 2>/dev/null || :)" == declare\ -A* ]]; }
 
 # @description Return 0 if variable is readonly
 # @arg $1 variable nameref
-L_var_is_readonly() { ! (eval "$1=") 2>/dev/null; }
+L_var_is_readonly() { [[ "$(declare -p "$1" 2>/dev/null || :)" =~ ^declare\ -[A-za-z]*r ]]; }
 
 # @description Return 0 if variable has integer attribute set
 # @arg $1 variable nameref
-L_var_is_integer() { L_regex_match "$(declare -p "$1" 2>/dev/null || :)" "^declare -[A-Za-z]*i"; }
+L_var_is_integer() { [[ "$(declare -p "$1" 2>/dev/null || :)" =~ ^declare\ -[A-Za-z]*i ]]; }
 
 # @description Return 0 if variable is exported.
 # @arg $1 variable nameref
-L_var_is_exported() { L_regex_match "$(declare -p "$1" 2>/dev/null || :)" "^declare -[A-Za-z]*x"; }
+L_var_is_exported() { [[ "$(declare -p "$1" 2>/dev/null || :)" =~ ^declare\ -[A-Za-z]*x ]]; }
 fi
 
 # @description Send signal to itself
@@ -833,7 +897,7 @@ L_handle_v_array() {
 	case "${1:-}" in
 	-v?*)
 		if ! L_is_valid_variable_name "${1##-v}"; then
-			L_die "not a valid identifier: ${1##-v}" || return $?
+			L_panic "not a valid identifier: ${1##-v}" || return $?
 		fi
 		if [[ "${2:-}" == -- ]]; then
 			if "${FUNCNAME[1]}"_v "${@:3}"; then
@@ -855,7 +919,7 @@ L_handle_v_array() {
 		;;
 	-v)
 		if ! L_is_valid_variable_name "${2:-}"; then
-			L_die "not a valid identifier: $2"
+			L_panic "not a valid identifier: $2"
 		fi
 		if [[ "${3:-}" == -- ]]; then
 			if "${FUNCNAME[1]}"_v "${@:4}"; then
@@ -2427,6 +2491,7 @@ _L_pretty_print_flush() {
 # @env _L_pp_v
 # @env _L_pp_width
 _L_pretty_print_nested() {
+	set -- "${1##* }" "$2"
 	local -A _L_pp_array="$2"
 	if ((${#_L_pp_array[@]} == 0)); then
 		_L_pretty_print_output "%s=()" "$1"
@@ -3328,7 +3393,7 @@ L_sort() {
 
 # @description Prints traceback
 # @arg [$1] int stack offset to start from (default: 0)
-# @arg [$2] int number of lines to show around the line (default: 0)
+# @arg [$2] int number of lines to show around the line (default: 2)
 # @example:
 #   Example traceback:
 #   Traceback from pid 3973390 (most recent call last):
@@ -3345,8 +3410,8 @@ L_sort() {
 #     File ./bin/L_lib.sh, line 1391, in _L_unittest_showdiff()
 #   1391 >>                 sdiff <(cat <<<"$1") - <<<"$2"
 L_print_traceback() {
-	local i s l tmp offset=${1:-0} around=${2:-0}
 	L_color_detect
+	local i s l tmp offset=${1:-0} around=${2:-2}
 	echo "${L_CYAN}Traceback from pid ${BASHPID:-$$} (most recent call last):${L_RESET}"
 	for ((i = ${#BASH_SOURCE[@]} - 1; i > offset; --i)); do
 		s=${BASH_SOURCE[i]}
@@ -3361,7 +3426,7 @@ L_print_traceback() {
 				((min=l-around-1, min=min<0?0:min, cnt=around*2+1, cnt=cnt<0?0:cnt ,1))
 				if ((cnt)); then
 					mapfile -s "$min" -n "$cnt" -t lines <"$s"
-					for ((j= 0 ; j < cnt; ++j)); do
+					for ((j= 0 ; j < cnt && j < ${#lines[@]}; ++j)); do
 						cur=
 						if ((min+j+1==l)); then
 							cur=yes
@@ -3371,7 +3436,7 @@ L_print_traceback() {
 							"$((min+j+1))" \
 							"$L_COLORRESET" \
 							"${cur:+">> $L_RED"}" \
-							"${lines[j]:-}" \
+							"${lines[j]}" \
 							"${cur:+"$L_COLORRESET"}"
 					done
 				fi
@@ -3380,16 +3445,16 @@ L_print_traceback() {
 				awk \
 					-v line="$l" \
 					-v around="$((around + 1))" \
-					-v RESET="$L_RESET" \
 					-v RED="$L_RED" \
 					-v COLORLINE="${L_BLUE}${L_BOLD}" \
+					-v RESET="$L_RESET" \
 					'NR > line - around && NR < line + around {
-						printf "%s%-5d%s%3s%s%s%s\n", \
+						printf "%s%-5d%s%3s%s%s\n", \
 							COLORLINE, NR, RESET, \
 							(NR == line ? ">> " RED : ""), \
 							$0, \
 							(NR == line ? RESET : "")
-					}' "$s" 2>/dev/null
+					}' "$s"
 			fi
 		fi
 	done
@@ -3799,7 +3864,7 @@ L_unittest_cmd() {
 			_L_uopt_stdjoin=1
 		fi
 	fi
-	_L_unittest_internal "command found: [$(L_quote_printf "$@")]" "" L_hash "$1"
+	_L_unittest_internal "command found: [$(L_quote_printf "$1")]" "" L_hash "$1"
 	if ((_L_uopt_setx)); then
 		set -- L_setx "$@"
 	fi
@@ -4159,6 +4224,7 @@ L_map_items() { L_handle_v_array "$@"; }
 L_map_items_v() {
 	local -a _L_tmp="(${!1})"
 	L_v=("${_L_tmp[@]}")
+	((${#_L_tmp[@]} % 2 == 0))
 }
 
 # @description Load all keys to variables with the name of $prefix$key.
@@ -4206,6 +4272,7 @@ if ((L_HAS_ASSOCIATIVE_ARRAY)); then
 # asa - Associative Array [[[
 # @section asa
 # @description collection of function to work on associative array
+# @note unstable
 
 # @description Copy associative dictionary.
 # Notice: the destination array is _not_ cleared.
@@ -4278,22 +4345,6 @@ L_asa_keys_sorted_v() {
 	eval "L_v=(\"\${!$1[@]}\")"
 	L_sort L_v
 }
-
-# @description Move the 3rd argument to the first and call
-# The `L_asa $1 $2 $3 $4 $5` becomes `L_asa_$3 $1 $2 $4 $5`
-# @option -v <var> var
-# @arg $1 function name
-# @arg $2 associative array nameref
-# @arg $@ arguments
-# @example L_asa -v v get map a
-L_asa() {
-	case $1 in
-	-v?*) "L_asa_$2" "$1" "${@:3}" ;;
-	-v) "L_asa_$3" "${@:1:2}" "${@:4}" ;;
-	*) "L_asa_$1" "${@:2}" ;;
-	esac
-}
-
 
 if ((L_HAS_PRINTF_V_ARRAY)); then
 # @description assign value to associative array
@@ -7341,11 +7392,7 @@ _L_lib_main() {
 # ]]]
 # main [[[
 
-# https://stackoverflow.com/a/79201438/9072753
-# https://stackoverflow.com/questions/61103034/avoid-command-line-arguments-propagation-when-sourcing-bash-script/73791073#73791073
-if [[ "${BASH_ARGV[0]}" == "${BASH_SOURCE[0]}" ]]; then
-	_L_lib_main -s
-else
+if L_is_main || L_has_sourced_arguments; then
 	_L_lib_main "$@"
 fi
 
