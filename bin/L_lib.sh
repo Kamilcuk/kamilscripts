@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=0.1.12
+L_LIB_VERSION=0.1.13
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -6308,10 +6308,10 @@ _L_argparse_spec_parse_args() {
 			_L_argparse_spec_fatal "internal error: circular loop detected in subparsers" || return 2
 		fi
 		# Inherit values from parent parser
-		${_L_parser_show_default[_L_parser__parent[_L_parseri]]+_L_parser_show_default[_L_parseri]="${_L_parser_show_default[_L_parser__parent[_L_parseri]]}"}
-		${_L_parser_allow_abbrev[_L_parser__parent[_L_parseri]]+_L_parser_allow_abbrev[_L_parseri]="${_L_parser_allow_abbrev[_L_parser__parent[_L_parseri]]}"}
-		${_L_parser_allow_subparser_abbrev[_L_parser__parent[_L_parseri]]+_L_parser_allow_subparser_abbrev[_L_parseri]="${_L_parser_allow_subparser_abbrev[_L_parser__parent[_L_parseri]]}"}
-		${_L_parser_Adest[_L_parser__parent[_L_parseri]]+_L_parser_Adest[_L_parseri]="${_L_parser_Adest[_L_parser__parent[_L_parseri]]}"}
+		: "${_L_parser_show_default[_L_parser__parent[_L_parseri]]+${_L_parser_show_default[_L_parseri]:="${_L_parser_show_default[_L_parser__parent[_L_parseri]]}"}}"
+		: "${_L_parser_allow_abbrev[_L_parser__parent[_L_parseri]]+${_L_parser_allow_abbrev[_L_parseri]:="${_L_parser_allow_abbrev[_L_parser__parent[_L_parseri]]}"}}"
+		: "${_L_parser_allow_subparser_abbrev[_L_parser__parent[_L_parseri]]+${_L_parser_allow_subparser_abbrev[_L_parseri]:="${_L_parser_allow_subparser_abbrev[_L_parser__parent[_L_parseri]]}"}}"
+		: "${_L_parser_Adest[_L_parser__parent[_L_parseri]]+${_L_parser_Adest[_L_parseri]:="${_L_parser_Adest[_L_parser__parent[_L_parseri]]}"}}"
 	fi
 	{
 		# validate Adest
