@@ -1,1 +1,1 @@
-eval "$("${BASH_SOURCE[0]##*/}" --L_argparse_bash_completion)"
+eval "$("${BASH_SOURCE[0]##*/}" --L_argparse_bash_completion )"
