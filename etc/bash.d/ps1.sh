@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # check if running interactively
-if [[ $- =~ *i* ]]; then return; fi
+if [[ $- != *i* ]]; then return; fi
 
 _kc_prompt_setup() {
 	if ! hash ,color >/dev/null 2>/dev/null; then
