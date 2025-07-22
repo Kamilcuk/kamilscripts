@@ -125,3 +125,6 @@
 	helper = store --file ~/.config/git/credentials
 [safe]
 	directory = *
+[user]
+	email = you@example.com
+	name = Your Name

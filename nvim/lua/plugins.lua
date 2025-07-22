@@ -154,7 +154,7 @@ return {
     },
   },
 
-  { "snacks.nvim", opts = { dashboard = { enabled = false } } }, -- disable entry dashboard by astronvim
+  { "folke/snacks.nvim", opts = { dashboard = { enabled = false } } }, -- disable entry dashboard by astronvim
 
   { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
@@ -212,7 +212,7 @@ return {
   },
 
   {
-    "snacks.nvim",
+    "folke/snacks.nvim",
     opts = {
       notifier = {
         --- @type fun(notif: snacks.notifier.Notif): boolean
@@ -328,7 +328,7 @@ return {
   },
 
   { import = "astrocommunity.editing-support.rainbow-delimiters-nvim" },
-  { "rainbow-delimiters.nvim", submodules = false },
+  { "rainbow-delimiters.nvim", optional = true, submodules = false },
   -- {
   --   "saghen/blink.pairs",
   --   version = "v0.2.0", -- (recommended) only required with prebuilt binaries
@@ -352,37 +352,39 @@ return {
   -- {{{1 LSP Configuration related to autocompletion.
 
   -- Delay blink.cmp completion by 1 second.
-  {
-    "blink.cmp",
-    opts = function(_, opts)
-      local delay_ms = 1000
-      -- disable auto_show
-      opts.sources = opts.sources or {}
-      opts.completion = opts.completion or {}
-      opts.completion.menu = opts.completion.menu or {}
-      opts.completion.menu.auto_show = false
-      -- setup timer
-      local timer = vim.uv.new_timer()
-      assert(timer)
-      vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
-        callback = function()
-          if #vim.fn.expand "<cword>" < (opts.sources.min_keyword_length or 4) then return end
-          timer:stop()
-          timer:start(delay_ms or 1000, 0, function()
-            timer:stop()
-            vim.schedule(function()
-              -- Only run in insert mode.
-              if vim.api.nvim_get_mode()["mode"] == "i" then require("blink.cmp").show() end
-            end)
-          end)
-        end,
-      })
-    end,
-  },
+  -- {
+  --   "blink.cmp",
+  --   optional = true,
+  --   opts = function(_, opts)
+  --     local delay_ms = 1000
+  --     -- disable auto_show
+  --     opts.sources = opts.sources or {}
+  --     opts.completion = opts.completion or {}
+  --     opts.completion.menu = opts.completion.menu or {}
+  --     opts.completion.menu.auto_show = false
+  --     -- setup timer
+  --     local timer = vim.uv.new_timer()
+  --     assert(timer)
+  --     vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
+  --       callback = function()
+  --         if #vim.fn.expand "<cword>" < (opts.sources.min_keyword_length or 4) then return end
+  --         timer:stop()
+  --         timer:start(delay_ms or 1000, 0, function()
+  --           timer:stop()
+  --           vim.schedule(function()
+  --             -- Only run in insert mode.
+  --             if vim.api.nvim_get_mode()["mode"] == "i" then require("blink.cmp").show() end
+  --           end)
+  --         end)
+  --       end,
+  --     })
+  --   end,
+  -- },
 
   -- Disable UP and Down completion.
   {
     "blink.cmp",
+    optional = true,
     opts = function(_, opts)
       -- https://github.com/AstroNvim/AstroNvim/blob/91af3dc567ebf1a62916021f8094d5ffad848c7c/lua/astronvim/plugins/blink.lua#L92
       opts.keymap = opts.keymap or {}
@@ -393,13 +395,13 @@ return {
 
   { import = "astrocommunity.completion.blink-cmp-tmux" },
   -- Use tmux from all panels. Tmux should be last.
-  { "blink.cmp", opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } } },
+  { "blink.cmp", optional = true, opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } } },
 
   -- This is fine.
-  -- { "blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
+  -- { "saghen/blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
 
   -- {
-  --   "blink.cmp",
+  --   "saghen/blink.cmp",
   --   opts = {
   --     cmdline = {
   --       completion = {
@@ -411,6 +413,7 @@ return {
 
   {
     "blink.cmp",
+    optional = true,
     opts = {
       completion = {
         menu = {
@@ -752,7 +755,7 @@ return {
     "kamilcuk/menu",
     dir = (function()
       local dir = vim.fn.fnamemodify("~/myprojects/menu", ":p")
-      if vim.fn.isdirectory(dir) then return dir end
+      return vim.fn.isdirectory(dir) ~= 0 and dir
     end)(),
     opts = {
       border = true,

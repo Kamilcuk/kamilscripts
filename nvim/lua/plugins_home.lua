@@ -24,6 +24,7 @@ return {
   { import = "astrocommunity.completion.avante-nvim" },
   {
     "avante.nvim",
+    optional = true,
     enabled = vim.env.TOGETHER_API_KEY,
     opts = {
       -- provider = "claude",
@@ -45,6 +46,7 @@ return {
   { import = "astrocommunity/completion/minuet-ai-nvim" },
   {
     "minuet-ai.nvim",
+    optional = true,
     enabled = vim.env.TOGETHER_API_KEY,
     opts = {
       provider = "openai_fim_compatible",
