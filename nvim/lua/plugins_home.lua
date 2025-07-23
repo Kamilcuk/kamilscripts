@@ -25,7 +25,7 @@ return {
   {
     "avante.nvim",
     optional = true,
-    enabled = vim.env.TOGETHER_API_KEY,
+    enabled = not not vim.env.TOGETHER_API_KEY,
     opts = {
       -- provider = "claude",
       -- behavior = { enable_claude_text_editor_tool_mode = true },
@@ -47,7 +47,7 @@ return {
   {
     "minuet-ai.nvim",
     optional = true,
-    enabled = vim.env.TOGETHER_API_KEY,
+    enabled = not not vim.env.TOGETHER_API_KEY,
     opts = {
       provider = "openai_fim_compatible",
       n_completions = 1,
