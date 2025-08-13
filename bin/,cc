@@ -1,7 +1,7 @@
 #!/bin/bash
 
 _cc() {
-	"${g_prefix:-}"${CC:-gcc} "$@"
+	"${prefix:-}"${CC:-gcc} "$@"
 }
 
 C_show_predefined_macros_verbose() (
@@ -14,24 +14,8 @@ C_show_predefined_macros() (
 	_cc -E -dM - </dev/null
 )
 
-. ,lib_lib -q
-while (($#)); do
-	case "$1" in
-	-c | --cc)
-		CC="$2"
-		shift
-		;;
-	-a | --arm-none) g_prefix=arm-none-eabi- ;;
-	-p | --prefix)
-		g_prefix="$2"
-		shift
-		;;
-	--)
-		shift
-		break
-		;;
-	*) break ;;
-	esac
-	shift
-done
-. ,lib_lib C_ "$@"
+. L_lib.sh L_argparse \
+	-- -c --cc dest=CC \
+	-- -a --arm-none action=prefix=arm-none-eabi- \
+	-- -p --prefix \
+	-- call=function prefix=C_ ---- "$@"

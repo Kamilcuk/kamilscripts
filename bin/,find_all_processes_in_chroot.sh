@@ -1,19 +1,11 @@
 #!/bin/bash
 set -euo pipefail
-
-. "$(dirname "$0")"/,lib_lib -q
-
-usage() {
-	echo "Usage: $0 <dir with chroot>"
-	exit
-}
-fatal() { L_fatal "$@"; }
-
-if (($# != 1)); then usage; fi
-if ((UID != 0)); then L_fatal "Must be run as root"; fi
-if [[ ! -d "$1" ]]; then fatal "Directory does not exists: $1"; fi
-
-prefix=$(readlink -f "$1")
+export PATH="$(dirname "$0")":$PATH
+. L_lib.sh L_argparse \
+	-- dir type=dir \
+	---- "$@"
+L_assert "Must be run as root" test "$UID" -eq 0
+prefix=$(readlink -f "$dir")
 pids=$(
 	for root in /proc/[0-9]*/root; do
 		if link=$(readlink "$root") &&

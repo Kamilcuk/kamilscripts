@@ -20,8 +20,7 @@ dir_is_empty() {
 }
 
 fatal() {
-	echo "$name: ERROR:" "$*" >&2
-	exit 1
+	L_fatal "$@"
 }
 
 run() {
@@ -228,5 +227,7 @@ EOF
 
 ###############################################################################
 
-. ,lib_lib ',pkgsrc_' "$@"
+. L_lib.sh L_argparse \
+	-- call=function prefix=,pkgsrc_ \
+	---- "$@"
 

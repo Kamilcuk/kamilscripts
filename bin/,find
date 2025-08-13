@@ -173,8 +173,7 @@ _finish_zerotonl() {
 	if ((g_zero)); then cat; else tr '\0' '\n'; fi
 }
 
-. ,lib_lib -q
 _args "$@"
 L_trap_err() { :; }
-. ,lib_lib C_ "$@" | _finish_zerotonl
+. L_lib.sh cmd C_ "$@" | _finish_zerotonl
 

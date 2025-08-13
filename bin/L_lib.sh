@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=0.1.13
+L_LIB_VERSION=0.1.15
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -343,6 +343,8 @@ L_HAS_BASH2_1=$((   L_BASH_VERSION >= 0x020100))
 L_HAS_BASH2_0=$((   L_BASH_VERSION >= 0x020000))
 L_HAS_BASH1_14_7=$((L_BASH_VERSION >= 0x010E07))
 
+# @description trap has -P option
+L_HAS_TRAP_P=$L_HAS_BASH5_3
 # @description `compgen' has a new option: -V varname. If supplied, it stores the generated
 L_HAS_COMPGEN_V=$L_HAS_BASH5_3
 # @description New form of command substitution: ${ command; } or ${|command;} to capture
@@ -806,9 +808,9 @@ L_var_is_integer() { [[ "$(declare -p "$1" 2>/dev/null || :)" =~ ^declare\ -[A-Z
 L_var_is_exported() { [[ "$(declare -p "$1" 2>/dev/null || :)" =~ ^declare\ -[A-Za-z]*x ]]; }
 fi
 
-# @description Send signal to itself
-# @arg $1 signal to send, see kill -l
-L_raise() { kill -s "$1" "${BASHPID:-$$}"; }
+# @description Send signal to itself.
+# @arg $@ Kill arguments. See kill --help.
+L_raise() { kill "$@" "${BASHPID:-$$}"; }
 
 # @description Wrapper function for handling -v arguments to other functions.
 # It calls a function called `<caller>_v` with arguments, but without `-v <var>`.
@@ -1023,7 +1025,7 @@ if L_hash ,nice; then
 	L_NICE=(",nice")
 else
 	if L_hash nice; then
-		L_NICE+=(nice -n 40)
+		L_NICE+=(nice -n 39)
 	fi
 	if L_hash ionice; then
 		L_NICE+=(ionice -c 3)
@@ -1037,6 +1039,49 @@ fi
 # @arg $@ command to execute
 L_nice() {
 	"${L_NICE[@]}" "$@"
+}
+
+# @description Make the command be nicest possible.
+# @arg [$1] Pid of the process. Default: $BASHPID.
+L_renice() {
+	set -- "${1:-${BASHPID:-$$}}"
+	if L_hash ,nice; then
+		,nice -p "$1"
+	else
+		if L_hash nice;  then
+			renice -p "$1"
+		fi
+		if L_hash ionice; then
+			ionice -p "$1"
+		fi
+		if L_hash chrt; then
+			chrt -i -p 0 "$1"
+		fi
+	fi
+}
+
+# @description Show niceness levels of a process.
+# @arg [$1] Pid of the process. Default: $BASHPID
+L_show_nice() {
+	set -- "${1:-${BASHPID:-$$}}"
+	L_setx ps -l "$1"
+	L_setx ionice -p "$1"
+	L_setx chrt -v -p "$1"
+	local cgroup args=() f
+	if cgroup=$(<"/proc/$1/cgroup") 2>/dev/null; then
+		IFS=: read -r _ _ cgroup <<<"$cgroup"
+		for f in \
+				memory.high \
+				memory.max \
+				cpu.weight \
+				cpu.weight.nice \
+		; do
+			f="/sys/fs/cgroup/$cgroup/$f"
+			if [[ -r "$f" ]]; then
+				L_setx cat "$f"
+			fi
+		done
+	fi
 }
 
 _L_sudo_args_get_v() {
@@ -1063,6 +1108,38 @@ L_sudo() {
 		sudo=(sudo -n "${L_v[@]}")
 	fi
 	L_run "${sudo[@]}" "$@"
+}
+
+# @description Get bashpid in a way compatible with Bash before 4.0.
+# @arg $1 Variable to store the result to.
+L_bashpid_to() {
+	printf -v "$1" "%s" "${BASHPID:-$(exec "${BASH:-sh}" -c 'echo "$PPID"')}"
+}
+
+# @description Generate uuid in bash.
+# @option -v <var> var
+# @see https://digitalbunker.dev/understanding-how-uuids-are-generated/
+L_uuid4() { L_handle_v_scalar "$@"; }
+L_uuid4_v() {
+	# Generate 128 random bits
+	# RANDOM has 16 bits. 128/16=8
+	# SRANDOM has 32 bits. 128/32=4
+	# Take the 7th byte and perform an AND operation with 0x0F to clear out the high nibble.
+	# Then, OR it with 0x40 to set the version number to 4.
+	# Next, take the 9th byte and perform an AND operation with 0x3F and then OR it with 0x80.
+	# Convert the 128 bits to hexadecimal representation and insert the hyphens to achieve the canonical text representation.
+	if ((L_HAS_SRANDOM)); then
+		printf -v L_v "%08x%08x%08x%08x" \
+			"$SRANDOM" "$(( SRANDOM & 0x3FFFFFFF | 0x40000000 ))" "$SRANDOM" "$SRANDOM"
+	elif L_hash uuidgen; then
+		L_v=$(uuidgen)
+		return
+	else
+		printf -v L_v "%04x%04x%04x%04x""%04x%04x%04x%04x" \
+			"$RANDOM" "$RANDOM" "$(( RANDOM & 0x3FFF | 0x4000 ))" "$RANDOM" \
+			"$RANDOM" "$RANDOM" "$RANDOM" "$RANDOM"
+	fi
+	L_v=${L_v::8}-${L_v:8:4}-4${L_v:13:3}-${L_v:16:4}-${L_v:20}
 }
 
 # ]]]
@@ -1283,6 +1360,12 @@ L_path_remove() {
 	esac
 }
 
+# @description Return 0 if a directory is empty.
+# @arg $1 Directory.
+L_dir_is_empty() {
+	test -z "$(find "$@" -maxdepth 0 "!" "(" -empty -type d ")" 2>&1)"
+}
+
 # ]]]
 # string [[[
 # @section string
@@ -1443,6 +1526,7 @@ L_LBRACE='{'
 # @description Right brace character
 L_RBRACE='}'
 # @description Looks random.
+# @see L_uuid4
 L_UUID=921c7f46-e0d8-4170-91e9-7055ee30d1e2
 # @description 255 bytes with all possible 255 values
 L_ALLCHARS=$'\001\002\003\004\005\006\007\010\011\012\013\014\015\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037\040\041\042\043\044\045\046\047\050\051\052\053\054\055\056\057\060\061\062\063\064\065\066\067\070\071\072\073\074\075\076\077\100\101\102\103\104\105\106\107\110\111\112\113\114\115\116\117\120\121\122\123\124\125\126\127\130\131\132\133\134\135\136\137\140\141\142\143\144\145\146\147\150\151\152\153\154\155\156\157\160\161\162\163\164\165\166\167\170\171\172\173\174\175\176\177\200\201\202\203\204\205\206\207\210\211\212\213\214\215\216\217\220\221\222\223\224\225\226\227\230\231\232\233\234\235\236\237\240\241\242\243\244\245\246\247\250\251\252\253\254\255\256\257\260\261\262\263\264\265\266\267\270\271\272\273\274\275\276\277\300\301\302\303\304\305\306\307\310\311\312\313\314\315\316\317\320\321\322\323\324\325\326\327\330\331\332\333\334\335\336\337\340\341\342\343\344\345\346\347\350\351\352\353\354\355\356\357\360\361\362\363\364\365\366\367\370\371\372\373\374\375\376\377'
@@ -2299,7 +2383,7 @@ L_args_index_v() {
 	local _L_needle="$1" _L_start="$#" IFS=$'\x1D'
 	if [[ "${*//"$IFS"}" == "$*" ]]; then
 		L_v="$IFS${*:2}$IFS"
-		L_v="${L_v%"$IFS$1$IFS"*}"
+		L_v="${L_v%%"$IFS$1$IFS"*}"
 		L_v="${L_v//[^$IFS]}"
 		L_v=${#L_v}
 		[[ "$L_v" -lt "$#" ]]
@@ -3633,10 +3717,14 @@ L_trap_get_v() {
 # @description Suffix a newline and the command to the trap value
 # @arg $1 str command to execute
 # @arg $2 str signal to handle
+# shellcheck disable=SC2064
 L_trap_push() {
-	local L_v &&
-	L_trap_get_v "$2" &&
-		trap "$L_v"$'\n'"$1" "$2"
+	local L_v i
+	for i in "${@:2}"; do
+		L_trap_get_v "$i" &&
+			trap "${L_v+"$L_v"$'\n'}$1" "$i" ||
+			return 1
+	done
 }
 
 # shellcheck disable=SC2064
@@ -3650,6 +3738,122 @@ L_trap_pop() {
 		else
 			trap - "$1"
 		fi
+}
+
+# ]]]
+# finally [[[
+# @section finally
+
+# @description An array of space separated quoted elements of:
+# `trapnames... ',' pid source funcname action...`
+# - `trapnames...` - Multiple trap names
+# - `','` - The character comma, to separate trap names from the rest.
+# - `pid source funcname` - The BASHPID, BASH_SOURCE and FUNCNAME of the place that registered the trap.
+# - `action...` - the command to execute
+_L_FINALLY=()
+
+# @description List of traps that have been initilaized with the callback to _L_finally
+# List of elements starting with PID followed by a list of trap names.
+_L_FINALLY_INIT=""
+
+# @description
+# Features:
+# - remove yourself on RETURN
+# - execute on RETURN from current function
+# @arg $1 The trap signal name to handle. POP has a special value to pop last registered action.
+# @arg [$2] position in stack relative to current of the caller
+_L_finally() {
+  local _L_i _L_signal="${1:-$BASH_TRAPSIG}" _L_up="${2:-0}" _L_pid
+  L_bashpid_to _L_pid
+  for ((_L_i = ${#_L_FINALLY[@]} - 1; _L_i >= 0; --_L_i)); do
+    # If the signal is POP, or if the signal matches signales in _L_FINALLY list.
+    if [[ "$_L_signal" == "POP" || " ${_L_FINALLY[_L_i]%%,*} " == *" $_L_signal "* ]]; then
+      # Extract elements from _L_FINALLY
+      local -a _L_e="(${_L_FINALLY[_L_i]#*,})"
+      # We are only interested in executed in the current process.
+      if [[ "${_L_e[0]}" != "$_L_pid" ]]; then
+        # We can forget about them, they will never execute and we can't affect parents.
+        unset "_L_FINALLY[$_L_i]"
+        continue
+      fi
+      # If executing on RETURN trap, the register and caller have to be the same.
+      if [[ "$_L_signal" == "RETURN" || "$_L_signal" == "POP" ]]; then
+        if [[ "${_L_e[1]}:${_L_e[2]}" != "${BASH_SOURCE[0+_L_up]}:${FUNCNAME[1+_L_up]}" ]]; then
+          continue
+        fi
+      fi
+      # Remove the script from the array after execution. Execute only once.
+      # This is done before executing, just in case user wants to execute return.
+      unset "_L_FINALLY[$_L_i]"
+      # Finally, execute the user action.
+    	"${_L_e[@]:3}"
+      # On POP action, return after handling only one action.
+      if [[ "$_L_signal" == "POP" ]]; then
+        return
+      fi
+    fi
+  done
+}
+
+# @description Register an action to be executed upon termination.
+# @option -r Set -o functrace and register the action to be executed on RETURN trap.
+#            Effectively this will execute the action on return from current function.
+# @option -s <int> The RETURN trap handler will execute the action only if called from
+#            the nth position in the stack relative to the current position. (default: 0)
+# @option -l Add action to be executed last, not first of the stack.
+#            Do not use L_finally_pop after it.
+# @arg $@ Command to execute.
+# The command may not be return. It will just return from the handler function.
+# @see L_finally_pop
+L_finally() {
+  local trap i L_v signals=(EXIT SIGINT SIGTERM) IFS=' ' OPTIND OPTARG OPTERR up=0 last=0
+  while getopts rs:l i; do
+    case "$i" in
+    r) signals+=(RETURN); set -o functrace;;
+    s) up=$OPTARG ;;
+    l) last=1 ;;
+    *) L_assert "${FUNCNAME[0]}: Unknown option: $OPTARG $OPTERR $i" false;;
+    esac
+  done
+  shift "$((OPTIND - 1))"
+  L_assert "${FUNCNAME[0]}: at least one positional argument required, but given $#" test "$#" -ge 1
+  #
+  # Initialize signals if not initialized.
+  # Subshells inherit traps but they are not set.
+  # We do this here, to store BASHPID in _L_FINALLY_INIT and use it below.
+  if [[ "$_L_FINALLY_INIT " != "${BASHPID:-$$} "* ]]; then
+    L_bashpid_to _L_FINALLY_INIT
+    # Reset trap values in subshell to proper values.
+    # We assume full ownership of traps in subshells!
+    # https://stackoverflow.com/a/79717616/9072753
+    trap - SIGQUIT
+  fi
+  # Add element to our array variable.
+  printf -v i " %q" "$@"
+  printf -v i "%s , %d %q %q%s" "${signals[*]}" "${_L_FINALLY_INIT%% *}" "${BASH_SOURCE[0+up]}" "${FUNCNAME[1+up]}" "$i"
+	if ((last)); then
+  	_L_FINALLY=("$i" ${_L_FINALLY[@]+"${_L_FINALLY[@]}"})
+  else
+  	_L_FINALLY+=("$i")
+  fi
+  for i in "${signals[@]}"; do
+     if [[ "$_L_FINALLY_INIT " != *" $i "* ]]; then
+      if trap="$(trap -p "$i")"; then
+        if [[ "$trap" != *" _L_finally $i 0 "* ]]; then
+          # This appends to the current value of trap.
+          # Potentially something can be preserved in the trap values.
+          L_trap_push " _L_finally $i 0 " "$i"
+        fi
+        _L_FINALLY_INIT+=" $i"
+      fi
+    fi
+  done
+}
+
+# @description Execute and unregister the last action registered with L_finally
+# @see L_finally
+L_finally_pop() {
+  _L_finally POP 1
 }
 
 # ]]]
@@ -5465,10 +5669,7 @@ _L_argparse_optspec_execute_action() {
 	store_const) _L_argparse_optspec_dest_store "${_L_opt_const[_L_opti]}" ;;
 	append) _L_argparse_optspec_dest_arr_append "$@" ;;
 	append_const) _L_argparse_optspec_dest_arr_append "${_L_opt_const[_L_opti]}" ;;
-	count)
-		# shellcheck disable=2004
-		((++${_L_opt_dest[_L_opti]}, 1))
-		;;
+	count) printf -v "${_L_opt_dest[_L_opti]}" "%s" "$(( ${!_L_opt_dest[_L_opti]:-0} + 1 ))" ;;
 	help) if ((!_L_comp_enabled)); then L_argparse_print_help; exit 0; fi ;;
 	eval) if ((!_L_comp_enabled)); then eval "${_L_opt_eval[_L_opti]}"; fi ;;
 	*) _L_argparse_spec_fatal "internal error: invalid action=${_L_opt_action[_L_opti]}" ;;
@@ -6535,7 +6736,7 @@ L_argparse() {
 	_L_optcnt=$_L_opti
 	#
 	if [[ "${_L_args[_L_argsi++]:-}" != "----" ]]; then
-		((--_L_argsi))
+		_L_argsi=$((_L_argsi-1))
 		_L_argparse_spec_fatal "missing separator ---- at ${_L_args[_L_argsi]:-}"
 	fi
 	# _L_argparse_print >/dev/tty
@@ -7434,6 +7635,7 @@ _L_lib_main() {
 		;;
 	eval) eval "$*" ;;
 	exec) "$@" ;;
+	L_*|_L_*) "$_L_mode" "$@" ;;
 	--help | help)
 		if L_is_main; then
 			set -euo pipefail

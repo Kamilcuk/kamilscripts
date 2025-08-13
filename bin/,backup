@@ -1,24 +1,12 @@
 #!/bin/bash
 set -euo pipefail
-
-. ,lib_lib -l
-
-args=$(getopt -n "$L_NAME" -o nh -- "$@")
-eval "set -- $args"
-while (($#)); do
-	case "$1" in
-	-n) L_dryrun=1; ;;
-	-h) echo "No usage"; exit 1; ;;
-	--) shift; break;
-	esac
-	shift
-done
-
-if (($# == 0)); then L_fatal "Not enough arguments"; fi
-if (($# > 1)); then L_fatal "Too many arguments"; fi
+. L_lib.sh L_argparse \
+	-- -n eval=L_dryrun=1 \
+	-- file type=file_r \
+	---- "$@"
 timestamp=$(date +%Y-%m-%dT%H:%M:%S+%Z)
-dir=$(dirname "$1")
-file=$(basename "$1")
+L_dirname -v dir "$file"
+L_basename -v file "$file"
 destf="$dir/.$file.backup.$timestamp.${file##*.}"
 linkf="$dir/.$file.backup.${file##*.}"
 if [[ -e "$destf" ]]; then

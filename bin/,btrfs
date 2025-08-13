@@ -47,4 +47,4 @@ C_s() {
 
 fs=/
 
-. ,lib_lib C_ "$@"
+. L_lib.sh L_argparse -- call=function prefix=C_ ---- "$@"

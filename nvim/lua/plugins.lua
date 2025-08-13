@@ -175,6 +175,7 @@ return {
     -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
     -- Disable to speed up on larger files.
     "vim-illuminate",
+    optional = true,
     event = "User AstroFile",
     opts = {
       large_file_cutoff = 3000,
@@ -192,6 +193,7 @@ return {
   {
     -- I hate terminal in the middle, how people work with that?
     "noice.nvim",
+    optional = true,
     enabled = false,
     opts = function(_, opts)
       opts.cmdline = opts.cmdline or {}
@@ -231,6 +233,7 @@ return {
   {
     -- Add buffer number in front of buffer name in the tabline.
     "heirline.nvim",
+    optional = true,
     opts = function(_, opts)
       local status = require "astroui.status"
       local function my_tabline_file_info()
@@ -247,6 +250,7 @@ return {
 
   {
     "astrocore",
+    optional = true,
     opts = function(_, opts)
       local maps = opts.mappings
       -- astronvim v5 no telescope.nvim
@@ -262,6 +266,7 @@ return {
 
   {
     "neo-tree.nvim",
+    optional = true,
     opts = function(_, opts)
       opts.filesystem = vim.tbl_deep_extend("keep", opts.filesystem or {}, {
         filtered_items = {
@@ -352,34 +357,49 @@ return {
   -- {{{1 LSP Configuration related to autocompletion.
 
   -- Delay blink.cmp completion by 1 second.
-  -- {
-  --   "blink.cmp",
-  --   optional = true,
-  --   opts = function(_, opts)
-  --     local delay_ms = 1000
-  --     -- disable auto_show
-  --     opts.sources = opts.sources or {}
-  --     opts.completion = opts.completion or {}
-  --     opts.completion.menu = opts.completion.menu or {}
-  --     opts.completion.menu.auto_show = false
-  --     -- setup timer
-  --     local timer = vim.uv.new_timer()
-  --     assert(timer)
-  --     vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
-  --       callback = function()
-  --         if #vim.fn.expand "<cword>" < (opts.sources.min_keyword_length or 4) then return end
-  --         timer:stop()
-  --         timer:start(delay_ms or 1000, 0, function()
-  --           timer:stop()
-  --           vim.schedule(function()
-  --             -- Only run in insert mode.
-  --             if vim.api.nvim_get_mode()["mode"] == "i" then require("blink.cmp").show() end
-  --           end)
-  --         end)
-  --       end,
-  --     })
-  --   end,
-  -- },
+  {
+    "blink.cmp",
+    optional = true,
+    opts = function(_, opts)
+      local delay_ms = 1000
+      -- disable auto_show
+      opts.completion = opts.completion or {}
+      opts.completion.menu = opts.completion.menu or {}
+      opts.completion.menu.auto_show = false
+      --
+      opts.sources = opts.sources or {}
+      local min_keyword_length = opts.sources.min_keyword_length or 4
+      --
+      local ok_to_run = function()
+        -- Only run in insert mode.
+        if vim.api.nvim_get_mode()["mode"] ~= "i" then return false end
+        -- Do not run if the word below cursor is short.
+        if #vim.fn.expand "<cword>" < min_keyword_length then return false end
+        return true
+      end
+      -- setup timer
+      local timer = vim.loop.new_timer()
+      assert(timer)
+      vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
+        callback = function()
+          if not ok_to_run() then return end
+          -- Remember buffer number.
+          local bufnr = vim.api.nvim_get_current_buf()
+          -- Stop any previous timer execution.
+          timer:stop()
+          timer:start(delay_ms, 0, function()
+            timer:stop()
+            vim.schedule(function()
+              -- Only run in proper buffer.
+              if bufnr ~= vim.api.nvim_get_current_buf() then return end
+              if not ok_to_run() then return end
+              require("blink.cmp").show()
+            end)
+          end)
+        end,
+      })
+    end,
+  },
 
   -- Disable UP and Down completion.
   {
@@ -395,7 +415,11 @@ return {
 
   { import = "astrocommunity.completion.blink-cmp-tmux" },
   -- Use tmux from all panels. Tmux should be last.
-  { "blink.cmp", optional = true, opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } } },
+  {
+    "blink.cmp",
+    optional = true,
+    opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } },
+  },
 
   -- This is fine.
   -- { "saghen/blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
@@ -671,6 +695,7 @@ return {
 
   {
     "astroui",
+    optional = true,
     opts = {
       -- colorscheme = "astrodark",
       -- colorscheme = "midnight",
@@ -720,6 +745,7 @@ return {
 
   {
     "astrocore",
+    optional = true,
     opts = function(_, opts)
       -- https://stackoverflow.com/a/63883912/9072753
       local maps = opts.mappings
@@ -755,7 +781,7 @@ return {
     "kamilcuk/menu",
     dir = (function()
       local dir = vim.fn.fnamemodify("~/myprojects/menu", ":p")
-      return vim.fn.isdirectory(dir) ~= 0 and dir
+      return vim.fn.isdirectory(dir) ~= 0 and dir or nil
     end)(),
     opts = {
       border = true,
