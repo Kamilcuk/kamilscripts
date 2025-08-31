@@ -72,8 +72,8 @@ return {
         },
         show_on_completion_menu = true,
       },
-      throttle = 3000,
-      debounce = 500,
+      throttle = 10000,
+      debounce = 5000,
     },
   },
 
