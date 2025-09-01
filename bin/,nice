@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-hascmd() {
+M_hash() {
 	hash "$@" 2>/dev/null
 }
 
@@ -10,78 +10,211 @@ fatal() {
 	exit 1
 }
 
+warning() {
+	echo ",nice: warning: $*" >&2
+}
+
+assert() {
+	if ! (shift; "$@"); then
+		assertion=$(shift; echo "$@")
+		fatal "assertion $assertion failed${1:+: $1}"
+	fi
+}
+
+get_nproc() {
+	if ! M_hash getconf || ! nproc=$(getconf _NPROCESSORS_ONLN); then
+		if ! M_hash nproc || ! nproc=$(nproc); then
+			if ! nproc=$(grep -c ^processor /proc/cpuinfo); then
+				nproc=1
+			fi
+		fi
+	fi
+}
+
+# shellcheck disable=SC3050
+quote() {
+	if printf %q "$1"; then
+		if [ "$#" -gt 1 ]; then
+			shift
+			printf " %q" "$@"
+		fi
+	else
+		printf %s "$1"
+		if [ "$#" -gt 1 ]; then
+			shift
+			printf " %s" "$@"
+		fi
+	fi
+}
+
+logrun() {
+	if "$o_verbose"; then
+		(
+			set -x
+			"$@"
+		)
+	else
+		"$@"
+	fi
+}
+
+###############################################################################
+
+show() {
+	if test "$#" -eq 0; then
+		set -- "$$"
+	fi
+	for pid; do
+		(
+			set -x
+			ps -l "$pid"
+			ionice -p "$pid"
+			chrt -v -p "$pid"
+			taskset -p "$pid"
+		)
+		if cgroup=$(cut -d: -f3- "/proc/$pid/cgroup") 2>/dev/null; then
+			for f in \
+					cpu.max \
+					cpu.idle \
+					cpu.weight \
+					cpu.weight.nice \
+					memory.max \
+					memory.high \
+					memory.swap.max \
+					blkio.weight \
+					io.weight \
+			; do
+				f="/sys/fs/cgroup/$cgroup/$f"
+				if [ -r "$f" ]; then
+					(
+						set -x
+						cat "$f"
+					)
+				fi
+			done
+			# tail -n +1 /sys/fs/cgroup/$cgroup/cpu*
+		fi
+	done
+}
+
+change() {
+	assert "missing pids to change niceness of" test "$#" -gt 0
+	for pid; do
+		if [ -n "$o_cpus" ] && M_hash taskset; then
+			logrun taskset -pc "$o_cpus" "$pid"
+		fi
+		if M_hash ionice; then
+			logrun ionice -c 3 -p "$pid"
+		fi
+		if M_hash renice; then
+			logrun renice -n 39 -p "$pid" >/dev/null
+		fi
+		if M_hash chrt; then
+			logrun chrt -i -p 0 "$pid"
+		fi
+		if [ -n "$o_systemdrunargs" ]; then
+			warning "it is not possible to change systemd cgroup settings"
+		fi
+	done
+}
+
+run() {
+	assert "missing command to execute" test "$#" -gt 0
+	if [ -n "$o_cpus" ] && M_hash taskset; then
+		set -- taskset -c "$o_cpus" "$@"
+	fi
+	if M_hash ionice; then
+		set -- ionice -c 3 "$@"
+	fi
+	if M_hash nice; then
+		set -- nice -n 39 "$@"
+	fi
+	if M_hash chrt; then
+		set -- chrt -i 0 "$@"
+	fi
+	if M_hash systemd-run && [ -n "$o_systemdrunargs" ]; then
+		if [ -n "$o_cpus" ]; then
+			add_systemdrunargs -pAllowedCPUs="$o_cpus"
+		fi
+		eval "set -- systemd-run --quiet --scope --user --collect \
+			-pCPUWeight=idle -pIOWeight=1 \
+			$o_systemdrunargs "'"$@"'
+	fi
+	if "$o_verbose"; then
+		echo "+ $(quote "$@")"
+	fi
+	exec "$@"
+}
+
+###############################################################################
+
+add_systemdrunargs() {
+	# Add quoted arguments to systemdrunargs, that will be later eval-ed.
+	o_systemdrunargs="$o_systemdrunargs $(quote "$@")"
+}
+
 usage() {
 	cat <<EOF
-Usage: ,nice command [argument]...
-       ,nice -p PID
+Usage: ,nice [OPTIONS] command [argument]...
+       ,nice [OPTIONS] -p PID
        ,nice -s [PID]
 
 Executes a command with the most possible niceness value ever.
+Uses nice, ionice, chrt, taskset, systemd-run.
+
+See https://unix.stackexchange.com/a/495013/209955
+
+Executes the command with idle scheduler and idle IO scheduler and 19 niceness.
+Unless -c option, the command is executed with cpu range of (nproc/5)-(nproc).
+Default systemd-run options: -pCPUWeight=idle -pIOWeight=1
 
 Options:
-  -p PID    Changes the pid specified by -p to be the niceness possible.
-  -s [PID]  Queries the niceness of this PID
+  -H         Equal to -c with the mask of latter half of cpus.
+  -c mask    Execute under taskset -c mask
+  -M         Equal to -m with half the memory on the system.
+  -m mem     Equal to -o -pMemoryHigh=mem
+  -w weight  Equal to -o -pCPUWeight=weight
+  -S         Equal to -o -pCPUQuota=(50*nproc)% -o -pMemorySwapMax=0
+  -o option  Use systemd-run and pass options to it.
+  -p PID     Changes the pid specified by -p to be the niceness possible.
+  -s [PID]   Queries the niceness of this PID
+  -v         Be verbose.
+  -h --help  Print this help and exit.
 
-Written by Kamil Cukrowski
+Written by Kamil Cukrowski.
 EOF
 }
 
-case "${1:-}" in
--h | --help | "")
-	usage
-	exit 0
-	;;
--s)
-	pid="${2:-$$}"
-	(
-		set -x
-		ps -l "$pid"
-		ionice -p "$pid"
-		chrt -v -p "$pid"
-	)
-	if cgroup=$(cut -d: -f3- "/proc/$pid/cgroup") 2>/dev/null; then
-		set --
-		for f in \
-				memory.high \
-				memory.max \
-				cpu.weight \
-				cpu.weight.nice \
-		; do
-			f="/sys/fs/cgroup/$cgroup/$f"
-			if [ -r "$f" ]; then
-				set -- "$@" "$f"
-			fi
-		done
-		if [ "$#" -ne 0 ]; then
-			tail -n +1 "$@"
-		fi
-	fi
-	;;
--p)
-	if [ $# -ne 2 ]; then
-		fatal "wrong number of argumnnets: $#"
-	fi
-	pid="$2"
-	if hascmd ionice; then
-		ionice -c 3 -p "$pid"
-	fi
-	if hascmd renice; then
-		renice -n 39 -p "$pid" >/dev/null
-	fi
-	if hascmd chrt; then
-		chrt -i -p 0 "$pid"
-	fi
-	;;
-*)
-	if hascmd ionice; then
-		set -- ionice -c 3 "$@"
-	fi
-	if hascmd nice; then
-		set -- nice -n 39 "$@"
-	fi
-	if hascmd chrt; then
-		set -- chrt -i 0 "$@"
-	fi
-	exec "$@"
-	;;
-esac
+get_nproc
+o_cpus="" o_show=false o_change=false o_systemdrunargs="" o_verbose=false
+while getopts Hvc:Mm:w:So:sph o; do
+	case "$o" in
+	H) o_cpus=$(( nproc/2 ))-$(( nproc-1 )) ;;
+	v) o_verbose=true ;;
+	c) o_cpus=$OPTARG ;;
+	M) add_systemdrunargs -pMemoryMax="$(free -b | awk '/Mem/{print $2/2}')" ;;
+	m) add_systemdrunargs -pMemoryMax="$OPTARG" ;;
+	w) add_systemdrunargs -pCPUWeight="$OPTARG" ;;
+	S) add_systemdrunargs -pCPUQuota=$((66*nproc))% -pMemorySwapMax=0 ;;
+	o) add_systemdrunargs "$OPTARG" ;;
+	s) o_show=true ;;
+	p) o_change=true ;;
+	h) usage; exit 0 ;;
+	*) usage; exit 1 ;;
+	esac
+done
+shift "$((OPTIND-1))"
+# If nproc is not specified, exclude core 0.
+if [ -z "$o_cpus" ]; then
+	o_cpus=$(( nproc / 3 ))-$nproc
+fi
+# main
+if "$o_change"; then
+	change "$@"
+fi
+if "$o_show"; then
+	show "$@"
+fi
+if ! "$o_change" && ! "$o_show"; then
+	run "$@"
+fi

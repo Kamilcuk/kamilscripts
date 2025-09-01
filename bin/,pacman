@@ -292,8 +292,8 @@ C_autoremove() {
 	done
 }
 
-if false && hash ,nice 2>/dev/null; then
-	nice=(",nice")
+if nice="$(which ,nice)"; then
+	nice=("$nice" -v -S)
 else
 	nice=(nice -n 20 ionice -c 3)
 fi
@@ -334,13 +334,17 @@ _sudo_kamil() {
 	declare -g SUDO_ARGS
 	SUDO_ARGS_init
 	sudo=()
-	if hash sudo 2>/dev/null &&
+	if
+		[[ "$USER" != kamil ]] &&
+		hash sudo 2>/dev/null &&
 		id kamil >/dev/null 2>&1 &&
 		sudo -nu kamil true 2>/dev/null 2>&1 &&
-		sudo -nu kamil sudo -n true 2>/dev/null 2>&1; then
+		sudo -nu kamil sudo -n true 2>/dev/null 2>&1
+	then
 		sudo=(sudo -nu kamil "${SUDO_ARGS[@]}")
 	fi
-	_run "${nice[@]}" "${sudo[@]}" "$@"
+	# _run "${nice[@]}" "${sudo[@]}" "$@"
+	_run "${sudo[@]}" "$@"
 }
 
 _yay() {
