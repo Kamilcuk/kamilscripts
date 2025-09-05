@@ -293,7 +293,10 @@ C_autoremove() {
 }
 
 if nice="$(which ,nice)"; then
-	nice=("$nice" -v -S)
+	nice=("$nice" -v)
+	if ((UID != 0)); then
+		nice+=("-S")
+	fi
 else
 	nice=(nice -n 20 ionice -c 3)
 fi

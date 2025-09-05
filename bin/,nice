@@ -136,7 +136,11 @@ run() {
 		if [ -n "$o_cpus" ]; then
 			add_systemdrunargs -pAllowedCPUs="$o_cpus"
 		fi
-		eval "set -- systemd-run --quiet --scope --user --collect \
+		uid=$(id -u)
+		if [ "$uid" != 0 ]; then
+			add_systemdrunargs --user
+		fi
+		eval "set -- systemd-run --quiet --scope --collect \
 			-pCPUWeight=idle -pIOWeight=1 \
 			$o_systemdrunargs "'"$@"'
 	fi
