@@ -5,7 +5,7 @@ local function lazyinstall(fail)
   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
     if fail then
-      error "Lazy not installed, use :KcInstall to install"
+      -- error "Lazy not installed, use :KcInstall to install"
       return
     else
       load(vim.fn.system("curl -s https://raw.githubusercontent.com/folke/lazy.nvim/main/bootstrap.lua"))()

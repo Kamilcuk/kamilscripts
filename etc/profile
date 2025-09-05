@@ -10,23 +10,18 @@ do
 		. "$_i"
 	fi
 done
-unset _i
 
-if [ -r "${KCDIR:-}" ]; then
-	return;
+if [ ! -r "${KCDIR:-}" ]; then
+	# find KCDIR
+	_i=~/.kamilscripts
+	if [ -r "$_i" ] && [ -r "$_i"/.git ] && [ -r "$_i"/bin ]; then
+		KCDIR=$(readlink -f "$_i")
+	else
+		echo ".kamilscripts/etc/profile: KCDIR not found" >&2
+		unset _i
+		return
+	fi
 fi
-
-# find KCDIR
-_i=~/.kamilscripts
-if [ -r "$_i" ] && [ -r "$_i"/.git ] && [ -r "$_i"/bin ]; then
-	KCDIR=$(readlink -f "$_i")
-else
-	echo ".kamilscripts/etc/profile: KCDIR not found" >&2
-	return
-fi
-unset _i
-
-export KCDIR
 
 for _i in "$KCDIR"/etc/profile.d/*.sh; do
 	if [ -r "$_i" ]; then
@@ -34,5 +29,6 @@ for _i in "$KCDIR"/etc/profile.d/*.sh; do
 		. "$_i"
 	fi
 done
+
 unset _i
 
