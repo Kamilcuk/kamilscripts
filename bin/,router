@@ -1,0 +1,486 @@
+#!/usr/bin/env python3
+# /// script
+# dependencies = [
+#   "click",
+#   "pexpect",
+#   "tabulate",
+#   "cachier",
+# ]
+# ///
+
+from __future__ import annotations
+
+import copy
+import datetime
+import json
+import logging
+import os
+import re
+import sys
+import time
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Tuple, Union
+
+import click
+import pexpect
+from cachier import cachier
+
+log = logging.getLogger(__name__)
+
+
+class Router:
+    def __init__(self, telnet: bool = False):
+        self.telnet = telnet
+
+    def __enter__(self):
+        # client = pexpect.spawn("ssh admin@192.168.1.1")
+        if self.telnet:
+            self.client = pexpect.spawn("telnet 192.168.1.1")
+            self.expect("Login")
+            log.debug("login")
+            self.client.send("admin" + "\r")
+            self.expect("Password")
+            log.debug("password")
+            self.client.send(os.environ["ROUTER_SSHPASS"] + "\r")
+        else:
+            self.client = pexpect.spawn(
+                "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oConnectTimeout=5 admin@192.168.1.1",
+                # logfile=sys.stdout.buffer,
+            )
+            i = self.expect(["password", ">"])
+            if i == 0:
+                log.debug("password")
+                self.client.send(os.environ["ROUTER_SSHPASS"] + "\r")
+                self.expect(">")
+            elif i == 1:
+                pass
+            else:
+                assert False, f"{i}"
+        return self
+
+    def expect(self, what):
+        return self.client.expect(what, timeout=2)
+
+    def get(self, cmd: str) -> str:
+        self.client.send(cmd + "\r")
+        self.expect(">")
+        assert isinstance(self.client.before, bytes)
+        data = self.client.before.decode("utf-8")
+        log.debug(f"READ {len(data)} chars")
+        data = "\n".join(data.replace("\r", "").strip().splitlines()[1:])
+        log.debug(f"RECEIVED: {repr(data)}")
+        return data
+
+    def __exit__(self, *_):
+        try:
+            self.client.send("exit" + "\r")
+            log.debug(f"READ {self.client.read()}")
+            self.client.wait()
+        finally:
+            log.debug("Exiting")
+            self.client.close()
+            self.client.wait()
+            self.client.terminate()
+
+
+Numeric = Union[int, float]
+
+
+def sizeof_fmt(num, suffix="B"):
+    for unit in ("", "K", "M", "G", "T", "P", "E", "Z"):
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
+
+@dataclass
+class Interface:
+    name: str
+    rxbytes: Numeric = 0
+    txbytes: Numeric = 0
+
+    def subtract(self, o: Interface):
+        self.rxbytes -= o.rxbytes
+        self.txbytes -= o.txbytes
+
+    def divide(self, i: Numeric):
+        self.txbytes /= i
+        self.rxbytes /= i
+
+    def multiply(self, i: Numeric):
+        self.txbytes *= i
+        self.rxbytes *= i
+
+    def is_zero(self) -> bool:
+        return any(x != 0 for x in [self.rxbytes, self.txbytes])
+
+
+@dataclass
+class Interfaces:
+    its: Dict[str, Interface] = field(default_factory=dict)
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def subtract(self, o: Interfaces):
+        ret = self.copy()
+        for name, it in o.its.items():
+            ret.its.setdefault(name, Interface(name)).subtract(it)
+        return ret
+
+    def divide(self, o: Numeric):
+        ret = self.copy()
+        for it in ret.its.values():
+            it.divide(o)
+        return ret
+
+    def multiply(self, o: Numeric):
+        ret = self.copy()
+        for it in ret.its.values():
+            it.multiply(o)
+        return ret
+
+    def print(self):
+        print(f"============================ {self}")
+        for it in self.its.values():
+            if not it.is_zero():
+                print(it)
+        print()
+
+    def asdict(self):
+        return {x: asdict(y) for x, y in self.its.items()}
+
+    def __getitem__(self, item):
+        return self.its[item]
+
+    def get(self, item, d=None):
+        return self.its.get(item, d)
+
+
+def parse_ifconfig(data: str) -> Interfaces:
+    ret = Interfaces({})
+    for i in re.finditer(
+        r"\n\n(\S+)\s+Link.+?RX bytes:([0-9]+).+?TX bytes:([0-9]+)",
+        "\n\n" + data,
+        re.MULTILINE | re.DOTALL,
+    ):
+        ret.its[i.group(1)] = Interface(
+            i.group(1), int(i.group(2)) * 8, int(i.group(3)) * 8
+        )
+    logging.debug(f"extracted {len(list(ret.its.values()))} interfaces")
+    return ret
+
+
+def parse_ifconfig2(data: str) -> List[Dict[str, Any]]:
+    regex_str = [
+        r"^(?P<name>\S+).*?(HWaddr (?P<hwaddr>\S+))?",
+        r"^\s+inet[^:]*:(?P<addr>\S+)\s+?(Bcast:(?P<bcast>\S+)\s+?)?(Mask:(?P<mask>\S+))?",
+        r"^\s+inet6[^:]*:(?P<addr6>\S+)",
+        r"^\s+(?P<state>UP|DOWN).*?(MTU:(?P<MTU>\S+))?",
+        r"^\s+(collisions:(?P<collisions>\S+).*?)?txqueuelen:(?P<txqueuelen>\S+)",
+        r"^\s+RX bytes:(?P<rx_bytes>\S+).*TX bytes:(?P<tx_bytes>\S+)",
+        r"^\s+RX multicast bytes:(?P<rx_multicast_bytes>\S+).*TX multicast bytes:(?P<tx_multicast_bytes>\S+)",
+        r"^\s+(?P<rxtx>RX|TX) (?P<line>.*)",
+    ]
+    # eth4.1    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D8
+    #         inet addr:10.3.90.199  Bcast:10.3.127.255  Mask:255.255.192.0
+    #       inet6 addr: fe80::26e4:ceff:fe80:f4d8/64 Scope:Link
+    #       UP BROADCAST RUNNING ALLMULTI MULTICAST  MTU:1500  Metric:1
+    #       RX packets:138994544 multicast:0 unicast:138994544 broadcast:0
+    #       RX errors:0 dropped:0 overruns:0 frame:0
+    #       RX packets:4413832 errors:0 dropped:0 overruns:0 frame:0
+    #       TX packets:4413848 errors:0 dropped:11 overruns:0 carrier:0
+    #       TX packets:52514893 multicast:112 unicast:52514748 broadcast:33
+    #       TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+    #       txqueuelen:0
+    #       RX bytes:148868159850 (138.6 GiB) TX bytes:11680619978 (10.8 GiB)
+    #       RX multicast bytes:0 (0.0 B) TX multicast bytes:7786 (7.6 KiB)
+    regexes = [re.compile(x) for x in regex_str]
+    ret = []
+    for chunk in data.strip().split("\n\n"):
+        lines = chunk.splitlines()
+        elem = {}
+        for line in lines:
+            for rgx in regexes:
+                m = rgx.search(line)
+                if m:
+                    # print(f"MATCH {rgx.pattern} {line}")
+                    rxtx = m.groupdict().get("rxtx")
+                    if rxtx:
+                        tmp = {
+                            rxtx + "_" + v[0]: int(v[1])
+                            for part in m["line"].strip().split()
+                            for v in [part.split(":", 1)]
+                        }
+                        # print(tmp)
+                    else:
+                        tmp = {k: v for k, v in m.groupdict().items() if v is not None}
+                    tmp = {k.lower(): v for k, v in tmp.items()}
+                    elem.update(tmp)
+                    break
+        for k in elem.keys():
+            try:
+                elem[k] = int(elem[k])
+            except ValueError:
+                pass
+        elem["up"] = int(elem.get("state") == "UP")
+        # elem["chunk"] = lines
+        # print("\n", chunk, elem)
+        ret.append(elem)
+    return ret
+
+
+def parse_proc_net_dev(data: str) -> Dict[str, Dict[str, Any]]:
+    lines = data.splitlines()
+    columnLine = lines[1]
+    _, receiveCols, transmitCols = columnLine.split("|")
+    receiveCols = list(map(lambda a: "rx_" + a, receiveCols.split()))
+    transmitCols = list(map(lambda a: "tx_" + a, transmitCols.split()))
+    cols = receiveCols + transmitCols
+    faces = {}
+    for line in lines[2:]:
+        if line.find(":") < 0:
+            continue
+        face, data = line.split(":")
+        faceData = dict(zip(cols, [int(x) for x in data.split()]))
+        faces[face.strip()] = faceData
+    return faces
+
+
+@click.group()
+@click.option("-v", "--verbose", count=True, default=0)
+@click.option("-q", "--quiet", count=True, default=0)
+def cli(verbose: int, quiet: int):
+    logging.basicConfig(level=logging.INFO - ((verbose - quiet) * 10))
+
+
+@cli.command("test")
+def cli_test():
+    state = parse_ifconfig(TEST)
+    state.print()
+    print(state.subtract(parse_ifconfig(TEST)))
+    state = parse_ifconfig2(TEST)
+    for v in state:
+        for i in ["rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "state"]:
+            assert i in v, f"{i} not in {v}"
+        print(v)
+
+
+@cli.command("stats")
+def cli_stats():
+    with Router() as cc:
+        ifconfig_str = cc.get("ifconfig")
+    data = {"net": parse_ifconfig2(ifconfig_str)}
+    print(json.dumps(data))
+
+
+@cachier(cache_dir="/tmp/,router/", stale_after=datetime.timedelta(minutes=5))
+def get_zabbixstats():
+    with Router() as cc:
+        ifconfig_str = cc.get("ifconfig")
+    return parse_ifconfig2(ifconfig_str)
+
+
+@cli.command("zabbixstats")
+@click.argument("args", required=False, nargs=-1)
+def cli_zabixstats(args: Tuple[str, ...]):
+    zs = get_zabbixstats()
+    if not args:
+        print(json.dumps([{"{#NAME}": x["name"]} for x in zs]))
+    else:
+        interface = args[0]
+        key = args[1]
+        print(next(x[key] for x in zs if x["name"] == interface))
+
+
+@cli.command("show_speed")
+@click.option("-r", "--rate", default=1.0, type=float)
+def cli_show_speed(rate: float):
+    state: Interfaces = Interfaces()
+    start: float = time.time()
+    with Router() as cc:
+        while True:
+            i = cc.get("ifconfig")
+            now = time.time()
+            new = parse_ifconfig(i)
+            #
+            speed = new.subtract(state)  # .multiply(now - start)
+            log.debug(
+                f"{new.get('br0')} | {state.get('br0')} | {speed.get('br0')} | {now} | {start} {now - start}"
+            )
+            table = [["name", "rx", "tx"]]
+            for it in speed.its.values():
+                table.append(
+                    [
+                        it.name,
+                        sizeof_fmt(it.rxbytes) + "/s",
+                        sizeof_fmt(it.txbytes) + "/s",
+                    ]
+                )
+            for it in table:
+                print(f"{it[0]:6s} {it[1]:>11s} {it[2]:>11s}")
+            #
+            state = new.copy()
+            start = now
+            #
+            time.sleep(rate)
+
+
+TEST = """\
+archer    Link encap:Ethernet  HWaddr 00:00:00:00:00:00  
+          inet6 addr: fe80::200:ff:fe00:0/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:4413832 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:4413848 errors:0 dropped:11 overruns:0 carrier:0
+          collisions:0           txqueuelen:0 
+          RX bytes:1078076499 (1.0 GiB) TX bytes:1078077411 (1.0 GiB)
+
+br0       Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          inet addr:192.168.1.1  Bcast:192.168.1.255  Mask:255.255.255.0
+          inet6 addr: fe80::26e4:ceff:fe80:f4d7/64 Scope:Link
+          UP BROADCAST RUNNING ALLMULTI MULTICAST  MTU:1500  Metric:1
+          RX packets:53853727 errors:0 dropped:673 overruns:0 frame:0
+          TX packets:140186247 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0           txqueuelen:0 
+          RX bytes:11104040675 (10.3 GiB) TX bytes:151268596338 (140.8 GiB)
+
+eth0      Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth0.0    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:0
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth1      Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth1.0    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:0
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth2      Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth2.0    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:0
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth3      Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth3.0    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 multicast:0 unicast:0 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 multicast:0 unicast:0 broadcast:0
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:0
+          RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth4      Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D7  
+          inet6 addr: fe80::26e4:ceff:fe80:f4d7/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:138986494 multicast:0 unicast:138986494 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:52477237 multicast:112 unicast:52477092 broadcast:33
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:151366167231 (140.9 GiB) TX bytes:11882321739 (11.0 GiB)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+
+eth4.1    Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D8  
+          inet addr:10.3.90.199  Bcast:10.3.127.255  Mask:255.255.192.0
+          inet6 addr: fe80::26e4:ceff:fe80:f4d8/64 Scope:Link
+          UP BROADCAST RUNNING ALLMULTI MULTICAST  MTU:1500  Metric:1
+          RX packets:138994544 multicast:0 unicast:138994544 broadcast:0
+          RX errors:0 dropped:0 overruns:0 frame:0
+          TX packets:52514893 multicast:112 unicast:52514748 broadcast:33
+          TX errors:0 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:0
+          RX bytes:148868159850 (138.6 GiB) TX bytes:11680619978 (10.8 GiB)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:7786 (7.6 KiB)
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:95314369 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:95314369 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0           txqueuelen:0 
+          RX bytes:5884775397 (5.4 GiB) TX bytes:5884775397 (5.4 GiB)
+
+wl0       Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:DA  
+          inet6 addr: fe80::26e4:ceff:fe80:f4da/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:31908222 multicast:116474 unicast:31789547 broadcast:2201
+          RX errors:0 dropped:14 overruns:0 frame:0
+          TX packets:88991382 multicast:577832 unicast:88380379 broadcast:33171
+          TX errors:0 dropped:609 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:6978596710 (6.4 GiB) TX bytes:99582601995 (92.7 GiB)
+          RX multicast bytes:15355136 (14.6 MiB) TX multicast bytes:225761864 (215.3 MiB)
+
+wl1       Link encap:Ethernet  HWaddr 24:E4:CE:80:F4:D9  
+          inet6 addr: fe80::26e4:ceff:fe80:f4d9/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:22313607 multicast:0 unicast:22312383 broadcast:1224
+          RX errors:0 dropped:0 overruns:0 frame:30719637
+          TX packets:38768918 multicast:0 unicast:38733588 broadcast:35330
+          TX errors:57543 dropped:0 overruns:0 carrier:0 collisions:0
+          txqueuelen:1000
+          RX bytes:5868432986 (5.4 GiB) TX bytes:54564999739 (50.8 GiB)
+          RX multicast bytes:0 (0.0 B) TX multicast bytes:0 (0.0 B)
+          Interrupt:38 
+"""
+
+
+if __name__ == "__main__":
+    cli()
