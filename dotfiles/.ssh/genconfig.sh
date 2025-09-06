@@ -257,12 +257,11 @@ Host *
 	# http://homepages.warwick.ac.uk/staff/E.J.Brambley/sshspeedtest.php
 	$(ssh_check_ver '>=' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com')
 	$(ssh_check_ver '<' 7.0 'Ciphers aes128-cbc,aes128-ctr,aes192-cbc,aes192-ctr,aes256-cbc,aes256-ctr,3des-cbc')
-	#
 	Compression yes
 	ExitOnForwardFailure yes
-	#
-	ServerAliveInterval 60
-	ServerAliveCountMax 20
+	ServerAliveInterval 1
+	ServerAliveCountMax 2
+	ConnectTimeout 2
 	IgnoreUnknown ControlMaster,ControlPath,ControlPersist,StrictHostKeyChecking,ConnectTimeout,PubkeyAcceptedAlgorithms
 	$(ssh_check_ver '>' 6.0 '
 	# https://www.tecmint.com/speed-up-ssh-connections-in-linux/
@@ -272,8 +271,6 @@ Host *
 	ControlPersist 1h
 	ConnectTimeout 2
 	')
-	$(ssh_check_ver '>' 7.5 '
-	StrictHostKeyChecking accept-new
-	')
+	$([[ ! -e /opt/sp ]] && ssh_check_ver '>' 7.5 'StrictHostKeyChecking accept-new')
 
 EOF

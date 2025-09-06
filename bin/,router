@@ -4,26 +4,22 @@
 #   "click",
 #   "pexpect",
 #   "tabulate",
-#   "cachier",
 # ]
 # ///
 
 from __future__ import annotations
 
 import copy
-import datetime
 import json
 import logging
 import os
 import re
-import sys
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Union
 
 import click
 import pexpect
-from cachier import cachier
 
 log = logging.getLogger(__name__)
 
@@ -172,7 +168,7 @@ def parse_ifconfig(data: str) -> Interfaces:
     return ret
 
 
-def parse_ifconfig2(data: str) -> List[Dict[str, Any]]:
+def parse_ifconfig2(data: str) -> Dict[str, List[Dict[str, Any]]]:
     regex_str = [
         r"^(?P<name>\S+).*?(HWaddr (?P<hwaddr>\S+))?",
         r"^\s+inet[^:]*:(?P<addr>\S+)\s+?(Bcast:(?P<bcast>\S+)\s+?)?(Mask:(?P<mask>\S+))?",
@@ -197,7 +193,7 @@ def parse_ifconfig2(data: str) -> List[Dict[str, Any]]:
     #       RX bytes:148868159850 (138.6 GiB) TX bytes:11680619978 (10.8 GiB)
     #       RX multicast bytes:0 (0.0 B) TX multicast bytes:7786 (7.6 KiB)
     regexes = [re.compile(x) for x in regex_str]
-    ret = []
+    ret = {}
     for chunk in data.strip().split("\n\n"):
         lines = chunk.splitlines()
         elem = {}
@@ -227,7 +223,7 @@ def parse_ifconfig2(data: str) -> List[Dict[str, Any]]:
         elem["up"] = int(elem.get("state") == "UP")
         # elem["chunk"] = lines
         # print("\n", chunk, elem)
-        ret.append(elem)
+        ret[elem["name"]] = elem
     return ret
 
 
@@ -271,27 +267,8 @@ def cli_test():
 def cli_stats():
     with Router() as cc:
         ifconfig_str = cc.get("ifconfig")
-    data = {"net": parse_ifconfig2(ifconfig_str)}
+    data = parse_ifconfig2(ifconfig_str)
     print(json.dumps(data))
-
-
-@cachier(cache_dir="/tmp/,router/", stale_after=datetime.timedelta(minutes=5))
-def get_zabbixstats():
-    with Router() as cc:
-        ifconfig_str = cc.get("ifconfig")
-    return parse_ifconfig2(ifconfig_str)
-
-
-@cli.command("zabbixstats")
-@click.argument("args", required=False, nargs=-1)
-def cli_zabixstats(args: Tuple[str, ...]):
-    zs = get_zabbixstats()
-    if not args:
-        print(json.dumps([{"{#NAME}": x["name"]} for x in zs]))
-    else:
-        interface = args[0]
-        key = args[1]
-        print(next(x[key] for x in zs if x["name"] == interface))
 
 
 @cli.command("show_speed")
