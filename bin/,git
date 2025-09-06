@@ -273,6 +273,10 @@ C_autoaddcommitpush() {
 	L_run git push
 }
 
+C_acp() {
+	C_autoaddcommitpush "$@"
+}
+
 git_autostash_supported() {
 	git pull --help | grep -Fq -- --autostash
 }
