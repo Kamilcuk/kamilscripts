@@ -40,7 +40,14 @@ class Router:
             self.client.send(os.environ["ROUTER_SSHPASS"] + "\r")
         else:
             self.client = pexpect.spawn(
-                "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oConnectTimeout=5 admin@192.168.1.1",
+                "ssh -oControlMaster=auto \
+                -oControlPath=~/.ssh/.c-%C \
+                -oConnectTimeout=1 \
+                -oStrictHostKeyChecking=no \
+                -oUserKnownHostsFile=/dev/null \
+                -oServerAliveCountMax=2 \
+                -oServerAliveInterval=1 \
+                admin@192.168.1.1",
                 # logfile=sys.stdout.buffer,
             )
             i = self.expect(["password", ">"])
