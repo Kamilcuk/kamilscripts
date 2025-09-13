@@ -241,8 +241,12 @@ set path+=**
 " When typing %% in command line replace it by directory of the file
 cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 
-au BufNewFile,BufRead Jenkinsfile setf groovy tabstop=4 ofttabstop=-1 shiftwidth=0 smartindent cpuoptions+=I smartindent cindent
+autocmd BufNewFile,BufRead Jenkinsfile setfiletype groovy tabstop=4 ofttabstop=-1 shiftwidth=0 smartindent cpoptions+=I smartindent cindent
 
+" commentstring in alloy to //
+autocmd BufNewFile,BufRead *.alloy setlocal commentstring=//\ %s
+" Default commentstring to #
+autocmd BufNewFile,BufRead * if &syntax == '' | setlocal commentstring=#\ %s | endif
 
 ]]
 
@@ -270,3 +274,5 @@ vim.api.nvim_create_autocmd({ "FileType" }, {
     state.commands.order_by_modified(state)
   end,
 })
+
+
