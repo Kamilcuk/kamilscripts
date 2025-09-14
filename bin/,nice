@@ -76,6 +76,8 @@ show() {
 			for f in \
 					cpu.max \
 					cpu.idle \
+					cpuset.cpus \
+					cpuset.cpus.effective \
 					cpu.weight \
 					cpu.weight.nice \
 					memory.max \
@@ -133,16 +135,19 @@ run() {
 		set -- chrt -i 0 "$@"
 	fi
 	if M_hash systemd-run && [ -n "$o_systemdrunargs" ]; then
-		if [ -n "$o_cpus" ]; then
-			add_systemdrunargs -pAllowedCPUs="$o_cpus"
+		# shellcheck disable=SC3028
+		uid=${UID:-$(id -u)}
+		if [ "$uid" = 0 ] || [ -n "${XDG_RUNTIME_DIR:-}""${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+			if [ "$uid" != 0 ]; then
+				add_systemdrunargs --user
+			fi
+			if [ -n "$o_cpus" ]; then
+				add_systemdrunargs -pCPUAccounting=yes -pAllowedCPUs="$o_cpus"
+			fi
+			eval "set -- systemd-run --quiet --scope --collect \
+				-pCPUWeight=idle -pIOWeight=1 \
+				$o_systemdrunargs "'"$@"'
 		fi
-		uid=$(id -u)
-		if [ "$uid" != 0 ]; then
-			add_systemdrunargs --user
-		fi
-		eval "set -- systemd-run --quiet --scope --collect \
-			-pCPUWeight=idle -pIOWeight=1 \
-			$o_systemdrunargs "'"$@"'
 	fi
 	if "$o_verbose"; then
 		echo "+ $(quote "$@")"
@@ -193,7 +198,7 @@ get_nproc
 o_cpus="" o_show=false o_change=false o_systemdrunargs="" o_verbose=false
 while getopts Hvc:Mm:w:So:sph o; do
 	case "$o" in
-	H) o_cpus=$(( nproc/2 ))-$(( nproc-1 )) ;;
+	H) o_cpus=$(( (nproc - 1) / 2 ))-$(( nproc - 1 )) ;;
 	v) o_verbose=true ;;
 	c) o_cpus=$OPTARG ;;
 	M) add_systemdrunargs -pMemoryMax="$(free -b | awk '/Mem/{print $2/2}')" ;;
@@ -210,7 +215,7 @@ done
 shift "$((OPTIND-1))"
 # If nproc is not specified, exclude core 0.
 if [ -z "$o_cpus" ]; then
-	o_cpus=$(( nproc / 3 ))-$nproc
+	o_cpus=$(( (nproc - 1) / 3 ))-$(( nproc - 1 ))
 fi
 # main
 if "$o_change"; then
