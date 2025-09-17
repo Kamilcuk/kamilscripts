@@ -52,11 +52,15 @@ parser.add_argument("-D", "--nodiff", action="store_true", help="Do not display 
 parser.add_argument("--sdiff", action="store_true")
 parser.add_argument("--shortdiff", action="store_true")
 parser.add_argument(
-    "-g",
-    "--git-ls-files",
+    "-G",
+    "--no-git-ls-files",
     action="store_true",
-    default=False,
-    help="Ignore files in .gitignore",
+    help="Do not use git ls-files",
+)
+parser.add_argument(
+    "-z",
+    action="store_true",
+    help="Pass -z to sed",
 )
 parser.add_argument("-v", "--verbose", action="store_true", default=False)
 parser.add_argument("script", help="sed script to run")
@@ -69,24 +73,29 @@ args.exclude = fnmatches_to_re(args.exclude)
 def files_generator():
     global args
     files = []
-    if args.git_ls_files:
-        files = (
-            subprocess.check_output(["git", "ls-files", "-z"])
-            .decode(sys.stdout.encoding)
-            .split("\0")
-        )
-        del files[-1]
-    else:
-        # log(args.dirs)
-        for dir in args.dirs:
-            if os.path.isfile(dir):
-                files += [dir]
-            else:
-                # log(dir)
-                for root, dirnames, filenames in os.walk(dir):
-                    log(root, dirnames, filenames)
-                    partfiles = [os.path.join(root, filename) for filename in filenames]
-                    files += partfiles
+    if not args.dirs:
+        try:
+            if not args.no_git_ls_files:
+                files = (
+                    subprocess.check_output(["git", "ls-files", "-z"])
+                    .decode(sys.stdout.encoding)
+                    .split("\0")
+                )
+                del files[-1]
+        except subprocess.CalledProcessError:
+            pass
+    if files:
+        return files
+    # log(args.dirs)
+    for dir in args.dirs:
+        if os.path.isfile(dir):
+            files.append(dir)
+        else:
+            # log(dir)
+            for root, dirnames, filenames in os.walk(dir):
+                log(root, dirnames, filenames)
+                partfiles = [os.path.join(root, filename) for filename in filenames]
+                files.extend(partfiles)
     files = [f for f in files if os.path.isfile(f)]
     return files
 
@@ -106,7 +115,12 @@ def temporary_file_to_move_to(file):
 
 def run_on_file(file):
     global args, changed
-    cmd = ["sed"] + (["-E"] if args.regexp_extended else []) + [args.script, file]
+    cmd = (
+        ["sed"]
+        + (["-E"] if args.regexp_extended else [])
+        + (["-z"] if args.zero else [])
+        + [args.script, file]
+    )
     with temporary_file_to_move_to(file) as fp:
         if not args.nodiff or args.ok:
             try:
