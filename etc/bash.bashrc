@@ -96,3 +96,5 @@ unset _i _pre
 ,hash() {
 	hash "$@" 2>/dev/null
 }
+
+export TIMEFORMAT="real=%6lR user=%6lU system=%6lS"
