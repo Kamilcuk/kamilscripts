@@ -248,6 +248,9 @@ autocmd BufNewFile,BufRead *.alloy setlocal commentstring=//\ %s
 " Default commentstring to #
 autocmd BufNewFile,BufRead * if &syntax == '' | setlocal commentstring=#\ %s | endif
 
+" https://vi.stackexchange.com/a/39270/31698
+set listchars=eol:$,tab:⇥¬¬,trail:·,extends:>,precedes:<,space:·
+
 ]]
 
 -- https://www.reddit.com/r/AstroNvim/comments/1f89958/how_to_remove_please_install_notifications/

@@ -61,10 +61,13 @@ alias watch='watch -c -d -n 1'
 
 _pre=""
 if L_hash nice; then
-	_pre="nice -n 40 "
+	_pre="nice -n 39 "
 fi
 if L_hash ionice; then
 	_pre+="ionice -c 3 "
+fi
+if L_hash chrt; then
+	pre+="chrt -i 0 "
 fi
 alias rm="${_pre}rm --preserve-root=all --one-file-system -I"
 alias mv="${_pre}mv -i"
@@ -85,6 +88,7 @@ for _i in \
 		rm \
 		cp \
 		rsync \
+		makepkg \
 ; do
 	if ! alias "${_i}" >/dev/null 2>&1; then
 		# shellcheck disable=2139

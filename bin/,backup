@@ -5,8 +5,8 @@ set -euo pipefail
 	-- file type=file_r \
 	---- "$@"
 timestamp=$(date +%Y-%m-%dT%H:%M:%S+%Z)
-L_dirname -v dir "$file"
-L_basename -v file "$file"
+L_path_dirname -v dir "$file"
+L_path_basename -v file "$file"
 destf="$dir/.$file.backup.$timestamp.${file##*.}"
 linkf="$dir/.$file.backup.${file##*.}"
 if [[ -e "$destf" ]]; then

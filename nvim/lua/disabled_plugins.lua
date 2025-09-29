@@ -645,5 +645,64 @@ p                paste yanked block replace with current selection
     config = function() require("luasnip.loaders.from_vscode").lazy_load() end,
   },
 
+  -- https://github.com/Saghen/blink.cmp/issues/619
+  -- Delay blink.cmp completion by 1 second.
+  {
+    "blink.cmp",
+    optional = true,
+    opts = function(_, opts)
+      local delay_ms = 1000
+      -- disable auto_show
+      opts.completion = opts.completion or {}
+      opts.completion.menu = opts.completion.menu or {}
+      opts.completion.menu.auto_show = false
+      --
+      opts.sources = opts.sources or {}
+      local min_keyword_length = opts.sources.min_keyword_length or 4
+      --
+      local ok_to_run = function()
+        -- Only run in insert mode.
+        if vim.api.nvim_get_mode()["mode"] ~= "i" then return false end
+        -- Do not run if the word below cursor is short.
+        if #vim.fn.expand "<cword>" < min_keyword_length then return false end
+        return true
+      end
+      -- setup timer
+      local timer = vim.loop.new_timer()
+      assert(timer)
+      vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChangedI" }, {
+        callback = function()
+          if not ok_to_run() then return end
+          -- Remember buffer number.
+          local bufnr = vim.api.nvim_get_current_buf()
+          -- Stop any previous timer execution.
+          timer:stop()
+          timer:start(delay_ms, 0, function()
+            timer:stop()
+            vim.schedule(function()
+              -- Only run in proper buffer.
+              if bufnr ~= vim.api.nvim_get_current_buf() then return end
+              if not ok_to_run() then return end
+              require("blink.cmp").show()
+            end)
+          end)
+        end,
+      })
+    end,
+  },
+
+  -- This is fine.
+  -- { "saghen/blink.cmp", opts = { completion = { documentation = { auto_show_delay_ms = 5000 } } } },
+
+  -- {
+  --   "saghen/blink.cmp",
+  --   opts = {
+  --     cmdline = {
+  --       completion = {
+  --         list = { selection = { preselect = false, auto_insert = false } },
+  --       },
+  --     },
+  --   },
+  -- },
 
 }
