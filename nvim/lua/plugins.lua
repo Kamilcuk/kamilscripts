@@ -387,7 +387,43 @@ return {
   {
     "blink.cmp",
     optional = true,
-    opts = { sources = { providers = { tmux = { score_offset = -10, opts = { all_panes = true } } } } },
+    opts = {
+      sources = {
+        -- https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/sources.lua#L54
+        providers = {
+          lsp = {
+            name = "LSP",
+            module = "blink.cmp.sources.lsp",
+            fallbacks = { "buffer" },
+          },
+          path = {
+            module = "blink.cmp.sources.path",
+            score_offset = 3,
+            fallbacks = { "buffer" },
+          },
+          snippets = {
+            module = "blink.cmp.sources.snippets",
+            score_offset = -1, -- receives a -3 from top level snippets.score_offset
+          },
+          buffer = {
+            module = "blink.cmp.sources.buffer",
+            score_offset = -3,
+          },
+          cmdline = {
+            module = "blink.cmp.sources.cmdline",
+          },
+          omni = {
+            module = "blink.cmp.sources.complete_func",
+            enabled = function() return vim.bo.omnifunc ~= "v:lua.vim.lsp.omnifunc" end,
+            ---@type blink.cmp.CompleteFuncOpts
+            opts = {
+              complete_func = function() return vim.bo.omnifunc end,
+            },
+          },
+          -- tmux = { score_offset = -10, opts = { all_panes = true } },
+        },
+      },
+    },
   },
 
   { "blink.cmp", optional = true, opts = { completion = { menu = { auto_show_delay_ms = 1000 } } } },
