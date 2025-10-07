@@ -102,3 +102,4 @@ unset _i _pre
 }
 
 export TIMEFORMAT="real=%6lR user=%6lU system=%6lS"
+alias systemctl='systemctl --no-ask-password'
