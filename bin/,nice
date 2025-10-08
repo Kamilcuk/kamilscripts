@@ -142,7 +142,8 @@ run() {
 				add_systemdrunargs --user
 			fi
 			if [ -n "$o_cpus" ]; then
-				add_systemdrunargs -pCPUAccounting=yes -pAllowedCPUs="$o_cpus"
+				# -pCPUAccounting=yes  - deprecate
+				add_systemdrunargs -pAllowedCPUs="$o_cpus"
 			fi
 			eval "set -- systemd-run --quiet --scope --collect \
 				-pCPUWeight=idle -pIOWeight=1 \
