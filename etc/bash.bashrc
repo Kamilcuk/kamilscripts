@@ -46,7 +46,7 @@ set +H # disable history expansion
 
 # Aliases
 
-alias ls='ls --color -F'
+alias ls='ls --color=auto -F'
 alias o='less -R'
 # shellcheck disable=2285
 alias +='pushd .'
@@ -56,7 +56,7 @@ alias ...='cd ../..'
 alias cd..='cd ..'
 alias beep='echo -en "\007"'
 alias l='command l'
-alias ll='ls -l -F --color -h --group-directories-first'
+alias ll='ls -l -F --color=auto -h --group-directories-first'
 alias watch='watch -c -d -n 1'
 
 _pre=""
