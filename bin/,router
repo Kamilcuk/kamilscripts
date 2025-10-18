@@ -275,6 +275,7 @@ def cli_stats():
     with Router() as cc:
         ifconfig_str = cc.get("ifconfig")
     data = parse_ifconfig2(ifconfig_str)
+    # names = sorted(set(x["name"] for x in data))
     print(json.dumps(data))
 
 
