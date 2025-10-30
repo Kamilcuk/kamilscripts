@@ -59,6 +59,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "-z",
+    "--zero",
     action="store_true",
     help="Pass -z to sed",
 )
