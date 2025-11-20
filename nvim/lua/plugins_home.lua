@@ -39,25 +39,39 @@ return {
           endpoint = "https://api.together.xyz/v1/",
           api_key_name = "TOGETHER_API_KEY",
           -- default model
-          model = "mistralai/Mistral-7B-Instruct-v0.3",
+          -- model = "mistralai/Mistral-7B-Instruct-v0.3",
+          -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+          model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
           -- define all models here
           model_names = {
+            "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+            "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
             "mistralai/Mixtral-8x7B-Instruct-v0.1",
             "mistralai/Mistral-7B-Instruct-v0.3",
-            "mistralai/Mistral-7B-Instruct-v0.2",
-            "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            -- "mistralai/Mistral-7B-Instruct-v0.2",
+            -- "meta-llama/Llama-3.3-70B-Instruct-Turbo",
           },
           timeout = 30000, -- Timeout in milliseconds
           -- optional: extra per-request params
           extra_request_body = {
             temperature = 0.1,
             top_p = 0.9,
-            max_tokens = 4096,
-            presence_penalty = 0.0,
-            frequency_penalty = 0.0,
+            max_tokens = 4096 * 2,
+            -- presence_penalty = 0.0,
+            -- frequency_penalty = 0.0,
+            -- stop = {"</diff>", "```"},   -- helps stop rambling
           },
         },
       },
+    },
+  },
+
+  { import = "astrocommunity.editing-support.mcphub-nvim" },
+  {
+    "ravitemer/mcphub.nvim",
+    build = "bundled_build.lua",
+    opts = {
+      use_bundled_binary = true,
     },
   },
 
