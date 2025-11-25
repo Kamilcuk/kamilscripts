@@ -25,42 +25,74 @@ return {
   {
     "avante.nvim",
     optional = true,
-    enabled = not not vim.env.TOGETHER_API_KEY,
+    enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
     opts = {
       -- provider = "claude",
       -- behavior = { enable_claude_text_editor_tool_mode = true },
-      provider = "together",
+      -- provider = "together",
+      prompt_logger = { enabled = true },
+      provider = "gemini",
       providers = {
+        gemini = {
+          -- @see https://ai.google.dev/gemini-api/docs/models/gemini
+          model = "gemini-2.5-flash",
+          model_names = {
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-3-pro-preview",
+          },
+          -- model = "gemini-1.5-flash",
+          -- temperature = 0,
+          -- max_tokens = 4096,
+          -- debug = true,
+        },
         ["claude-haiku"] = {},
         ["claude-opus"] = {},
         ["claude"] = {},
         together = {
           __inherited_from = "openai",
           endpoint = "https://api.together.xyz/v1/",
-          api_key_name = "TOGETHER_API_KEY",
+          api_key_name = "AVANTE_TOGETHER_API_KEY",
           -- default model
+          -- model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
+          -- model = "Qwen/Qwen2.5-VL-72B-Instruct",
+          model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
+          -- model = "deepseek-ai/DeepSeek-V3.1",
+          -- model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+          -- model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+          -- model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
+          -- model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
           -- model = "mistralai/Mistral-7B-Instruct-v0.3",
+          -- model = "openai/gpt-oss-20b",
           -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
-          model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+          -- model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
           -- define all models here
           model_names = {
             "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
             "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
             "mistralai/Mixtral-8x7B-Instruct-v0.1",
             "mistralai/Mistral-7B-Instruct-v0.3",
-            -- "mistralai/Mistral-7B-Instruct-v0.2",
-            -- "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            "mistralai/Mistral-7B-Instruct-v0.2",
+            "meta-llama/Llama-3.3-70B-Instruct-Turbo",
           },
-          timeout = 30000, -- Timeout in milliseconds
+          -- timeout = 30000, -- Timeout in milliseconds
+          -- context_window = 128000,  -- Number of tokens to send to the model for context
+          -- context_window = 4096 * 4,
           -- optional: extra per-request params
+          -- history = {
+          --   max_tokens = 4096,
+          -- },
           extra_request_body = {
-            temperature = 0.1,
-            top_p = 0.9,
-            max_tokens = 4096 * 2,
+            -- max_tokes = 2048,
+            -- temperature = 0.1,
+            -- max_tokens = 4096,
+            -- top_p = 0.9,
+            -- max_tokens = 4096 * 4,
             -- presence_penalty = 0.0,
             -- frequency_penalty = 0.0,
             -- stop = {"</diff>", "```"},   -- helps stop rambling
           },
+          -- debug = true,
         },
       },
     },
@@ -80,13 +112,13 @@ return {
   {
     "minuet-ai.nvim",
     optional = true,
-    enabled = not not vim.env.TOGETHER_API_KEY,
+    enabled = not not vim.env.AVANTE_TOGETHER_API_KEY,
     opts = {
       provider = "openai_fim_compatible",
       n_completions = 1,
       provider_options = {
         openai_fim_compatible = {
-          api_key = "TOGETHER_API_KEY",
+          api_key = "AVANTE_TOGETHER_API_KEY",
           name = "Ollama",
           end_point = "https://api.together.xyz/v1/completions",
           model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
@@ -210,6 +242,23 @@ return {
   --     },
   --   },
   -- },
+
+  { import = "astrocommunity.editing-support.codecompanion-nvim" },
+  {
+    "olimorris/codecompanion.nvim",
+    enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
+    opts = {
+      adapter = {
+        name = "gemini",
+      },
+      strategies = {
+        chat = { adapter = "gemini" },
+        inline = { adapter = "gemini" },
+        -- cmd = { adapter = { name = "gemini" } },
+        -- edit = { adapter = { name = "gemini" } },
+      },
+    },
+  },
 
   -- }}}
 }
