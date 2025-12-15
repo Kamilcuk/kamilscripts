@@ -49,51 +49,53 @@ return {
         ["claude-haiku"] = {},
         ["claude-opus"] = {},
         ["claude"] = {},
-        together = {
-          __inherited_from = "openai",
-          endpoint = "https://api.together.xyz/v1/",
-          api_key_name = "AVANTE_TOGETHER_API_KEY",
-          -- default model
-          -- model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
-          -- model = "Qwen/Qwen2.5-VL-72B-Instruct",
-          model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
-          -- model = "deepseek-ai/DeepSeek-V3.1",
-          -- model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-          -- model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-          -- model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
-          -- model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
-          -- model = "mistralai/Mistral-7B-Instruct-v0.3",
-          -- model = "openai/gpt-oss-20b",
-          -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
-          -- model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-          -- define all models here
-          model_names = {
-            "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
-            "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-            "mistralai/Mixtral-8x7B-Instruct-v0.1",
-            "mistralai/Mistral-7B-Instruct-v0.3",
-            "mistralai/Mistral-7B-Instruct-v0.2",
-            "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-          },
-          -- timeout = 30000, -- Timeout in milliseconds
-          -- context_window = 128000,  -- Number of tokens to send to the model for context
-          -- context_window = 4096 * 4,
-          -- optional: extra per-request params
-          -- history = {
-          --   max_tokens = 4096,
-          -- },
-          extra_request_body = {
-            -- max_tokes = 2048,
-            -- temperature = 0.1,
-            -- max_tokens = 4096,
-            -- top_p = 0.9,
-            -- max_tokens = 4096 * 4,
-            -- presence_penalty = 0.0,
-            -- frequency_penalty = 0.0,
-            -- stop = {"</diff>", "```"},   -- helps stop rambling
-          },
-          -- debug = true,
+      },
+      together = {
+        __inherited_from = "openai",
+        endpoint = "https://api.together.xyz/v1/",
+        api_key_name = "AVANTE_TOGETHER_API_KEY",
+        -- default model
+        -- model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
+        -- model = "Qwen/Qwen2.5-VL-72B-Instruct",
+        model = "deepseek-ai/DeepSeek-V3.1",
+        -- model = "deepseek-ai/DeepSeek-V3.1",
+        -- model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        -- model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+        -- model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
+        -- model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        -- model = "mistralai/Mistral-7B-Instruct-v0.3",
+        -- model = "openai/gpt-oss-20b",
+        -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+        -- model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+        -- define all models here
+        model_names = {
+          "deepseek-ai/DeepSeek-V3.1",
+          "Qwen/Qwen2.5-72B-Instruct-Turbo",
+          "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+          "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+          "mistralai/Mixtral-8x7B-Instruct-v0.1",
+          "mistralai/Mistral-7B-Instruct-v0.3",
+          "mistralai/Mistral-7B-Instruct-v0.2",
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         },
+        -- timeout = 30000, -- Timeout in milliseconds
+        -- context_window = 128000,  -- Number of tokens to send to the model for context
+        -- context_window = 4096 * 4,
+        -- optional: extra per-request params
+        -- history = {
+        --   max_tokens = 4096,
+        -- },
+        extra_request_body = {
+          -- max_tokes = 2048,
+          -- temperature = 0.1,
+          -- max_tokens = 4096,
+          -- top_p = 0.9,
+          -- max_tokens = 4096 * 4,
+          -- presence_penalty = 0.0,
+          -- frequency_penalty = 0.0,
+          -- stop = {"</diff>", "```"},   -- helps stop rambling
+        },
+        -- debug = true,
       },
     },
   },
