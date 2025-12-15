@@ -1,10 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${OUTSEP:=$'\t'}"
-: "${LINESEP:=$'\n'}"
-: "${WITH_REPETITION:=true}"
-
 arr_join() {
 	local sep
 	sep="$1"
@@ -58,6 +54,7 @@ Generate combinations of given arguments.
 Options:
 	-o string  - outputed elements are seperated using this string, default tabulation
 	-l string  - outputed lines are seperated using this string, default newline
+	-n int     - length of the output string. Defualt: number of arguments.
 	-w         - output elements without repetition, default with repetition
 	-h         - print this help and exit
 
@@ -66,13 +63,17 @@ This program is free software: you can redistribute it and/or modify it under th
 EOF
 }
 
-ARGS=$(getopt -n "qqcombination.sh" -o "o:l:wh" -- "$@")
+: "${OUTSEP:=$'\t'}"
+: "${LINESEP:=$'\n'}"
+: "${WITH_REPETITION:=true}"
+ARGS=$(getopt -n "qqcombination.sh" -o "n:o:l:wh" -- "$@")
 eval set -- "$ARGS"
 while (($#)); do
 	case "$1" in
 	-o) OUTSEP="$2"; shift; ;;
 	-l) LINESEP="$2"; shift; ;;
 	-w) WITH_REPETITION=false; ;;
+	-n) length=$2; shift; ;;
 	-h) usage; exit; ;;
 	--) shift; break; ;;
 	*) usage; echo; echo "Error parsing '$1' argument." >&2; exit 1; ;;
@@ -86,5 +87,5 @@ if [ "$#" -eq 0 ]; then
 	exit 1;
 fi
 
-combination "$#" 0 "$@"
+combination "${length:-$#}" 0 "$@"
 

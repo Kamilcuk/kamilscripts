@@ -13,3 +13,5 @@ _build
 
 .build
 
+
+**/.claude/settings.local.json

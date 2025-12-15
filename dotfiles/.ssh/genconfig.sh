@@ -169,7 +169,7 @@ Host beta
 #	port 4004
 
 Host aur.archlinux.org
-	IdentityFile ~/.ssh/aur_id_rsa
+	# IdentityFile ~/.ssh/aur_id_rsa
 	User aur
 
 Host leonidas_borowej_gory
