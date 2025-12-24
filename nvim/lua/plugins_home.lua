@@ -21,129 +21,130 @@ return {
   --   end,
   -- },
 
-  { import = "astrocommunity.completion.avante-nvim" },
-  {
-    "avante.nvim",
-    optional = true,
-    enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
-    opts = {
-      -- provider = "claude",
-      -- behavior = { enable_claude_text_editor_tool_mode = true },
-      -- provider = "together",
-      prompt_logger = { enabled = true },
-      provider = "gemini",
-      providers = {
-        gemini = {
-          -- @see https://ai.google.dev/gemini-api/docs/models/gemini
-          model = "gemini-2.5-flash",
-          model_names = {
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
-            "gemini-3-pro-preview",
-          },
-          -- model = "gemini-1.5-flash",
-          -- temperature = 0,
-          -- max_tokens = 4096,
-          -- debug = true,
-        },
-        ["claude-haiku"] = {},
-        ["claude-opus"] = {},
-        ["claude"] = {},
-      },
-      together = {
-        __inherited_from = "openai",
-        endpoint = "https://api.together.xyz/v1/",
-        api_key_name = "AVANTE_TOGETHER_API_KEY",
-        -- default model
-        -- model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
-        -- model = "Qwen/Qwen2.5-VL-72B-Instruct",
-        model = "deepseek-ai/DeepSeek-V3.1",
-        -- model = "deepseek-ai/DeepSeek-V3.1",
-        -- model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        -- model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-        -- model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
-        -- model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
-        -- model = "mistralai/Mistral-7B-Instruct-v0.3",
-        -- model = "openai/gpt-oss-20b",
-        -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
-        -- model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-        -- define all models here
-        model_names = {
-          "deepseek-ai/DeepSeek-V3.1",
-          "Qwen/Qwen2.5-72B-Instruct-Turbo",
-          "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
-          "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-          "mistralai/Mixtral-8x7B-Instruct-v0.1",
-          "mistralai/Mistral-7B-Instruct-v0.3",
-          "mistralai/Mistral-7B-Instruct-v0.2",
-          "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        },
-        -- timeout = 30000, -- Timeout in milliseconds
-        -- context_window = 128000,  -- Number of tokens to send to the model for context
-        -- context_window = 4096 * 4,
-        -- optional: extra per-request params
-        -- history = {
-        --   max_tokens = 4096,
-        -- },
-        extra_request_body = {
-          -- max_tokes = 2048,
-          -- temperature = 0.1,
-          -- max_tokens = 4096,
-          -- top_p = 0.9,
-          -- max_tokens = 4096 * 4,
-          -- presence_penalty = 0.0,
-          -- frequency_penalty = 0.0,
-          -- stop = {"</diff>", "```"},   -- helps stop rambling
-        },
-        -- debug = true,
-      },
-    },
-  },
-
-  { import = "astrocommunity.editing-support.mcphub-nvim" },
-  {
-    "ravitemer/mcphub.nvim",
-    build = "bundled_build.lua",
-    opts = {
-      use_bundled_binary = true,
-    },
-  },
-
-  -- This is chat api
-  { import = "astrocommunity/completion/minuet-ai-nvim" },
-  {
-    "minuet-ai.nvim",
-    optional = true,
-    enabled = not not vim.env.AVANTE_TOGETHER_API_KEY,
-    opts = {
-      provider = "openai_fim_compatible",
-      n_completions = 1,
-      provider_options = {
-        openai_fim_compatible = {
-          api_key = "AVANTE_TOGETHER_API_KEY",
-          name = "Ollama",
-          end_point = "https://api.together.xyz/v1/completions",
-          model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
-          -- model = "Qwen/Qwen2.5-Coder-32B-Instruct",
-          optional = {
-            max_tokens = 56,
-            top_p = 0.9,
-          },
-        },
-      },
-      cmp = { enable_auto_complete = false },
-      blink = { enable_auto_complete = false },
-      virtualtext = {
-        auto_trigger_ft = { "*" },
-        keymap = {
-          accept = "<C-e>",
-        },
-        show_on_completion_menu = true,
-      },
-      throttle = 3000,
-      debounce = 3000,
-    },
-  },
+  -- { import = "astrocommunity.completion.avante-nvim" },
+  -- {
+  --   "avante.nvim",
+  --   optional = true,
+  --   -- enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
+  --   enabled = false,
+  --   opts = {
+  --     -- provider = "claude",
+  --     -- behavior = { enable_claude_text_editor_tool_mode = true },
+  --     -- provider = "together",
+  --     prompt_logger = { enabled = true },
+  --     provider = "gemini",
+  --     providers = {
+  --       gemini = {
+  --         -- @see https://ai.google.dev/gemini-api/docs/models/gemini
+  --         model = "gemini-2.5-flash",
+  --         model_names = {
+  --           "gemini-2.5-flash",
+  --           "gemini-2.5-pro",
+  --           "gemini-3-pro-preview",
+  --         },
+  --         -- model = "gemini-1.5-flash",
+  --         -- temperature = 0,
+  --         -- max_tokens = 4096,
+  --         -- debug = true,
+  --       },
+  --       ["claude-haiku"] = {},
+  --       ["claude-opus"] = {},
+  --       ["claude"] = {},
+  --     },
+  --     together = {
+  --       __inherited_from = "openai",
+  --       endpoint = "https://api.together.xyz/v1/",
+  --       api_key_name = "AVANTE_TOGETHER_API_KEY",
+  --       -- default model
+  --       -- model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
+  --       -- model = "Qwen/Qwen2.5-VL-72B-Instruct",
+  --       model = "deepseek-ai/DeepSeek-V3.1",
+  --       -- model = "deepseek-ai/DeepSeek-V3.1",
+  --       -- model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  --       -- model = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+  --       -- model = "Qwen/Qwen2.5-72B-Instruct-Turbo",
+  --       -- model = "mistralai/Mixtral-8x7B-Instruct-v0.1",
+  --       -- model = "mistralai/Mistral-7B-Instruct-v0.3",
+  --       -- model = "openai/gpt-oss-20b",
+  --       -- model = "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+  --       -- model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+  --       -- define all models here
+  --       model_names = {
+  --         "deepseek-ai/DeepSeek-V3.1",
+  --         "Qwen/Qwen2.5-72B-Instruct-Turbo",
+  --         "meta‑llama/Llama‑3.2‑3B‑Instruct‑Turbo",
+  --         "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+  --         "mistralai/Mixtral-8x7B-Instruct-v0.1",
+  --         "mistralai/Mistral-7B-Instruct-v0.3",
+  --         "mistralai/Mistral-7B-Instruct-v0.2",
+  --         "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  --       },
+  --       -- timeout = 30000, -- Timeout in milliseconds
+  --       -- context_window = 128000,  -- Number of tokens to send to the model for context
+  --       -- context_window = 4096 * 4,
+  --       -- optional: extra per-request params
+  --       -- history = {
+  --       --   max_tokens = 4096,
+  --       -- },
+  --       extra_request_body = {
+  --         -- max_tokes = 2048,
+  --         -- temperature = 0.1,
+  --         -- max_tokens = 4096,
+  --         -- top_p = 0.9,
+  --         -- max_tokens = 4096 * 4,
+  --         -- presence_penalty = 0.0,
+  --         -- frequency_penalty = 0.0,
+  --         -- stop = {"</diff>", "```"},   -- helps stop rambling
+  --       },
+  --       -- debug = true,
+  --     },
+  --   },
+  -- },
+  --
+  -- { import = "astrocommunity.editing-support.mcphub-nvim" },
+  -- {
+  --   "ravitemer/mcphub.nvim",
+  --   build = "bundled_build.lua",
+  --   opts = {
+  --     use_bundled_binary = true,
+  --   },
+  -- },
+  --
+  -- -- This is chat api
+  -- { import = "astrocommunity/completion/minuet-ai-nvim" },
+  -- {
+  --   "minuet-ai.nvim",
+  --   optional = true,
+  --   enabled = not not vim.env.AVANTE_TOGETHER_API_KEY,
+  --   opts = {
+  --     provider = "openai_fim_compatible",
+  --     n_completions = 1,
+  --     provider_options = {
+  --       openai_fim_compatible = {
+  --         api_key = "AVANTE_TOGETHER_API_KEY",
+  --         name = "Ollama",
+  --         end_point = "https://api.together.xyz/v1/completions",
+  --         model = "Qwen/Qwen2.5-7B-Instruct-Turbo",
+  --         -- model = "Qwen/Qwen2.5-Coder-32B-Instruct",
+  --         optional = {
+  --           max_tokens = 56,
+  --           top_p = 0.9,
+  --         },
+  --       },
+  --     },
+  --     cmp = { enable_auto_complete = false },
+  --     blink = { enable_auto_complete = false },
+  --     virtualtext = {
+  --       auto_trigger_ft = { "*" },
+  --       keymap = {
+  --         accept = "<C-e>",
+  --       },
+  --       show_on_completion_menu = true,
+  --     },
+  --     throttle = 3000,
+  --     debounce = 3000,
+  --   },
+  -- },
 
   -- {
   --   "yetone/avante.nvim",

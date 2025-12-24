@@ -246,6 +246,9 @@ esac
 
 cat <<EOF
 
+Host odroid.local
+	ControlMaster no
+
 Host *
 	#$(
 	echo; for i in ~/.ssh/id_rsa*; do
