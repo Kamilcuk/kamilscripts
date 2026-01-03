@@ -17,6 +17,7 @@ import re
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Union
+import pexpect, struct, fcntl, termios, signal, sys
 
 import click
 import pexpect
@@ -279,9 +280,25 @@ def cli_stats():
     print(json.dumps(data))
 
 
-@cli.command("show_speed")
+@cli.command("speeds", help="Show interfaces speed")
+def cli_speeds():
+    with Router() as cc:
+        print(
+            cc.get(
+                "cat /sys/class/net/eth0/speed /sys/class/net/eth1/speed /sys/class/net/eth2/speed /sys/class/net/eth3/speed /sys/class/net/eth4/speed"
+            )
+        )
+
+
+@cli.command("ifconfig", help="Show interfaces state")
+def cli_ifconfig():
+    with Router() as cc:
+        print(cc.get("ifconfig"))
+
+
+@cli.command("watchspeeds")
 @click.option("-r", "--rate", default=1.0, type=float)
-def cli_show_speed(rate: float):
+def cli_watchspeed(rate: float):
     state: Interfaces = Interfaces()
     start: float = time.time()
     with Router() as cc:
@@ -310,6 +327,24 @@ def cli_show_speed(rate: float):
             start = now
             #
             time.sleep(rate)
+
+
+@cli.command("interact")
+def cli_interact():
+    with Router() as cc:
+        p = cc.client
+
+        def sigwinch_passthrough(sig, data):
+            s = struct.pack("HHHH", 0, 0, 0, 0)
+            a = struct.unpack(
+                "hhhh", fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ, s)
+            )
+            if not p.closed:
+                p.setwinsize(a[0], a[1])
+
+        # Note this 'p' is global and used in sigwinch_passthrough.
+        signal.signal(signal.SIGWINCH, sigwinch_passthrough)
+        p.interact()
 
 
 TEST = """\

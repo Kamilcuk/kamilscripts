@@ -38,7 +38,7 @@ loop_cmd() {
 		done
 }
 
-loop() {
+CMD_loop() {
 	export -f loop_cmd
 	len=0
 	for i in "$@"; do
@@ -58,16 +58,52 @@ $n (-h|--help)
 EOF
 }
 
+CMD_new() {
+	local RANGE=$1
+	if [ -z "$RANGE" ]; then
+    	echo "Użycie: $0 <zakres_ip>"
+    	exit 1
+	fi
+
+	echo "[*] Tworzę bazę znanych urządzeń dla $RANGE..."
+	# Pobieramy listę aktywnych IP (Ping Scan), sortujemy i zapisujemy do pliku tymczasowego
+	nmap -sn "$RANGE" -oG - | awk '/Up$/{print $2}' | sort > /tmp/base_ips.txt
+	echo "[*] Znaleziono $(wc -l < /tmp/base_ips.txt) aktywnych urządzeń."
+	echo "[*] Włącz teraz serwer Fujitsu. Szukam nowych IP..."
+
+	while true; do
+    	# Pobieramy aktualny stan sieci
+    	nmap -sn "$RANGE" -oG - | awk '/Up$/{print $2}' | sort > /tmp/current_ips.txt
+
+    	# Porównujemy pliki: wypisz tylko linie obecne w pliku 2, których nie ma w pliku 1
+    	NEW_IPS=$(comm -13 /tmp/base_ips.txt /tmp/current_ips.txt)
+
+    	if [ ! -z "$NEW_IPS" ]; then
+        	echo -e "\n[!!!] WYKRYTO NOWE URZĄDZENIE:"
+        	echo "$NEW_IPS"
+
+        	# Opcjonalnie: skanowanie portu SSH dla nowych IP
+        	for ip in $NEW_IPS; do
+            	nmap -p 22 "$ip" | grep "22/tcp open" && echo "-> SSH jest otwarte na $ip"
+        	done
+
+        	# Jeśli chcesz przerwać po znalezieniu, odkomentuj poniższą linię:
+        	# break
+    	fi
+
+    	printf "."
+    	sleep 2
+	done
+}
+
 main() {
-	case "$1" in
-	-h | --help)
+	case "${1:-}" in
+	-h | --help | '')
 		usage
 		exit 2
 		;;
-	loop)
-		shift
-		loop "$@"
-		;;
+	loop) CMD_loop "${@:2}" ;;
+	new) CMD_new "${@:2}" ;;
 	*)
 		#nmap -sn -PE -T 5 --max-rtt-timeout 100ms "$@"
 		#exec nmap -n -sn -PE -R --max-rtt-timeout 100ms "$@"
