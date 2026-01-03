@@ -246,22 +246,22 @@ return {
   --   },
   -- },
 
-  { import = "astrocommunity.editing-support.codecompanion-nvim" },
-  {
-    "olimorris/codecompanion.nvim",
-    enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
-    opts = {
-      adapter = {
-        name = "gemini",
-      },
-      strategies = {
-        chat = { adapter = "gemini" },
-        inline = { adapter = "gemini" },
-        -- cmd = { adapter = { name = "gemini" } },
-        -- edit = { adapter = { name = "gemini" } },
-      },
-    },
-  },
+  -- { import = "astrocommunity.editing-support.codecompanion-nvim" },
+  -- {
+  --   "olimorris/codecompanion.nvim",
+  --   enabled = not not (vim.env.AVANTE_TOGETHER_API_KEY or vim.env.GEMINI_API_KEY),
+  --   opts = {
+  --     adapter = {
+  --       name = "gemini",
+  --     },
+  --     strategies = {
+  --       chat = { adapter = "gemini" },
+  --       inline = { adapter = "gemini" },
+  --       -- cmd = { adapter = { name = "gemini" } },
+  --       -- edit = { adapter = { name = "gemini" } },
+  --     },
+  --   },
+  -- },
 
   -- }}}
 }
