@@ -103,7 +103,7 @@ change() {
 	assert "missing pids to change niceness of" test "$#" -gt 0
 	for pid; do
 		if [ -n "$o_cpus" ] && M_hash taskset; then
-			logrun taskset -pc "$o_cpus" "$pid"
+			logrun taskset -pc "$o_cpus" "$pid" >/dev/null
 		fi
 		if M_hash ionice; then
 			logrun ionice -c 3 -p "$pid"

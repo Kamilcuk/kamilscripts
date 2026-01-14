@@ -1,0 +1,99 @@
+#!/bin/bash
+set -euo pipefail
+
+bwrap_sandbox() {
+    local cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/,llm"
+    mkdir -p "$cachedir"/root
+    #
+    local args=(
+        --bind "$cachedir"/root /
+        --setenv KCLLM 1
+        --unshare-all
+        --share-net
+        --die-with-parent
+        --bind "$PWD" "$PWD"
+        --dir "$HOME"
+        --chdir "$PWD"
+        --setenv HOME "$HOME"
+        --setenv PATH "$PATH"
+        --tmpfs /tmp
+        --proc /proc
+        --dev /dev
+    )
+    add() {
+        local i
+        for i in "${@:2}"; do
+            if [[ -e "$i" ]]; then
+                args+=("$1" "$i" "$i")
+            fi
+        done
+    }
+    local cache=${XDG_CACHE_HOME:-$HOME/.cache}
+    local config=${XDG_CONFIG_HOME:-$HOME/.config}
+    # cache list to consider
+    add --ro-bind /bin
+    add --ro-bind /usr
+    add --ro-bind /lib
+    add --ro-bind /lib64
+    add --ro-bind /etc
+    add --ro-bind /opt
+    add --ro-bind /run/systemd
+    add --bind "$cache/uv"
+    add --bind "$cache/pip"
+    add --bind "$cache/npm"
+    add --bind "$cache/pnpm"
+    add --bind "$cache/yarn"
+    add --bind "$cache/poetry"
+    add --bind "$cache/maturin"
+    add --bind "$cache/go-build"
+    add --ro-bind "$config/npm"
+    add --ro-bind "$HOME/.npm"
+    add --ro-bind "$HOME/.cargo"
+    add --ro-bind "$HOME/.rustup"
+    add --ro-bind "$HOME/.local/share/uv"
+    add --ro-bind "$config/yarn"
+    add --ro-bind "$HOME/.gitconfig" "$config/git/config"
+    #
+    add --bind "$cache/gemini" "$config/gemini" "$HOME/.gemini"
+    #
+    for i in .bash_history .bash_historymy; do
+        touch "$cachedir/$i"
+        args+=(--bind "$cachedir/$i" "$HOME/$i")
+    done
+    #
+    if false; then
+        list=(PATH HOME USER LOGNAME SHELL
+                    HTTP_PROXY HTTPS_PROXY NO_PROXY
+                    GEMINI_API_KEY GEMINI_SECRET GEMINI_ENDPOINT
+                    PYTHONPATH VIRTUAL_ENV NVM_DIR NODE_PATH
+                    XDG_CACHE_HOME XDG_CONFIG_HOME TERM)
+        for i in "${list[@]}"; do
+            if [[ -n "${!i:-}" ]]; then
+                args+=(--setenv "$i" "${!i}")
+            fi
+        done
+    fi
+    #
+    set -x
+    exec bwrap "${args[@]}" "$@"
+}
+
+C_gemini() {
+    bwrap_sandbox \
+        env GEMINI_TIMEOUT=999999 \
+        gemini --yolo "$@"
+}
+
+C_bwrap() {
+    if ((!$#)); then
+        set -- bash -l
+    fi
+    bwrap_sandbox "$@"
+}
+
+C_sandbox() { C_bwrap "$@"; }
+
+. L_lib.sh
+L_argparse \
+  -- call=function prefix=C_ \
+  ---- "$@"

@@ -64,11 +64,13 @@ if ! is_cis; then
 cat <<EOF
 Host dyzio server
 	Hostname www.dyzio.pl
-	User kamcuk
+	# User kamcuk
+	User kamil
 	Port 4004
 Host tunel_dyzio
 	Hostname 192.168.20.1
-	User kamcuk
+	# User kamcuk
+	User kamil
 	Port 4004
 
 Host biurek gucio
