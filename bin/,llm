@@ -39,21 +39,20 @@ bwrap_sandbox() {
     adddir --bind "$cache/pip"
     adddir --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
     adddir --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
-    adddir --ro-bind "$config/npm"
     adddir --bind "$HOME/.npm"
+    adddir --ro-bind "$config/yarn" "$config/npm"
     adddir --bind "$HOME/.cargo" "$HOME/.rustup"
-    adddir --bind "$config/yarn"
     adddir --ro-bind "$HOME/.gitconfig" "$config/git/config"
-    # Gemini configuration directories.
-    adddir --bind "$cache/gemini" "$config/gemini" "$HOME/.gemini"
+    # gemini, crush, opencode configuration directories.
+    for i in gemini crush opencode claude; do
+        adddir --bind "$cache/$i" "$config/$i" "$HOME/.$i"
+    done
     # Podman.
-    if ((config_podman)); then
+    if ((arg_podman)); then
         if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
             # Start podman service sock.
-            if L_hash systemctl; then
-                if ! systemctl is-active --user podman.service; then
-                    L_logrun systemctl start --user podman.service
-                fi
+            if [[ ! -e /run/user/$UID/podman/podman.sock ]] && L_hash systemctl; then
+                L_logrun systemctl start --user podman.service
             fi
             # Add environment variables.
             add --setenv CONTAINER_RUNTIME podman
@@ -76,6 +75,9 @@ bwrap_sandbox() {
     if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
         add --bind "$root/$HISTFILE" "$HISTFILE"
     fi
+    # Add args
+    adddir --ro-bind "${arg_ro[@]}"
+    adddir --bind "${arg_bind[@]}"
     # Disabled adding env variables. They are just inherited.
     if false; then
         list=(PATH HOME USER LOGNAME SHELL
@@ -90,7 +92,9 @@ bwrap_sandbox() {
         done
     fi
     #
-    set -x
+    if ((arg_verbose)); then
+        set -x
+    fi
     exec bwrap "${args[@]}" "$@"
 }
 
@@ -109,9 +113,21 @@ C_bwrap() {
 
 C_sandbox() { C_bwrap "$@"; }
 C_bash() { C_bwrap bash "$@"; }
+C_crush() {
+    if [[ "$(which crush)" == ~/go/bin/crush ]]; then
+        arg_ro+=(~/go)
+    fi
+    C_bwrap crush --yolo "$@"
+}
+C_opencode() { C_bwrap opencode --agent yolo "$@"; }
 
 . L_lib.sh
-L_argparse \
-    -- --podman flag=1 dest=config_podman \
+arg_verbose=0
+L_argparse dest_prefix=arg_ \
+    -- -q --quiet nargs=0 eval="((arg_verbose--))" \
+    -- -v --verbose nargs=0 eval="((arg_verbose++))" \
+    -- --ro action=append default= \
+    -- --bind action=append default= \
+    -- --podman flag=1 \
     -- call=function prefix=C_ \
     ---- "$@"
