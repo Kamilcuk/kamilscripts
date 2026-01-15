@@ -3,7 +3,8 @@ set -euo pipefail
 
 bwrap_sandbox() {
     local cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/,llm"
-    mkdir -p "$cachedir"/root
+    local root="$cachedir/root"
+    mkdir -p "$root/$HOME"
     #
     local args=(
         --bind "$cachedir"/root /
@@ -12,15 +13,15 @@ bwrap_sandbox() {
         --share-net
         --die-with-parent
         --bind "$PWD" "$PWD"
-        --dir "$HOME"
         --chdir "$PWD"
-        --setenv HOME "$HOME"
-        --setenv PATH "$PATH"
+        # --setenv HOME "$HOME"
+        # --setenv PATH "$PATH"
         --tmpfs /tmp
         --proc /proc
         --dev /dev
     )
-    add() {
+    add() { args+=("$@"); }
+    adddir() {
         local i
         for i in "${@:2}"; do
             if [[ -e "$i" ]]; then
@@ -30,37 +31,52 @@ bwrap_sandbox() {
     }
     local cache=${XDG_CACHE_HOME:-$HOME/.cache}
     local config=${XDG_CONFIG_HOME:-$HOME/.config}
+    # basic directories we need.
+    adddir --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
+    adddir --bind /run/user /sys
     # cache list to consider
-    add --ro-bind /bin
-    add --ro-bind /usr
-    add --ro-bind /lib
-    add --ro-bind /lib64
-    add --ro-bind /etc
-    add --ro-bind /opt
-    add --ro-bind /run/systemd
-    add --bind "$cache/uv"
-    add --bind "$cache/pip"
-    add --bind "$cache/npm"
-    add --bind "$cache/pnpm"
-    add --bind "$cache/yarn"
-    add --bind "$cache/poetry"
-    add --bind "$cache/maturin"
-    add --bind "$cache/go-build"
-    add --ro-bind "$config/npm"
-    add --ro-bind "$HOME/.npm"
-    add --ro-bind "$HOME/.cargo"
-    add --ro-bind "$HOME/.rustup"
-    add --ro-bind "$HOME/.local/share/uv"
-    add --ro-bind "$config/yarn"
-    add --ro-bind "$HOME/.gitconfig" "$config/git/config"
-    #
-    add --bind "$cache/gemini" "$config/gemini" "$HOME/.gemini"
-    #
-    for i in .bash_history .bash_historymy; do
-        touch "$cachedir/$i"
-        args+=(--bind "$cachedir/$i" "$HOME/$i")
+    adddir --bind "$cache/uv" "$HOME/.local/share/uv"
+    adddir --bind "$cache/pip"
+    adddir --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
+    adddir --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
+    adddir --ro-bind "$config/npm"
+    adddir --bind "$HOME/.npm"
+    adddir --bind "$HOME/.cargo" "$HOME/.rustup"
+    adddir --bind "$config/yarn"
+    adddir --ro-bind "$HOME/.gitconfig" "$config/git/config"
+    # Gemini configuration directories.
+    adddir --bind "$cache/gemini" "$config/gemini" "$HOME/.gemini"
+    # Podman.
+    if ((config_podman)); then
+        if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
+            # Start podman service sock.
+            if L_hash systemctl; then
+                if ! systemctl is-active --user podman.service; then
+                    L_logrun systemctl start --user podman.service
+                fi
+            fi
+            # Add environment variables.
+            add --setenv CONTAINER_RUNTIME podman
+            add --setenv DOCKER_BIN podman
+            # Set the podman socket. the socket.
+            add --ro-bind /run/user/$UID/podman /run/user/$UID/podman
+            add --setenv DOCKER_HOST unix:///run/user/$UID/podman/podman.sock
+            # Create /llmbin directory with podman wrapper that will explicitly pass --url.
+            local fd
+            exec {fd}< <(printf "%s\n" '#!/bin/bash' 'exec /usr/bin/podman --url "${DOCKER_HOST:-unix:///run/user/$UID/podman/podman.sock}" "$@"')
+            add --perms 555 --file "$fd" /llmbin/podman --symlink /llmbin/podman /llmbin/docker
+            export PATH="/llmbin:$PATH"
+        fi
+    fi
+    # Add bash history
+    for i in "$HOME/.bash_history"; do
+        touch "$root/$i"
+        add --bind "$root/$i" "$i"
     done
-    #
+    if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
+        add --bind "$root/$HISTFILE" "$HISTFILE"
+    fi
+    # Disabled adding env variables. They are just inherited.
     if false; then
         list=(PATH HOME USER LOGNAME SHELL
                     HTTP_PROXY HTTPS_PROXY NO_PROXY
@@ -69,7 +85,7 @@ bwrap_sandbox() {
                     XDG_CACHE_HOME XDG_CONFIG_HOME TERM)
         for i in "${list[@]}"; do
             if [[ -n "${!i:-}" ]]; then
-                args+=(--setenv "$i" "${!i}")
+                add --setenv "$i" "${!i}"
             fi
         done
     fi
@@ -92,8 +108,10 @@ C_bwrap() {
 }
 
 C_sandbox() { C_bwrap "$@"; }
+C_bash() { C_bwrap bash "$@"; }
 
 . L_lib.sh
 L_argparse \
-  -- call=function prefix=C_ \
-  ---- "$@"
+    -- --podman flag=1 dest=config_podman \
+    -- call=function prefix=C_ \
+    ---- "$@"
