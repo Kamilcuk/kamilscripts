@@ -1,4 +1,14 @@
 #!/bin/sh
-# https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
-exec xclip -selection clipboard "$@"
+hascmd() { hash "$@" >/dev/null 2>&1; }
+# if hascmd powershell.exe; then
+#   powershell.exe -NoProfile -Command Set-Clipboard "$@"
+if hascmd clip.exe; then
+  clip.exe "$@"
+elif hascmd xclip; then
+  # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
+  xclip -selection clipboard "$@"
+else
+  echo "pbcopy: no method found" >&2
+  exit 123
+fi
 

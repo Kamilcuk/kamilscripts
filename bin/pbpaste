@@ -1,4 +1,13 @@
 #!/bin/sh
-# https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
-exec xclip -i -selection clipboard -o "$@"
-
+hascmd() { command -v "$1" >/dev/null 2>&1; }
+if hascmd powershell.exe; then
+  powershell.exe -NoProfile -Command 'Get-Clipboard -Raw'
+elif hascmd clip.exe; then
+  powershell.exe -NoProfile -Command 'Get-Clipboard'
+elif hascmd xclip; then
+  # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
+  xclip -selection clipboard -o "$@"
+else
+  echo "pbpaste: no clipboard backend available" >&2
+  exit 127
+fi
