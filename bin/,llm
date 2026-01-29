@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+make_file() {
+    local path=$1
+    mkdir -p "$(dirname -- "$path")" && : > "$path"
+}
+
 bwrap_sandbox() {
     local cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/,llm"
     local root="$cachedir/root"
@@ -39,10 +44,12 @@ bwrap_sandbox() {
     adddir --bind "$cache/pip"
     adddir --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
     adddir --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
-    adddir --bind "$HOME/.npm"
+    adddir --bind "$HOME/.npm" "$HOME/.node_modules"
     adddir --ro-bind "$config/yarn" "$config/npm"
     adddir --bind "$HOME/.cargo" "$HOME/.rustup"
     adddir --ro-bind "$HOME/.gitconfig" "$config/git/config"
+    adddir --ro-bind /opt /snap "$HOME/snap"
+    adddir --ro-bind /nix /nix/var/nix/daemon-socket "$HOME/.nix-profile" "$HOME/.nix-defexpr"
     # gemini, crush, opencode configuration directories.
     for i in gemini crush opencode claude; do
         adddir --bind "$cache/$i" "$config/$i" "$HOME/.$i"
@@ -69,10 +76,11 @@ bwrap_sandbox() {
     fi
     # Add bash history
     for i in "$HOME/.bash_history"; do
-        touch "$root/$i"
+        make_file "$root/$i"
         add --bind "$root/$i" "$i"
     done
     if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
+        make_file "$root/$HISTFILE"
         add --bind "$root/$HISTFILE" "$HISTFILE"
     fi
     # Add args

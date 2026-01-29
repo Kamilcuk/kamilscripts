@@ -516,23 +516,23 @@ return {
   { import = "astrocommunity.lsp.nvim-lint" },
   { import = "astrocommunity.lsp.lspsaga-nvim" },
 
-  {
-    "alllsp",
-    dir = vim.fn.expand "~/.kamilscripts/nvim/lua/alllsp",
-    opts = { ignore = { black = true } },
-  },
-  {
-    "AstroNvim/astrolsp",
-    opts = function(_, opts)
-      opts.servers = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_lspconfig())
-    end,
-  },
-  {
-    "nvimtools/none-ls.nvim",
-    opts = function(_, opts)
-      opts.sources = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_none_ls())
-    end,
-  },
+  -- {
+  --   "alllsp",
+  --   dir = vim.fn.expand "~/.kamilscripts/nvim/lua/alllsp",
+  --   opts = { ignore = { black = true } },
+  -- },
+  -- {
+  --   "AstroNvim/astrolsp",
+  --   opts = function(_, opts)
+  --     opts.servers = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_lspconfig())
+  --   end,
+  -- },
+  -- {
+  --   "nvimtools/none-ls.nvim",
+  --   opts = function(_, opts)
+  --     opts.sources = require("astrocore").list_insert_unique(opts.servers, require("alllsp").for_none_ls())
+  --   end,
+  -- },
 
   -- }}}
   -- {{{1 utils utilities programs that do something
@@ -655,20 +655,6 @@ return {
           let g:detectspelllang_langs = { "hunspell": hunspell_dicts }
         endif
       ]]
-    end,
-  },
-
-  {
-    -- Paste images into markdown from neovim
-    "TobinPalmer/pastify.nvim",
-    ft = "markdown",
-    cond = function()
-      if KcHasPythonVersionAndImport(3, 8, "PIL") then
-        return true
-      else
-        KcLog "pastify.nvim disabled: no python3.8 or no PIL installed"
-        return false
-      end
     end,
   },
 

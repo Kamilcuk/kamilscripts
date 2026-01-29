@@ -705,4 +705,20 @@ p                paste yanked block replace with current selection
   --   },
   -- },
 
+  -- never used it
+  -- {
+  --   -- Paste images into markdown from neovim
+  --   "TobinPalmer/pastify.nvim",
+  --   ft = "markdown",
+  --   cond = function()
+  --     if KcHasPythonVersionAndImport(3, 8, "PIL") then
+  --       return true
+  --     else
+  --       KcLog "pastify.nvim disabled: no python3.8 or no PIL installed"
+  --       return false
+  --     end
+  --   end,
+  -- },
+
+
 }
