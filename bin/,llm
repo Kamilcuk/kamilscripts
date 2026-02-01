@@ -50,6 +50,7 @@ bwrap_sandbox() {
     adddir --ro-bind "$HOME/.gitconfig" "$config/git/config"
     adddir --ro-bind /opt /snap "$HOME/snap"
     adddir --ro-bind /nix /nix/var/nix/daemon-socket "$HOME/.nix-profile" "$HOME/.nix-defexpr"
+    adddir --bind "$HOME/.dotnet" "$HOME/.nuget"
     # gemini, crush, opencode configuration directories.
     for i in gemini crush opencode claude; do
         adddir --bind "$cache/$i" "$config/$i" "$HOME/.$i"
@@ -85,7 +86,7 @@ bwrap_sandbox() {
     fi
     # Add args
     adddir --ro-bind "${arg_ro[@]}"
-    adddir --bind "${arg_bind[@]}"
+    adddir --bind "${arg_rw[@]}"
     # Disabled adding env variables. They are just inherited.
     if false; then
         list=(PATH HOME USER LOGNAME SHELL
@@ -106,7 +107,16 @@ bwrap_sandbox() {
     exec bwrap "${args[@]}" "$@"
 }
 
+add_ro_if_not_there() {
+    if ! L_args_contain ~/.node_modules "${arg_ro[@]}" "${arg_rw[@]}"; then
+        arg_ro+=(~/.node_modules)
+    fi
+}
+
 C_gemini() {
+    if [[ $(which gemini) == ~/.node_modules/bin/gemini ]]; then
+        add_ro_if_not_there ~/.node_modules
+    fi
     bwrap_sandbox \
         env GEMINI_TIMEOUT=999999 \
         gemini --yolo "$@"
@@ -123,11 +133,25 @@ C_sandbox() { C_bwrap "$@"; }
 C_bash() { C_bwrap bash "$@"; }
 C_crush() {
     if [[ "$(which crush)" == ~/go/bin/crush ]]; then
-        arg_ro+=(~/go)
+        add_ro_if_not_there ~/go
     fi
     C_bwrap crush --yolo "$@"
 }
 C_opencode() { C_bwrap opencode --agent yolo "$@"; }
+
+rotate_key() {
+    local arg_key=$1
+    if [[ arg_key != 0 ]]; then
+        local v=GEMINI_API_KEY$arg_key
+        if [[ -v $v ]]; then
+            L_warning "+ export GEMINI_API_KEY=\$$v"
+            L_notice "GEMINI_API_KEY=$GEMINI_API_KEY arg_key=$arg_key"
+            export GEMINI_API_KEY=${!v}
+        else
+            L_warning "--key argument invalid, variable does not exist: $v"
+        fi
+    fi
+}
 
 . L_lib.sh
 arg_verbose=0
@@ -135,7 +159,8 @@ L_argparse dest_prefix=arg_ \
     -- -q --quiet nargs=0 eval="((arg_verbose--))" \
     -- -v --verbose nargs=0 eval="((arg_verbose++))" \
     -- --ro action=append default= \
-    -- --bind action=append default= \
+    -- --rw --bind action=append default= \
+    -- -k --key default= nargs=1 eval='rotate_key "$@"' \
     -- --podman flag=1 \
     -- call=function prefix=C_ \
     ---- "$@"
