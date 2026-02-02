@@ -222,8 +222,17 @@ if [ "$#" -ne 0 ]; then
 	fatal "Too many arguments"
 fi
 
-err4=0; sorter work_query 4 "$ipv4_rgx" || err4=$?
-err6=0; sorter work_query 6 "$ipv6_rgx" || err6=$?
+# err4=0; sorter work_query 4 "$ipv4_rgx" || err4=$?
+# err6=0; sorter work_query 6 "$ipv6_rgx" || err6=$?
+if [[ "$g_mode" == *4* ]]; then
+	a=$(curl -sSL https://ipinfo.io/ip)
+	echo "$a"
+fi
+if [[ "$g_mode" == *6* ]]; then
+	a=$(curl -sSL v6.ident.me)
+	echo "$a"
+fi
+
 
 if ((err4)); then
 	error "Could not get ipv4 address"

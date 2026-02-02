@@ -3,7 +3,9 @@ set -euo pipefail
 
 make_file() {
     local path=$1
-    mkdir -p "$(dirname -- "$path")" && : > "$path"
+    if mkdir -p "$(dirname -- "$path")"; then
+        touch "$path"
+    fi
 }
 
 bwrap_sandbox() {
