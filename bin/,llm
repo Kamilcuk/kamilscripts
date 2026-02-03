@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-make_file() {
+makefile() {
     local path=$1
     if mkdir -p "$(dirname -- "$path")"; then
         touch "$path"
@@ -28,7 +28,7 @@ bwrap_sandbox() {
         --dev /dev
     )
     add() { args+=("$@"); }
-    adddir() {
+    addpath() {
         local i
         for i in "${@:2}"; do
             if [[ -e "$i" ]]; then
@@ -39,23 +39,29 @@ bwrap_sandbox() {
     local cache=${XDG_CACHE_HOME:-$HOME/.cache}
     local config=${XDG_CONFIG_HOME:-$HOME/.config}
     # basic directories we need.
-    adddir --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
-    adddir --bind /run/user /sys
+    addpath --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
+    addpath --bind /run/user /sys
     # cache list to consider
-    adddir --bind "$cache/uv" "$HOME/.local/share/uv"
-    adddir --bind "$cache/pip"
-    adddir --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
-    adddir --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
-    adddir --bind "$HOME/.npm" "$HOME/.node_modules"
-    adddir --ro-bind "$config/yarn" "$config/npm"
-    adddir --bind "$HOME/.cargo" "$HOME/.rustup"
-    adddir --ro-bind "$HOME/.gitconfig" "$config/git/config"
-    adddir --ro-bind /opt /snap "$HOME/snap"
-    adddir --ro-bind /nix /nix/var/nix/daemon-socket "$HOME/.nix-profile" "$HOME/.nix-defexpr"
-    adddir --bind "$HOME/.dotnet" "$HOME/.nuget"
+    addpath --bind "$cache/uv" "$HOME/.local/share/uv"
+    addpath --bind "$cache/pip"
+    addpath --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
+    addpath --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
+    addpath --bind "$HOME/.npm" "$HOME/.node_modules"
+    addpath --ro-bind "$config/yarn" "$config/npm"
+    addpath --bind "$HOME/.cargo" "$HOME/.rustup"
+    addpath --ro-bind "$HOME/.gitconfig" "$config/git/config"
+    addpath --ro-bind /opt /snap "$HOME/snap"
+    addpath --ro-bind /nix "$HOME"/.local/state/nix "$HOME/.nix-profile" "$HOME/.nix-defexpr"
+    # /nix/var/nix/daemon-socket
+    addpath --bind "$HOME/.dotnet" "$HOME/.nuget"
+    if [[ -L /etc/resolv.conf ]]; then
+        local tmp
+        tmp="$(readlink -f /etc/resolv.conf)"
+        addpath --ro-bind "$tmp"
+    fi
     # gemini, crush, opencode configuration directories.
     for i in gemini crush opencode claude; do
-        adddir --bind "$cache/$i" "$config/$i" "$HOME/.$i"
+        addpath --bind "$cache/$i" "$config/$i" "$HOME/.$i"
     done
     # Podman.
     if ((arg_podman)); then
@@ -79,16 +85,16 @@ bwrap_sandbox() {
     fi
     # Add bash history
     for i in "$HOME/.bash_history"; do
-        make_file "$root/$i"
+        makefile "$root/$i"
         add --bind "$root/$i" "$i"
     done
     if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
-        make_file "$root/$HISTFILE"
+        makefile "$root/$HISTFILE"
         add --bind "$root/$HISTFILE" "$HISTFILE"
     fi
     # Add args
-    adddir --ro-bind "${arg_ro[@]}"
-    adddir --bind "${arg_rw[@]}"
+    addpath --ro-bind "${arg_ro[@]}"
+    addpath --bind "${arg_rw[@]}"
     # Disabled adding env variables. They are just inherited.
     if false; then
         list=(PATH HOME USER LOGNAME SHELL
