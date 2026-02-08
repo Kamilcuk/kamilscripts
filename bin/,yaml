@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+C_diff() {
+  L_argparse \
+    -- f1 \
+    -- f2 \
+    ---- "$@"
+  local a b
+  a=$(yq -P 'sort_keys(..)' -o=props "$f1")
+  b=$(yq -P 'sort_keys(..)' -o=props "$f2")
+  diff <(cat <<<"$a") <(cat <<<"$b")
+}
+. L_lib.sh -s
+L_argparse \
+  -- call=function prefix=C_ \
+  ---- "$@"
