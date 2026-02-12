@@ -8,10 +8,11 @@ local function lazyinstall(byuser)
   end
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
     if byuser then
-      vim.notify("Lazy not installed, use :KcInstall to install")
-    else
       vim.notify("Lazy not found, installing...")
       load(vim.fn.system("curl -s https://raw.githubusercontent.com/folke/lazy.nvim/main/bootstrap.lua"))()
+    else
+      vim.notify("Lazy not installed, use :KcInstall to install")
+      return
     end
   end
   vim.opt.rtp:prepend(lazypath)

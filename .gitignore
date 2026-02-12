@@ -8,3 +8,4 @@ secrets
 .vscode
 **/*.un~
 public
+.aider*
