@@ -66,6 +66,7 @@ bwrap_sandbox() {
     # Podman.
     if ((arg_podman)); then
         if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
+            L_debug "Using podman..."
             # Start podman service sock.
             if [[ ! -e /run/user/$UID/podman/podman.sock ]] && L_hash systemctl; then
                 L_logrun systemctl start --user podman.service
@@ -81,17 +82,31 @@ bwrap_sandbox() {
             exec {fd}< <(printf "%s\n" '#!/bin/bash' 'exec /usr/bin/podman --url "${DOCKER_HOST:-unix:///run/user/$UID/podman/podman.sock}" "$@"')
             add --perms 555 --file "$fd" /llmbin/podman --symlink /llmbin/podman /llmbin/docker
             export PATH="/llmbin:$PATH"
+        else
+            L_fatal "Podman not detected"
         fi
     fi
-    # Add bash history
-    for i in "$HOME/.bash_history"; do
-        makefile "$root/$i"
-        add --bind "$root/$i" "$i"
-    done
-    if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
-        makefile "$root/$HISTFILE"
-        add --bind "$root/$HISTFILE" "$HISTFILE"
+    if false; then
+        # Add bash history
+        # Don't add - it is security issue.
+        for i in "$HOME/.bash_history"; do
+            makefile "$root/$i"
+            add --bind "$root/$i" "$i"
+        done
+        if [[ -n "${HISTFILE:-}" && -e "$HISTFILE" && "$HISTFILE" != "$HOME/.bash_history" ]]; then
+            makefile "$root/$HISTFILE"
+            add --bind "$root/$HISTFILE" "$HISTFILE"
+        fi
     fi
+    # Hide
+    shopt -s globstar nullglob extglob
+    for i in "$PWD"/{,**/}{env*,.env*,secrets*,*.pem,*.key,*.crt} "${arg_hide[@]}"; do
+        if [[ -e "$i" ]]; then
+            i=$(readlink -f "$i")
+            L_debug "Hiding $i"
+            add --ro-bind /dev/null "$i"
+        fi
+    done
     # Add args
     addpath --ro-bind "${arg_ro[@]}"
     addpath --bind "${arg_rw[@]}"
@@ -161,11 +176,11 @@ rotate_key() {
     fi
 }
 
-. L_lib.sh
+. L_lib.sh -s
 arg_verbose=0
 L_argparse dest_prefix=arg_ \
-    -- -q --quiet nargs=0 eval="((arg_verbose--))" \
-    -- -v --verbose nargs=0 eval="((arg_verbose++))" \
+    -- -q --quiet nargs=0 eval='((arg_verbose--)); L_log_level_dec' \
+    -- -v --verbose nargs=0 eval='((arg_verbose++)); L_log_level_inc' \
     -- --ro action=append default= help="List of directories or file to mount read only" \
     -- --rw --bind action=append default= help="List of directories or files to mount read write" \
     -- --hide action=append default= help="Hide specific files from the llm by mounting /dev/null on top of them" \
