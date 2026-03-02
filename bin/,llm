@@ -98,15 +98,17 @@ bwrap_sandbox() {
             add --bind "$root/$HISTFILE" "$HISTFILE"
         fi
     fi
-    # Hide
-    shopt -s globstar nullglob extglob
-    for i in "$PWD"/{,**/}{env*,.env*,secrets*,*.pem,*.key,*.crt} "${arg_hide[@]}"; do
-        if [[ -e "$i" ]]; then
-            i=$(readlink -f "$i")
-            L_debug "Hiding $i"
-            add --ro-bind /dev/null "$i"
-        fi
-    done
+    if ((!arg_no_hide)); then
+        # Hide
+        shopt -s globstar nullglob extglob
+        for i in "$PWD"/{,**/}{env*,.env*,secrets*,*.pem,*.key,*.crt} "${arg_hide[@]}"; do
+            if [[ -e "$i" ]]; then
+                i=$(readlink -f "$i")
+                L_debug "Hiding $i"
+                add --ro-bind /dev/null "$i"
+            fi
+        done
+    fi
     # Add args
     addpath --ro-bind "${arg_ro[@]}"
     addpath --bind "${arg_rw[@]}"
@@ -168,7 +170,7 @@ rotate_key() {
         local v=GEMINI_API_KEY$arg_key
         if [[ -v $v ]]; then
             L_warning "+ export GEMINI_API_KEY=\$$v"
-            L_notice "GEMINI_API_KEY=$GEMINI_API_KEY arg_key=$arg_key"
+            L_notice "GEMINI_API_KEY=...${GEMINI_API_KEY:${#GEMINI_API_KEY}-6} arg_key=$arg_key"
             export GEMINI_API_KEY=${!v}
         else
             L_warning "--key argument invalid, variable does not exist: $v"
@@ -184,6 +186,7 @@ L_argparse dest_prefix=arg_ \
     -- --ro action=append default= help="List of directories or file to mount read only" \
     -- --rw --bind action=append default= help="List of directories or files to mount read write" \
     -- --hide action=append default= help="Hide specific files from the llm by mounting /dev/null on top of them" \
+    -- --no-hide flag=1 help="Ignore all --hide" \
     -- -k --key default= nargs=1 eval='rotate_key "$@"' \
     -- --podman flag=1 \
     -- call=function prefix=C_ \
