@@ -1,17 +1,53 @@
 #!/bin/bash
-firewall-cmd "$@" |
-	while IFS= read line; do
-		if [[ ! $line = *services:* ]]; then
-			echo "$line"
-		else
-			read -r -a a <<<"$line"
-			{
-				echo "  ${a[0]}"
-				unset a[0]
-				for i in "${a[@]}"; do
-					port=$(firewall-cmd --info-service $i | sed -n 's/.*ports: *//p')
-					echo "$i($port)"
-				done
-			} | paste -sd' '
-		fi
-	done
+set -euo pipefail
+
+. L_lib.sh
+
+C_block() {
+	L_argparse \
+		-- --zone default=public \
+		-- ip \
+		---- "$@"
+	L_logrun firewall-cmd --permanent --zone="$zone" --add-rich-rule="rule family=\"ipv4\" source address=\"$ip\" drop"
+	L_logrun firewall-cmd --permanent --zone="$zone" --add-rich-rule="rule family=\"ipv6\" source address=\"$ip\" drop"
+	L_logrun firewall-cmd --reload
+	L_logrun firewall-cmd --list-rich-rules
+}
+
+C_unblock() {
+	L_argparse \
+		-- --zone default=public \
+		-- ip \
+		---- "$@"
+	L_logrun firewall-cmd --permanent --zone="$zone" --remove-rich-rule="rule family=\"ipv4\" source address=\"$ip\" drop"
+	L_logrun firewall-cmd --permanent --zone="$zone" --remove-rich-rule="rule family=\"ipv6\" source address=\"$ip\" drop"
+	L_logrun firewall-cmd --reload
+	L_logrun firewall-cmd --list-rich-rules
+}
+
+C_list_all_zones() {
+	echo todo
+}
+
+C_wrap() {
+	firewall-cmd "$@" |
+		while IFS= read line; do
+			if [[ ! $line = *services:* ]]; then
+				echo "$line"
+			else
+				read -r -a a <<<"$line"
+				{
+					echo "  ${a[0]}"
+					unset a[0]
+					for i in "${a[@]}"; do
+						port=$(firewall-cmd --info-service $i | sed -n 's/.*ports: *//p')
+						echo "$i($port)"
+					done
+				} | paste -sd' '
+			fi
+		done
+}
+
+L_argparse \
+	-- call=function prefix=C_ \
+	---- "$@"
