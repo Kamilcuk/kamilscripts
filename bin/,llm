@@ -153,7 +153,7 @@ C_bwrap() {
     fi
     bwrap_sandbox "$@"
 }
-
+C_env() { C_bwrap env "$@"; }
 C_sandbox() { C_bwrap "$@"; }
 C_bash() { C_bwrap bash "$@"; }
 C_crush() {
