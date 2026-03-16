@@ -263,6 +263,32 @@ C_removebranchesnotonremote() (
 		xargs -prtd '\n' git branch -d <"$tmpf"
 )
 
+filter-repo() {
+	if ! L_hash git-filter-repo; then
+		L_fatal "Install uv tool install git-filter-repo"
+	fi
+	L_setx git filter-repo "$@"
+}
+
+C_remove_string_from_all_branches() {
+	L_argparse help="https://stackoverflow.com/a/64153992/9072753" -- from -- to default="***" nargs="?" ---- "$@"
+	filter-repo --replace-text <(echo "$from==>$to")
+}
+
+C_remove_file_from_all_branches() {
+	L_argparse help="https://stackoverflow.com/a/64563565/9072753" -- -f --force flag=1 -- file ---- "$@"
+	local args=()
+	if (( force )); then
+		args+=(--force)
+	fi
+	filter-repo --invert-paths --path "$file" "${args[@]}"
+}
+
+C_remove_file_from_git_history() {
+	L_argparse -- file ---- "$@"
+	L_setx git filter-branch --index-filter 'git rm -rf --cached --ignore-unmatch '"$file" HEAD
+}
+
 C_autoaddcommitpush() {
 	L_argparse \
 		-- commit help="commit message" nargs="?" default="$HOSTNAME: Updates" show_default=1 \

@@ -36,13 +36,16 @@ bwrap_sandbox() {
             fi
         done
     }
-    local cache=${XDG_CACHE_HOME:-$HOME/.cache}
     local config=${XDG_CONFIG_HOME:-$HOME/.config}
+    local cache=${XDG_CACHE_HOME:-$HOME/.cache}
+    local data=${XDG_DATA_HOME:-$HOME/.local/share}
+    local state=${XDG_STATE_HOME:-$HOME/.local/state}
     # basic directories we need.
     addpath --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
     addpath --bind /run/user /sys
     # cache list to consider
-    addpath --bind "$cache/uv" "$HOME/.local/share/uv"
+    addpath --bind "$cache/uv"
+    addpath --bind "$data"
     addpath --bind "$cache/pip"
     addpath --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
     addpath --bind "$cache/poetry" "$cache/maturin" "$cache/go-build"
@@ -52,6 +55,7 @@ bwrap_sandbox() {
     addpath --ro-bind "$HOME/.gitconfig" "$config/git/config"
     addpath --ro-bind /opt /snap "$HOME/snap"
     addpath --ro-bind /nix "$HOME"/.local/state/nix "$HOME/.nix-profile" "$HOME/.nix-defexpr"
+    addpath --bind "$HOME/.platformio"
     # /nix/var/nix/daemon-socket
     addpath --bind "$HOME/.dotnet" "$HOME/.nuget"
     if [[ -L /etc/resolv.conf ]]; then
@@ -112,6 +116,16 @@ bwrap_sandbox() {
     # Add args
     addpath --ro-bind "${arg_ro[@]}"
     addpath --bind "${arg_rw[@]}"
+    if ((0)); then
+        local i abs_i abs_pwd is_undef
+        for i in "${arg_rw[@]}"; do
+            abs_i=$(realpath "$i")
+            abs_pwd=$(realpath "$PWD")
+            if [[ "$abs_pwd" == "$abs_i"* ]]; then
+                echo "$abs_pwd is under $abs_i"
+            fi
+        done
+    fi
     # Disabled adding env variables. They are just inherited.
     if false; then
         list=(PATH HOME USER LOGNAME SHELL
