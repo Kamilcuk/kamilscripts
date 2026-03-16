@@ -164,18 +164,36 @@ C_crush() {
 }
 C_opencode() { C_bwrap opencode --agent yolo "$@"; }
 
-rotate_key() {
-    local arg_key=$1
-    if [[ arg_key != 0 ]]; then
-        local v=GEMINI_API_KEY$arg_key
-        if [[ -v $v ]]; then
-            L_warning "+ export GEMINI_API_KEY=\$$v"
-            L_notice "GEMINI_API_KEY=...${GEMINI_API_KEY:${#GEMINI_API_KEY}-6} arg_key=$arg_key"
-            export GEMINI_API_KEY=${!v}
-        else
-            L_warning "--key argument invalid, variable does not exist: $v"
-        fi
+pick_key() {
+    local idx=$1
+    if [[ idx == 0 ]]; then
+        return
     fi
+    # local -;set -x
+    if [[ -n "${GEMINI_GEMINI_API_KEYS:-}" ]]; then
+        GEMINI_API_KEYS=${GEMINI_API_KEYS:-$GEMINI_GEMINI_API_KEYS}
+    fi
+    if [[ -n "${GEMINI_API_KEYS:-}" ]]; then
+        local keys
+        IFS=, read -ra keys <<<"$GEMINI_API_KEYS"
+        if [[ -v keys[idx] ]] ; then
+            local v=keys[idx]
+            export GEMINI_API_KEY=${keys[idx]}
+            L_notice "GEMINI_API_KEY=...${GEMINI_API_KEY:${#GEMINI_API_KEY}-6} from GEMINI_API_KEYS[$idx]"
+        else
+            L_warning "--key argument invalid, variable does not exist: $idx in GEMINI_API_KEYS which has ${#keys[@]} keys"
+            return
+        fi
+    # else
+    #     local v=GEMINI_API_KEY$idx
+    #     if [[ -v $v ]]; then
+    #         export GEMINI_API_KEY=${!v}
+    #         L_notice "GEMINI_API_KEY=...${GEMINI_API_KEY:${#GEMINI_API_KEY}-6} idx=$idx"
+    #     else
+    #         L_warning "--key argument invalid, variable does not exist: $v"
+    #     fi
+    fi
+    L_debug "+ export GEMINI_API_KEY=\$$v"
 }
 
 . L_lib.sh -s
@@ -187,7 +205,7 @@ L_argparse dest_prefix=arg_ \
     -- --rw --bind action=append default= help="List of directories or files to mount read write" \
     -- --hide action=append default= help="Hide specific files from the llm by mounting /dev/null on top of them" \
     -- --no-hide flag=1 help="Ignore all --hide" \
-    -- -k --key default= nargs=1 eval='rotate_key "$@"' \
+    -- -k --key default= nargs=1 eval='pick_key "$@"' \
     -- --podman flag=1 \
     -- call=function prefix=C_ \
     ---- "$@"
