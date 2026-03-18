@@ -1,3 +1,20 @@
+| pora dnia        | suplement          | dawka   | uwagi                              |
+| ---------------- | ------------------ | ------- | ---------------------------------- |
+| Rano             | NMN + resweratrol  | 2 kaps. | blok „metabolizm”                  |
+| Rano             | Koenzym Q10        | 1 kaps. | razem z tłuszczem                  |
+| Rano             | Tran               | 5 ml    | baza omega-3                       |
+| Rano             | Kurkuma + piperyna | 1 kaps. | zwiększa wchłanianie               |
+| Południe         | NAC                | 1 kaps. | najlepiej osobno, nie z tłuszczami |
+| Południe         | Teeth & Gums       | 1 kaps. | neutralne                          |
+| Południe/Wieczór | Spermidyna         | 1 kaps. | najlepiej z posiłkiem              |
+| Wieczór          | Magnez + B6        | 4 kaps. | można podzielić 2+2                |
+| Wieczór          | Ashwagandha        | 1 kaps. | tylko jeśli stres                  |
+| Warunkowo        | Olej z wiesiołka   | 1 kaps. | tylko zamiast tranu                |
+
+
+--------------------------------
+
+
 |pora dnia|dzień     |suplement (producent)               |dawka  |skład na dawkę                                                                                                       |
 |---------|----------|------------------------------------|-------|---------------------------------------------------------------------------------------------------------------------|
 |Rano     |Dzień A   |NMN + Resveratrol (Proton Labs)     |2 kaps.|NMN 500 mg + trans-resweratrol 500 mg                                                                                |
