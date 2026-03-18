@@ -1,8 +1,8 @@
 | pora dnia        | suplement          | dawka   | uwagi                              | skład na dawkę                                                                                                        |
 | ---------------- | ------------------ | ------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Rano             | Tran               | 5 ml    | baza omega-3                       | Omega-3 1,2 g (DHA 0,6 g, EPA 0,4 g) + vit. A 250 µg + vit. D 50 µg + vit. E 3 mg                                     |
 | Rano             | NMN + resweratrol  | 2 kaps. | blok „metabolizm”                  | NMN 500 mg + trans-resweratrol 500 mg                                                                                 |
 | Rano             | Koenzym Q10        | 1 kaps. | razem z tłuszczem                  | Koenzym Q10 (ubichinon) 100 mg                                                                                        |
-| Rano             | Tran               | 5 ml    | baza omega-3                       | Omega-3 1,2 g (DHA 0,6 g, EPA 0,4 g) + vit. A 250 µg + vit. D 50 µg + vit. E 3 mg                                     |
 | Rano             | Kurkuma + piperyna | 1 kaps. | zwiększa wchłanianie               | Curcuma longa 600 mg + piperyna 2,1 mg                                                                                |
 | Południe         | NAC                | 1 kaps. | najlepiej osobno, nie z tłuszczami | N-acetyl-L-cysteina 300 mg (99,52%)                                                                                   |
 | Południe         | Teeth & Gums       | 1 kaps. | neutralne                          | Wit. A 300 µg, Wit. C 33 mg, Wit. D3 41 µg, Wit. K2 33 µg, Ca 200 mg, Zn 2,7 mg, kolagen 167 mg, probiotyki 5 mld CFU |
