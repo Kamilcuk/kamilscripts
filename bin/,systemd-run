@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+import sys
+import time
+import shlex
+import os
+
+IS_ROOT = os.geteuid() == 0
+
+def get_systemctl_base():
+    """Returns the base systemctl command."""
+    if IS_ROOT:
+        return ["systemctl"]
+    else:
+        return ["systemctl", "--user"]
+def run_command(command, check=True):
+    """Runs a command, returning output only if check=False."""
+    is_shell = isinstance(command, str)
+    if is_shell:
+        display_command = command
+    else:
+        display_command = ' '.join(shlex.quote(arg) for arg in command)
+
+    if "is-active" not in display_command:
+        print(f"+ {display_command}")
+
+    if check:
+        try:
+            # For commands that should succeed, we don't capture output.
+            # stderr is inherited, so errors are seen immediately.
+            subprocess.run(
+                command,
+                check=True,
+                shell=is_shell,
+                text=True,
+            )
+            return None
+        except subprocess.CalledProcessError as e:
+            # The error message from the command was already printed to stderr.
+            # We just need to exit with the same return code.
+            sys.exit(e.returncode)
+    else:
+        # For commands where the caller handles the result, we capture output.
+        return subprocess.run(
+            command,
+            check=False,
+            shell=is_shell,
+            text=True,
+            capture_output=True
+        )
+
+def is_service_active(name):
+    """Checks if a service is active."""
+    command = get_systemctl_base() + ["is-active", name]
+    result = run_command(command, check=False)
+    return result.stdout.strip() == "active"
+
+def wait_for_service_to_stop(name):
+    """Waits for a service to stop."""
+    while is_service_active(name):
+        time.sleep(1)
+
+def unittest_command(args):
+    """Internal unit tests."""
+    print("Running internal unit tests...")
+    service_name = "tmp_unittest_service"
+
+    def call_script(command):
+        # We need to construct the command carefully to handle commands with spaces
+        parts = command.split()
+        subcommand = parts[0]
+        if subcommand in ['run', 'replace']:
+            # Find the command part and quote it
+            name = parts[1]
+            cmd_to_run = " ".join(parts[2:])
+            full_cmd = f'python3 ,systemd-run {subcommand} {name} "{cmd_to_run}"'
+        else:
+            full_cmd = f"python3 ,systemd-run {command}"
+        run_command(full_cmd)
+
+    print(f"Starting service {service_name}...")
+    call_script(f"run {service_name} sleep 1")
+    
+    print(f"Checking status of service {service_name}...")
+    call_script(f"status {service_name}")
+    
+    print(f"Checking logs of service {service_name}...")
+    call_script(f"logs {service_name} -n 1")
+
+    print(f"Stopping service {service_name}...")
+    call_script(f"stop {service_name}")
+
+    print(f"Starting service {service_name} again...")
+    call_script(f"run {service_name} sleep 1")
+
+    print(f"Replacing service {service_name}...")
+    call_script(f"replace {service_name} sleep 2")
+
+    print(f"Stopping service {service_name}...")
+    call_script(f"stop {service_name}")
+    
+    print("Unit tests passed.")
+
+def run_service(args):
+    """Executes systemd-run -u <name> --remain-after-exit <command>."""
+    base_command = ["systemd-run"]
+    if not IS_ROOT:
+        base_command.append("--user")
+    command = base_command + ["-u", args.name, "--remain-after-exit"] + args.command
+    run_command(command)
+
+def status_service(args):
+    """systemctl status <name>"""
+    command = get_systemctl_base() + ["status", args.name]
+    result = run_command(command, check=False)
+    sys.stdout.write(result.stdout)
+    sys.stderr.write(result.stderr)
+    sys.exit(result.returncode)
+
+def stop_service(args):
+    """systemctl stop <name> and wait for the service to finish."""
+    command = get_systemctl_base() + ["stop", args.name]
+    run_command(command)
+    wait_for_service_to_stop(args.name)
+
+def restart_service(args):
+    """Will stop, wait until stopped, start."""
+    stop_service(args)
+    command = get_systemctl_base() + ["start", args.name]
+    run_command(command)
+
+def kill_service(args):
+    """Send signal to the systemctl unit."""
+    command = get_systemctl_base() + ["kill", args.name]
+    run_command(command)
+    print(f"Signal sent to service '{args.name}'.")
+
+def wait_service(args):
+    """Will wait for the service to finish and grab the exit status and exit with it."""
+    wait_for_service_to_stop(args.name)
+    command = get_systemctl_base() + ["show", args.name, "--property=ExecMainStatus", "--value"]
+    result = run_command(command, check=False)
+    if result.returncode == 0 and result.stdout.strip().isdigit():
+        exit_status = int(result.stdout.strip())
+        print(f"Service '{args.name}' finished with exit status {exit_status}.")
+        sys.exit(exit_status)
+    else:
+        print(f"Could not get exit status for service '{args.name}'.", file=sys.stderr)
+        sys.exit(1)
+
+
+def replace_service(args):
+    """Command will stop a service, wait for it to finish, and start a new command."""
+    stop_service(args)
+    run_service(args)
+
+def logs_service(args):
+    """journalctl and forward options."""
+    options = []
+    if args.follow:
+        options.append("-f")
+    if args.grep:
+        options.extend(["--grep", args.grep])
+    if args.utc:
+        options.append("--utc")
+    if args.output_fields:
+        options.extend(["--output-fields", args.output_fields])
+    if args.since:
+        options.extend(["--since", args.since])
+    if args.until:
+        options.extend(["--until", args.until])
+    if args.lines:
+        options.extend(["--lines", args.lines])
+    if args.no_tail:
+        options.append("--no-tail")
+    if args.reverse:
+        options.append("--reverse")
+    if args.output:
+        options.extend(["--output", args.output])
+    
+    if IS_ROOT:
+        unit_option = f"--unit={args.name}"
+    else:
+        unit_option = f"--user-unit={args.name}"
+    
+    command = f"journalctl --no-hostname {unit_option} {' '.join(options)} {' '.join(args.extra_options)}"
+    result = run_command(command, check=False)
+    sys.stdout.write(result.stdout)
+    sys.stderr.write(result.stderr)
+    sys.exit(result.returncode)
+
+def main():
+    """Main function."""
+    parser = argparse.ArgumentParser(description="A Python script with subcommands.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # unittest
+    parser_unittest = subparsers.add_parser("unittest", help="Internal unit tests")
+    parser_unittest.set_defaults(func=unittest_command)
+
+    # run
+    parser_run = subparsers.add_parser("run", help="Execute systemd-run")
+    parser_run.add_argument("name", help="Name of the service")
+    parser_run.add_argument("command", nargs=argparse.REMAINDER, help="Command to execute")
+    parser_run.set_defaults(func=run_service)
+
+    # status
+    parser_status = subparsers.add_parser("status", help="Get status of a service")
+    parser_status.add_argument("name", help="Name of the service")
+    parser_status.set_defaults(func=status_service)
+
+    # stop
+    parser_stop = subparsers.add_parser("stop", help="Stop a service")
+    parser_stop.add_argument("name", help="Name of the service")
+    parser_stop.set_defaults(func=stop_service)
+
+    # restart
+    parser_restart = subparsers.add_parser("restart", help="Restart a service")
+    parser_restart.add_argument("name", help="Name of the service")
+    parser_restart.set_defaults(func=restart_service)
+
+    # kill
+    parser_kill = subparsers.add_parser("kill", help="Send signal to a service")
+    parser_kill.add_argument("name", help="Name of the service")
+    parser_kill.set_defaults(func=kill_service)
+
+    # wait
+    parser_wait = subparsers.add_parser("wait", help="Wait for a service to finish")
+    parser_wait.add_argument("name", help="Name of the service")
+    parser_wait.set_defaults(func=wait_service)
+
+    # replace
+    parser_replace = subparsers.add_parser("replace", help="Replace a service")
+    parser_replace.add_argument("name", help="Name of the service")
+    parser_replace.add_argument("command", nargs=argparse.REMAINDER, help="New command to execute")
+    parser_replace.set_defaults(func=replace_service)
+
+    # logs
+    parser_logs = subparsers.add_parser("logs", help="Get logs for a service", aliases=['log'])
+    parser_logs.add_argument("name", help="Name of the service")
+    parser_logs.add_argument("-f", "--follow", action="store_true", help="Follow the journal")
+    parser_logs.add_argument("--grep", help="Filter output by message content")
+    parser_logs.add_argument("--utc", action="store_true", help="Show timestamps in UTC")
+    parser_logs.add_argument("--output-fields", help="Fields to include in output")
+    parser_logs.add_argument("-S", "--since", help="Show entries since a specific time")
+    parser_logs.add_argument("-U", "--until", help="Show entries until a specific time")
+    parser_logs.add_argument("-n", "--lines", help="Number of journal entries to show")
+    parser_logs.add_argument("--no-tail", action="store_true", help="Show all lines, even in follow mode")
+    parser_logs.add_argument("-r", "--reverse", action="store_true", help="Reverse output order")
+    parser_logs.add_argument("-o", "--output", help="Output format")
+    parser_logs.add_argument("extra_options", nargs=argparse.REMAINDER, help="Other options to pass to journalctl")
+    parser_logs.set_defaults(func=logs_service)
+
+    args = parser.parse_args()
+    args.func(args)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)
