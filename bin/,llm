@@ -227,11 +227,11 @@ arg_verbose=0
 L_argparse dest_prefix=arg_ \
     -- -q --quiet nargs=0 eval='((arg_verbose--)); L_log_level_dec' \
     -- -v --verbose nargs=0 eval='((arg_verbose++)); L_log_level_inc' \
-    -- --ro action=append default= help="List of directories or file to mount read only" \
-    -- --rw --bind action=append default= help="List of directories or files to mount read write" \
+    -- -o --ro action=append default= help="List of directories or file to mount read only" \
+    -- -w --rw --bind action=append default= help="List of directories or files to mount read write" \
     -- --hide action=append default= help="Hide specific files from the llm by mounting /dev/null on top of them" \
-    -- --no-hide flag=1 help="Ignore all --hide" \
+    -- -H --no-hide flag=1 help="Ignore all --hide" \
     -- -k --key default= nargs=1 eval='pick_key "$@"' \
-    -- --podman flag=1 \
+    -- -p --podman flag=1 \
     -- call=function prefix=C_ \
     ---- "$@"
