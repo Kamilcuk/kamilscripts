@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=1.0.5
+L_LIB_VERSION=1.1.0
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -1817,26 +1817,20 @@ L_unsetposix() {
 else
 
 	L_setx() {
-		if shopt -po xtrace >/dev/null; then
-			"$@"
-		else
-			set -x
-			"$@"
-			eval "set +x;return \"$?\""
-		fi
+		case $- in
+			*x*) "$@" ;;
+			*) set -x; "$@"; eval "set +x;return \"$?\"" ;;
+		esac
 	}
 	L_unsetx() {
-		if shopt -po xtrace >/dev/null; then
-			set +x
-			"$@"
-			eval "set -x;return \"$?\""
-		else
-			"$@"
-		fi
+		case $- in
+			*x*) set +x; "$@"; eval "set -x;return \"$?\"" ;;
+			*) "$@" ;;
+		esac
 	}
 
 	L_setposix() {
-		if shopt -po posix >/dev/null; then
+		if [[ -o posix ]]; then
 			"$@"
 		else
 			set -o posix
@@ -1845,7 +1839,7 @@ else
 		fi
 	}
 	L_unsetposix() {
-		if shopt -po posix >/dev/null; then
+		if [[ -o posix ]]; then
 			set +o posix
 			"$@"
 			eval "set -o posix;return \"$?\""
@@ -6044,7 +6038,7 @@ _L_unittest_main_runner() {
   				reason=$(head -c 20 "$_L_u_tmpd/$1.skip" || :)
   				local statuscolor="$L_MAGENTA" status="SKIPPED${reason:+ ($reason)}"
   			else
-  				local statuscolor="$L_GREEN" status="PASS"
+  				local statuscolor="$L_GREEN" status="PASSED"
   			fi
   			;;
   		*) local statuscolor="$L_BOLD$L_RED" status="ERROR $_L_u_ret" ;;
@@ -7208,8 +7202,10 @@ L_argparse_print_help() {
 		shift "$((OPTIND-1))"
 	}
 	{
-		if ((${_L_parser_color[1]:-1})); then
+		if [[ -z "${_L_parser_color[1]:-}" ]]; then
 			L_color_detect
+		elif L_is_true "${_L_parser_color[1]}"; then
+			L_color_enable
 		else
 			L_color_disable
 		fi
@@ -7261,7 +7257,7 @@ L_argparse_print_help() {
 					local _L_metavar
 					_L_argparse_optspec_get_metavar _L_metavar
 					_L_argparse_optspec_get_usagearg _L_args_usage
-					_L_usage_args_helps+=("$_L_metavar"$'\n'"$_L_opthelp")
+					_L_usage_args_helps+=("$cgreen$_L_metavar$creset"$'\n'"$_L_opthelp")
 				fi
 			fi
 		done
@@ -7835,7 +7831,12 @@ _L_argparse_spec_argument_common() {
 		# apply defaults depending on action
 		case "${_L_opt_action[_L_opti]:=store}" in
 		store)
-			: "${_L_opt_nargs[_L_opti]:=1}"
+			# If it is an argument with a default and missing nargs, default nargs to ?.
+			if [[ "${_L_opt__class[_L_opti]}" == "argument" ]] && L_var_is_set "_L_opt_default[_L_opti]"; then
+				: "${_L_opt_nargs[_L_opti]:="?"}"
+			else
+				: "${_L_opt_nargs[_L_opti]:="1"}"
+			fi
 			;;
 		store_const)
 			if ! L_var_is_set "_L_opt_const[_L_opti]"; then
