@@ -102,7 +102,9 @@ bwrap_sandbox() {
             add --bind "$root/$HISTFILE" "$HISTFILE"
         fi
     fi
-    if ((!arg_no_hide)); then
+    if (( !arg_no_hide )); then
+        local hiderfile=${TMPDIR:-/tmp}/,llm_hider
+        echo "**This file is hidden from LLM by sandbox**" > "$hiderfile"
         declare -A once=()
         # Hide
         shopt -s globstar nullglob extglob
@@ -111,7 +113,7 @@ bwrap_sandbox() {
                 i=$(readlink -f "$i")
                 if [[ ! -v once["$i"] ]]; then
                     L_debug "Hiding $i"
-                    add --ro-bind /dev/null "$i"
+                    add --ro-bind "$hiderfile" "$i"
                     once["$i"]="done"
                 fi
             fi
