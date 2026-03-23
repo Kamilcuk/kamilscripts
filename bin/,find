@@ -170,10 +170,11 @@ C_duplicates_md5sum() {
 ###############################################################################
 
 _finish_zerotonl() {
-	if ((g_zero)); then cat; else tr '\0' '\n'; fi
+	if (( g_zero )); then cat; else tr '\0' '\n'; fi
 }
 
 _args "$@"
 L_trap_err() { :; }
-. L_lib.sh cmd C_ "$@" | _finish_zerotonl
+. L_lib.sh -s
+L_argparse -- call=function prefix=C_ ---- "$@" | _finish_zerotonl
 
