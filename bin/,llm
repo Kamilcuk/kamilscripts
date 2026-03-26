@@ -161,7 +161,7 @@ add_ro_if_not_there() {
 C_my() {
     export GOOGLE_GEMINI_BASE_URL=http://192.168.40.1:8990/gemini
     L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
-    C_gemini --model my "$@"
+    C_gemini --model gemini-3-my "$@"
 }
 
 C_gemini() {
@@ -220,6 +220,15 @@ pick_key() {
     #     fi
     fi
     L_debug "+ export GEMINI_API_KEY=\$$v"
+}
+
+C_c() {
+    # export ANTHROPIC_BASE_URL=http://192.168.40.1:8990/geminiopenai/
+    # export ANTHROPIC_BASE_URL=http://192.168.40.1:8990/mistralai
+    export ANTHROPIC_BASE_URL=http://192.168.40.1:3456
+    export ANTHROPIC_API_KEY=AIza-YOUR-GEMINI-KEY-HERE
+    export ANTHROPIC_MODEL=my
+    claude "$@"
 }
 
 . L_lib.sh -s
