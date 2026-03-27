@@ -54,8 +54,10 @@ bwrap_sandbox() {
     addpath --bind "$HOME/.cargo" "$HOME/.rustup"
     addpath --ro-bind "$HOME/.gitconfig" "$config/git/config"
     addpath --ro-bind /opt /snap "$HOME/snap"
-    addpath --ro-bind /nix "$HOME"/.local/state/nix "$HOME/.nix-profile" "$HOME/.nix-defexpr"
+    addpath --ro-bind /nix "$state"/nix "$HOME"/.nix-profile "$HOME"/.nix-defexpr
+    addpath --ro-bind "$HOME"/.local/bin
     addpath --bind "$HOME/.platformio"
+    addpath --bind "$cache"/ms-playwright
     # /nix/var/nix/daemon-socket
     addpath --bind "$HOME/.dotnet" "$HOME/.nuget"
     if [[ -L /etc/resolv.conf ]]; then
@@ -159,7 +161,8 @@ add_ro_if_not_there() {
 }
 
 C_my() {
-    export GOOGLE_GEMINI_BASE_URL=http://192.168.40.1:8990/gemini
+    # export GOOGLE_GEMINI_BASE_URL=http://192.168.40.1:8990/gemini
+    export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/gemini
     L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
     C_gemini --model gemini-3-my "$@"
 }
@@ -171,6 +174,12 @@ C_gemini() {
     bwrap_sandbox \
         env GEMINI_TIMEOUT=999999 \
         gemini --yolo "$@"
+}
+
+C_v() {
+    export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/vertex
+    L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
+    C_gemini --model gemini-3-my "$@"
 }
 
 C_bwrap() {
@@ -226,7 +235,6 @@ C_c() {
     # export ANTHROPIC_BASE_URL=http://192.168.40.1:8990/geminiopenai/
     # export ANTHROPIC_BASE_URL=http://192.168.40.1:8990/mistralai
     export ANTHROPIC_BASE_URL=http://192.168.40.1:3456
-    export ANTHROPIC_API_KEY=AIza-YOUR-GEMINI-KEY-HERE
     export ANTHROPIC_MODEL=my
     claude "$@"
 }
