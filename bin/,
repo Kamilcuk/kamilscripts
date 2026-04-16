@@ -1,9 +1,11 @@
 #!/bin/sh
-if [[ -z "$TMUX" ]]; then
-  if [[ $(command -v tmux 2>/dev/null) == *nix* ]]; then
-    export TMUX_TMPDIR="${TMPDIR:-/tmp}/tmux-$UID-nix"
-	  mkdir -p -m 700 "$TMUX_TMPDIR"
-  fi
+if [ -z "${TMUX:-}" ]; then
+  case $(command -v tmux 2>/dev/null) in
+    *nix*)
+      export TMUX_TMPDIR="${TMPDIR:-/tmp}/tmux-${UID:-$(id -u)}-nix"
+	    mkdir -p -m 700 "$TMUX_TMPDIR"
+	    ;;
+  esac
   set -x
   exec tmux new-session -A -c ~ -s tmux
 else
