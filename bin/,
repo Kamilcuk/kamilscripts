@@ -1,3 +1,11 @@
 #!/bin/sh
-set -x
-exec tmux new-session -A -c ~ -s tmux
+if [[ -z "$TMUX" ]]; then
+  if [[ $(command -v tmux 2>/dev/null) == *nix* ]]; then
+    export TMUX_TMPDIR="${TMPDIR:-/tmp}/tmux-$UID-nix"
+	  mkdir -p -m 700 "$TMUX_TMPDIR"
+  fi
+  set -x
+  exec tmux new-session -A -c ~ -s tmux
+else
+  echo "Already inside tmux (Nesting prevented). Current session $TMUX" >&2
+fi
