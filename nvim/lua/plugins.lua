@@ -172,31 +172,25 @@ return {
 
   { import = "astrocommunity.editing-support.bigfile-nvim" }, -- LunarVim/bigfile.nvim Make editing big files faster 🚀
   {
-    "nvim-treesitter",
+    "AstroNvim/astrocore",
+    ---@type AstroCoreOpts
     opts = {
-      highlight = {
-        disable = function(lang, buf)
-          local max_filesize = 300 * 1024 -- 300 KB
-          local max_lines = 5000
-          if vim.api.nvim_buf_line_count(buf) > max_lines then return true end
-          local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(buf))
-          return ok and stats and stats.size > max_filesize
-        end,
+      treesitter = {
+        highlight = {
+          disable = function(lang, buf)
+            local max_filesize = 300 * 1024 -- 300 KB
+            local max_lines = 5000
+            if vim.api.nvim_buf_line_count(buf) > max_lines then return true end
+            local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+            return ok and stats and stats.size > max_filesize
+          end,
+        },
       },
-    },
-  },
-  {
-    -- https://www.mikecoutermarsh.com/astrovim-slow-on-large-files/
-    -- Disable to speed up on larger files.
-    "vim-illuminate",
-    optional = true,
-    event = "User AstroFile",
-    opts = {
-      large_file_cutoff = 3000,
     },
   },
 
   { "alpha-nvim", enabled = false }, -- disable entry screen, I do not use it anyway
+  { "aerial.nvim", enabled = false }, -- A code outline window for skimming and quick navigation
   { "mason-lspconfig.nvim", opts = { automatic_installation = false } },
   { "mason-nvim-dap.nvim", opts = { automatic_installation = false } },
   { "nvim-autopairs", enabled = false }, -- och god no, no autopairs
@@ -389,7 +383,7 @@ return {
     optional = true,
     opts = {
       sources = {
-        -- https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/sources.lua#L54
+        -- https://github.com/saghen/blink.cmp/blob/main/lua/blink/cmp/config/sources.lua#L54
         providers = {
           lsp = {
             name = "LSP",
@@ -450,7 +444,7 @@ return {
   --   lazy = true,
   --   specs = {
   --     {
-  --       "Saghen/blink.cmp",
+  --       "saghen/blink.cmp",
   --       optional = true,
   --       opts = {
   --         sources = {
@@ -483,11 +477,11 @@ return {
   --       },
   --     },
   --     -- {
-  --     --   "Saghen/blink.cmp",
+  --     --   "saghen/blink.cmp",
   --     --   optional = true,
   --     --   opts = function(_, opts)
   --     --     opts.fuzzy = opts.fuzzy or {}
-  --     --     -- default from https://github.com/Saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
+  --     --     -- default from https://github.com/saghen/blink.cmp/blob/main/lua/blink/cmp/config/fuzzy.lua#L39
   --     --     opts.fuzzy.sorts = opts.fuzzy.sorts or { "score", "sort_text" }
   --     --     table.insert(
   --     --       opts.fuzzy.sorts,

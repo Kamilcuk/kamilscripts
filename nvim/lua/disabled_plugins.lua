@@ -645,7 +645,7 @@ p                paste yanked block replace with current selection
     config = function() require("luasnip.loaders.from_vscode").lazy_load() end,
   },
 
-  -- https://github.com/Saghen/blink.cmp/issues/619
+  -- https://github.com/saghen/blink.cmp/issues/619
   -- Delay blink.cmp completion by 1 second.
   {
     "blink.cmp",
