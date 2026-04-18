@@ -53,46 +53,6 @@ local function KcEnableAtHome()
   return vim.env.USER ~= "cukrowsk"
 end
 
----@param timeout_s number
----@param start fun(): any
----@param stop fun(any): nil
----@param header string?
-local function KcScreensaver(timeout_s, start, stop, header)
-  local timer = vim.uv.new_timer()
-  local running = false
-  local starting = false
-  local stopping = false
-  local data = nil
-  local timeout_ms = timeout_s * 1000
-  vim.on_key(function(key, typed)
-    -- print(vim.fn.strftime "%c " .. "ON KEY EXEUCTED" .. key .. " " .. typed)
-    if running and not starting and not stopping then
-      -- print(vim.fn.strftime "%c " .. "STOPPING EXEUCTED")
-      running = false
-      stopping = true
-      vim.schedule(function()
-        -- vim.wait(100, function() return not starting end, 100)
-        if header then print(vim.fn.strftime "%c " .. "Stopping " .. header) end
-        stop(data)
-        stopping = false
-      end)
-    end
-    timer:start(timeout_ms, 0, function()
-      if not running and not starting and not stopping then
-        running = true
-        starting = true
-        timer:stop()
-        vim.schedule(function()
-          -- vim.wait(100, function() return not stopping end, 100)
-          if header then print(vim.fn.strftime "%c " .. "Starting " .. header) end
-          data = start()
-          starting = false
-        end)
-      end
-    end)
-  end)
-end
-
 ---@param txt string
 ---@return string[]
 local function KcSplit(txt)
@@ -167,6 +127,7 @@ return {
         },
       },
       dashboard = { enabled = false },
+      scroll = { enabled = false },
     },
   }, -- disable entry dashboard by astronvim
 
@@ -199,29 +160,6 @@ return {
   { "todo-comments.nvim", enabled = false }, -- todo comments are not important
 
   {
-    -- I hate terminal in the middle, how people work with that?
-    "noice.nvim",
-    optional = true,
-    enabled = false,
-    opts = function(_, opts)
-      opts.cmdline = opts.cmdline or {}
-      opts.cmdline.view = "cmdline"
-      opts.cmdline.format = {
-        cmdline = false,
-        search_down = false,
-        search_up = false,
-        filter = false,
-        lua = false,
-        help = false,
-        input = false,
-      }
-      opts.presets = opts.presets or {}
-      opts.presets.bottom_search = true
-      return opts
-    end,
-  },
-
-  {
     "folke/snacks.nvim",
     opts = {
       notifier = {
@@ -248,7 +186,7 @@ return {
         local tmp = status.component.tabline_file_info()
         table.insert(tmp, 2, {
           provider = function(self) return self and self.bufnr and self.bufnr or "" end,
-          hl = { bold = true, underline = true },
+          hl = { bold = true, underline = true, fg = "cyan" },
         })
         return tmp
       end
@@ -257,6 +195,7 @@ return {
   },
 
   {
+    -- Add find jumps and jumpsfiles shortcuts.
     "astrocore",
     optional = true,
     opts = function(_, opts)
@@ -273,6 +212,7 @@ return {
   },
 
   {
+    -- Forces specific paths to be visible while hiding others in Neo-tree.
     "neo-tree.nvim",
     optional = true,
     opts = function(_, opts)
@@ -287,13 +227,25 @@ return {
       })
       vim.list_extend(
         opts.filesystem.filtered_items.always_show,
-        KcSplit ".gitignore .github .gitlab .gitlab-runner-local .gitlab-ci.yml local.lua"
+        KcSplit [[
+          .gitignore .github .gitlab .gitlab-runner-local .gitlab-ci.yml 
+          local.lua .clangd .clang-format .editorconfig Makefile Justfile 
+          .env .env.example .nvimrc .exrc .prettierignore .nvmrc 
+          .dockerignore Dockerfile docker-compose.yml 
+          package.json package-lock.json yarn.lock pnpm-lock.yaml 
+          Cargo.toml Cargo.lock go.mod go.sum 
+          CMakeLists.txt CMakePresets.json .python-version
+        ]]
       )
       vim.list_extend(
         opts.filesystem.filtered_items.never_show,
-        KcSplit "__pycache__ .ruff_cache .tox .cache .nox .eggs"
+        KcSplit [[
+          __pycache__ .ruff_cache .tox .cache .nox .eggs 
+          .pytest_cache .mypy_cache .ipynb_checkpoints 
+          .DS_Store Thumbs.db .git
+        ]]
       )
-      vim.list_extend(opts.filesystem.filtered_items.never_show_by_pattern, KcSplit "*.egg-info *.egg")
+      vim.list_extend(opts.filesystem.filtered_items.never_show_by_pattern, KcSplit "*.egg-info *.egg *.pyc *.pyo")
     end,
   },
 
@@ -301,26 +253,19 @@ return {
   -- {{{1 :commmands plugins that add various :commands to be executed
 
   {
-    "tpope/vim-eunuch", -- commands like :Remove :Delete :Move :SudoWrite
+    "tpope/vim-eunuch", -- Commands like :Remove :Delete :Move :SudoWrite
     lazy = false, -- Load always. It makes files with shebang executables automatically.
   },
-
-  -- { import = "astrocommunity.fuzzy-finder.fzf-lua" }, -- using snacks.nvim
-
-  -- { import = "astrocommunity.syntax.vim-easy-align" }, -- never used, like :Tabularize
   { "godlygeek/tabular", lazy = false }, -- :Tabularize Vim script for text filtering and alignment
-
-  { import = "astrocommunity.editing-support.refactoring-nvim" }, -- :Refactor command
-
   "tpope/vim-fugitive", -- git plugin
 
   -- }}}
   -- {{{1 UI Display displaying highlight showing gui related tools
 
   { import = "astrocommunity.syntax.vim-cool" }, -- disable search highlight after done searching
-
   { "ntpeters/vim-better-whitespace", lazy = false }, -- Mark whitespaces :StripWhitespace
   {
+    -- Fix vim-better-whitespace not disabling itself for snacks_dashboard
     "ntpeters/vim-better-whitespace",
     lazy = false,
     dependencies = {
@@ -341,15 +286,8 @@ return {
   },
 
   { import = "astrocommunity.editing-support.rainbow-delimiters-nvim" },
-  { "rainbow-delimiters.nvim", optional = true, submodules = false },
-  -- {
-  --   "saghen/blink.pairs",
-  --   version = "v0.2.0", -- (recommended) only required with prebuilt binaries
-  --   -- download prebuilt binaries from github releases
-  --   dependencies = { "saghen/blink.download" },
-  --   -- dependencies = { "saghen/blink.download", enabled = not vim.fn.executable "cargo" },
-  --   -- build = vim.fn.executable "cargo" and "cargo build --release" or nil,
-  -- },
+
+  { "nvim-treesitter/nvim-treesitter-context", opts = { max_lines = 3 } },
 
   "kshenoy/vim-signature", -- Show marks on the left and additiona m* motions
 
@@ -437,6 +375,18 @@ return {
     },
   },
 
+
+  -- https://docs.astronvim.com/recipes/advanced_lsp/#automatic-signature-help
+  {
+    "AstroNvim/astrolsp",
+    ---@type AstroLSPOpts
+    opts = {
+      features = {
+        signature_help = true, -- enable automatic signature help popup globally on startup
+      },
+    },
+  },
+
   -- { import = "astrocommunity.completion.blink-cmp-git" },
 
   -- {
@@ -504,11 +454,9 @@ return {
   { import = "astrocommunity.lsp.garbage-day-nvim" },
   -- { import = "astrocommunity.lsp.inc-rename-nvim" }, -- replaced by lspsaga rename
   -- { import = "astrocommunity.lsp.lsp-lens-nvim" },
-  { import = "astrocommunity.lsp.lsp-signature-nvim" },
   -- { import = "astrocommunity.diagnostics.lsp_lines-nvim" },
   { import = "astrocommunity.lsp.nvim-lsp-file-operations" },
   { import = "astrocommunity.lsp.nvim-lint" },
-  { import = "astrocommunity.lsp.lspsaga-nvim" },
 
   -- {
   --   "alllsp",
@@ -661,7 +609,31 @@ return {
     enabled = function() return vim.fn.executable "yarn" == 1 or vim.fn.executable "npx" == 1 end,
   },
 
-  { import = "astrocommunity.session.vim-workspace" },
+  -- { import = "astrocommunity.session.vim-workspace" },
+  -- Testing recession back.
+  -- https://docs.astronvim.com/recipes/sessions/#automatically-restore-previous-session
+  {
+    "AstroNvim/astrocore",
+    ---@type AstroCoreOpts
+    opts = {
+      autocmds = {
+        restore_session = {
+          {
+            event = "VimEnter",
+            desc = "Restore previous directory session if neovim opened with no arguments",
+            nested = true, -- trigger other autocommands as buffers open
+            callback = function()
+              -- Only load the session if nvim was started with no args
+              if vim.fn.argc(-1) == 0 then
+                -- try to load a directory session using the current working directory
+                require("resession").load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
+              end
+            end,
+          },
+        },
+      },
+    },
+  },
 
   -- }}}
   -- {{{1 colorscheme
@@ -676,8 +648,8 @@ return {
       -- colorscheme = "onedark",
     },
   },
-  -- { import = "astrocommunity.colorscheme.catppuccin" },
   { import = "astrocommunity.colorscheme.onedarkpro-nvim" },
+  -- { import = "astrocommunity.colorscheme.catppuccin" },
   -- "cryptomilk/nightcity.nvim",
   -- { "dasupradyumna/midnight.nvim", lazy = false, priority = 10000 },
 
@@ -746,7 +718,10 @@ return {
     end,
   },
 
-  "inkarkat/vim-AdvancedSorters", -- :Sort* :Recorder* :Uniq* Sorting of certain areas or by special needs.
+  {
+    "inkarkat/vim-AdvancedSorters",
+    dependencies = { "inkarkat/vim-ingo-library" },
+  }, -- :Sort* :Recorder* :Uniq* Sorting of certain areas or by special needs.
   "michaeljsmith/vim-indent-object", -- objects ai ii aI iI , use in python
 
   {

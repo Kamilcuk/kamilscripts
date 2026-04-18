@@ -1,8 +1,53 @@
 
 -- selene: allow(unused_variable)
 ---@diagnostic disable-next-line: unused-local
+-- Screensaver function moved here to be "disabled"
+---@param timeout_s number
+---@param start fun(): any
+---@param stop fun(any): nil
+---@param header string?
+---@diagnostic disable-next-line: unused-local
+local function KcScreensaver(timeout_s, start, stop, header)
+  local timer = vim.uv.new_timer()
+  local running = false
+  local starting = false
+  local stopping = false
+  local data = nil
+  local timeout_ms = timeout_s * 1000
+  vim.on_key(function(key, typed)
+    if running and not starting and not stopping then
+      running = false
+      stopping = true
+      vim.schedule(function()
+        if header then print(vim.fn.strftime "%c " .. "Stopping " .. header) end
+        stop(data)
+        stopping = false
+      end)
+    end
+    timer:start(timeout_ms, 0, function()
+      if not running and not starting and not stopping then
+        running = true
+        starting = true
+        timer:stop()
+        vim.schedule(function()
+          if header then print(vim.fn.strftime "%c " .. "Starting " .. header) end
+          data = start()
+          starting = false
+        end)
+      end
+    end)
+  end)
+end
+
+---@diagnostic disable-next-line: unused-local
 ---@type LazySpec
 return {
+
+  -- Native signature help in blink.cmp is preferred
+  { "ray-x/lsp_signature.nvim", enabled = false },
+  
+  -- Functionality (rename, hover, etc.) is replaced by snacks.picker and blink.cmp
+  { "nvimdev/lspsaga.nvim", enabled = false },
 
   -- Doesn't work and makes stuff dissapear. This requires more work and is too buggy.
   {
@@ -10,9 +55,6 @@ return {
     opts = { automatic = true },
     enabled = false,
   },
-
-  -- using astrocommunity
-  { "lspsaga.nvim", opts = { rename = { in_select = false } } },
 
   -- tabby plugin is much better
   {
@@ -720,5 +762,45 @@ p                paste yanked block replace with current selection
   --   end,
   -- },
 
+
+  -- no longer in astronvim
+  {
+    -- I hate terminal in the middle, how people work with that?
+    "noice.nvim",
+    optional = true,
+    enabled = false,
+    opts = function(_, opts)
+      opts.cmdline = opts.cmdline or {}
+      opts.cmdline.view = "cmdline"
+      opts.cmdline.format = {
+        cmdline = false,
+        search_down = false,
+        search_up = false,
+        filter = false,
+        lua = false,
+        help = false,
+        input = false,
+      }
+      opts.presets = opts.presets or {}
+      opts.presets.bottom_search = true
+      return opts
+    end,
+  },
+
+  -- { import = "astrocommunity.fuzzy-finder.fzf-lua" }, -- using snacks.nvim
+  --
+  -- { import = "astrocommunity.syntax.vim-easy-align" }, -- never used, like :Tabularize
+
+  -- Never used
+  { import = "astrocommunity.editing-support.refactoring-nvim" }, -- :Refactor command
+
+  -- {
+  --   "saghen/blink.pairs",
+  --   version = "v0.2.0", -- (recommended) only required with prebuilt binaries
+  --   -- download prebuilt binaries from github releases
+  --   dependencies = { "saghen/blink.download" },
+  --   -- dependencies = { "saghen/blink.download", enabled = not vim.fn.executable "cargo" },
+  --   -- build = vim.fn.executable "cargo" and "cargo build --release" or nil,
+  -- },
 
 }
