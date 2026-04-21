@@ -111,7 +111,7 @@ bwrap_sandbox() {
         # Hide
         shopt -s globstar nullglob extglob
         for i in "$PWD"/{,**/}{env*,.env*,secrets*,*.pem,*.key,*.crt} "${arg_hide[@]}"; do
-            if [[ -e "$i" ]]; then
+            if [[ -e "$i" && "$i" != .env.example ]]; then
                 i=$(readlink -f "$i")
                 if [[ ! -v once["$i"] ]]; then
                     L_debug "Hiding $i"
@@ -160,6 +160,32 @@ add_ro_if_not_there() {
     fi
 }
 
+patch_gemini_bundles() {
+    local bundle_dir="/home/kamil/.node_modules/lib/node_modules/@google/gemini-cli/bundle"
+    local pattern='this.useWriteTodos = .* : false;'
+    local replacement='this.useWriteTodos = true;'
+
+    if [ ! -d "$bundle_dir" ]; then
+        echo "ERROR: Bundle directory not found."
+        return 1
+    fi
+
+    # Find files containing the assignment and apply sed
+    grep -l "useWriteTodos =" "$bundle_dir"/chunk-*.js | while read -r target_file; do
+        echo "PATCHING: $target_file"
+        # Use @ as delimiter to avoid issues with slashes or complex logic in pattern
+        sed -i "s@$pattern@$replacement@g" "$target_file"
+    done
+
+    # Verification
+    echo "VERIFYING..."
+    rg "this.useWriteTodos = true;" "$bundle_dir" | cat
+}
+
+C_gemini-patch() {
+    patch_gemini_bundles
+}
+
 C_my() {
     # export GOOGLE_GEMINI_BASE_URL=http://192.168.40.1:8990/gemini
     export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/gemini
@@ -168,6 +194,7 @@ C_my() {
 }
 
 C_gemini() {
+    C_gemini-patch
     if [[ $(which gemini) == ~/.node_modules/bin/gemini ]]; then
         add_ro_if_not_there ~/.node_modules
     fi
