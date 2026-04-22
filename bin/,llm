@@ -15,14 +15,13 @@ bwrap_sandbox() {
     #
     local args=(
         --bind "$cachedir"/root /
+        --clearenv
         --setenv KCLLM 1
         --unshare-all
         --share-net
         --die-with-parent
         --bind "$PWD" "$PWD"
         --chdir "$PWD"
-        # --setenv HOME "$HOME"
-        # --setenv PATH "$PATH"
         --tmpfs /tmp
         --proc /proc
         --dev /dev
@@ -42,7 +41,6 @@ bwrap_sandbox() {
     local state=${XDG_STATE_HOME:-$HOME/.local/state}
     # basic directories we need.
     addpath --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
-    addpath --bind /run/user /sys
     # cache list to consider
     addpath --bind "$cache/uv"
     addpath --bind "$data"
@@ -69,6 +67,13 @@ bwrap_sandbox() {
     for i in gemini crush opencode claude; do
         addpath --bind "$cache/$i" "$config/$i" "$HOME/.$i"
     done
+    # DBus Session Bus.
+    if [[ "${DBUS_SESSION_BUS_ADDRESS:-}" =~ unix:path=([^,]+) ]]; then
+        local dbus_socket="${BASH_REMATCH[1]}"
+        if [[ -S "$dbus_socket" ]]; then
+            addpath --ro-bind "$dbus_socket"
+        fi
+    fi
     # Podman.
     if ((arg_podman)); then
         if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
@@ -81,7 +86,9 @@ bwrap_sandbox() {
             add --setenv CONTAINER_RUNTIME podman
             add --setenv DOCKER_BIN podman
             # Set the podman socket. the socket.
-            add --ro-bind /run/user/$UID/podman /run/user/$UID/podman
+            if [[ -d /run/user/$UID/podman ]]; then
+                add --ro-bind /run/user/$UID/podman /run/user/$UID/podman
+            fi
             add --setenv DOCKER_HOST unix:///run/user/$UID/podman/podman.sock
             # Create /llmbin directory with podman wrapper that will explicitly pass --url.
             local fd
@@ -134,19 +141,39 @@ bwrap_sandbox() {
             fi
         done
     fi
-    # Disabled adding env variables. They are just inherited.
-    if false; then
-        list=(PATH HOME USER LOGNAME SHELL
-                    HTTP_PROXY HTTPS_PROXY NO_PROXY
-                    GEMINI_API_KEY GEMINI_SECRET GEMINI_ENDPOINT
-                    PYTHONPATH VIRTUAL_ENV NVM_DIR NODE_PATH
-                    XDG_CACHE_HOME XDG_CONFIG_HOME TERM)
-        for i in "${list[@]}"; do
-            if [[ -n "${!i:-}" ]]; then
+    # Whitelist environment variables.
+    local env_whitelist=(
+        PATH HOME USER LOGNAME SHELL TERM COLORTERM PWD TMPDIR
+        LANG LC_ALL LC_CTYPE LC_MESSAGES
+        HTTP_PROXY HTTPS_PROXY NO_PROXY
+        XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
+        PYTHONPATH VIRTUAL_ENV NVM_DIR NODE_PATH
+        GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+        EDITOR VISUAL BROWSER
+        DBUS_SESSION_BUS_ADDRESS
+    )
+    for i in "${env_whitelist[@]}"; do
+        if [[ -v "$i" ]]; then
+            add --setenv "$i" "${!i}"
+        fi
+    done
+    # Add environment variables from -e/--env
+    for i in "${arg_env[@]:-}"; do
+        if [[ "$i" == *"="* ]]; then
+            add --setenv "${i%%=*}" "${i#*=}"
+        elif [[ "$i" == *"*"* ]]; then
+            # Wildcard support
+            for var in $(compgen -v); do
+                if [[ "$var" == $i ]]; then
+                    add --setenv "$var" "${!var}"
+                fi
+            done
+        else
+            if [[ -v "$i" ]]; then
                 add --setenv "$i" "${!i}"
             fi
-        done
-    fi
+        fi
+    done
     #
     if ((arg_verbose)); then
         set -x
@@ -198,6 +225,7 @@ C_gemini() {
     if [[ $(which gemini) == ~/.node_modules/bin/gemini ]]; then
         add_ro_if_not_there ~/.node_modules
     fi
+    arg_env+=("GEMINI*" "GOOGLE*")
     bwrap_sandbox \
         env GEMINI_TIMEOUT=999999 \
         gemini --yolo "$@"
@@ -263,7 +291,8 @@ C_c() {
     # export ANTHROPIC_BASE_URL=http://192.168.40.1:8990/mistralai
     export ANTHROPIC_BASE_URL=http://192.168.40.1:3456
     export ANTHROPIC_MODEL=my
-    claude "$@"
+    arg_env+=("ANTHROPIC*")
+    bwrap_sandbox claude "$@"
 }
 
 . L_lib.sh -s
@@ -277,5 +306,6 @@ L_argparse dest_prefix=arg_ \
     -- -H --no-hide flag=1 help="Ignore all --hide" \
     -- -k --key default= nargs=1 eval='pick_key "$@"' \
     -- -p --podman flag=1 \
+    -- -e --env action=append default= help="Set environment variable in the sandbox" \
     -- call=function prefix=C_ \
     ---- "$@"
