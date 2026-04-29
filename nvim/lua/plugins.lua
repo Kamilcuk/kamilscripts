@@ -681,12 +681,51 @@ return {
   },
 
   {
+    -- :Exrc* and other utilities
     "jedrzejboczar/exrc.nvim",
     dependencies = { "neovim/nvim-lspconfig", optional = true }, -- (optional)
     config = true,
-  }, -- :Exrc* and other utilities
+  },
 
-  { "MagicDuck/grug-far.nvim", enabled = vim.fn.has "nvim-0.10" == 1, opts = {} }, -- find and replace plugin
+  -- find and replace plugin
+  { import = "astrocommunity.search.grug-far-nvim" },
+  {
+    "MagicDuck/grug-far.nvim",
+    -- only enable for neovim 0.10 and above
+    enabled = vim.fn.has "nvim-0.10" == 1,
+    -- pin to version 1.6.3 specifically for neovim 0.10; unpinned for 0.11+
+    version = (vim.fn.has "nvim-0.10" == 1 and vim.fn.has "nvim-0.11" == 0) and "1.6.3" or nil,
+    opts = {
+      -- open in a new tab for a "fullscreen" experience
+      windowCreationCommand = "tab split",
+    },
+    dependencies = {
+      {
+        "astrocore",
+        opts = function(_, opts)
+          local maps = opts.mappings
+          -- shortcut to open grug-far
+          maps.n["<leader>,R"] = { "<cmd>GrugFar<cr>", desc = "GrugFar" }
+
+          -- disable completion in grug-far buffers to avoid UI interference
+          if not opts.autocmds then opts.autocmds = {} end
+          opts.autocmds.grug_far_completion_disable = {
+            {
+              event = "FileType",
+              pattern = "grug-far",
+              callback = function()
+                -- disable blink.cmp
+                vim.b.blink_cmp_enabled = false
+                -- also disable nvim-cmp as a fallback
+                local ok, cmp = pcall(require, "cmp")
+                if ok then cmp.setup.buffer { enabled = false } end
+              end,
+            },
+          }
+        end,
+      },
+    },
+  },
 
   {
     "astrocore",
