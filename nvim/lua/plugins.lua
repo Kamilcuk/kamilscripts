@@ -375,7 +375,6 @@ return {
     },
   },
 
-
   -- https://docs.astronvim.com/recipes/advanced_lsp/#automatic-signature-help
   {
     "AstroNvim/astrolsp",
@@ -623,11 +622,16 @@ return {
             desc = "Restore previous directory session if neovim opened with no arguments",
             nested = true, -- trigger other autocommands as buffers open
             callback = function()
-              -- Only load the session if nvim was started with no args
-              if vim.fn.argc(-1) == 0 then
-                -- try to load a directory session using the current working directory
-                require("resession").load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
+              -- 1. Check if Neovim was started with a file argument
+              if vim.fn.argc(-1) > 0 then return end
+              -- 2. Check for common pager/man page indicators in ARGV
+              for _, arg in ipairs(vim.v.argv) do
+                if arg:match "^%+?Man!?" or arg == "man" or arg == "Man" then return end
               end
+              -- 3. Check for stdin or explicit man_pager flag
+              if vim.v.stdin == 1 or vim.g.man_pager then return end
+              -- 4. If all checks pass, load the session
+              require("resession").load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
             end,
           },
         },
