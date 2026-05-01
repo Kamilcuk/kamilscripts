@@ -11,7 +11,7 @@ local function KcPythonBool(script) return vim.fn.has "python3" and pcall(vim.fn
 ---@param minor number
 local function KcHasPythonVersion(major, minor, import)
   return KcPythonBool(([[
-      sys.version.infor.major == %d
+      sys.version.info.major == %d
       and sys.version.info.minor >= %d
       ]]).format(major, minor, import))
 end
@@ -22,7 +22,7 @@ end
 ---@param import string
 local function KcHasPythonVersionAndImport(major, minor, import)
   return KcPythonBool(([[
-      sys.version.infor.major == %d
+      sys.version.info.major == %d
       and sys.version.info.minor >= %d
       and __import__("importlib.util").util.find_spec(%s) is not None
       ]]).format(major, minor, import))
@@ -570,32 +570,12 @@ return {
     "konfekt/vim-DetectSpellLang",
     ft = { "text", "markdown", "mail" },
     cond = function()
-      if vim.fn.executable "hunspell" or vim.fn.executable "aspell" then
+      if vim.fn.executable "hunspell" == 1 or vim.fn.executable "aspell" == 1 then
         return true
       else
         KcLog "DetectSpellLang disabled: no hunspell and no aspell"
         return false
       end
-    end,
-    init = function()
-      vim.cmd [[
-        if executable("aspell")
-          let aspell_dicts = systemlist("aspell dicts")
-          let aspell_dicts = uniq(map(aspell_dicts, {key, val -> substitute(val, '-[^\n]*', '', '')}))
-          let g:detectspelllang_program = "aspell"
-          let g:detectspelllang_langs = { "aspell": aspell_dicts }
-        else
-          let output = system("env LC_ALL=C LANG=C hunspell -D")
-          let output = substitute(
-               \ output,
-                \ '.*AVAILABLE DICTIONARIES[^\n]*\n\(.*\)[^\n]*\(LOADED DICTIONARIES.*\|$\)',
-               \ '\1',
-               \ '')
-          let hunspell_dicts = map(split(output), {key, val -> substitute(val, ".*\/", "", "")})
-          let g:detectspelllang_program = "hunspell"
-          let g:detectspelllang_langs = { "hunspell": hunspell_dicts }
-        endif
-      ]]
     end,
   },
 
