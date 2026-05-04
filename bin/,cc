@@ -16,6 +16,6 @@ C_show_predefined_macros() (
 
 . L_lib.sh L_argparse \
 	-- -c --cc dest=CC \
-	-- -a --arm-none action=prefix=arm-none-eabi- \
+	-- -a --arm-none eval=prefix=arm-none-eabi- \
 	-- -p --prefix \
 	-- call=function prefix=C_ ---- "$@"

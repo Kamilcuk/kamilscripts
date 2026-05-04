@@ -57,6 +57,7 @@ bwrap_sandbox() {
     addpath --bind "$HOME/.platformio"
     addpath --bind "$cache"/ms-playwright
     addpath --ro-bind ~/.kamilscripts/bin
+    addpath --bind "$HOME/.config/gcloud"
     # /nix/var/nix/daemon-socket
     addpath --bind "$HOME/.dotnet" "$HOME/.nuget"
     if [[ -L /etc/resolv.conf ]]; then
