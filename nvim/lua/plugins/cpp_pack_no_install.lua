@@ -46,4 +46,14 @@ return {
     optional = true,
     opts = function(_, opts) opts.ensure_installed = {} end,
   },
+
+  -- Disable automatic CMake regeneration on save
+  {
+    "Civitasv/cmake-tools.nvim",
+    opts = {
+      cmake_regenerate_on_save = false,
+      cmake_soft_link_compile_commands = false,
+      cmake_compile_commands_from_lsp = false,
+    },
+  },
 }
