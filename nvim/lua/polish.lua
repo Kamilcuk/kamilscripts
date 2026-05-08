@@ -253,6 +253,10 @@ set listchars=eol:$,tab:⇥¬¬,trail:·,extends:>,precedes:<,space:·
 
 ]]
 
+vim.api.nvim_set_hl(0, "TreesitterContext", { bg = "#2c2c2c" })
+vim.api.nvim_set_hl(0, "TreesitterContextLineNumber", { bg = "#2c2c2c" })
+vim.api.nvim_set_hl(0, "TreesitterContextBottom", { underline = true, sp = "Grey" })
+
 -- https://www.reddit.com/r/AstroNvim/comments/1f89958/how_to_remove_please_install_notifications/
 local status, notify = pcall(require, "notify")
 if status then
