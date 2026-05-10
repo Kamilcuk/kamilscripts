@@ -10,6 +10,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
+from typing import Optional
 from contextlib import contextmanager
 
 
@@ -114,7 +116,7 @@ def temporary_file_to_move_to(file):
                 pass
 
 
-def run_on_file(file):
+def run_on_file(file: str) -> Optional[str]:
     global args, changed
     cmd = (
         ["sed"]
@@ -136,13 +138,22 @@ def run_on_file(file):
                 elif args.shortdiff:
                     subprocess.run(["diff", "--color", file, fp.name])
                 else:
-                    subprocess.run(["diff", "-Naur", "--color", file, fp.name])
+                    print(
+                        "\n".join(
+                            subprocess.run(
+                                ["diff", "-Naur", "--color", file, fp.name],
+                                stdout=subprocess.PIPE,
+                            )
+                            .stdout.decode()
+                            .splitlines()[2:]
+                        )
+                    )
             if args.ok:
                 st = os.stat(file)
                 shutil.move(fp.name, file)
                 os.chown(file, st.st_uid, st.st_gid)
                 os.chmod(file, st.st_mode)
-            changed = changed + 1
+            return file
         # else:
         # log("+", cmd)
 
@@ -153,17 +164,18 @@ if len(args.exclude):
 # print(args.include, len(files))
 if len(args.include):
     files = [n for n in files if any([e.match(n) for e in args.include])]
-changed = 0
+changed: list[str] = []
 for file in files:
-    run_on_file(file)
+    tmp = run_on_file(file)
+    if tmp:
+        changed.append(tmp)
 
 CYAN = "\033[33m"
 RESET = "\033[0m"
 if not changed:
     print(CYAN + "No files to change." + RESET)
 elif args.ok:
-    print(CYAN + "Changed", changed, "files." + RESET)
+    print(CYAN + "Changed", " ".join(changed), "files." + RESET)
 else:
-    print(
-        CYAN + "Would change", changed, "files. Run with -k to do the change." + RESET
-    )
+    print(CYAN + "Would change following files. Run with -k to do the change." + RESET)
+    print(textwrap.indent("\n".join(changed), "  "))
