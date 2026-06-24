@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+. L_lib.sh -s
+
 makefile() {
     local path=$1
     if mkdir -p "$(dirname -- "$path")"; then
@@ -9,11 +11,16 @@ makefile() {
 }
 
 bwrap_sandbox() {
+    if ((arg_podman && arg_docker)); then
+        L_fatal "--podman and --docker are mutually exclusive"
+    fi
     local cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/,llm"
     local root="$cachedir/root"
-    mkdir -p "$root/$HOME"
+    local empty="$cachedir/empty"
+    mkdir -p "$root"/{var,mnt,srv,media,root} "$empty"
     #
     local args=(
+        bwrap
         --bind "$cachedir"/root /
         --clearenv
         --setenv KCLLM 1
@@ -40,9 +47,12 @@ bwrap_sandbox() {
     local data=${XDG_DATA_HOME:-$HOME/.local/share}
     local state=${XDG_STATE_HOME:-$HOME/.local/state}
     # basic directories we need.
-    addpath --ro-bind /bin /usr /lib /lib64 /etc /opt /run/systemd
+    addpath --ro-bind /bin /sbin /lib /lib64 /usr /etc /run /opt
+    for i in /var /mnt /srv /media /root; do
+        add --ro-bind "$empty" "$i"
+    done
     # cache list to consider
-    addpath --bind "$cache/uv"
+    addpath --bind "$cache/uv" "$cache/getstuffcli"
     addpath --bind "$data"
     addpath --bind "$cache/pip"
     addpath --bind "$cache/npm" "$cache/pnpm" "$cache/yarn"
@@ -76,10 +86,32 @@ bwrap_sandbox() {
             addpath --ro-bind "$dbus_socket"
         fi
     fi
+    # Docker.
+    if ((arg_docker)); then
+        if [[ -e /var/run/docker.sock ]]; then
+            L_debug "Using docker..."
+            addpath --bind /var/run/docker.sock
+        else
+            L_fatal "Docker socket /var/run/docker.sock not found"
+        fi
+    fi
     # Podman.
     if ((arg_podman)); then
         if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
             L_debug "Using podman..."
+            # Fix for podman in read-only /run/user/1000 or missing cgroups
+            if [[ ! -w "/run/user/${UID:-$(id -u)}" ]] || [[ ! -d /sys/fs/cgroup ]]; then
+                export XDG_RUNTIME_DIR="/tmp/podman-run-${UID:-$(id -u)}"
+                mkdir -p "$XDG_RUNTIME_DIR"
+                # Force podman to ignore cgroups and events if they are missing/broken
+                export CONTAINERS_CONF_OVERRIDE_ENGINE_CGROUP_MANAGER="none"
+                export CONTAINERS_CONF_OVERRIDE_ENGINE_EVENTS_LOGGER="none"
+            fi
+            # Apply fix for read-only /run/user or missing cgroups.
+            add --tmpfs "/run/user/$UID"
+            add --setenv XDG_RUNTIME_DIR "/run/user/$UID"
+            add --setenv CONTAINERS_CONF_OVERRIDE_ENGINE_CGROUP_MANAGER "none"
+            add --setenv CONTAINERS_CONF_OVERRIDE_ENGINE_EVENTS_LOGGER "none"
             # Start podman service sock.
             if [[ ! -e /run/user/$UID/podman/podman.sock ]] && L_hash systemctl; then
                 L_logrun systemctl start --user podman.service
@@ -131,8 +163,15 @@ bwrap_sandbox() {
         done
     fi
     # Add args
-    addpath --ro-bind "${arg_ro[@]}"
-    addpath --bind "${arg_rw[@]}"
+    local i p
+    for i in "${arg_ro[@]}"; do
+        p=$i; [[ $p == /* ]] || p=$PWD/$p
+        addpath --ro-bind "$p"
+    done
+    for i in "${arg_rw[@]}"; do
+        p=$i; [[ $p == /* ]] || p=$PWD/$p
+        addpath --bind "$p"
+    done
     if ((0)); then
         local i abs_i abs_pwd is_undef
         for i in "${arg_rw[@]}"; do
@@ -143,12 +182,22 @@ bwrap_sandbox() {
             fi
         done
     fi
+    # Git root mount
+    if (( !arg_no_git )); then
+        if set_git_root; then
+            L_debug "Mounting git root $git_root --rw"
+            addpath --bind "$git_root"
+        fi
+    fi
     # Whitelist environment variables.
     local env_whitelist=(
         PATH HOME USER LOGNAME SHELL TERM COLORTERM PWD TMPDIR
         LANG LC_ALL LC_CTYPE LC_MESSAGES
         HTTP_PROXY HTTPS_PROXY NO_PROXY
         XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
+        XDG_RUNTIME_DIR CONTAINERS_CONF
+        CONTAINERS_CONF_OVERRIDE_ENGINE_CGROUP_MANAGER
+        CONTAINERS_CONF_OVERRIDE_ENGINE_EVENTS_LOGGER
         PYTHONPATH VIRTUAL_ENV NVM_DIR NODE_PATH
         GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
         EDITOR VISUAL BROWSER
@@ -180,7 +229,13 @@ bwrap_sandbox() {
     if ((arg_verbose)); then
         set -x
     fi
-    exec bwrap "${args[@]}" "$@"
+    args+=("$@")
+    if (( arg_dryrun )); then
+        printf -v L_v " %q" "${args[@]}"
+        echo "+$L_v"
+    else
+        exec "${args[@]}"
+    fi
 }
 
 add_ro_if_not_there() {
@@ -191,24 +246,25 @@ add_ro_if_not_there() {
 
 patch_gemini_bundles() {
     local bundle_dir="/home/kamil/.node_modules/lib/node_modules/@google/gemini-cli/bundle"
-    local pattern='this.useWriteTodos = .* : false;'
-    local replacement='this.useWriteTodos = true;'
+    [[ -d "$bundle_dir" ]] || return 1
 
-    if [ ! -d "$bundle_dir" ]; then
-        echo "ERROR: Bundle directory not found."
-        return 1
-    fi
-
-    # Find files containing the assignment and apply sed
-    grep -l "useWriteTodos =" "$bundle_dir"/chunk-*.js | while read -r target_file; do
-        echo "PATCHING: $target_file"
-        # Use @ as delimiter to avoid issues with slashes or complex logic in pattern
-        sed -i "s@$pattern@$replacement@g" "$target_file"
+    local todos_pattern='this.useWriteTodos = .* : false;'
+    local todos_replacement='this.useWriteTodos = true;'
+    grep -l "$todos_pattern" "$bundle_dir"/chunk-*.js | while read -r target_file; do
+        echo "PATCHING useWriteTodos: $target_file"
+        sed -i "s@$todos_pattern@$todos_replacement@g" "$target_file"
     done
 
-    # Verification
-    echo "VERIFYING..."
-    rg "this.useWriteTodos = true;" "$bundle_dir" | cat
+    local label_pattern='const label = terminalWidth < MIN_TERMINAL_WIDTH_FOR_FULL_LABEL ? "%" : "% used";'
+    local label_replacement='const label = " tokens";'
+    local perc_pattern='const percentageUsed = (percentage \* 100).toFixed(0);'
+    local perc_replacement='const percentageUsed = promptTokenCount > 1000 ? (promptTokenCount / 1000).toFixed(1) + "k" : promptTokenCount;'
+
+    grep -l "$label_pattern" "$bundle_dir"/chunk-*.js | while read -r target_file; do
+        echo "PATCHING ContextUsageDisplay: $target_file"
+        sed -i "s@$perc_pattern@$perc_replacement@g" "$target_file"
+        sed -i "s@$label_pattern@$label_replacement@g" "$target_file"
+    done
 }
 
 C_gemini-patch() {
@@ -222,15 +278,28 @@ C_my() {
     C_gemini --model gemini-3-my "$@"
 }
 
+set_git_root() {
+    git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+}
+L_decorate L_cache -s git_root set_git_root
+
 C_gemini() {
     C_gemini-patch
     if [[ $(which gemini) == ~/.node_modules/bin/gemini ]]; then
         add_ro_if_not_there ~/.node_modules
     fi
     arg_env+=("GEMINI*" "GOOGLE*")
-    bwrap_sandbox \
-        env GEMINI_TIMEOUT=999999 \
-        gemini --yolo "$@"
+    local cmd=(
+        env GEMINI_TIMEOUT=999999
+        gemini --yolo
+    )
+    # Add git mount to gemini workspace
+    if (( !arg_no_git )); then
+        if set_git_root; then
+            cmd+=(--include-directories "$git_root")
+        fi
+    fi
+    bwrap_sandbox "${cmd[@]}" "$@"
 }
 
 C_v() {
@@ -297,7 +366,6 @@ C_c() {
     bwrap_sandbox claude "$@"
 }
 
-. L_lib.sh -s
 arg_verbose=0
 L_argparse dest_prefix=arg_ \
     -- -q --quiet nargs=0 eval='((arg_verbose--)); L_log_level_dec' \
@@ -308,6 +376,10 @@ L_argparse dest_prefix=arg_ \
     -- -H --no-hide flag=1 help="Ignore all --hide" \
     -- -k --key default= nargs=1 eval='pick_key "$@"' \
     -- -p --podman flag=1 \
+    -- -d --docker flag=1 \
+    -- -G --no-git flag=1 \
     -- -e --env action=append default= help="Set environment variable in the sandbox" \
+    -- -n --dryrun flag=1 \
     -- call=function prefix=C_ \
     ---- "$@"
+

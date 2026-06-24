@@ -562,8 +562,8 @@ return {
 
   "tpope/vim-abolish", -- :S :Abolish easily search for, substitute, and abbreviate multiple variants of a word
   "gyim/vim-boxdraw", -- Ascii box drawing. Open :new, type :set ve=all, and then select region with ctrl+v and type +o
-  "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
   "dhruvasagar/vim-table-mode", -- print tables in markdown \tm (TableMode) | --- | --- |
+  -- "samoshkin/vim-mergetool", -- Efficient way of using Vim as a Git mergetool
 
   {
     -- make Vim autodetect the spellcheck language

@@ -494,6 +494,202 @@ C_bisect_steps() {
 		perl -MPOSIX -lne 'print "Bisecting: ".floor(($_-1)/2)." revisions left to test after this (roughly ".(floor(log($_-1)/log(2))-1)." steps)" if $_'
 }
 
+C_split-commit() {
+	L_argparse help="Split a specific commit: one file to its own commit, rest to another" -- commit help="commit to split" -- file help="file to split out" ---- "$@"
+	local exec_cmd
+	exec_cmd=$(printf "msg=\$(git log -1 --format=%%s); git reset --soft HEAD^ && git commit -m \"\$msg: %s\" %s && git commit -a -m \"\$msg: rest\"" "$file" "$file")
+	L_run git rebase "${commit}^" -x "$exec_cmd" --onto "${commit}^"
+}
+
+C_split_commits_help="Split a specific commit into two: selectively taking lines from files into a new commit while preserving subsequent history.
+Example: ,git split-commits -c HEAD~1 -m \"New Message\" -f file.c:10-20
+Syntax for -f: file:start-end (range), file:line (single line), or file (whole file)."
+C_split-commits() {
+	L_argparse \
+		-- -m --message required=1 help="new commit message" \
+		-- -c --commit required=1 help="commit to split" \
+		-- -f --files nargs=+ required=1 help="files/lines to split: file:start-end" \
+		---- "$@"
+
+	if C_any_changes; then
+		L_fatal "Repository has changes. Please commit or stash them before splitting."
+	fi
+
+	local split_sha
+	split_sha=$(git rev-parse "$commit")
+	local parent_sha
+	parent_sha=$(git rev-parse "${split_sha}^")
+
+	L_info "Starting rebase to split commit $split_sha..."
+
+	# Export variables for the internal call
+	export SPLIT_COMMIT_LINES_MSG="$message"
+	export SPLIT_COMMIT_LINES_FILES="${files[*]}"
+	export SPLIT_COMMIT_LINES_ORIGINAL="$split_sha"
+
+	# Use the current script's path to call the internal subcommand
+	local self
+	self=$(realpath "$0")
+	if L_run git rebase "$parent_sha" -x "$self __split_commit_lines_internal" --onto "$parent_sha"; then
+		local new_shas
+		new_shas=($(git rev-list --reverse --max-count=2 "${parent_sha}..HEAD"))
+		local sha1_short sha2_short split_sha_short
+		sha1_short=$(git rev-parse --short "${new_shas[0]}")
+		sha2_short=$(git rev-parse --short "${new_shas[1]}")
+		split_sha_short=$(git rev-parse --short "$split_sha")
+		L_info "Commit $split_sha_short has been split into $sha1_short and $sha2_short on $(C_get-branch) branch."
+	else
+		L_error "Rebase failed. This typically happens because:"
+		L_error "1. An existing rebase/merge was already in progress."
+		L_error "2. There were conflicts when replaying subsequent commits."
+		L_error "3. An internal error occurred during the split."
+		L_error ""
+		L_error "To abort and return to the original state, run: git rebase --abort"
+		L_error "To resolve conflicts and continue, run: git rebase --continue"
+		L_fatal "Please resolve the issues and try again."
+	fi
+}
+
+C_merge_commits_help="Merge two commits together into the position of the second commit with a new message.
+Example: ,git merge-commits 773b5c9 a1709c4 -m \"Combined feature and fix\""
+C_merge-commits() {
+	L_argparse \
+		-- sha1 required=1 help="first commit (source)" \
+		-- sha2 required=1 help="second commit (target position)" \
+		-- -m --message required=1 help="new commit message" \
+		---- "$@"
+
+	if C_any_changes; then
+		L_fatal "Repository has changes. Please commit or stash them before merging."
+	fi
+
+	local full_sha1 full_sha2
+	full_sha1=$(git rev-parse "$sha1")
+	full_sha2=$(git rev-parse "$sha2")
+
+	if [[ "$full_sha1" == "$full_sha2" ]]; then
+		L_fatal "Commits are the same: $full_sha1"
+	fi
+
+	local sha1_short sha2_short
+	sha1_short=$(git rev-parse --short "$full_sha1")
+	sha2_short=$(git rev-parse --short "$full_sha2")
+
+	# Find which one is older to know where to start the rebase
+	local older newer
+	if git merge-base --is-ancestor "$full_sha1" "$full_sha2"; then
+		older="$full_sha1"
+		newer="$full_sha2"
+	elif git merge-base --is-ancestor "$full_sha2" "$full_sha1"; then
+		older="$full_sha2"
+		newer="$full_sha1"
+	else
+		L_fatal "Commits $sha1 and $sha2 are not on the same lineage."
+	fi
+
+	local base_sha
+	base_sha=$(git rev-parse "${older}^")
+
+	L_info "Merging $sha1 into $sha2 (at position $sha2)..."
+
+	# Prepare the sequence editor
+	export SPLIT_COMMIT_LINES_MSG="$message" # Reusing variable for message
+	export MERGE_SOURCE_SHA="$full_sha1"
+	export MERGE_SOURCE_SHORT="$sha1_short"
+	export MERGE_TARGET_SHORT="$sha2_short"
+
+	local editor_script
+	editor_script=$(mktemp --suffix=.sh)
+	L_trap_push 'rm -f "$editor_script"' EXIT
+	cat > "$editor_script" <<'EOF'
+#!/bin/bash
+todo_file="$1"
+# 1. Remove the source commit from the list
+sed -i "/^pick ${MERGE_SOURCE_SHORT}/d" "$todo_file"
+# 2. Add the merge execution after the target commit
+# We use 'a' to append after the target line
+sed -i "/^pick ${MERGE_TARGET_SHORT}/a exec git cherry-pick -n ${MERGE_SOURCE_SHA} && git commit --amend -m \"${SPLIT_COMMIT_LINES_MSG}\"" "$todo_file"
+EOF
+	chmod +x "$editor_script"
+
+	if L_run env GIT_SEQUENCE_EDITOR="$editor_script" git rebase -i "$base_sha"; then
+		L_info "Success! Commits merged into $(git rev-parse --short HEAD)."
+	else
+		L_error "Merge failed (likely due to conflicts when moving commits)."
+		L_error "To abort and return to the original state, run: git rebase --abort"
+		L_fatal "Please resolve conflicts or abort."
+	fi
+}
+
+C___split_commit_lines_internal() {
+	# This is an internal function called by git rebase -x
+	# It expects environment variables to be set by C_split_commit_lines
+	local message="${SPLIT_COMMIT_LINES_MSG}"
+	local original_sha="${SPLIT_COMMIT_LINES_ORIGINAL}"
+	local files_str="${SPLIT_COMMIT_LINES_FILES}"
+	local files
+	read -r -a files <<< "$files_str"
+
+	L_info "Internal split for commit $original_sha..."
+
+	# Soft reset to parent to redo the commit as two
+	git reset --soft HEAD~1
+	git reset # Unstage everything
+
+	PATCH_FILE=$(mktemp --suffix=.patch)
+	# shellcheck disable=SC2016
+	L_trap_push '[[ -n "${PATCH_FILE:-}" ]] && rm -f "$PATCH_FILE"' EXIT
+
+	for f in "${files[@]}"; do
+		if [[ "$f" == *:* ]]; then
+			local file_path="${f%%:*}"
+			local range="${f##*:}"
+			local from to
+			IFS=- read -r from to <<< "$range"
+			[[ -z "$to" ]] && to="$from"
+
+			L_info "Extracting lines $from-$to from $file_path..."
+			git diff HEAD "$original_sha" -- "$file_path" | \
+				awk -v start="$from" -v end="$to" '
+				BEGIN { print_hunk = 0 }
+				/^diff --git/ || /^index / || /^--- / || /^\+\+\+ / { print; next; }
+				/^@@/ {
+					split($3, a, ",");
+					hunk_start = substr(a[1], 2);
+					current_line = hunk_start;
+					print;
+					print_hunk = 1;
+					next;
+				}
+				print_hunk {
+					if (/^\+/) {
+						if (current_line >= start && current_line <= end) { print; }
+						current_line++;
+					} else if (/^-/) {
+					} else {
+						print;
+						current_line++;
+					}
+				}
+				' >> "$PATCH_FILE"
+		else
+			L_info "Staging whole file: $f..."
+			git diff HEAD "$original_sha" -- "$f" >> "$PATCH_FILE"
+		fi
+	done
+
+	if [ -s "$PATCH_FILE" ]; then
+		git apply --cached --recount "$PATCH_FILE"
+		git commit -m "$message"
+	else
+		L_fatal "No matching lines found to split."
+	fi
+
+	# Commit the rest
+	git add -A
+	git commit -C "$original_sha"
+}
+
 C_extract_one_file_from_repository() {
 	local files=() args=()
 	L_argparse description="

@@ -20,8 +20,9 @@
 	keepBackup = false
 	trustExitCode = false
 [merge]
-	tool = nvim_mergetool
-	conflictstyle = diff3
+	tool = nvimdiff
+	# tool = nvim_mergetool
+	# conflictstyle = diff3
 	# tool = vim_mergetool
 
 [difftool "meld"]
