@@ -273,9 +273,15 @@ C_gemini-patch() {
 
 C_my() {
     # export GOOGLE_GEMINI_BASE_URL=http://192.168.40.1:8990/gemini
-    export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/gemini
-    L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
-    C_gemini --model gemini-3-my "$@"
+    # export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/gemini
+    # L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
+    # C_gemini --model gemini-3-my "$@"
+    C_claude "$@"
+}
+
+C_claude() {
+    arg_env+=("ANTHROPIC_*" "CLAUDE_*")
+    bwrap_sandbox claude "$@"
 }
 
 set_git_root() {
