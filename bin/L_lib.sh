@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=2.0.0
+L_LIB_VERSION=2.0.2
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -86,180 +86,38 @@ L_EX_TIMEOUT=124
 # The `L_color_detect` function can be used to detect if the terminal and user wishes to have output with colors.
 # @example echo "$L_RED""hello world""$L_RESET"
 
+# @description List of all color variable names set by L_color_enable or L_color_disable.
+# This is a bash array containing the names of all L_ color/style variables.
+# @example local "${L_COLOR_VARIABLES[@]}"
+L_COLOR_VARIABLES=(
+	L_BOLD L_BRIGHT L_DIM L_FAINT L_ITALIC L_STANDOUT L_UNDERLINE L_BLINK
+	L_REVERSE L_CONCEAL L_HIDDEN L_CROSSEDOUT
+	L_FONT0 L_FONT1 L_FONT2 L_FONT3 L_FONT4 L_FONT5 L_FONT6 L_FONT7 L_FONT8 L_FONT9
+	L_FRAKTUR L_DOUBLE_UNDERLINE L_NODIM L_NOSTANDOUT L_NOUNDERLINE L_NOBLINK
+	L_NOREVERSE L_NOHIDDEN L_REVEAL L_NOCROSSEDOUT
+	L_BLACK L_RED L_GREEN L_YELLOW L_BLUE L_MAGENTA L_CYAN L_LIGHT_GRAY
+	L_DEFAULT L_FOREGROUND_DEFAULT
+	L_BG_BLACK L_BG_BLUE L_BG_CYAN L_BG_GREEN L_BG_LIGHT_GRAY L_BG_MAGENTA L_BG_RED L_BG_YELLOW
+	L_FRAMED L_ENCIRCLED L_OVERLINED L_NOENCIRCLED L_NOFRAMED L_NOOVERLINED
+	L_DARK_GRAY L_LIGHT_RED L_LIGHT_GREEN L_LIGHT_YELLOW L_LIGHT_BLUE
+	L_LIGHT_MAGENTA L_LIGHT_CYAN L_WHITE
+	L_BG_DARK_GRAY L_BG_LIGHT_BLUE L_BG_LIGHT_CYAN L_BG_LIGHT_GREEN
+	L_BG_LIGHT_MAGENTA L_BG_LIGHT_RED L_BG_LIGHT_YELLOW L_BG_WHITE
+	L_BG_DEFAULT
+	L_COLORRESET L_RESET
+)
+
 # @description The L_ color variables are set to the ANSI escape sequences.
 # @noargs
 L_color_enable() {
-	L_BOLD=$'\E[1m'
-	L_BRIGHT=$'\E[1m'
-	L_DIM=$'\E[2m'
-	L_FAINT=$'\E[2m'
-	L_ITALIC=$'\E[3m'
-	# @description Standaout means italic font.
-	L_STANDOUT=$'\E[3m'
-	L_UNDERLINE=$'\E[4m'
-	L_BLINK=$'\E[5m'
-	L_REVERSE=$'\E[7m'
-	L_CONCEAL=$'\E[8m'
-	L_HIDDEN=$'\E[8m'
-	L_CROSSEDOUT=$'\E[9m'
-
-	L_FONT0=$'\E[10m'
-	L_FONT1=$'\E[11m'
-	L_FONT2=$'\E[12m'
-	L_FONT3=$'\E[13m'
-	L_FONT4=$'\E[14m'
-	L_FONT5=$'\E[15m'
-	L_FONT6=$'\E[16m'
-	L_FONT7=$'\E[17m'
-	L_FONT8=$'\E[18m'
-	L_FONT9=$'\E[19m'
-
-	L_FRAKTUR=$'\E[20m'
-	L_DOUBLE_UNDERLINE=$'\E[21m'
-	L_NODIM=$'\E[22m'
-	L_NOSTANDOUT=$'\E[23m'
-	L_NOUNDERLINE=$'\E[24m'
-	L_NOBLINK=$'\E[25m'
-	L_NOREVERSE=$'\E[27m'
-	L_NOHIDDEN=$'\E[28m'
-	L_REVEAL=$'\E[28m'
-	L_NOCROSSEDOUT=$'\E[29m'
-
-	L_BLACK=$'\E[30m'
-	L_RED=$'\E[31m'
-	L_GREEN=$'\E[32m'
-	L_YELLOW=$'\E[33m'
-	L_BLUE=$'\E[34m'
-	L_MAGENTA=$'\E[35m'
-	L_CYAN=$'\E[36m'
-	L_LIGHT_GRAY=$'\E[37m'
-	L_DEFAULT=$'\E[39m'
-	L_FOREGROUND_DEFAULT=$'\E[39m'
-
-	L_BG_BLACK=$'\E[40m'
-	L_BG_BLUE=$'\E[44m'
-	L_BG_CYAN=$'\E[46m'
-	L_BG_GREEN=$'\E[42m'
-	L_BG_LIGHT_GRAY=$'\E[47m'
-	L_BG_MAGENTA=$'\E[45m'
-	L_BG_RED=$'\E[41m'
-	L_BG_YELLOW=$'\E[43m'
-
-	L_FRAMED=$'\E[51m'
-	L_ENCIRCLED=$'\E[52m'
-	L_OVERLINED=$'\E[53m'
-	L_NOENCIRCLED=$'\E[54m'
-	L_NOFRAMED=$'\E[54m'
-	L_NOOVERLINED=$'\E[55m'
-
-	L_DARK_GRAY=$'\E[90m'
-	L_LIGHT_RED=$'\E[91m'
-	L_LIGHT_GREEN=$'\E[92m'
-	L_LIGHT_YELLOW=$'\E[93m'
-	L_LIGHT_BLUE=$'\E[94m'
-	L_LIGHT_MAGENTA=$'\E[95m'
-	L_LIGHT_CYAN=$'\E[96m'
-	L_WHITE=$'\E[97m'
-
-	L_BG_DARK_GRAY=$'\E[100m'
-	L_BG_LIGHT_BLUE=$'\E[104m'
-	L_BG_LIGHT_CYAN=$'\E[106m'
-	L_BG_LIGHT_GREEN=$'\E[102m'
-	L_BG_LIGHT_MAGENTA=$'\E[105m'
-	L_BG_LIGHT_RED=$'\E[101m'
-	L_BG_LIGHT_YELLOW=$'\E[103m'
-	L_BG_WHITE=$'\E[107m'
-
-	L_COLORRESET=$'\E[m'
-	L_RESET=$'\E[m'
+	L_BOLD=$'\E[1m' L_BRIGHT=$'\E[1m' L_DIM=$'\E[2m' L_FAINT=$'\E[2m' L_ITALIC=$'\E[3m' L_STANDOUT=$'\E[3m' L_UNDERLINE=$'\E[4m' L_BLINK=$'\E[5m' L_REVERSE=$'\E[7m' L_CONCEAL=$'\E[8m' L_HIDDEN=$'\E[8m' L_CROSSEDOUT=$'\E[9m' L_FONT0=$'\E[10m' L_FONT1=$'\E[11m' L_FONT2=$'\E[12m' L_FONT3=$'\E[13m' L_FONT4=$'\E[14m' L_FONT5=$'\E[15m' L_FONT6=$'\E[16m' L_FONT7=$'\E[17m' L_FONT8=$'\E[18m' L_FONT9=$'\E[19m' L_FRAKTUR=$'\E[20m' L_DOUBLE_UNDERLINE=$'\E[21m' L_NODIM=$'\E[22m' L_NOSTANDOUT=$'\E[23m' L_NOUNDERLINE=$'\E[24m' L_NOBLINK=$'\E[25m' L_NOREVERSE=$'\E[27m' L_NOHIDDEN=$'\E[28m' L_REVEAL=$'\E[28m' L_NOCROSSEDOUT=$'\E[29m' L_BLACK=$'\E[30m' L_RED=$'\E[31m' L_GREEN=$'\E[32m' L_YELLOW=$'\E[33m' L_BLUE=$'\E[34m' L_MAGENTA=$'\E[35m' L_CYAN=$'\E[36m' L_LIGHT_GRAY=$'\E[37m' L_DEFAULT=$'\E[39m' L_FOREGROUND_DEFAULT=$'\E[39m' L_BG_BLACK=$'\E[40m' L_BG_BLUE=$'\E[44m' L_BG_CYAN=$'\E[46m' L_BG_GREEN=$'\E[42m' L_BG_LIGHT_GRAY=$'\E[47m' L_BG_MAGENTA=$'\E[45m' L_BG_RED=$'\E[41m' L_BG_YELLOW=$'\E[43m' L_FRAMED=$'\E[51m' L_ENCIRCLED=$'\E[52m' L_OVERLINED=$'\E[53m' L_NOENCIRCLED=$'\E[54m' L_NOFRAMED=$'\E[54m' L_NOOVERLINED=$'\E[55m' L_DARK_GRAY=$'\E[90m' L_LIGHT_RED=$'\E[91m' L_LIGHT_GREEN=$'\E[92m' L_LIGHT_YELLOW=$'\E[93m' L_LIGHT_BLUE=$'\E[94m' L_LIGHT_MAGENTA=$'\E[95m' L_LIGHT_CYAN=$'\E[96m' L_WHITE=$'\E[97m' L_BG_DARK_GRAY=$'\E[100m' L_BG_LIGHT_BLUE=$'\E[104m' L_BG_LIGHT_CYAN=$'\E[106m' L_BG_LIGHT_GREEN=$'\E[102m' L_BG_LIGHT_MAGENTA=$'\E[105m' L_BG_LIGHT_RED=$'\E[101m' L_BG_LIGHT_YELLOW=$'\E[103m' L_BG_WHITE=$'\E[107m' L_BG_DEFAULT=$'\E[49m' L_COLORRESET=$'\E[m' L_RESET=$'\E[m'
 }
 
 # @description The L_ color variables are set to empty strings.
 # @noargs
+# shellcheck disable=SC1007
 L_color_disable() {
-	L_BOLD=""
-	L_BRIGHT=""
-	L_DIM=""
-	L_FAINT=""
-	L_ITALIC=""
-	# @description Standaout means italic font.
-	L_STANDOUT=""
-	L_UNDERLINE=""
-	L_BLINK=""
-	L_REVERSE=""
-	L_CONCEAL=""
-	L_HIDDEN=""
-	L_CROSSEDOUT=""
-
-	L_FONT0=""
-	L_FONT1=""
-	L_FONT2=""
-	L_FONT3=""
-	L_FONT4=""
-	L_FONT5=""
-	L_FONT6=""
-	L_FONT7=""
-	L_FONT8=""
-	L_FONT9=""
-
-	L_FRAKTUR=""
-	L_DOUBLE_UNDERLINE=""
-	L_NODIM=""
-	L_NOSTANDOUT=""
-	L_NOUNDERLINE=""
-	L_NOBLINK=""
-	L_NOREVERSE=""
-	L_NOHIDDEN=""
-	L_REVEAL=""
-	L_NOCROSSEDOUT=""
-
-	L_BLACK=""
-	L_RED=""
-	L_GREEN=""
-	L_YELLOW=""
-	L_BLUE=""
-	L_MAGENTA=""
-	L_CYAN=""
-	L_LIGHT_GRAY=""
-	L_DEFAULT=""
-	L_FOREGROUND_DEFAULT=""
-
-	L_BG_BLACK=""
-	L_BG_BLUE=""
-	L_BG_CYAN=""
-	L_BG_GREEN=""
-	L_BG_LIGHT_GRAY=""
-	L_BG_MAGENTA=""
-	L_BG_RED=""
-	L_BG_YELLOW=""
-
-	L_FRAMED=""
-	L_ENCIRCLED=""
-	L_OVERLINED=""
-	L_NOENCIRCLED=""
-	L_NOFRAMED=""
-	L_NOOVERLINED=""
-
-	L_DARK_GRAY=""
-	L_LIGHT_RED=""
-	L_LIGHT_GREEN=""
-	L_LIGHT_YELLOW=""
-	L_LIGHT_BLUE=""
-	L_LIGHT_MAGENTA=""
-	L_LIGHT_CYAN=""
-	L_WHITE=""
-
-	L_BG_DARK_GRAY=""
-	L_BG_LIGHT_BLUE=""
-	L_BG_LIGHT_CYAN=""
-	L_BG_LIGHT_GREEN=""
-	L_BG_LIGHT_MAGENTA=""
-	L_BG_LIGHT_RED=""
-	L_BG_LIGHT_YELLOW=""
-	L_BG_WHITE=""
-
-	L_COLORRESET=""
-	L_RESET=""
+	L_BOLD= L_BRIGHT= L_DIM= L_FAINT= L_ITALIC= L_STANDOUT= L_UNDERLINE= L_BLINK= L_REVERSE= L_CONCEAL= L_HIDDEN= L_CROSSEDOUT= L_FONT0= L_FONT1= L_FONT2= L_FONT3= L_FONT4= L_FONT5= L_FONT6= L_FONT7= L_FONT8= L_FONT9= L_FRAKTUR= L_DOUBLE_UNDERLINE= L_NODIM= L_NOSTANDOUT= L_NOUNDERLINE= L_NOBLINK= L_NOREVERSE= L_NOHIDDEN= L_REVEAL= L_NOCROSSEDOUT= L_BLACK= L_RED= L_GREEN= L_YELLOW= L_BLUE= L_MAGENTA= L_CYAN= L_LIGHT_GRAY= L_DEFAULT= L_FOREGROUND_DEFAULT= L_BG_BLACK= L_BG_BLUE= L_BG_CYAN= L_BG_GREEN= L_BG_LIGHT_GRAY= L_BG_MAGENTA= L_BG_RED= L_BG_YELLOW= L_FRAMED= L_ENCIRCLED= L_OVERLINED= L_NOENCIRCLED= L_NOFRAMED= L_NOOVERLINED= L_DARK_GRAY= L_LIGHT_RED= L_LIGHT_GREEN= L_LIGHT_YELLOW= L_LIGHT_BLUE= L_LIGHT_MAGENTA= L_LIGHT_CYAN= L_WHITE= L_BG_DARK_GRAY= L_BG_LIGHT_BLUE= L_BG_LIGHT_CYAN= L_BG_LIGHT_GREEN= L_BG_LIGHT_MAGENTA= L_BG_LIGHT_RED= L_BG_LIGHT_YELLOW= L_BG_WHITE= L_BG_DEFAULT= L_COLORRESET= L_RESET=
 }
 
 # @description Detect if colors should be used on the terminal.
@@ -368,6 +226,8 @@ L_ANSI_BG_LIGHT_RED=$'\E[101m'
 L_ANSI_BG_LIGHT_YELLOW=$'\E[103m'
 L_ANSI_BG_WHITE=$'\E[107m'
 
+L_ANSI_BG_DEFAULT=$'\E[49m'
+
 # It resets color and font.
 L_ANSI_COLORRESET=$'\E[m'
 L_ANSI_RESET=$'\E[m'
@@ -378,27 +238,63 @@ L_ANSI_RESET=$'\E[m'
 # @description Very basic functions for manipulating cursor position and color.
 # @note unstable
 
+# @description Move cursor $1 lines up (CUU - Cursor Up)
+# @arg $1 int number of lines (default: 1)
 L_ansi_up() { printf '\E[%dA' "$@"; }
+
+# @description Move cursor $1 lines down (CUD - Cursor Down)
+# @arg $1 int number of lines (default: 1)
 L_ansi_down() { printf '\E[%dB' "$@"; }
+
+# @description Move cursor $1 columns right (CUF - Cursor Forward)
+# @arg $1 int number of columns (default: 1)
 L_ansi_right() { printf '\E[%dC' "$@"; }
+
+# @description Move cursor $1 columns left (CUB - Cursor Backward)
+# @arg $1 int number of columns (default: 1)
 L_ansi_left() { printf '\E[%dD' "$@"; }
+
+# @description Move cursor to beginning of line $1 lines down (CNL - Cursor Next Line)
+# @arg $1 int number of lines (default: 1)
 L_ansi_next_line() { printf '\E[%dE' "$@"; }
+
+# @description Move cursor to beginning of line $1 lines up (CPL - Cursor Previous Line)
+# @arg $1 int number of lines (default: 1)
 L_ansi_prev_line() { printf '\E[%dF' "$@"; }
+
+# @description Move cursor to column $1 (CHA - Cursor Horizontal Absolute)
+# @arg $1 int column number (1-based)
 L_ansi_set_column() { printf '\E[%dG' "$@"; }
+
+# @description Move cursor to row $1, column $2 (CUP - Cursor Position)
+# @arg $1 int row number (1-based)
+# @arg $2 int column number (1-based)
 L_ansi_set_position() { printf '\E[%d;%dH' "$@"; }
+
+# @description Set terminal window title
+# @arg $* str title text
 L_ansi_set_title() { printf '\E]0;%s\a' "$*"; }
+
+# @description Clear screen from cursor to end (ED 0)
 L_ANSI_CLEAR_SCREEN_UNTIL_END=$'\E[0J'
+# @description Clear screen from cursor to beginning (ED 1)
 L_ANSI_CLEAR_SCREEN_UNTIL_BEGINNING=$'\E[1J'
+# @description Clear entire screen (ED 2)
 L_ANSI_CLEAR_SCREEN=$'\E[2J'
+# @description Clear line from cursor to end (EL 0)
 L_ANSI_CLEAR_LINE_UNTIL_END=$'\E[0K'
+# @description Clear line from cursor to beginning (EL 1)
 L_ANSI_CLEAR_LINE_UNTIL_BEGINNING=$'\E[1K'
+# @description Clear entire line (EL 2)
 L_ANSI_CLEAR_LINE=$'\E[2K'
+# @description Save cursor position (DECSC)
 L_ANSI_SAVE_POSITION=$'\E7'
+# @description Restore cursor position (DECRC)
 L_ANSI_RESTORE_POSITION=$'\E8'
 
-# @description Move cursor $1 lines above, output second argument, then move cursor $1 lines down.
+# @description Move cursor $1 lines above, output remaining args, then move cursor $1 lines down.
 # @arg $1 int lines above
-# @arg $2 str to print
+# @arg $2... str to print
 L_ansi_print_on_line_above() {
 	if ((!$1)); then
 		printf "\r\E[2K%s" "${*:2}"
@@ -407,12 +303,18 @@ L_ansi_print_on_line_above() {
 	fi
 }
 
-L_ansi_8bit_fg() { printf '\E[37;5;%dm' "$@"; }
-L_ansi_8bit_bg() { printf '\E[47;5;%dm' "$@"; }
-# @description Set foreground color to 8bit RGB
-# @arg $1 red
-# @arg $2 green
-# @arg $3 blue
+# @description Set 256-color foreground color
+# @arg $1 int color index (0-255)
+L_ansi_8bit_fg() { printf '\E[38;5;%dm' "$@"; }
+
+# @description Set 256-color background color
+# @arg $1 int color index (0-255)
+L_ansi_8bit_bg() { printf '\E[48;5;%dm' "$@"; }
+
+# @description Set foreground color to 256-color RGB cube value
+# @arg $1 red (0-5)
+# @arg $2 green (0-5)
+# @arg $3 blue (0-5)
 L_ansi_8bit_fg_rgb() { L_ansi_8bit_fg "$((16 + 36 * $1 + 6 * $2 + $3))"; }
 # @description Set foreground color to 8bit RGB
 # @arg $1 red
@@ -2539,9 +2441,9 @@ L_epochrealtime_usec_vL_RET() {
 	if ((L_HAS_EPOCHREALTIME)); then
 		L_epochrealtime_usec_vL_RET() { L_RET=${EPOCHREALTIME//[,.]}; }
 	elif _L_has_date_N; then
-		L_epochrealtime_usec_vL_RET() { L_RET=$(date +%s%6N); }
+		L_epochrealtime_usec_vL_RET() { L_RET=$(date +%s%9N); L_RET=${L_RET::${#L_RET}-3}; }
 	elif L_hash gdate; then
-		L_epochrealtime_usec_vL_RET() { L_RET=$(gdate +%s%6N); }
+		L_epochrealtime_usec_vL_RET() { L_RET=$(gdate +%s%9N); L_RET=${L_RET::${#L_RET}-3}; }
 	elif L_hash perl; then
 		L_epochrealtime_usec_vL_RET() { L_RET=$(perl -MTime::HiRes=gettimeofday -e 'printf "%d%06d", gettimeofday'); }
 	elif L_hash busybox; then
@@ -4574,7 +4476,6 @@ _L_argskeywords_assert() {
 }
 
 # @see L_pretty_print
-# @alias L_pp
 L_pp() { L_pretty_print "$@"; }
 
 # @arg $1 variable
@@ -5729,6 +5630,9 @@ L_trap() {
 # [1] - signal number
 # _L_finally_pending=()
 #
+# @description Use to detect nesting of signals.
+# _L_finally_running=0
+#
 # @description Currently handled signal name.
 # Special values: RETURN EXIT POP NONE
 # POP - when calling from L_finally_pop
@@ -5752,7 +5656,7 @@ L_trap() {
 # @arg $2 The value of $BASH_COMMAND.
 L_finally_handle_return() {
 	# Not checking if the return handler exists. It is done with :+ expansion straight in RETURN trap.
-	local L_SIGNAL=RETURN L_SIGRET="$1"
+	local L_SIGNAL=RETURN L_SIGRET="$1" _L_finally_running=1
 	case "${2:-}" in
 	". "*|"source "*)
 		# https://stackoverflow.com/a/79783255/9072753
@@ -5771,15 +5675,15 @@ L_finally_handle_return() {
 	if (( ${_L_finally_pending[@]+1} )); then
 		# Execute any pending signals.
 		# Unset L_SIGNAL, so that pending signal detection works correctly.
-		unset -v L_SIGNAL
+		unset -v _L_finally_running
 		kill -"${_L_finally_pending[0]}" "$_L_finally_pid"
-		exit "$(( 128 + _L_finally_pending[1] ))"
+		exit "$((128+_L_finally_pending[1]))"
 	fi
 }
 
 # @description L_finally EXIT handler.
 L_finally_handle_exit() {
-	local L_SIGNAL=EXIT L_SIGNUM=0 L_SIGRET="${1:-}" _L_pid
+	local L_SIGNAL=EXIT L_SIGNUM=0 L_SIGRET="${1:-}" _L_pid _L_finally_running=1
 	L_bashpid_into _L_pid
 	if [[ "${_L_finally_pid:-}" == "$_L_pid" ]]; then
 		# _L_finally_debug "${_L_finally_arr[@]}"
@@ -5789,7 +5693,7 @@ L_finally_handle_exit() {
 			# Execute any pending signals.
 			trap - "${_L_finally_pending[0]}"  # _L_finally_arr executed above already.
 			kill -"${_L_finally_pending[0]}" "$_L_finally_pid"
-			exit "$(( 128 + _L_finally_pending[1] ))"
+			exit "$((128+_L_finally_pending[1]))"
 		fi
 		# No reason to execute anything more.
 		trap - RETURN EXIT
@@ -6048,12 +5952,12 @@ L_finally_pop() {
 		# shellcheck disable=SC2294
 		local L_SIGNAL=POP
 		eval "${_L_finally_arr[_L_idx]}" || _L_ret=$?
-		# L_SIGNAL unset for nested detection hadnling.
-		unset -v '_L_finally_arr[_L_idx]' '_L_finally_item_depth[_L_idx]' L_SIGNAL
+		# _L_finally_running unset for nested detection hadnling.
+		unset -v '_L_finally_arr[_L_idx]' '_L_finally_item_depth[_L_idx]' L_SIGNAL _L_finally_running
 		# Execute a signal that might hhave happened while the above eval was executing.
 		if (( ${_L_finally_pending[@]+1} )); then
 			kill -"${_L_finally_pending[0]}" "$_L_finally_pid"
-			exit "$(( 128 + _L_finally_pending[1] ))"
+			exit "$((128+_L_finally_pending[1]))"
 		fi
 	else
 		unset -v '_L_finally_arr[_L_idx]' '_L_finally_item_depth[$_L_idx]'
@@ -6077,9 +5981,9 @@ L_finally_critical_section() {
 		# Register the handlers.
 		L_finally
 	fi
-	local L_SIGNAL=NONE _L_ret=0
+	local L_SIGNAL=NONE _L_ret=0 _L_finally_running=1
 	"$@" || _L_ret=$?
-	unset -v L_SIGNAL
+	unset -v L_SIGNAL _L_finally_running
 	if ((${_L_finally_pending[@]:+1})); then
 		kill -"${_L_finally_pending[0]}" "$_L_finally_pid"
 		exit "$((128+_L_finally_pending[1]))"
@@ -6497,6 +6401,15 @@ _L_unittest_main_output_printer() {
 	done
 }
 
+_L_unittest_main_finally() {
+	echo >&2
+	L_critical "L_unittest_main: Exiting because received $L_SIGNAL" >&2
+	if [[ "$L_SIGNAL" == "SIGINT" ]]; then
+		# Subshells ignore SIGINT. So re-send with SITERM.
+		: L_raise
+	fi
+}
+
 # @description
 # Uninteresting unittesting suite runner.
 # @option -p <prefix> Get functions with this prefix to test
@@ -6606,8 +6519,7 @@ L_unittest_main() {
 	fi
 	# Create a temporary directory with our context.
 	L_with_tmpdir_into _L_u_tmpd
-	# kill 0 is required for properly cleanup of subshells (...) that ignore SIGINT.
-	L_finally -v _L_u_finally_idx eval 'kill 0 || :; echo "Exiting because received $L_SIGNAL" >&2'
+	L_finally -v _L_u_finally_idx _L_unittest_main_finally
 	# echo "Using directory $_L_u_tmpd"
 	# Execute the tests.
 	L_epochrealtime_usec -v _L_u_start
@@ -12242,7 +12154,7 @@ L_xargs() {
 		(( ++_L_X_CLEANUP_NEST ))
 	fi
 	# Store command int variable.
-	local _L_x_cmd=("${@:-L_quote_printf}")
+	local _L_x_cmd=("${@:-echo}")
 	# Start the loop over records.
 	L_uv_add_once eval '_L_xargs_pulse;L_uv_poke'
 	L_uv_run

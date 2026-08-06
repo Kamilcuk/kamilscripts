@@ -126,3 +126,6 @@
 	helper = store --file ~/.config/git/credentials
 [safe]
 	directory = *
+[user]
+	name = Kamil Cukrowski
+	email = kamilcukrowski@gmail.com

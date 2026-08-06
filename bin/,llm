@@ -276,7 +276,7 @@ C_my() {
     # export GOOGLE_GEMINI_BASE_URL=https://gemini.kamcuk.top/gemini
     # L_info "GOOGLE_GEMINI_BASE_URL=$GOOGLE_GEMINI_BASE_URL"
     # C_gemini --model gemini-3-my "$@"
-    C_claude "$@"
+    C_claude --dangerously-skip-permissions "$@"
 }
 
 C_claude() {

@@ -82,6 +82,7 @@ return {
     opts = { -- extend the plugin options
       diagnostics = {
         virtual_text = false, -- disable diagnostics virtual text
+        codelens = false, -- disable those "1 reference" kind of lines on top of functions
       },
       features = {
         large_buf = {
