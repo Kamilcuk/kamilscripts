@@ -5,10 +5,15 @@ set history save on
 set history size 60000
 set history remove-duplicates 500
 set history filename ~/.cache/gdb_history
+set debuginfod enabled on
 
 # https://stackoverflow.com/questions/70099368/stdchrono-gdb-pretty-printer
 python
 import gdb
+try:
+    import gdb.printing
+except ImportError:
+    pass
 class ChronoPrinter:
 
     def __init__(self, val):

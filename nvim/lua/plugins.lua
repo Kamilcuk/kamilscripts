@@ -82,7 +82,6 @@ return {
     opts = { -- extend the plugin options
       diagnostics = {
         virtual_text = false, -- disable diagnostics virtual text
-        codelens = false, -- disable those "1 reference" kind of lines on top of functions
       },
       features = {
         large_buf = {
@@ -97,6 +96,7 @@ return {
     opts = {
       features = {
         inlay_hints = false, -- disable inlay hints globally on startup
+        codelens = false, -- disable those "1 reference" kind of lines on top of functions
       },
       formatting = {
         format_on_save = false, -- enable or disable automatic formatting on save
@@ -107,6 +107,15 @@ return {
             basedpyright = {
               analysis = {
                 typeCheckingMode = "standard",
+              },
+            },
+          },
+        },
+        rust_analyzer = {
+          settings = {
+            ["rust-analyzer"] = {
+              diagnostics = {
+                disabled = { "inactive-code" },
               },
             },
           },

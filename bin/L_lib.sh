@@ -8540,7 +8540,7 @@ _L_argparse_bash_completion_function() {
 	while IFS=$sep read -r mode comp desc _; do
 		case "$mode" in
 		bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs) compopt -o "$mode" ;;
-		file|directory)
+		alias|arrayvar|binding|builtin|command|directory|disabled|enabled|export|file|function|group|helptopic|hostname|job|keyword|running|service|setopt|shopt|signal|stopped|user|variable)
 			if tmp=$(compgen -A "$mode" ${comp:+-G"$comp"} ${desc:+-S"$sep$desc"} -- "$cur") && [[ -n "$tmp" ]]; then
 				if hash mapfile; then
 					mapfile -t tmp <<<"$tmp"
