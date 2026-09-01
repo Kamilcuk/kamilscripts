@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+import subprocess
+import time
+import re
+import argparse
+import atexit
+from typing import Dict
+
+
+def stop(pp: subprocess.Popen):
+    print(f"Terminating {pp.pid} {pp.args}")
+    pp.terminate()
+
+
+def get_ip(interface: str):
+    res = subprocess.check_output(["ip", "-4", "addr", "show", interface], text=True)
+    m = re.search(r"inet\s+(\d+\.\d+\.\d+\.\d+)", res)
+    return m.group(1) if m else "127.0.0.1"
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Auto-forward podman ports via socat.")
+    parser.add_argument(
+        "--interface", default="eth4", help="Interface name to auto-detect IP"
+    )
+    args = parser.parse_args()
+
+    procs: Dict[int, subprocess.Popen] = {}
+    atexit.register(lambda: [stop(pp) for pp in procs.values()])
+
+    ip: str = get_ip(args.interface)
+
+    while True:
+        ps = subprocess.run(
+            ["podman", "ps", "--format", "{{.Ports}}"], capture_output=True, text=True
+        )
+        current = {
+            int(m.group(1))
+            for line in ps.stdout.splitlines()
+            # if "127.0.0.1" not in line
+            for m in re.finditer(r"(\d+)->", line)
+        }
+        for port in set(procs) - current:
+            stop(procs.pop(port))
+        # Clean up dead processes or crashed (e.g. Address already in use)
+        for port, pp in list(procs.items()):
+            if pp.poll() is not None:
+                print(f"Crashed {pp.pid} {pp.args}. Will restart")
+                procs.pop(port)
+        for port in current - set(procs):
+            procs[port] = pp = subprocess.Popen(
+                ["socat", f"TCP-LISTEN:{port},fork,bind=127.0.0.1", f"TCP:{ip}:{port}"]
+            )
+            print(f"Running {pp.pid} {pp.args}")
+
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        exit(0)

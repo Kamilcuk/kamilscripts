@@ -1,13 +1,24 @@
 #!/bin/sh
-if [ -z "${TMUX:-}" ]; then
-  case $(command -v tmux 2>/dev/null) in
-    *nix*)
-      export TMUX_TMPDIR="${TMPDIR:-/tmp}/tmux-${UID:-$(id -u)}-nix"
-	    mkdir -p -m 700 "$TMUX_TMPDIR"
-	    ;;
-  esac
+
+if [ -n "${TMUX:-}" ]; then
+    echo "Already inside tmux (nesting prevented). Current session: $TMUX" >&2
+    exit 0
+fi
+
+case $(command -v tmux 2>/dev/null) in
+  *nix*)
+    export TMUX_TMPDIR="${TMPDIR:-/tmp}/tmux-${UID:-$(id -u)}-nix"
+	  mkdir -p -m 700 "$TMUX_TMPDIR"
+	  ;;
+esac
+
+into() {
   set -x
-  exec tmux new-session -A -c ~ -s tmux
+  exec "$@"
+}
+
+if tmux has-session 2>/dev/null; then
+    into tmux attach-session -d
 else
-  echo "Already inside tmux (Nesting prevented). Current session $TMUX" >&2
+    into tmux new-session -s tmux -c "$HOME"
 fi
