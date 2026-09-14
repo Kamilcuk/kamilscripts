@@ -251,6 +251,9 @@ autocmd BufNewFile,BufRead * if &syntax == '' | setlocal commentstring=#\ %s | e
 " https://vi.stackexchange.com/a/39270/31698
 set listchars=eol:$,tab:⇥¬¬,trail:·,extends:>,precedes:<,space:·
 
+" When line is too long, show this:t s
+set showbreak=↳
+
 ]]
 
 vim.api.nvim_set_hl(0, "TreesitterContext", { bg = "#2c2c2c" })
