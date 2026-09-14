@@ -10,6 +10,71 @@ makefile() {
     fi
 }
 
+# @env args
+bwrap_sandbox_verbose_args() {
+    local i mounts="Type|Source|Destination"$'\n' setenv="Op|Name|Value"$'\n' path="Op|Path"$'\n' old new j val op
+    for ((i=0;i<${#args[@]};++i)); do
+        case "${args[i]}" in
+            --ro-bind|--bind)
+                if [[ "${args[i]}" == --bind ]]; then
+                    op=rw
+                else
+                    op=ro
+                fi
+                if [[ "${args[i+1]}" == "${args[i+2]}" ]]; then
+                    val="**same**"
+                else
+                    val="${args[i+1]}"
+                fi
+                mounts+="$op|$val|${args[i+2]}"$'\n' i=$((i+2)) ;;
+            --bind) mounts+="rw|${args[i+1]}|${args[i+2]}"$'\n' i=$((i+2)) ;;
+            --tmpfs) mounts+="tmpfs||${args[i+1]}"$'\n' i=$((i+1)) ;;
+            --file) mounts+="file|${args[i+1]}|${args[i+2]}"$'\n' i=$((i+2)) ;;
+            --symlink) mounts+="symlink|${args[i+1]}|${args[i+2]}"$'\n' i=$((i+2)) ;;
+            --setenv)
+                if [[ "${args[i+1]}" == PATH ]]; then
+                    IFS=: read -r -a old <<<"$PATH"
+                    IFS=: read -r -a new <<<"${args[i+2]}"
+                    for j in "${new[@]}"; do
+                        if ! L_array_contains old "$j"; then
+                            path+="add|$j"$'\n'
+                        fi
+                    done
+                else
+                    local val="" op=""
+                    if ! L_var_is_set "${args[i+1]}"; then
+                        op=new
+                    elif [[ "${args[i+2]}" == "${!args[i+1]}" ]]; then
+                        op=same
+                    else
+                        op=diff
+                    fi
+                    if [[ -n "${args[i+1]}" ]]; then
+                        case "${args[i+1]^^}" in
+                            *TOKEN*|*KEY*|*PASSWORD*|*PASS*)
+                                if [[ "${args[i+2]}" == "${!args[i+1]:-}" ]]; then
+                                    val="**inherited**"
+                                else
+                                    val="**changed**"
+                                fi
+                                ;;
+                            *) val="${args[i+2]}"
+                        esac
+                    fi
+                    setenv+="$op|${args[i+1]}|$val"$'\n'
+                fi
+                i=$((i+2))
+                ;;
+            *) other+=${args[i]}$'\n' ;;
+        esac
+    done
+    L_table -s '|' "$mounts"
+    L_table -s '|' "$setenv"
+    if [[ "$path" == *$'\n'*$'\n'* ]]; then
+        L_table -s '|' "$path"
+    fi
+}
+
 bwrap_sandbox() {
     if ((arg_podman && arg_docker)); then
         L_fatal "--podman and --docker are mutually exclusive"
@@ -24,7 +89,21 @@ bwrap_sandbox() {
         --bind "$cachedir"/root /
         --clearenv
         --setenv KCLLM 1
-        --unshare-all
+    )
+    if ((arg_systemd)); then
+        # Systemd checks credentials by using pid, not possible to unshare-pid if accessing systemd.
+        # We can unshare the rest tho.
+        args+=(
+            --unshare-user-try
+            --unshare-ipc
+            --unshare-net
+            --unshare-uts
+            --unshare-cgroup-try
+        )
+    else
+        args+=(--unshare-all)
+    fi
+    args+=(
         --share-net
         --die-with-parent
         --bind "$PWD" "$PWD"
@@ -42,10 +121,11 @@ bwrap_sandbox() {
             fi
         done
     }
-    local config=${XDG_CONFIG_HOME:-$HOME/.config}
-    local cache=${XDG_CACHE_HOME:-$HOME/.cache}
-    local data=${XDG_DATA_HOME:-$HOME/.local/share}
-    local state=${XDG_STATE_HOME:-$HOME/.local/state}
+    local runtime="${XDG_RUNTIME_DIR:=/run/user/$UID}"
+    local config=${XDG_CONFIG_HOME:=$HOME/.config}
+    local cache=${XDG_CACHE_HOME:=$HOME/.cache}
+    local data=${XDG_DATA_HOME:=$HOME/.local/share}
+    local state=${XDG_STATE_HOME:=$HOME/.local/state}
     # basic directories we need.
     addpath --ro-bind /bin /sbin /lib /lib64 /usr /etc /run /opt
     for i in /var /mnt /srv /media /root; do
@@ -79,12 +159,23 @@ bwrap_sandbox() {
     for i in gemini crush opencode claude; do
         addpath --bind "$cache/$i" "$config/$i" "$HOME/.$i"
     done
+    # It looks like bwrap mounts XDG_RUNTIME_DIR by itself. I don't wanna do that.
+    add --tmpfs "$XDG_RUNTIME_DIR"
     # DBus Session Bus.
     if [[ "${DBUS_SESSION_BUS_ADDRESS:-}" =~ unix:path=([^,]+) ]]; then
         local dbus_socket="${BASH_REMATCH[1]}"
         if [[ -S "$dbus_socket" ]]; then
             addpath --ro-bind "$dbus_socket"
         fi
+    fi
+    # Systemd user.
+    if ((arg_systemd)); then
+        local systemd_socket="$runtime/systemd"
+        if [[ ! -d "$systemd_socket" ]]; then
+            L_fatal "Systemd socket does not exist: $systemd_socket"
+        fi
+        add --ro-bind "$systemd_socket" "$systemd_socket"
+        addpath --bind "$config/systemd" "$config/containers"
     fi
     # Docker.
     if ((arg_docker)); then
@@ -97,18 +188,20 @@ bwrap_sandbox() {
     fi
     # Podman.
     if ((arg_podman)); then
+        : "${UID:=$(id -u)}"
         if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
             L_debug "Using podman..."
             # Fix for podman in read-only /run/user/1000 or missing cgroups
-            if [[ ! -w "/run/user/${UID:-$(id -u)}" ]] || [[ ! -d /sys/fs/cgroup ]]; then
-                export XDG_RUNTIME_DIR="/tmp/podman-run-${UID:-$(id -u)}"
-                mkdir -p "$XDG_RUNTIME_DIR"
+            if [[ ! -w "/run/user/$UID" ]] || [[ ! -d /sys/fs/cgroup ]]; then
+                L_fatal "Fix for readonly /run/user/$UID is not ok"
+                export XDG_RUNTIME_DIR="/tmp/,llm-XDG_RUNTIME_DIR-$UID"
+                mkdir -vp "$XDG_RUNTIME_DIR"
                 # Force podman to ignore cgroups and events if they are missing/broken
                 export CONTAINERS_CONF_OVERRIDE_ENGINE_CGROUP_MANAGER="none"
                 export CONTAINERS_CONF_OVERRIDE_ENGINE_EVENTS_LOGGER="none"
+                # Apply fix for read-only /run/user or missing cgroups.
+                add --tmpfs "/run/user/$UID"
             fi
-            # Apply fix for read-only /run/user or missing cgroups.
-            add --tmpfs "/run/user/$UID"
             add --setenv XDG_RUNTIME_DIR "/run/user/$UID"
             add --setenv CONTAINERS_CONF_OVERRIDE_ENGINE_CGROUP_MANAGER "none"
             add --setenv CONTAINERS_CONF_OVERRIDE_ENGINE_EVENTS_LOGGER "none"
@@ -119,7 +212,7 @@ bwrap_sandbox() {
             # Add environment variables.
             add --setenv CONTAINER_RUNTIME podman
             add --setenv DOCKER_BIN podman
-            # Set the podman socket. the socket.
+            # Set the podman socket.
             if [[ -d /run/user/$UID/podman ]]; then
                 add --ro-bind /run/user/$UID/podman /run/user/$UID/podman
             fi
@@ -185,7 +278,7 @@ bwrap_sandbox() {
     # Git root mount
     if (( !arg_no_git )); then
         if set_git_root; then
-            L_debug "Mounting git root $git_root --rw"
+            L_info "Mounting git root --rw %q" "$git_root"
             addpath --bind "$git_root"
         fi
     fi
@@ -226,14 +319,20 @@ bwrap_sandbox() {
         fi
     done
     #
-    if ((arg_verbose)); then
-        set -x
-    fi
     args+=("$@")
+    if ((arg_verbose)); then
+        bwrap_sandbox_verbose_args
+    fi
     if (( arg_dryrun )); then
-        printf -v L_v " %q" "${args[@]}"
-        echo "+$L_v"
+        if ((arg_verbose > 2)); then
+            printf -v L_v " %q" "${args[@]}"
+            echo "+$L_v"
+        fi
+        echo DRYRUN
     else
+        if ((arg_verbose > 2)); then
+            set -x
+        fi
         exec "${args[@]}"
     fi
 }
@@ -329,7 +428,12 @@ C_crush() {
     fi
     C_bwrap crush --yolo "$@"
 }
-C_opencode() { C_bwrap opencode --agent yolo "$@"; }
+C_opencode() {
+    if L_hash ,openrouter-token; then
+        ,openrouter-token r
+    fi
+    C_bwrap opencode --agent yolo "$@"
+}
 
 pick_key() {
     local idx=$1
@@ -372,6 +476,12 @@ C_c() {
     bwrap_sandbox claude "$@"
 }
 
+C_test() {
+    L_logrun "$0" -GP bwrap podman run -ti --rm docker.io/library/hello-world
+    L_logrun "$0" -GS bwrap systemctl daemon-reload --user
+    L_log ',llm test SUCCESS'
+}
+
 arg_verbose=0
 L_argparse dest_prefix=arg_ \
     -- -q --quiet nargs=0 eval='((arg_verbose--)); L_log_level_dec' \
@@ -381,9 +491,10 @@ L_argparse dest_prefix=arg_ \
     -- --hide action=append default= help="Hide specific files from the llm by mounting /dev/null on top of them" \
     -- -H --no-hide flag=1 help="Ignore all --hide" \
     -- -k --key default= nargs=1 eval='pick_key "$@"' \
-    -- -p --podman flag=1 \
+    -- -p -P --podman flag=1 \
     -- -d --docker flag=1 \
     -- -G --no-git flag=1 \
+    -- -S --systemd flag=1 help="Allow interaction with systemd --user. This removes --unshare-pid and mounts couple of directories" \
     -- -e --env action=append default= help="Set environment variable in the sandbox" \
     -- -n --dryrun flag=1 \
     -- call=function prefix=C_ \

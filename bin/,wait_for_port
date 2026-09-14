@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# @description Wait until a TCP port is open.
+# @usage $0 <host>:<port>
+# @arg $1 <host>:<port> Host and TCP port to wait for.
+
+if (( $# != 1 )); then
+	echo "Usage: $0 <host>:<port>" >&2
+	exit 2
+fi
+
+target=$1
+
+if ! [[ $target =~ ^([^:]+):([0-9]+)$ ]]; then
+	echo "Invalid target: $target" >&2
+	echo "Usage: $0 <host>:<port>" >&2
+	exit 2
+fi
+
+host=${BASH_REMATCH[1]}
+port=${BASH_REMATCH[2]}
+
+if (( port < 1 || port > 65535 )); then
+	echo "Invalid port: $port" >&2
+	exit 2
+fi
+
+tsecho() {
+	printf "%(%H:%M:%S)T %s\n" -1 "$*"
+}
+
+tsecho "Waiting for $host:$port..."
+starttime=${EPOCHREALTIME//[,.]}
+until (echo >/dev/tcp/"$host"/"$port") &>/dev/null; do
+	sleep 1
+done
+endtime=${EPOCHREALTIME//[,.]}
+d=$(( (endtime - starttime) / 1000000 ))
+printf -v duration_str "%02d:%02d:%02d" "$(( d / 60 / 60 ))" "$(( d / 60 % 60 ))" "$(( d % 60 ))"
+tsecho "Port $host:$port open after $duration_str"

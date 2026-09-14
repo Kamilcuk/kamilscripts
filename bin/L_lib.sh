@@ -24,7 +24,7 @@
 # @description some global variables
 
 # @description Version of the library
-L_LIB_VERSION=2.0.2
+L_LIB_VERSION=2.0.3
 # @description The location of L_lib.sh file
 L_LIB_SCRIPT=${BASH_SOURCE[0]}
 # @description The basename part of $0.
@@ -237,6 +237,15 @@ L_ANSI_RESET=$'\E[m'
 # @section ansi
 # @description Very basic functions for manipulating cursor position and color.
 # @note unstable
+
+# @description Remove ANSI esacpe sequences like \E[..m from string.
+# Uses extglob
+# @option -v <var> assign result to this variable instead of printing it.
+# @arg $1 string to clean up
+L_strip_ansi() { L_handle_v_scalar "$@"; }
+L_strip_ansi_vL_RET() { L_shopt_extglob _L_strip_ansi_vL_RET_in "$*"; }
+# shellcheck disable=SC1001
+_L_strip_ansi_vL_RET_in() { L_RET=${*//$'\x1B'@([@-Z\\-_]|\[*([0-?])*([ -\/])[@-~])}; }
 
 # @description Move cursor $1 lines up (CUU - Cursor Up)
 # @arg $1 int number of lines (default: 1)
@@ -566,16 +575,6 @@ L_check() {
 # @section func
 # @description Function for writing function programs.
 
-_L_func_line_is_function_definition_with_comment() {
-	[[
-		"$_L_i" -gt 0 &&
-		"${_L_lines[_L_i]}" =~ \
-		^[[:space:]]*(function[[:space:]]+"$_L_funcname"([[:space:]\(]|$)|"$_L_funcname"[[:space:]]*\() \
-		&& \
-		"${_L_lines[_L_i-1]}" == "#"*
-	]] # ))
-}
-
 # @description Get location of where the function was defined.
 # @option -v <var> Variable is assigned an array of two elements: the file path of where the function was defined and line number.
 # @arg $1 Function name to inspect.
@@ -584,6 +583,193 @@ L_func_get_source_vL_RET() {
 	L_RET=$(shopt -s extdebug && declare -F "$1") &&
 		L_RET=( "${L_RET#"$1" [0-9]* }" "${L_RET:${#1}+1}" ) &&
 			L_RET[1]=${L_RET[1]%% *}
+}
+
+# @arg $1 section in _L_help_map
+# @arg $2 section header
+# @env _L_help_map
+# @set _L_help_out
+_L_help_doc_output_section() {
+	local i text IFS=$'\n'
+	for (( i = 0; i < ${#_L_help_map[@]}; i += 2 )); do
+		if [[ "${_L_help_map[i]}" == "$1" ]]; then
+			text+=${text+$'\n'}"${_L_help_map[i+1]}"
+		fi
+	done
+	if (( ${text:+1}0 )); then
+		text=${text##$'\n'}
+		case "$1" in
+			arg|env|set|option|return) L_table -X -o '  ' -v text -s "$L_GS" -- "$text" ;;
+			*) L_dedent -v text "$text" ;;
+		esac
+		L_rstrip -v text "$text"
+		if [[ "$text" == *[$' \t\n']* ]]; then
+			text="${text//$'\n'/$'\n'  }"
+			_L_help_out+=$'\n'"$2"$'\n  '"$text"
+		else
+			# Single word looks nice on a single line, like "Sets: VAR".
+			_L_help_out+=$'\n'"$2"$'  '"$text"
+		fi
+	fi
+}
+
+# @description Unified function-documentation dispatcher.
+# Backend for L_func_comment, L_func_usage and L_func_help.
+# @option -v <var> Assign the result to this variable instead of printing it.
+# @option -f <funcname> Document the given function instead of the calling function.
+# @option -s <int> Consider the target function this many stack frames above. Default: 1 (one above the wrapper).
+# @option -h Print this help and return 0.
+# @option -i Read function comment from stdin, intead of parsing the file.
+# @arg $1 Mode: one of `comment`, `usage` or `help` (normally supplied by the wrapper functions).
+# @return 0 if documentation was extracted successfully.
+L_func_doc() {
+	local OPTIND OPTARG OPTERR _L_i _L_v="" _L_up=1 _L_funcname="" _L_source="" _L_comment=""
+	while getopts v:f:s:ih _L_i; do
+		case "$_L_i" in
+			v) _L_v=$OPTARG; printf -v "$_L_v" "%s" "" || return "$L_EX_USAGE" ;;
+			f)
+				if
+					! _L_i=$(shopt -s extdebug && declare -F "$OPTARG") ||
+						! IFS=' ' read -r _L_funcname _ _L_source <<<"$_L_i"
+				then
+					L_func_error "Could not get function $OPTARG location"
+					return 1
+				fi
+				;;
+			s) _L_up=$(( _L_up + OPTARG )) ;;
+			i) _L_comment=$(cat) ;;
+			h) L_func_help; return 0 ;;
+			*) L_func_usage_error; return "$L_EX_USAGE" ;;
+		esac
+	done
+	shift "$((OPTIND-1))"
+	# Allow numbers to be passsed as arguments to offset like -s.
+	while (( $# )) && L_is_integer "$1"; do
+		_L_up=$(( _L_up + $1 ))
+		shift
+	done
+	# Check arguments.
+	if (( $# != 1 )); then
+		local IFS=' '
+		L_func_usage_error "wrong number of arguments: $# $*"
+		return "$L_EX_USAGE"
+	fi
+	case "$1" in
+		comment|help|usage) ;;
+		*)
+			L_func_usage_error "invalid mode: $1. Must be one of comment, help or uasge"
+			return "$L_EX_USAGE"
+			;;
+	esac
+	if [[ -z "$_L_comment" ]]; then
+		# Extract function comment
+		_L_funcname=${_L_funcname:-${FUNCNAME[_L_up]}}
+		# _L_lineno=${_L_lineno:-${BASH_LINENO[_L_up-1]}}
+		_L_source=${_L_source:-${BASH_SOURCE[_L_up]}}
+		#
+		local _L_content _L_comment
+		_L_content=$(< "$_L_source") || return "$L_EX_IOERR"
+		L_regex_escape_vL_RET "$_L_funcname"
+		if ! [[ "$_L_content" =~ $'\n'([^\#$'\n'][^$'\n']*)?((\#[^$'\n']*($'\n'\#[^$'\n']*)*))$'\n'(function[[:space:]]+$L_RET|$L_RET[[:space:]]*\() ]]; then
+			L_func_error "Failed to extract the comment from function $_L_funcname file $_L_source"
+			return 1
+		fi
+		_L_comment=${BASH_REMATCH[2]##$'\n'}
+	fi
+	if [[ "$1" == comment ]]; then
+		L_printf_append "$_L_v" "%s\n" "$_L_comment"
+		return
+	fi
+	{
+		# Extract usage and full help in a single pass.
+		L_color_detect
+		local _L_usage="" _L_i _L_long="" _L_flags="" _L_args="" _L_help_map=() _L_last=description _L_j
+		# Regex group map (BASH_REMATCH indices):
+		#   G1   whole tag alternation (optional, so bare/continuation lines still match)
+		#   G2   "ion" suffix of @opt(ion)
+		#   G3   option flag (-v)
+		#   G4   option argument (<var>)
+		#   G5   argument name (<file>)
+		#   G6   env|set|return keyword
+		#   G7   env|set|return argument (<var>)
+		#   G8   generic tag (@description|@example|@see|@section|@shellcheck|...)
+		#   G9   shellcheck directive (routed via generic tag -> continue)
+		#   G10  common description / continuation text (after the tag-specific part) including leading spaces
+		#   G11  common description / continuation text (after the tag-specific part) excluding leading spaces
+		local _L_rx="^[[:space:]]*#[[:space:]]?(\
+[[:space:]]*@opt(ion)?[[:space:]]+(-[^[:space:]]+)[[:space:]]*(<[^>]+>|\[[^]]+\])?|\
+[[:space:]]*@arg[[:space:]]+([^[:space:]]+)|\
+[[:space:]]*@(env|set|return)[[:space:]]+([^[:space:]]+)|\
+[[:space:]]*@([a-zA-Z0-9_-]+)|\
+[[:space:]]*(shellcheck))?([[:space:]]+([^[:space:]].*[^[:space:]]|[^[:space:]]))?[[:space:]]*$"
+		while IFS= read -r _L_i || [[ -n "$_L_i" ]]; do
+			if [[ "$_L_i" =~ $_L_rx ]]; then
+				case "${BASH_REMATCH[3]:+option}${BASH_REMATCH[5]:+arg}${BASH_REMATCH[6]:+tag_with_arg}${BASH_REMATCH[8]:+tag}${BASH_REMATCH[9]:+shellcheck},${BASH_REMATCH[8]:-$_L_last}" in
+					option,*)    # @option / @opt
+						_L_help_map+=( "option"
+							"$L_GREEN$L_BOLD${BASH_REMATCH[3]}${BASH_REMATCH[4]:+ $L_MAGENTA$L_BOLD${BASH_REMATCH[4]}}$L_RESET$L_GS${BASH_REMATCH[11]}" )
+						if [[ "${BASH_REMATCH[3]}" == -[^-] && -z "${BASH_REMATCH[4]}" ]]; then
+							_L_flags+="${BASH_REMATCH[3]:1}"
+						else
+							_L_long+=" [${_L_help_map[${#_L_help_map[@]}-1]%%$L_GS*}]"
+						fi
+						;;
+					arg,*)    # @arg
+						_L_args+=" $L_YELLOW$L_BOLD${BASH_REMATCH[5]}$L_RESET"
+						_L_help_map+=( "arg" "$L_YELLOW$L_BOLD${BASH_REMATCH[5]}$L_RESET$L_GS${BASH_REMATCH[11]}" ) ;;
+					tag_with_arg,*)    # @env / @set / @return
+						_L_help_map+=( "${BASH_REMATCH[6]}" "$L_BOLD$L_CYAN${BASH_REMATCH[7]}$L_RESET$L_GS${BASH_REMATCH[11]}" ) ;;
+					tag,noargs) _L_help_map+=( "description" "(Takes no positional arguments.)" ) ;;
+					shellcheck,*|tag,shellcheck) continue ;;  # ignore shellcheck directives
+					tag,usage) _L_usage+="${BASH_REMATCH[11]}" ;;
+					tag,*)    # @description / @example / @note / @warning / @see / @section
+						_L_help_map+=( "${BASH_REMATCH[8]}" "${BASH_REMATCH[11]}" ) ;;
+					,env|,set|,arg|,option) # Continuation line of something that is printed in columns.
+						_L_help_map[${#_L_help_map[@]}-1]+=$'\n'"$L_GS${BASH_REMATCH[11]}" ;;
+					,example) # Preserve examples identation.
+						_L_help_map[${#_L_help_map[@]}-1]+=$'\n'"${BASH_REMATCH[10]}" ;;
+					,return) # Return tag or continuation line.
+						# Return continuation line is special, in that we match a leading number to make it cyan.
+						# Not great not terrible.
+						_L_j="${BASH_REMATCH[11]}"
+						if [[ "$_L_i" =~ ^[[:space:]]*#[[:space:]]*[[:space:]]+([0-9]+)[[:space:]]*([^[:space:]].*)?$ ]]; then
+							_L_j="$L_BOLD$L_CYAN${BASH_REMATCH[1]}$L_RESET$L_GS${BASH_REMATCH[2]}"
+						fi
+						_L_help_map[${#_L_help_map[@]}-1]+=$'\n'"$_L_j"
+						;;
+					*)    # continuation line
+						_L_help_map[${#_L_help_map[@]}-1]+=$'\n'"${BASH_REMATCH[11]}" ;;
+				esac
+				_L_last="${_L_help_map[${#_L_help_map[@]}-2]}"
+			fi
+		done <<<"$_L_comment"
+		if [[ -n "${_L_usage:=${_L_flags:+ [$L_GREEN$L_BOLD-$_L_flags$L_RESET]}$_L_long$_L_args}" ]]; then
+			_L_usage="$_L_source: $L_BLUE${L_BOLD}Usage$L_RESET: $L_MAGENTA$L_BOLD$_L_funcname$L_RESET$_L_usage"
+		fi
+		if [[ "$1" == usage ]]; then
+			L_printf_append "$_L_v" "%s\n" "$_L_usage"
+			return
+		fi
+		# Build help output from the map
+		local _L_help_out="$_L_usage" _L_sections=(
+				description "Description:"
+				note "Notes:"
+				warning "${L_YELLOW}Warnings:"
+				error "${L_RED}Errors:"
+				option "Options:"
+				arg "Arguments:"
+				env "Environment:"
+				set "Sets:"
+				return "Returns:"
+				exit "Exit codes:"
+				see "See:"
+				example "Example:"
+		)
+		for (( _L_i = 0; _L_i < ${#_L_sections[@]}; _L_i += 2 )); do
+			_L_help_doc_output_section "${_L_sections[_L_i]}" "$L_BLUE$L_BOLD${_L_sections[_L_i+1]}$L_RESET"
+		done
+		L_printf_append "$_L_v" "%s\n" "$_L_help_out"
+	}
 }
 
 # @description Extract the comment above the function.
@@ -605,103 +791,21 @@ L_func_get_source_vL_RET() {
 #    somefunc  # outputs '# some comment'
 #
 #    L_func_comment -f somefunc
-L_func_comment() {
-	local OPTIND OPTARG OPTERR _L_lines _L_i _L_v="" _L_lineno _L_source _L_funcname \
-		_L_f="" L_RET="" _L_up=0 _L_funcname_escaped _L_content
-	while getopts v:f:s:h _L_i; do
-		case "$_L_i" in
-			v) _L_v=$OPTARG ;;
-			f)
-				if
-					! _L_f=$(shopt -s extdebug && declare -F "$OPTARG") ||
-						! IFS=' ' read -r _L_funcname _L_lineno _L_source <<<"$_L_f"
-				then
-					L_func_error "Could not get function $OPTARG location"; return "$L_EX_USAGE"
-				fi
-				;;
-			s) _L_up=$OPTARG ;;
-			h) L_func_help; return 0 ;;
-			*) L_func_usage_error; return "$L_EX_USAGE" ;;
-		esac
-	done
-	shift "$((OPTIND-1))"
-	_L_up=${_L_up:-${1:-0}}
-	# L_print_traceback
-	# declare -p BASH_SOURCE FUNCNAME BASH_LINENO
-	# local -; set -x
-	_L_funcname=${_L_funcname:-${FUNCNAME[1+_L_up]}}
-	_L_lineno=${_L_lineno:-${BASH_LINENO[_L_up]}}
-	_L_source=${_L_source:-${BASH_SOURCE[1+_L_up]}}
-	#
-	L_regex_escape -v _L_funcname_escaped "$_L_funcname"
-	_L_content=$(< "$_L_source") || return 2
-	[[ "$_L_content" =~ $'\n'([^\#$'\n'][^$'\n']*)?(($'\n'\#[^$'\n']*)+)$'\n'(function[[:space:]]+"$_L_funcname"|"$_L_funcname"[[:space:]]*\()  ]] || return 1
-	L_RET=${BASH_REMATCH[2]##$'\n'}
-	[[ -n "$L_RET" ]] && printf -v "$_L_v" "%s\n" "${L_RET%$'\n'}"
-}
+L_func_comment() { L_func_doc -s 1 "$@" comment; }
 
-_L_func_help_print_section() {
-	if (( $# == 2 )); then return; fi
-	local _L_dest_var="$1" _L_title="$2" _L_dest_val="${!1}" _L_out="" _L_max_len=0 _L_i _L_name _L_desc _L_line _L_is_first _L_pad _L_next _L_aligned
-	shift 2
-	if [[ -n "$_L_dest_val" ]]; then
-		_L_out+=$'\n\n'
-	fi
-	_L_out+="$_L_title"
-	# Calculate max name length
-	for (( _L_i=1; _L_i <= $#; _L_i+=2 )); do
-		_L_name="${!_L_i}"
-		if (( ${#_L_name} > _L_max_len )); then
-			_L_max_len=${#_L_name}
-		fi
-	done
-	if (( _L_max_len > 30 )); then
-		_L_max_len=30
-	fi
-	# Generate pad string once, avoiding any subshell!
-	printf -v _L_pad "%-${_L_max_len}s" ""
-	for (( _L_i=1; _L_i <= $#; _L_i+=2 )); do
-		_L_name="${!_L_i}"
-		_L_next=$((_L_i+1))
-		_L_desc="${!_L_next}"
-		_L_desc="${_L_desc#$'\n'}"
-		_L_desc="${_L_desc%$'\n'}"
-		_L_is_first=1
-		while IFS= read -r _L_line || [[ -n "$_L_line" ]]; do
-			# Strip leading/trailing whitespace
-			L_strip -v _L_line -- "$_L_line"
-			if (( _L_is_first )); then
-				if (( ${#_L_name} > _L_max_len )); then
-					_L_out+=$'\n'"  ${_L_name}"$'\n'"  ${_L_pad}  ${_L_line}"
-				else
-					printf -v _L_aligned "%-${_L_max_len}s" "${_L_name}"
-					_L_out+=$'\n'"  ${_L_aligned}  ${_L_line}"
-				fi
-				_L_is_first=0
-			else
-				_L_out+=$'\n'"  ${_L_pad}  ${_L_line}"
-			fi
-		done <<<"$_L_desc"
-	done
-	printf -v "$_L_dest_var" "%s%s" "$_L_dest_val" "$_L_out"
-}
+# @description Print function usage to stderr.
+# @option -v <var> Store the usage message in the variable instead of printing it.
+# @option -h Print this help and return.
+# @option -s <int> How many stack frames up.
+# @arg [$1] How many stack frames up.
+L_func_usage() { L_func_doc -s 1 "$@" usage; }
 
-_L_func_help_print_list_section() {
-	if (( $# == 2 )); then return; fi
-	local _L_dest_var="$1" _L_title="$2" _L_dest_val="${!1}" _L_out="" _L_item
-	shift 2
-	if [[ -n "$_L_dest_val" ]]; then
-		_L_out+=$'\n\n'
-	fi
-	_L_out+="$_L_title"
-	for _L_item in "$@"; do
-		_L_out+=$'\n'"  $_L_item"
-	done
-	printf -v "$_L_dest_var" "%s%s" "$_L_dest_val" "$_L_out"
-}
-
-# @description Print function comment as usage message.
-# @arg [int] How many stack frames up.
+# @description Print function comment as help message.
+# @option -v <var> Store the help message in the variable instead of printing it.
+# @option -f <func> Function to print help for.
+# @option -s <int> How many stack frames up.
+# @option -h Print this help and return 0.
+# @arg [$1] How many stack frames up.
 # @see L_func_comment
 # @see L_func_error
 # @return 0
@@ -730,159 +834,7 @@ _L_func_help_print_list_section() {
 #    utility -h        # prints the comment above the function
 #    utility -invalid  # prints 'Usage: utility [-th] [-g arg] arg'
 #
-L_func_help() {
-	local up="$((${1:-0}+1))" help_out="unknown help"
-	if L_func_comment -v help_out -s "$up" "$@"; then
-		local -a description=() option_list=() argument_list=() return_list=() env_list=() see_list=() example_list=()
-		local current_section="description" line tag rest docstring="$help_out" sect_out="" IFS=$'\n'
-		help_out=""
-		# Regex variables to avoid Bash parsing issues across different versions
-		local rx_comment='^\#[[:space:]]?(.*)$'
-		local rx_tag='^@(description|option|arg|return|env|see|example):?([[:space:]]+(.*))?$'
-		local rx_opt='^((-[a-zA-Z0-9_?+^]+|--[a-zA-Z0-9_?+^-]+)([[:space:]]+<[^>]+>)?)[[:space:]]*(.*)$'
-		local rx_arg='^(([^[:space:]]+([[:space:]]+<[^>]+>)?)[[:space:]]*)(.*)$'
-		local rx_ret='^([0-9]+|non-zero|L_EX_[A-Z_]+)([[:space:]]+\([^)]+\))?[[:space:]]+(.*)$'
-		local rx_env='^([_a-zA-Z0-9]+([[:space:]]+<[^>]+>)?)[[:space:]]*(.*)$'
-		while IFS= read -r line || [[ -n "$line" ]]; do
-			# Strip leading '#' and at most one optional space
-			if [[ "$line" =~ $rx_comment ]]; then
-				line="${BASH_REMATCH[1]}"
-			else
-				L_strip -v line -- "$line"
-			fi
-			# Skip shellcheck directives
-			if [[ "$line" =~ ^[[:space:]]*shellcheck ]]; then
-				continue
-			fi
-			# If the stripped line is empty
-			if [[ -z "${line//[[:space:]]}" ]]; then
-				if [[ "$current_section" == "description" && ${#description[@]} -gt 0 ]]; then
-					description+=("")
-				fi
-				continue
-			fi
-			# Check for tags
-			if [[ "$line" =~ $rx_tag ]]; then
-				tag="${BASH_REMATCH[1]}"
-				rest="${BASH_REMATCH[3]}"
-				current_section="$tag"
-				case "$tag" in
-					description)
-						if [[ -n "$rest" ]]; then
-							description+=("$rest")
-						fi
-						;;
-					option)
-						if [[ "$rest" =~ $rx_opt ]]; then
-							option_list+=("${BASH_REMATCH[1]}" "${BASH_REMATCH[4]}")
-						else
-							option_list+=("$rest" "")
-						fi
-						;;
-					arg)
-						if [[ "$rest" =~ $rx_arg ]]; then
-							argument_list+=("${BASH_REMATCH[2]}" "${BASH_REMATCH[4]}")
-						else
-							argument_list+=("$rest" "")
-						fi
-						;;
-					return)
-						if [[ "$rest" =~ $rx_ret ]]; then
-							return_list+=("${BASH_REMATCH[1]}${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")
-						else
-							return_list+=("$rest" "")
-						fi
-						;;
-					env)
-						if [[ "$rest" =~ $rx_env ]]; then
-							env_list+=("${BASH_REMATCH[1]}" "${BASH_REMATCH[3]}")
-						else
-							env_list+=("$rest" "")
-						fi
-						;;
-					see)
-						if [[ -n "$rest" ]]; then
-							see_list+=("$rest")
-						fi
-						;;
-					example)
-						if [[ -n "$rest" ]]; then
-							example_list+=("$rest")
-						fi
-						;;
-				esac
-			else
-				# Continuation line
-				case "$current_section" in
-					description)
-						description+=("$line")
-						;;
-					option)
-						option_list[${#option_list[@]}-1]+=$'\n'"$line"
-						;;
-					arg)
-						argument_list[${#argument_list[@]}-1]+=$'\n'"$line"
-						;;
-					return)
-						# Check if continuation line is a new return code
-						if [[ "$line" =~ $rx_ret ]]; then
-							return_list+=("${BASH_REMATCH[1]}${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")
-						else
-							return_list[${#return_list[@]}-1]+=$'\n'"$line"
-						fi
-						;;
-					env)
-						env_list[${#env_list[@]}-1]+=$'\n'"$line"
-						;;
-					see)
-						see_list+=("$line")
-						;;
-					example)
-						example_list+=("$line")
-						;;
-				esac
-			fi
-		done <<<"$docstring"
-		help_out="${description[*]}"
-		_L_func_help_print_section help_out "Options:" ${option_list[@]+"${option_list[@]}"}
-		_L_func_help_print_section help_out "Arguments:" ${argument_list[@]+"${argument_list[@]}"}
-		_L_func_help_print_section help_out "Environment:" ${env_list[@]+"${env_list[@]}"}
-		_L_func_help_print_section help_out "Return:" ${return_list[@]+"${return_list[@]}"}
-		_L_func_help_print_list_section help_out "See:" ${see_list[@]+"${see_list[@]}"}
-		_L_func_help_print_list_section help_out "Example:" ${example_list[@]+"${example_list[@]}"}
-	fi
-	echo "$0: ${FUNCNAME[up]}: $help_out" >&2
-}
-
-# @description Print funtion usage to stderr.
-# @arg [$1] How many stack frames up.
-L_func_usage() {
-	local up="$((${1:-0}+1))" v i short="" long="" args="" usage="" line
-	if L_func_comment -v v -s "$up"; then
-		while IFS= read -r line; do
-			if [[ "$line" =~ ^\#[[:space:]]+@(usage|option|arg)[[:space:]]+(.*)$ ]]; then
-				line=${BASH_REMATCH[2]}
-				if [[ "${BASH_REMATCH[1]}" == "usage" ]]; then
-					usage=$line
-					break
-				elif [[ "$line" =~ --([^\ ]+)[^\<]*\<([^\>]+)\> ]]; then
-					long+=" [--${BASH_REMATCH[1]} ${BASH_REMATCH[2]}]"
-				elif [[ "$line" =~ --([^[:space:]]+) ]]; then
-					long+=" [--${BASH_REMATCH[1]}"
-				elif [[ "$line" =~ -(.)[^\<]*\<([^\>]+)\> ]]; then
-					long+=" [-${BASH_REMATCH[1]} ${BASH_REMATCH[2]}]"
-				elif [[ "$line" =~ -(.) ]]; then
-					short+="${BASH_REMATCH[1]}"
-				elif [[ "$line" =~ ([^[:space:]]+) ]]; then
-					args+=" ${BASH_REMATCH[1]}"
-				fi
-			fi
-		done <<<"$v"
-		if [[ -n "${usage:=${short:+ [-$short]}$long$args}" ]]; then
-			echo "${BASH_SOURCE[up]}: usage: ${FUNCNAME[up]}$usage" >&2
-		fi
-	fi
-}
+L_func_help() { L_func_doc -s 1 "$@" help; }
 
 # @description Print function error to stderr.
 # @arg [$1] Message.
@@ -900,7 +852,7 @@ L_func_error() {
 # @see L_func_help for example
 L_func_usage_error() {
 	L_func_error "${1:-}" "$((${2:-0}+1))" # ; return 0
-	L_func_usage "$((${2:-0}+1))"
+	L_func_usage -s "$((${2:-0}+1))"
 }
 
 # @description Assert that the command exits with 0.
@@ -1063,12 +1015,11 @@ _L_getopts_in_initer() {
 # @arg $1 The getopts spec.
 # @arg $2 Function to call.
 # @arg $@ Arguments to parse.
-# @return Sub-function return status,
+# @return ? Sub-function return status,
 #         70 ($L_EX_SOFTWARE) on itself usage error,
 #         0 if -h option was given,
 #         64 ($L_EX_USAGE) on child usage error.
 # @example
-#
 #    myfunc() { L_getopts_in -p opt_ n::vq myfunc_in "$@"; }
 #    myfunc_in() {
 #      echo "${opt_n[@]} $opt_v $opt_q"
@@ -3153,6 +3104,26 @@ else
 	L_uncapitalize_vL_RET() { L_strlower_vL_RET "${1:0:1}"; L_RET="$L_RET${1:1}"; }
 fi
 
+# @description Remove common leading indentation from all lines.
+# @option -v <var> Store the output in variable instead of printing it.
+# @arg $1 <str> String to dedent.
+L_dedent() { L_handle_v_scalar "$@"; }
+L_dedent_vL_RET() {
+	local _L_i IFS=$'\n' _L_min=-1
+	while IFS= read -r _L_i; do
+		_L_i=${_L_i%%[^$' \t']*}
+		_L_min=$(( _L_min < 0 || ${#_L_i} < _L_min ? ${#_L_i} : _L_min ))
+	done <<<"$*"
+	if (( _L_min >= 0 )); then
+		printf -v _L_i "%*s" "$_L_min" ""
+		_L_i=${_L_i//?/?}
+		L_RET=${*//$'\n'$_L_i/$'\n'}
+		L_RET=${L_RET:${#_L_i}}
+	else
+		L_RET=$*
+	fi
+}
+
 # @description Remove characters from IFS from begining and end of string
 # @option -v <var> Store the output in variable instead of printing it.
 # @arg $1 <str> String to operate on.
@@ -3819,22 +3790,27 @@ else  # L_HAS_NAMEREF
 	L_array_append() { L_is_valid_variable_name "$1" && eval "$1+=(\"\${@:2}\")"; }
 	L_array_insert() {
 		L_is_valid_variable_name "$1" &&
-		eval "$1=(\${$1[@]+\"\${$1[@]::\$2}\"} \"\${@:3}\" \${$1[@]+\"\${$1[@]:\$2}\"})"
+		eval "$1=( \${$1[@]+\"\${$1[@]::\$2}\"} \"\${@:3}\" \${$1[@]+\"\${$1[@]:\$2}\"} )"
 	}
 	L_array_pop_front() {
 		L_is_valid_variable_name "$1" &&
-		eval "$1=(\${$1[@]+\"\${$1[@]:1}\"})";
+		eval "$1=( \${$1[@]+\"\${$1[@]:1}\"} )"
 	}
 	L_array_pop_back() { L_is_valid_variable_name "$1" && eval "unset -v \"$1[\${#$1[@]}-1]\""; }
 	L_array_is_dense() {
 		L_is_valid_variable_name "$1" &&
-		eval "[[ \"\${#$1[*]}\" = 0 || \" \${!$1[*]}\" == *\" \$((\${#$1[*]}-1))\" ]]"
+		eval "[[ \${$1[@]:+1}0 -eq 0 || \" \${!$1[*]}\" == *\" \$((\${#$1[*]}-1))\" ]]"
 	}
 
 	L_array_copy() {
 		L_is_valid_variable_name "$1" &&
 			L_is_valid_variable_name "$2" &&
-			eval "$1=(\"\${$2[@]}\")"
+			if L_array_is_dense "$1"; then
+				eval "$2=( \${$1[@]+\"\${$1[@]}\"} )"
+			else
+				local _L_i
+				eval "$2=(); for _L_i in \${$1[@]+\"\${!$1[@]}\"}; do $2[_L_i]=\${$1[_L_i]}; done"
+			fi
 	}
 	L_array_max_index_vL_RET() {
 		L_is_valid_variable_name "$1" &&
@@ -4222,6 +4198,7 @@ L_min_vL_RET() {
 # @option -s <separator> IFS column separator to use. Default: space or tab.
 # @option -o <str> Output separator to use
 # @option -R <list[int]> Right align columns with these indexes
+# @option -X Ignore color escape sequences when calculting column width.
 # @option -h Print this help and return 0.
 # @arg $@ Lines to print, joined and separated by newline.
 # @example
@@ -4230,13 +4207,14 @@ L_min_vL_RET() {
 #         a     b c
 #         d     e f
 L_table() {
-	local OPTIND OPTARG OPTERR IFS=$'\n ' _L_i _L_s=$' \t' _L_v="" _L_arr=() _L_tmp="" _L_column=0 _L_columns=0 _L_rows=0 _L_row=0 _L_widths=() _L_o=" " _L_R="" _L_last
-	while getopts v:s:o:R:h _L_i; do
+	local OPTIND OPTARG OPTERR IFS=$'\n ' _L_i _L_s=$' \t' _L_v="" _L_arr=() _L_tmp="" _L_column=0 _L_columns=0 _L_rows=0 _L_row=0 _L_widths=() _L_o=" " _L_R="" _L_last _L_X=0 L_RET _L_len
+	while getopts v:s:o:R:Xh _L_i; do
 		case $_L_i in
 		v) _L_v=$OPTARG; printf -v "$_L_v" "%s" "" ;;
 		s) _L_s=$OPTARG ;;
 		o) _L_o=$OPTARG ;;
 		R) _L_R=$OPTARG ;;
+		X) _L_X=1 ;;
 		h) L_func_help; return 0 ;;
 		*) L_func_usage_error; return "$L_EX_USAGE" ;;
 		esac
@@ -4245,32 +4223,43 @@ L_table() {
 	# Fill the array, find number of columns and rows.
 	while IFS="$_L_s" read -r -a _L_tmp; do
 		for _L_column in "${!_L_tmp[@]}"; do
-			_L_arr[100 * _L_rows + _L_column]=${_L_tmp[_L_column]}
-			(( _L_widths[_L_column] < ${#_L_tmp[_L_column]} ? _L_widths[_L_column] = ${#_L_tmp[_L_column]} : 0, 1 ))
+			_L_arr[999999 * _L_rows + _L_column]=${_L_tmp[_L_column]}
+			if (( _L_X )); then
+				L_strip_ansi_vL_RET "${_L_tmp[_L_column]}"
+				_L_len=${#L_RET}
+			else
+				_L_len=${#_L_tmp[_L_column]}
+			fi
+			(( _L_widths[_L_column] < _L_len ? _L_widths[_L_column] = _L_len : 0, 1 ))
 		done
-		(( _L_column > _L_columns ? _L_columns = _L_column + 1 : 0, ++_L_rows ))
+		(( _L_columns < _L_column + 1 ? _L_columns = _L_column + 1 : 0, ++_L_rows ))
 	done <<<"$*"
 	#
-	L_parse_range_list -v _L_R "$_L_columns" "$_L_R"
+	L_parse_range_list -v _L_R -m "$_L_columns" "$_L_R"
 	#
 	for ((_L_row = 0; _L_row < _L_rows; _L_row++)); do
-		if L_var_is_set "_L_arr[100 * _L_row + 0]"; then
+		if L_var_is_set "_L_arr[999999 * _L_row + 0]"; then
 			for ((_L_column = 0; _L_column < _L_columns; _L_column++)); do
-				_L_tmp=${_L_arr[100 * _L_row + _L_column]:-}
-				L_exit_into _L_last L_var_is_set "_L_arr[100 * _L_row + _L_column + 1]"
-				if L_args_contain "$((_L_column+1))" ${_L_R[@]+"${_L_R[@]}"}; then
+				_L_tmp=${_L_arr[999999 * _L_row + _L_column]:-}
+				L_exit_into _L_last L_var_is_set "_L_arr[999999 * _L_row + _L_column + 1]"
+				if L_var_is_set "_L_R[_L_column+1]"; then
 					L_printf_append "$_L_v" "%*s" "${_L_widths[_L_column]}" "$_L_tmp"
 				else
 					if ((_L_last)); then
 						L_printf_append "$_L_v" "%s" "$_L_tmp"
 					else
-						L_printf_append "$_L_v" "%-*s" "${_L_widths[_L_column]}" "$_L_tmp"
+						_L_len="${_L_widths[_L_column]:-0}"
+						if (( _L_X )); then
+							L_strip_ansi_vL_RET "${_L_tmp}"
+							(( _L_len += ${#_L_tmp} - ${#L_RET} ))
+						fi
+						L_printf_append "$_L_v" "%-*s" "$_L_len" "$_L_tmp"
 					fi
 				fi
 				if ((_L_last)); then
 					break
 				fi
-				if ((_L_column + 1 < _L_columns)); then
+				if ((_L_column < _L_columns)); then
 					L_printf_append "$_L_v" "%s" "$_L_o"
 				fi
 			done
@@ -4288,47 +4277,83 @@ L_table() {
 #     N-M    from N'th to M'th (included) byte, character or field
 #     -M     from first to M'th (included) byte, character or field
 # @option -v <var> Store the output in variable instead of printing it.
-# @arg $1 max number of fields
-# @arg $2 list of fields
+#                  The variable array has both indexes and values set.
+# @option -m <int> Maximum number of columns. Default: 100
+# @option -C Complement the selection.
+# @option -h Print this help and return 0.
+# @arg $1 list of fields
 # @example
-#     $ L_parse_range_list 100 1-4,3-5
+#     $ L_parse_range_list 1-4,3-5
 #     1
 #     2
 #     3
 #     4
 #     5
-#     $ L_parse_range_list -v tmp 100 '1-4 3-5'
+#     $ L_parse_range_list -v tmp '1-4 3-5'
 #     $ echo "${tmp[@]}"
 #     1 2 3 4 5
+#     $ echo "${!tmp[@]}"
+#     1 2 3 4 5
+#     $ if L_var_is_set "tmp[3]"; then echo "yes"; else echo "no"; fi
+#     yes
 #     $ if L_args_contain 3 "${tmp[@]}"; then echo "yes"; else echo "no"; fi
 #     yes
 #     $ if L_args_contain 7 "${tmp[@]}"; then echo "yes"; else echo "no"; fi
 #     no
-L_parse_range_list() { L_handle_v_array "$@"; }
-L_parse_range_list_vL_RET() {
-	local _L_max=$1 _L_list _L_i _L_j _L_k _L_t
-	shift
-	L_assert 'not enough argumenst' test "$#" -gt 0
+L_parse_range_list() {
+	local OPTIND OPTARG OPTERR _L_max=100 _L_list _L_i _L_v="" _L_j _L_start="" _L_stop="" _L_output=() _L_C=0
+	while getopts v:m:Ch _L_i; do
+		case "$_L_i" in
+			v) _L_v="$OPTARG"; ;;
+			m) _L_max="$OPTARG" ;;
+			C) _L_C=1 ;;
+			h) L_func_help; return 0 ;;
+			*) L_func_usage_error; return "$L_EX_USAGE" ;;
+		esac
+	done
+	shift "$((OPTIND-1))"
+	if (( $# == 0 )); then
+		L_func_usage_error "not enough arguments"
+		return "$L_EX_USAGE"
+	fi
+	if [[ -n "$_L_v" ]] && (( L_HAS_NAMEREF )); then
+		local -n _L_ret="$_L_v"
+		_L_ret=()
+	else
+		local _L_ret=()
+	fi
 	IFS=$' \t\n' read -r -a _L_list <<<"${*//[^0-9-]/ }"
-	L_RET=()
 	for _L_i in ${_L_list[@]+"${_L_list[@]}"}; do
 		if [[ $_L_i == *-* ]]; then
-			_L_j=${_L_i%-*}
-			_L_k=${_L_i#*-}
-			: "${_L_j:=1}"
-			: "${_L_k:=$_L_max}"
-			if ((_L_j > _L_k)); then
-				_L_t=$_L_j
-				_L_j=$_L_k
-				_L_k=$_L_t
+			_L_start=${_L_i%-*} _L_stop=${_L_i#*-}
+			: "${_L_start:=1}" "${_L_stop:=$_L_max}"
+			if (( _L_start > _L_stop )); then
+				_L_i=$_L_stop _L_stop=$_L_start _L_start=$_L_i
 			fi
-			for ((_L_t = _L_j; _L_t <= _L_k; _L_t++)); do
-				L_RET[_L_t]=$_L_t
+			for (( _L_j = _L_start; _L_j <= _L_stop; ++_L_j )); do
+				_L_ret[_L_j]=$_L_j
 			done
 		else
-			L_RET[_L_i]=$_L_i
+			_L_ret[_L_i]=$_L_i
 		fi
 	done
+	if (( _L_C )); then
+		for (( _L_i = 0; _L_i < _L_max; ++i )); do
+			if [[ -n "${_L_ret[_L_i]:-}" ]]; then
+				unset "_L_ret[_L_i]"
+			else
+				_L_ret[_L_i]=$_L_i
+			fi
+		done
+	fi
+	if [[ -z "$_L_v" ]]; then
+		printf "%s\n" "${_L_ret[@]}"
+	elif (( !L_HAS_NAMEREF )); then
+		if ! L_array_copy _L_ret "$_L_v"; then
+			L_func_usage_error "Not valid variable name: $_L_v"
+			return "$L_EX_USAGE"
+		fi
+	fi
 }
 
 _L_pretty_print_output() {
@@ -4369,24 +4394,23 @@ _L_pretty_print_declare() {
 		# Array or associative array
 		_L_pretty_print_output "${_L_flags}$1=("
 		local _L_pp_nonfirst_sep=""
+		_L_pp_ref="$1[\"\$_L_pp_i\"]"  # Indirect expansion is magic and expands the index upon expansion.
 		if (( _L_pp_oneline )) && [[ "$_L_pp_declare_opts" == -a* ]] && L_array_is_dense "$1"; then
 			# Dense normal array
-			L_array_len -v _L_pp_len "$1"
+			eval "_L_pp_len=\"\${#$1[@]}\""
 			for (( _L_pp_i = 0; _L_pp_i < _L_pp_len; _L_pp_i++ )); do
-				_L_pp_v="$1[$_L_pp_i]"
-				printf -v _L_pp_v "%q" "${!_L_pp_v}"
+				printf -v _L_pp_v "%q" "${!_L_pp_ref}"
 				_L_pretty_print_output_array "$_L_pp_v" "$_L_pp_nonfirst_sep"
 				_L_pp_nonfirst_sep=" "
 			done
 		else
 			# Sparse array or associative array
-			L_array_keys -v _L_pp_keys "$1"
+			eval "_L_pp_keys=(\"\${!$1[@]}\")"
 			if [[ "$_L_pp_declare_opts" == -A* ]]; then
 				L_sort -z _L_pp_keys
 			fi
-			for _L_pp_k in "${_L_pp_keys[@]}"; do
-				eval "_L_pp_v=\${$1[\"\$_L_pp_k\"]}"
-				printf -v _L_pp_v "[%q]=%q" "$_L_pp_k" "$_L_pp_v"
+			for _L_pp_i in "${_L_pp_keys[@]}"; do
+				printf -v _L_pp_v "[%q]=%q" "$_L_pp_i" "${!_L_pp_ref}"
 				_L_pretty_print_output_array "$_L_pp_v" "$_L_pp_nonfirst_sep"
 				_L_pp_nonfirst_sep=" "
 			done
@@ -4421,12 +4445,13 @@ _L_pretty_print_declare() {
 # @option -C Alias for -m.
 # @option -h Print this help and return 0.
 # @arg $@ variable names to pretty print
+# shellcheck disable=SC2053
 L_pretty_print() {
 	_L_init_COLUMNS
 	local OPTIND OPTARG OPTERR \
 		_L_pp_prefix="" _L_pp_var="" _L_pp_oneline=1 _L_pp_width=${COLUMNS:-80} \
 		_L_pp_i _L_pp_declare _L_pp_len _L_pp_v _L_pp_keys _L_pp_k _L_pp_out="" \
-		_L_pp_line_len=0
+		_L_pp_line_len=0 _L_pp_ref
 	while getopts p:v:w:cmCh _L_pp_i; do
 		case $_L_pp_i in
 			p) _L_pp_prefix=$OPTARG ;;
@@ -4440,7 +4465,27 @@ L_pretty_print() {
 	done
 	shift "$((OPTIND-1))"
 	while (($#)); do
-		if [[ "$1" == *\* ]] && L_is_valid_variable_name "${1::${#1}-1}" && L_compgen -V _L_pp_i -A variable -- "${1::${#1}-1}"; then
+		if
+			case "$1" in
+				# Get all variables matching arbitrary glob PREFIX*SUFFIX.
+				*[?*[]?*)  # ]
+					# Prewarm the list using the prefix we are sure of.
+					L_compgen -V _L_pp_i -A variable -- "${1%%[?*[]*}" && {  # ]
+						# Filter variables using the full regex.
+						for _L_pp_k in "${!_L_pp_i[@]}"; do
+							if [[ "${_L_pp_i[_L_pp_k]}" != $1 || "${_L_pp_i[_L_pp_k]}" == _L_* ]]; then
+								unset "_L_pp_i[$_L_pp_k]"
+							fi
+						done
+						(( ${_L_pp_i[*]:+1}0 ))
+					}
+					;;
+				# Get all variables matching prefix VAR*.
+				*"*") L_compgen -V _L_pp_i -A variable -- "${1::${#1}-1}" ;;
+				*) false ;;
+			esac
+		then
+			# Print all variables matching the glob in $1.
 			_L_pretty_print_output "$1{"
 			for _L_pp_i in "${_L_pp_i[@]}"; do
 				_L_pp_declare=$(declare -p "$_L_pp_i")
@@ -4450,7 +4495,13 @@ L_pretty_print() {
 			done
 			_L_pretty_print_output "}"
 		elif _L_pp_declare=$(declare -p "$1" 2>/dev/null); then
+			# Normal variable.
 			_L_pretty_print_declare "$1"
+		elif L_is_valid_variable_or_array_element "$1" && ( L_var_is_set "$1" ) 2>/dev/null; then
+			# Array reference, arr[index]. Everything else was matched above.
+			# Is subshell above the best I can do? The ${!1} indirect expansion terminates the shell if invalid under -e.
+			printf -v _L_pp_v "$1=%q" "${!1}"
+			_L_pretty_print_output "$_L_pp_v"
 		else
 			# Literal string arg (not a variable name)
 			_L_pretty_print_output "$1"
@@ -4693,50 +4744,117 @@ L_argskeywords() {
 	eval "$_L_subcall"
 }
 
-# @description Compare version numbers.
+# @description
+# This command has two distinct modes of operation, depending on whether the operator OP is specified.
+#
+# In the first mode when OP is not specified, it will compare the two version strings and print either "VERSION1 < VERSION2", or "VERSION1 == VERSION2", or "VERSION1 > VERSION2" as appropriate.
+#
+# The exit status is 0 if the versions are equal, 11 if the version of the right is smaller, and 12 if the version of the left is smaller. (This matches the convention used by rpmdev-vercmp.)
+#
+# In the second mode when OP is specified, it will compare the two version strings using the operation OP and return 0 (success) if they condition is satisfied, and 1 (failure) otherwise. OP may be lt, le, eq, ne, ge, gt, <, <=, ==, !=, >< >=. In this mode, no output is printed. (This matches the convention used by dpkg(1) --compare-versions.)
+#
+# Additionally the function supports '~=' operator, which checks if VERSION1 is a compatible release of VERSION2.
+# For a given release identifier V.N, the compatible release clause is approximately equivalent to the pair of comparison clauses:
+# L_version_cmp "$left" >= V.N && [[ "$left" == V.* ]]
+#
+# @arg VERSION1
+# @arg [OP]
+# @arg VERSION2
+# @see https://uapi-group.org/specifications/specs/version_format_specification/
+# @see https://github.com/systemd/systemd/blob/main/src/fundamental/string-util.c#L78
+# @see https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html#systemd-analyze%20compare-versions%20VERSION1%20%5BOP%5D%20VERSION2
 # @see https://peps.python.org/pep-0440/
-# @arg $1 str one version
-# @arg $2 str one of: -lt -le -eq -ne -gt -ge '<' '<=' '==' '!=' '>' '>=' '~='
-# @arg $3 str second version
-# @arg [$4] int accuracy, how many at max elements to compare? By default up to 3.
+# @example
+#     $ L_version_cmp systemd-250~rc1.fc36.aarch64 systemd-251.fc36.aarch64
+#     systemd-250~rc1.fc36.aarch64 < systemd-251.fc36.aarch64
+#     $ echo $?
+#     12
+#     $ L_version_cmp 1 lt 2; echo $?
+#     0
+#     $ L_version_cmp 1 ge 2; echo $?
+#     1
 # shellcheck disable=SC2053
 L_version_cmp() {
-	case "$2" in
-	'~=')
-		L_version_cmp "$1" '>=' "$3" && L_version_cmp "$1" "==" "${3%.*}.*"
-		;;
-	'=='|'-eq') [[ "$1" == $3 ]] ;;
-	'!='|'-ne') [[ "$1" != $3 ]] ;;
-	*)
-		local op res='=' i max a=() b=() accuracy="${4:-3}"
-		case "$2" in
-		'-le') op='<=' ;;
-		'-lt') op='<' ;;
-		'-gt') op='>' ;;
-		'-ge') op='>=' ;;
-		'<='|'<'|'>'|'>=') op="$2" ;;
-		*)
-			L_error "L_version_cmp: invalid second argument: $op"
-			return "$L_EX_USAGE"
-		esac
-		IFS=' .-()' read -r -a a <<<"$1"
-		IFS=' .-()' read -r -a b <<<"$3"
-		max=$(( ${#a[@]} > ${#b[@]} ? ${#a[@]} : ${#b[@]} ))
-		if (( max > accuracy )); then
-			max=$accuracy
-		fi
-		for (( i = 0; i < max; ++i )); do
-			if (( a[i] > b[i] )); then
-				res='>'
-				break
-			elif (( a[i] < b[i] )); then
-				res='<'
-				break
+	case "$#" in
+		2)
+			if _L_version_cmp "$@"; then
+				echo "$1 == $2"
+			elif (( $? == 11 )); then
+				echo "$1 > $2"
+				return 11
+			else
+				echo "$1 < $2"
+				return 12
 			fi
-		done
-		[[ "$op" == *"$res"* ]]
-		;;
+			;;
+		3)
+			local rc=0
+			case "$2" in
+				'~=')
+					L_version_cmp "$1" ">=" "$3" &&
+						if [[ "$3" == *.* ]]; then
+							[[ "$1" == "${3%[^.]*}"* ]]
+						else
+							[[ "$3" != *[^0-9]* ]] && L_version_cmp "$1" "<" "$(( $3 + 1 ))"
+						fi
+					;;
+				eq|ne|lt|gt|le|ge|==|'!='|'<'|'>'|'<='|'>=')
+					_L_version_cmp "$1" "$3" || rc=$?
+					case "$2$rc" in
+						==0|'!=11'|'!=12'|'<12'|'>11'|'<=0'|'<=12'|'>=0'|'>=11') return 0 ;;
+						eq0|ne11|ne12|lt12|gt11|le0|le12|ge0|ge11) return 0 ;;
+						*) return 1
+					esac
+					;;
+				*)
+					L_func_usage_error "Unknown operator $2"
+					return "$L_EX_USAGE"
+					;;
+			esac
+			;;
+		0|1)
+			L_func_usage_error "Too few arguments"
+			return "$L_EX_USAGE"
+			;;
+		*)
+			L_func_usage_error "Too many arguments"
+			return "$L_EX_USAGE"
+			;;
 	esac
+}
+
+# @description Implementation for L_version that just returns 0/11/12
+# shellcheck disable=SC2318
+_L_version_cmp() {
+	local a=${1//[^-a-zA-Z0-9.~^]} b=${2//[^-a-zA-Z0-9.~^]} an bn
+	while
+		case "${a::1}:${b::1}" in
+			'~':[^~]|'~':) return 12 ;;
+			[^~]:'~'|:'~') return 11 ;;
+			:) return 0 ;;
+			:?|-:[^-]|^:[^^]|.:[^.]) return 12 ;;
+			?:|[^^]:^|[^-]:-|[^.]:.) return 11 ;;
+			*[0-9]*)
+				an="${a%%[^0-9]*}" bn="${b%%[^0-9]*}"
+				if (( 10#0$an > 10#0$bn )); then
+					return 11
+				elif (( 10#0$an < 10#0$bn )); then
+					return 12
+				fi
+				;;
+			*[a-zA-Z]*)
+				local an="${a%%[^a-zA-Z]*}" bn="${b%%[^a-zA-Z]*}"
+				if [[ "$an" > "$bn" ]]; then
+					return 11
+				elif [[ "$an" < "$bn" ]]; then
+					return 12
+				fi
+				;;
+			*) a=${a:1} b=${b:1}; continue ;;
+		esac
+	do
+		a=${a##"$an"} b=${b##"$bn"}
+	done
 }
 
 # ]]]
@@ -5999,7 +6117,7 @@ L_finally_critical_section() {
 # @description Change to given directory.
 # Register RETURN trap for parent function that will restore current working directory.
 # @arg $1 Directory to cd into.
-# @arg $2 Optional stack offset to add to RETURN trap.
+# @arg [$2] Optional stack offset to add to RETURN trap.
 L_with_cd() {
 	L_finally -r -s "$((${2-}+1))" cd "$PWD" &&
 		cd "$1"
@@ -6008,7 +6126,7 @@ L_with_cd() {
 # @description Create a temporary directory.
 # Register RETURN trap for parent fuction that will remove the directory.
 # @arg $1 Variable to assign the temporary file to.
-# @arg $2 Optional stack offset to add to RETURN trap.
+# @arg [$2] Optional stack offset to add to RETURN trap.
 L_with_tmpfile_into() {
 	local _L_v &&
 		L_mktemp -v _L_v "${TMPDIR:-/tmp}/${FUNCNAME[$((${2:-}+1))]//[^a-zA-Z0-9_]}.${FUNCNAME[0]}.XXXXXX" &&
@@ -6019,7 +6137,7 @@ L_with_tmpfile_into() {
 # @description Create a temporary directory.
 # Register RETURN trap for parent fuction that will remove the directory.
 # @arg $1 Variable to assign the temporary directory location to.
-# @arg $2 Optional stack offset to add to RETURN trap.
+# @arg [$2] Optional stack offset to add to RETURN trap.
 L_with_tmpdir_into() {
 	local _L_v &&
 		_L_v=$(mktemp -d "${TMPDIR:-/tmp}/${FUNCNAME[$((${2:-}+1))]//[^a-zA-Z0-9_]}.${FUNCNAME[0]}.XXXXXX") &&
@@ -6033,7 +6151,7 @@ _L_with_tmpdir_into_callback() {
 # @description Create a temporary directory and cd into it.
 # Register RETURN trap that will remove the temporary directory
 # and restore working directory on return from parent function.
-# @arg $2 Optional stack offset to add to RETURN trap.
+# @arg [$1] Optional stack offset to add to RETURN trap.
 L_with_cd_tmpdir() {
 	local tmpdir &&
 		L_with_tmpdir_into tmpdir "$((${1-}+1))" &&
@@ -6057,15 +6175,17 @@ _L_with_process_finally() {
 
 # @description Run command in background and store its PID in variable.
 # Register RETURN trap that will kill process on return from parent function.
-# @option -v Be verbose.
+# @option -t Trace.
+# @option -s <int> Stack offset for the RETURN trap.
 # @option -h Show help.
 # @arg $1 Variable to store the PID of the background process.
 # @arg $@ Command to execute in the background.
 L_with_process_into() {
-	local OPTIND OPTARG OPTERR i v=0
-	while getopts vh i; do
-		case "$i" in
-			v) v=1 ;;
+	local OPTIND OPTARG OPTERR _L_i _L_t=0 _L_up=1
+	while getopts t:s:h _L_i; do
+		case "$_L_i" in
+			t) _L_t=1 ;;
+			s) _L_up=$(( _L_up + OPTARG )) ;;
 			h) L_func_help; return 0 ;;
 			*) L_func_usage_error; return "$L_EX_USAGE" ;;
 		esac
@@ -6077,7 +6197,7 @@ L_with_process_into() {
 	esac
 	"${@:2}" &
 	printf -v "$1" "%s" "$!"
-	L_finally -r -s 1 _L_with_process_finally "${!1}" "$v"
+	L_finally -r -s "$_L_up" _L_with_process_finally "${!1}" "$_L_t"
 }
 
 _L_with_redirect_stdout_to_finally() {
@@ -6402,7 +6522,9 @@ _L_unittest_main_output_printer() {
 }
 
 _L_unittest_main_finally() {
-	echo >&2
+	if [[ "$L_SIGNAL" == "SIGINT" ]]; then
+		echo >&2
+	fi
 	L_critical "L_unittest_main: Exiting because received $L_SIGNAL" >&2
 	if [[ "$L_SIGNAL" == "SIGINT" ]]; then
 		# Subshells ignore SIGINT. So re-send with SITERM.
@@ -6479,7 +6601,7 @@ L_unittest_main() {
 	_L_init_COLUMNS
 	if (( !_L_u_quiet )); then
 		_L_unittest_main_print_line "=" "test session start" >&2
-		_L_u_msg+="; $((${_L_u_tests[*]+${#_L_u_tests[*]}}+0)) tests"
+		_L_u_msg+="; found $((${_L_u_tests[*]+${#_L_u_tests[*]}}+0)) tests"
 		if (( _L_u_stream )); then
 			_L_u_msg+="; no output caching"
 		fi
@@ -6488,9 +6610,9 @@ L_unittest_main() {
 		fi
 		if (( _L_u_nproc != 1 )); then
 			if (( _L_u_nproc == 0 )); then
-				_L_u_msg+="; all in parallel"
+				_L_u_msg+="; running all in parallel"
 			else
-				_L_u_msg+="; $_L_u_nproc count in parallel"
+				_L_u_msg+="; running up to $_L_u_nproc in parallel"
 			fi
 		fi
 		if (( _L_u_durations )); then
@@ -7743,7 +7865,7 @@ _L_argparse_spec_fatal() {
 			echo "L_argparse: before args:$_L_tmp"
 		fi
 		local _L_cur="${_L_args[_L_argsi]:-}"
-		if [[ -n "$_L_cur" && "$_L_cur" != "----" ]]; then
+		if [[ -n "$_L_cur" && "$_L_cur" != "----" && "$_L_cur" != "::::" ]]; then
 			echo "L_argparse: current arg: $_L_cur"
 		fi
 		printf -v _L_tmp " %q" "${_L_args[@]:_L_argsi+1:5}"
@@ -7786,7 +7908,7 @@ _L_argparse_spec_call_subparser() {
 	{
 		for ((--_L_argsi; ++_L_argsi < ${#_L_args[@]}; )); do
 			case "${_L_args[_L_argsi]}" in
-			--|----|"{") break ;; # }
+			--|----|::|::::|"{") break ;; # }
 			action=*) _L_opt_action[_L_opti]=${_L_args[_L_argsi]#*=} ;;
 			allow_abbrev=*) _L_parser_allow_subparser_abbrev[_L_parseri]=${_L_args[_L_argsi]#*=} ;;
 			default=*) _L_opt_default[_L_opti]=${_L_args[_L_argsi]#*=} ;;
@@ -7845,7 +7967,7 @@ _L_argparse_spec_call_function() {
 	{
 		for ((--_L_argsi; ++_L_argsi < ${#_L_args[@]};)); do
 			case "${_L_args[_L_argsi]}" in
-			--|----|"}") break ;;
+			--|----|::|::::|"}") break ;;
 			prefix=*) _L_opt_prefix[_L_opti]=${_L_args[_L_argsi]#*=} ;;
 			subcall=*) _L_opt_subcall[_L_opti]=${_L_args[_L_argsi]#*=} ;;
 			required=*) _L_opt_required[_L_opti]=${_L_args[_L_argsi]#*=} ;;
@@ -7905,16 +8027,11 @@ _L_argparse_sub_function_choices() {
 # - There is ---- "$@" ending of L_argparse call in the function.
 # @arg $1 <str> the function
 _L_argparse_sub_function_is_ok_to_call() {
-	local _L_func="${_L_opt_prefix[_L_opti]}$1" _L_subcall="${_L_opt_subcall[_L_opti]:-detect}" _L_func_declare
+	local _L_func="${_L_opt_prefix[_L_opti]}$1" _L_subcall="${_L_opt_subcall[_L_opti]:-detect}" _L_func_declare ws=$'[ \t]' nl=$'\n' wsnl=$'[ \t\n]'
 	if [[ "$_L_subcall" == "detect" ]]; then
 		_L_func_declare="$(declare -f "$_L_func")" &&
-		L_regex_match "$_L_func_declare" "\
-$_L_func[[:space:]]*\\(\\)[[:space:]]*\\{\
-.*[[:space:]]+\
-L_argparse([[:space:]]|[[:space:]].*[[:space:]])----[[:space:]]+\"\\\$@\"\
-(;|[[:space:]]).*\
-}\
-"
+			[[ "$_L_func_declare" =~ \
+				^$_L_func$wsnl*\(\)$wsnl*\{(.*$nl)?$ws*L_argparse($ws|$ws[^$nl]*$ws)(----|::::)$ws+\"\$@\"(;|$ws|$nl) ]]
 	else
 		L_is_true "$_L_subcall"
 	fi
@@ -8540,7 +8657,7 @@ _L_argparse_bash_completion_function() {
 	while IFS=$sep read -r mode comp desc _; do
 		case "$mode" in
 		bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs) compopt -o "$mode" ;;
-		alias|arrayvar|binding|builtin|command|directory|disabled|enabled|export|file|function|group|helptopic|hostname|job|keyword|running|service|setopt|shopt|signal|stopped|user|variable)
+		file|directory)
 			if tmp=$(compgen -A "$mode" ${comp:+-G"$comp"} ${desc:+-S"$sep$desc"} -- "$cur") && [[ -n "$tmp" ]]; then
 				if hash mapfile; then
 					mapfile -t tmp <<<"$tmp"
@@ -9275,7 +9392,7 @@ _L_argparse_spec_parse_args() {
 		for ((; _L_argsi < ${#_L_args[@]}; _L_argsi++ )); do
 			case "${_L_args[_L_argsi]}" in
 			# {
-			--|----|'}') break ;;
+			--|----|::|::::|'}') break ;;
 			dest_dict=?*) _L_parser_dest_dict[_L_parseri]=${_L_args[_L_argsi]#*=} ;;
 			dest_prefix=?*) _L_parser_dest_prefix[_L_parseri]=${_L_args[_L_argsi]#*=} ;;
 			exit_on_error=?*) _L_parser_exit_on_error[_L_parseri]=${_L_args[_L_argsi]#*=} ;;
@@ -9364,7 +9481,7 @@ _L_argparse_spec_parse_args() {
 		while (( ${#_L_args[@]} - _L_argsi >= 2)) && [[ "${_L_args[_L_argsi]}" == "--" ]]; do
 			((++_L_opti))
 			case "${_L_args[++_L_argsi]}" in
-			""|----|--|"{"|"}") _L_argparse_spec_fatal "invalid arguments: ${_L_args[_L_argsi]:-}" ;;
+			""|----|--|::::|::|"{"|"}") _L_argparse_spec_fatal "invalid arguments: ${_L_args[_L_argsi]:-}" ;;
 			call=function|class=function) ((++_L_argsi)); _L_argparse_spec_call_function || return "$L_EX_USAGE" ;;
 			call=subparser|class=subparser) ((++_L_argsi)); _L_argparse_spec_call_subparser || return "$L_EX_USAGE" ;;
 			call=*|class=*) _L_argparse_spec_fatal "invalid ${_L_args[_L_argsi]%=*}, must be subparser or function: ${_L_args[_L_argsi]:-}" ;;
@@ -9545,9 +9662,9 @@ L_argparse() {
 	unset -v _L_parsercur
 	_L_optcnt=$_L_opti
 	#
-	if [[ "${_L_args[_L_argsi++]:-}" != "----" ]]; then
+	if [[ "${_L_args[_L_argsi++]:-}" != "----" && "${_L_args[_L_argsi++]:-}" != "::::" ]]; then
 		_L_argsi=$((_L_argsi-1))
-		_L_argparse_spec_fatal "missing separator ---- at ${_L_args[_L_argsi]:-}"
+		_L_argparse_spec_fatal "missing separator :::: at ${_L_args[_L_argsi]:-}"
 	fi
 	# _L_argparse_print >/dev/tty
 	_L_argparse_parse_args || return
@@ -11908,7 +12025,7 @@ _L_xargs_dispatch_over_atoms() {
 }
 
 # We have free slots for new processes.
-_L_xargs_has_slots() { (( ${#_L_x_running[@]} < _L_x_maxprocs && !_L_x_done )); }
+_L_xargs_has_slots() { (( ( _L_x_maxprocs == 0 || ${#_L_x_running[@]} < _L_x_maxprocs ) && !_L_x_done )); }
 # We continue taking input at this time.
 _L_xargs_continue_input() { (( !_L_x_input_stopped )) && _L_xargs_has_slots; }
 
@@ -12277,16 +12394,99 @@ Other Options:
 
 Commands:
   If a command is provided, it will be executed immediately.
-  selfupdate Update L_lib.sh from the remote repository.
-  eval EXPR  Evaluate a bash expression.
-  exec ARGS  Execute a command with the given arguments.
-  version    Print version and copyright information.
-  help       Print this help message.
-  <func>     Execute any loaded bash function (e.g., L_log "Message").
+  selfupdate  Update L_lib.sh from the remote repository.
+  eval EXPR   Evaluate a bash expression.
+  exec ARGS   Execute a command with the given arguments.
+  version     Print version and copyright information.
+  help [SYM]  Print help for SYM (function/variable), or library overview.
+  <func>      Execute any loaded bash function (e.g., L_log "Message").
 
 L_lib.sh Copyright (C) 2026 Kamil Cukrowski
 $L_FREE_SOFTWARE_NOTICE
 EOF
+}
+
+_L_lib_help_var() {
+	if [[ -z "$L_LIB_SCRIPT" || ! -r "$L_LIB_SCRIPT" ]]; then
+		echo "L_lib.sh help: error: No readable source file: $L_LIB_SCRIPT" >&2
+		return 1
+	fi
+	local _L_content
+	_L_content=$(< "$L_LIB_SCRIPT") || return 2
+	if [[ "$_L_content" =~ $'\n'([^\#$'\n'][^$'\n']*)?(($'\n'\#[^$'\n']*)+)$'\n'"$1"'=' ]]; then
+		printf "%s\n" "${BASH_REMATCH[2]##$'\n'}"
+	else
+		echo "L_lib.sh help: error: Definition not found for variable: $1" >&2
+		return 1
+	fi
+}
+
+_L_lib_help_func() {
+	local _L_func="$1" _L_base _L_docstring
+	L_func_comment -v _L_docstring -f "$_L_func" &&
+		[[ -n "$_L_docstring" ]] &&
+		if [[ "$_L_func" == *_vL_RET ]]; then
+			_L_base="${_L_func%_vL_RET}"
+			local _L_base_src
+			if _L_base_src=$(declare -f "$_L_base" 2>/dev/null); then
+			echo "### $_L_func sets L_RET variable for function $_L_base ###"
+			L_func_help -f "$_L_base" 2>&1
+			return $?
+		else
+			echo "L_lib.sh help: error: No base function $_L_base found for $_L_func" >&2
+			return 1
+		fi
+	else
+		L_func_help -f "$_L_func" 2>&1
+		return $?
+	fi
+}
+
+_L_lib_help() {
+	if (( !$# )); then
+		cat <<EOF
+L_lib.sh $L_LIB_VERSION - Bash standard library
+
+Sections: argparse logging testing resource caching string proc array json
+  argparse  L_argparse, L_argskeywords
+  logging   L_log, L_log_configure, L_panic, L_fatal, L_error
+  testing   L_unittest_main, L_unittest_cmd, L_unittest_eq, L_unittest_skip
+  resource  L_finally, L_with_tmpfile_into, L_pipe, L_xargs, L_proc_popen
+  caching   L_cache
+  string    L_unquote, L_readarray, L_quote_printf, L_hash, L_var_to_string
+  proc      L_proc_popen, L_duration_to_usec_vL_RET
+
+Getting help:
+  help <symbol>   Show docs for a function or variable.
+  help -h         Show this short help again.
+  --help          Show full usage.
+
+  -h: getopts functions accept -h for detailed usage.
+  _vL_RET: internal variant of base func (L_nproc_vL_RET -> L_nproc).
+
+Full usage:  L_lib.sh --help   |   L_lib.sh version
+Docs:        https://github.com/Kamilcuk/L_lib
+EOF
+		return 0
+	fi
+	local _L_arg _L_return=0 IFS=' '
+	for _L_arg in "$@"; do
+		case "$_L_arg" in
+			-h|--help) _L_lib_help; return "$_L_return" ;;
+			-*) echo "help: unknown option: $_L_arg" >&2; _L_return=$L_EX_USAGE; continue ;;
+		esac
+		if declare -f "$_L_arg" >/dev/null 2>/dev/null; then
+			_L_lib_help_func "$_L_arg"
+		elif declare -p "$_L_arg" >/dev/null 2>/dev/null; then
+			_L_lib_help_var "$_L_arg"
+		else
+			echo "help: unknown symbol: $_L_arg" >&2
+			L_compgen -V _L_arg -A variable -A function -- "$_L_arg"
+			echo "help: did you mean: ${_L_arg[*]}" >&2
+			_L_return=$L_EX_USAGE
+		fi
+	done
+	return "$_L_return"
 }
 
 _L_lib_main() {
@@ -12339,7 +12539,8 @@ _L_lib_main() {
 			selfupdate) _L_lib_selfupdate "${@:2}" ;;
 			exec) "${@:2}" ;;
 			eval|L_*|_L_*) "$@" ;;
-			--help | help) _L_lib_usage; return 0 ;;
+			--help) _L_lib_usage; return 0 ;;
+			help) _L_lib_help "${@:2}"; return $? ;;
 			--version | version)
 				echo "L_lib.sh $L_LIB_VERSION Copyright (C) 2026 Kamil Cukrowski"
 				return 0
