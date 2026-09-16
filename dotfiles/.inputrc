@@ -2,19 +2,46 @@
 
 # https://www.topbug.net/blog/2017/07/31/inputrc-for-humans/
 $include /etc/inputrc
-#"\C-p":history-search-backward
-#"\C-n":history-search-forward
-set colored-stats On
-set completion-ignore-case On
-set completion-prefix-display-length 12
-set mark-symlinked-directories On
-set show-all-if-ambiguous On
-set show-all-if-unmodified On
-set visible-stats On
 
-# https://stackoverflow.com/questions/43102223/set-completion-ignore-case-on-ignored-in-inputrc
-# Enable case-insensitive tab-complete
+# Just use ctrl+r
+# "\C-p":history-search-backward
+# "\C-n":history-search-forward
+
+# Make Tab autocomplete regardless of filename case
 set completion-ignore-case on
+
+# List all matches in case multiple possible completions are possible
+set show-all-if-ambiguous on
+
+# Immediately add a trailing slash when autocompleting symlinks to directories
+set mark-symlinked-directories on
+
+# Show extra file information when completing, like `ls -F` does
+set visible-stats on
+
+# Show all autocomplete results at once
+set page-completions off
+
+# Do not autocomplete hidden files unless the pattern explicitly begins with a dot
+set match-hidden-files off
+
+set colored-stats On
+set completion-prefix-display-length 12
+set show-all-if-unmodified On
+set enable-bracketed-paste On
+
+# Be more intelligent when autocompleting by also looking at the text after
+# the cursor. For example, when the current line is "cd ~/src/mozil", and
+# the cursor is on the "z", pressing Tab will not autocomplete it to "cd
+# ~/src/mozillail", but to "cd ~/src/mozilla". (This is supported by the
+# Readline used by Bash 4.)
+set skip-completed-text on
+
+# Allow UTF-8 input and output, instead of showing stuff like $'\0123\0456'
+set input-meta on
+set output-meta on
+set convert-meta off
+
 # Press up or down arrow to search through shell history on what you've already typed
 #"\e[A": history-search-backward
 #"\e[B": history-search-forward
