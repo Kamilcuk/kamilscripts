@@ -16,16 +16,16 @@ warning() {
 
 assert() {
 	if ! (shift; "$@"); then
-		assertion=$(shift; echo "$@")
+		assertion=$(shift; IFS=' '; echo "$*")
 		fatal "assertion $assertion failed${1:+: $1}"
 	fi
 }
 
 get_nproc() {
-	if ! M_hash getconf || ! nproc=$(getconf _NPROCESSORS_ONLN); then
-		if ! M_hash nproc || ! nproc=$(nproc); then
-			if ! nproc=$(grep -c ^processor /proc/cpuinfo); then
-				nproc=1
+	if ! M_hash getconf || ! g_nproc=$(getconf _NPROCESSORS_ONLN); then
+		if ! g_nproc=$(grep -c ^processor /proc/cpuinfo); then
+			if ! M_hash nproc || ! g_nproc=$(nproc); then
+				g_nproc=1
 			fi
 		fi
 	fi
@@ -58,6 +58,91 @@ logrun() {
 	fi
 }
 
+# Get current taskset mask for the current process
+get_current_taskset_cpulist() {
+	taskset -cp $$ | sed -n 's/.*: //p'
+}
+
+# Convert CPU list/range format (like "0-3,5,7-9") to CPU list (space-separated)
+cpulist_to_cpuarray_vRET() {
+	RET=""
+	# Split by commas using a while loop
+	IFS=','
+	set -- $@
+	for part; do
+		case $part in
+		    *-*)
+		    	i=$(( ${part%%-*} - 1 ))
+		    	while [ "$i" -lt "${part##*-}" ]; do
+						i=$(( i + 1 ))
+		  			RET="$RET $i"
+		  		done
+		  		;;
+				*) RET="$RET $part" ;;
+		esac
+	done
+}
+
+# Compute intersection of two CPU lists (space-separated)
+intersect_cpuarrays_vRET() {
+	# We'll use a simple O(n^2) approach since the number of CPUs is small
+	RET=""
+	unset IFS
+	for cpu1 in $1; do
+		for cpu2 in $2; do
+			if [ "$cpu1" = "$cpu2" ]; then
+				# Found a match, add to RET if not already there
+				found=0
+				for existing in $RET; do
+					if [ "$existing" = "$cpu1" ]; then
+						found=1
+						break
+					fi
+				done
+				if [ $found -eq 0 ]; then
+					RET="$RET $cpu1"
+				fi
+				break
+			fi
+		done
+	done
+}
+
+_cpuarray_to_taskset_format_helper() {
+	if [ $((next-i)) -ne 1 ]; then
+		if [ $((next-start)) -eq 1 ]; then
+			# Prefer 1,2 instead of 1-2.
+			RET=$RET${RET:+,}$start,$i
+		else
+			RET=$RET${RET:+,}$start-$i
+		fi
+		start=""
+	fi
+}
+
+# Convert CPU array (space-separated list) to taskset list format (like "0-3,5,7-9")
+cpuarray_to_taskset_format_vRET() {
+	RET="" i="" start="" next=""
+	unset IFS
+	for next in $@; do
+		if [ -n "$i" ]; then
+			if [ -n "$start" ]; then
+				_cpuarray_to_taskset_format_helper
+			else
+				if [ $((next - i)) -eq 1 ]; then
+					start=$i
+				else
+					RET=$RET${RET:+,}$i
+				fi
+			fi
+		fi
+		i=$next
+	done
+	if [ -n "$start" ]; then
+		_cpuarray_to_taskset_format_helper
+	fi
+}
+
 ###############################################################################
 
 show() {
@@ -70,7 +155,7 @@ show() {
 			ps -l "$pid"
 			ionice -p "$pid"
 			chrt -v -p "$pid"
-			taskset -p "$pid"
+			taskset -cp "$pid"
 		)
 		if cgroup=$(cut -d: -f3- "/proc/$pid/cgroup") 2>/dev/null; then
 			for f in \
@@ -99,11 +184,40 @@ show() {
 	done
 }
 
+# If curent and restricting cpu list have common cpus, put them in RET.
+# If they have nothing in common, but current cpulist in RET.
+# @arg $1 current cpulist
+# @arg $2 restricting cpulist
+get_effective_cpus_vRET() {
+	cpulist_to_cpuarray_vRET "$1"
+	current_cpuarray=$RET
+	# Convert o_cpus to CPU list
+	cpulist_to_cpuarray_vRET "$2"
+	# Compute intersection
+	intersect_cpuarrays_vRET "$current_cpuarray" "$RET"
+	effective_cpuarray=$RET
+	# If intersection is empty, use original current CPUs
+	# Convert back to taskset format
+	cpuarray_to_taskset_format_vRET "${effective_cpuarray:-$current_cpuarray}"
+}
+
+set_g_effective_cpus() {
+	# Cached version.
+	if [ -z "${g_effective_cpus:-}" ]; then
+		# Get current taskset for this PID
+		current_cpulist=$(get_current_taskset_cpulist)
+		get_effective_cpus_vRET "$current_cpulist" "$o_cpus"
+		g_effective_cpus=$RET
+	fi
+}
+
 change() {
 	assert "missing pids to change niceness of" test "$#" -gt 0
 	for pid; do
+		# Compute effective CPUs for this PID if o_cpus is specified
 		if [ -n "$o_cpus" ] && M_hash taskset; then
-			logrun taskset -pc "$o_cpus" "$pid" >/dev/null
+			set_g_effective_cpus
+			logrun taskset -pc "$g_effective_cpus" "$pid" >/dev/null
 		fi
 		if M_hash ionice; then
 			logrun ionice -c 3 -p "$pid"
@@ -122,8 +236,11 @@ change() {
 
 run() {
 	assert "missing command to execute" test "$#" -gt 0
+	# Compute effective CPUs if o_cpus is specified
+	local effective_cpus=""
 	if [ -n "$o_cpus" ] && M_hash taskset; then
-		set -- taskset -c "$o_cpus" "$@"
+		set_g_effective_cpus
+		set -- taskset -c "$g_effective_cpus" "$@"
 	fi
 	if M_hash ionice; then
 		set -- ionice -c 3 "$@"
@@ -143,7 +260,8 @@ run() {
 			fi
 			if [ -n "$o_cpus" ]; then
 				# -pCPUAccounting=yes  - deprecate
-				add_systemdrunargs -pAllowedCPUs="$o_cpus"
+				set_g_effective_cpus
+				add_systemdrunargs -pAllowedCPUs="$g_effective_cpus"
 			fi
 			eval "set -- systemd-run --quiet --scope --collect \
 				-pCPUWeight=idle -pIOWeight=1 \
@@ -161,6 +279,21 @@ run() {
 add_systemdrunargs() {
 	# Add quoted arguments to systemdrunargs, that will be later eval-ed.
 	o_systemdrunargs="$o_systemdrunargs $(quote "$@")"
+}
+
+unittest() {
+	_tester() {
+		get_effective_cpus_vRET "$1" "$2"
+		echo "$RET"
+	}
+	assert "" [ "$(_tester 0-21 10-21)" = "10-21" ]
+	assert "" [ "$(_tester 0-21 10-20)" = "10-20" ]
+	assert "When running ,nice under taskset 1,2 it should result in ,nice also giving 1,2" \
+		[ "$(_tester 1,2 10-20)" = "1,2" ]
+	assert "However it should do subset if given in a proper range" \
+		[ "$(_tester 0-16 10-20)" = "10-16" ]
+	assert "" [ "$(_tester 0-3,5,7-9,11,13,15-21 0-17)" = "0-3,5,7-9,11,13,15-17" ]
+	echo SUCCESS
 }
 
 usage() {
@@ -189,42 +322,48 @@ Options:
   -p PID     Changes the pid specified by -p to be the niceness possible.
   -s [PID]   Queries the niceness of this PID
   -v         Be verbose.
+  -t         Run internal unittests.
   -h --help  Print this help and exit.
 
 Written by Kamil Cukrowski.
 EOF
 }
 
-get_nproc
-o_cpus="" o_show=false o_change=false o_systemdrunargs="" o_verbose=false
-while getopts Hvc:Mm:w:So:sph o; do
-	case "$o" in
-	H) o_cpus=$(( (nproc - 1) / 2 ))-$(( nproc - 1 )) ;;
-	v) o_verbose=true ;;
-	c) o_cpus=$OPTARG ;;
-	M) add_systemdrunargs -pMemoryMax="$(free -b | awk '/Mem/{print $2/2}')" ;;
-	m) add_systemdrunargs -pMemoryMax="$OPTARG" ;;
-	w) add_systemdrunargs -pCPUWeight="$OPTARG" ;;
-	S) add_systemdrunargs -pCPUQuota=$((66*nproc))% -pMemorySwapMax=0 ;;
-	o) add_systemdrunargs "$OPTARG" ;;
-	s) o_show=true ;;
-	p) o_change=true ;;
-	h) usage; exit 0 ;;
-	*) usage; exit 1 ;;
-	esac
-done
-shift "$((OPTIND-1))"
-# If nproc is not specified, exclude core 0.
-if [ -z "$o_cpus" ]; then
-	o_cpus=$(( (nproc - 1) / 3 ))-$(( nproc - 1 ))
-fi
-# main
-if "$o_change"; then
-	change "$@"
-fi
-if "$o_show"; then
-	show "$@"
-fi
-if ! "$o_change" && ! "$o_show"; then
-	run "$@"
-fi
+main() {
+	get_nproc
+	o_cpus="" o_show=false o_change=false o_systemdrunargs="" o_verbose=false
+	while getopts Hvc:Mm:w:So:spth o; do
+		case "$o" in
+		H) o_cpus=$(( (g_nproc - 1) / 2 ))-$(( g_nproc - 1 )) ;;
+		v) o_verbose=true ;;
+		c) o_cpus=$OPTARG ;;
+		M) add_systemdrunargs -pMemoryMax="$(free -b | awk '/Mem/{print $2/2}')" ;;
+		m) add_systemdrunargs -pMemoryMax="$OPTARG" ;;
+		w) add_systemdrunargs -pCPUWeight="$OPTARG" ;;
+		S) add_systemdrunargs -pCPUQuota=$((66*g_nproc))% -pMemorySwapMax=0 ;;
+		o) add_systemdrunargs "$OPTARG" ;;
+		s) o_show=true ;;
+		p) o_change=true ;;
+		t) unittest; exit ;;
+		h) usage; exit 0 ;;
+		*) usage; exit 1 ;;
+		esac
+	done
+	shift "$((OPTIND-1))"
+	# Default proc mask is 1/3
+	if [ -z "$o_cpus" ] && [ "$(( g_nproc > 4 ))" -eq 1 ]; then
+		o_cpus=$(( (g_nproc - 1) / 3 ))-$(( g_nproc - 1 ))
+	fi
+	# main
+	if "$o_change"; then
+		change "$@"
+	fi
+	if "$o_show"; then
+		show "$@"
+	fi
+	if ! "$o_change" && ! "$o_show"; then
+		run "$@"
+	fi
+}
+
+main "$@"
