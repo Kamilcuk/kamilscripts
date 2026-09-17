@@ -140,6 +140,8 @@ cpuarray_to_taskset_format_vRET() {
 	done
 	if [ -n "$start" ]; then
 		_cpuarray_to_taskset_format_helper
+	else
+		RET=$RET${RET:+,}$i
 	fi
 }
 
@@ -208,6 +210,7 @@ set_g_effective_cpus() {
 		current_cpulist=$(get_current_taskset_cpulist)
 		get_effective_cpus_vRET "$current_cpulist" "$o_cpus"
 		g_effective_cpus=$RET
+		assert "internal error: g_effective_cpus is empty" test -n "$g_effective_cpus"
 	fi
 }
 
@@ -288,6 +291,10 @@ unittest() {
 	}
 	assert "" [ "$(_tester 0-21 10-21)" = "10-21" ]
 	assert "" [ "$(_tester 0-21 10-20)" = "10-20" ]
+	assert "" [ "$(_tester 0-21 1)" = "1" ]
+	assert "" [ "$(_tester 1 10-20)" = "1" ]
+	assert "" [ "$(_tester 7 10-20)" = "7" ]
+	assert "" [ "$(_tester 0-21 7)" = "7" ]
 	assert "When running ,nice under taskset 1,2 it should result in ,nice also giving 1,2" \
 		[ "$(_tester 1,2 10-20)" = "1,2" ]
 	assert "However it should do subset if given in a proper range" \
