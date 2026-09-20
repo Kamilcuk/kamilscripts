@@ -102,5 +102,9 @@ unset _i _pre
 }
 
 export TIMEFORMAT="real=%6lR user=%6lU system=%6lS"
-alias systemctl='systemctl --no-ask-password'
-alias avante='nvim -c "lua vim.defer_fn(function()require(\"avante.api\").zen_mode()end, 100)"'
+if (( UID )); then
+	alias systemctl='systemctl --no-ask-password --user'
+fi
+n() { nix profile add "${@/#/nixpkgs#}"; }
+g() { git "$@"; }
+
