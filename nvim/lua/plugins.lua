@@ -649,7 +649,11 @@ return {
 
   {
     -- :Exrc* and other utilities
-    "jedrzejboczar/exrc.nvim",
+    -- "jedrzejboczar/exrc.nvim",
+    -- Like jedrzejboczar but with fix if file si not ok.
+    "amadeus/exrc.nvim",
+    branch = "fix-vim-enter-bug",
+    commit = "939bd0909b779818b8a51d4f36765d11ae63c4c4",
     dependencies = { "neovim/nvim-lspconfig", optional = true }, -- (optional)
     config = true,
   },

@@ -500,8 +500,8 @@ C_splitcommit() {
 	L_argparse \
 		-- -m --message required=1 help="new commit message" \
 		-- -c --commit required=1 help="commit to split" \
-		-- -f --files nargs=+ help="files/lines to split: file:start-end (range), file:line (single line), or file (whole file)" \
-		-- -g --glob nargs=+ help="glob patterns for whole files to split (no line ranges)" \
+		-- -f --files action=append help="files/lines to split: file:start-end (range), file:line (single line), or file (whole file)" \
+		-- -g --glob action=append help="glob patterns for whole files to split (no line ranges)" \
 		-- -n --dryrun help="do not run; just print what would be extracted" eval='L_dryrun=1' \
 		---- "$@"
 

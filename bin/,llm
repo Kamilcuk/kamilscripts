@@ -189,7 +189,7 @@ bwrap_sandbox() {
     # Podman.
     if ((arg_podman)); then
         : "${UID:=$(id -u)}"
-        if [[ -e /usr/bin/docker ]] && [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
+        if [[ -e /usr/bin/podman ]] && /usr/bin/podman --version >/dev/null 2>/dev/null; then
             L_debug "Using podman..."
             # Fix for podman in read-only /run/user/1000 or missing cgroups
             if [[ ! -w "/run/user/$UID" ]] || [[ ! -d /sys/fs/cgroup ]]; then
