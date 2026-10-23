@@ -254,6 +254,8 @@ set listchars=eol:$,tab:⇥¬¬,trail:·,extends:>,precedes:<,space:·
 " When line is too long, show this:t s
 set showbreak=↳
 
+autocmd FileType bash,sh setlocal indentexpr=
+
 ]]
 
 vim.api.nvim_set_hl(0, "TreesitterContext", { bg = "#2c2c2c" })
@@ -284,5 +286,3 @@ vim.api.nvim_create_autocmd({ "FileType" }, {
     state.commands.order_by_modified(state)
   end,
 })
-
-

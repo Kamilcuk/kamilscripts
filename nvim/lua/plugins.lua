@@ -92,6 +92,16 @@ return {
   },
 
   {
+    "folke/which-key.nvim",
+    optional = true,
+    opts = {
+      layout = {
+        align = "range", -- show full menu regardless of cursor position
+      },
+    },
+  },
+
+  {
     "AstroNvim/astrolsp",
     opts = {
       features = {
@@ -268,6 +278,7 @@ return {
   },
   { "godlygeek/tabular", lazy = false }, -- :Tabularize Vim script for text filtering and alignment
   "tpope/vim-fugitive", -- git plugin
+  "chrisbra/NrrwRgn", -- :NR like NaRrow
 
   -- }}}
   -- {{{1 UI Display displaying highlight showing gui related tools

@@ -432,7 +432,7 @@ C_opencode() {
     if L_hash ,openrouter-token; then
         ,openrouter-token r
     fi
-    C_bwrap opencode --agent yolo "$@"
+    C_bwrap opencode --standalone "$@"
 }
 
 pick_key() {

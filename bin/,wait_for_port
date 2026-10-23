@@ -4,21 +4,20 @@
 # @usage $0 <host>:<port>
 # @arg $1 <host>:<port> Host and TCP port to wait for.
 
-if (( $# != 1 )); then
-	echo "Usage: $0 <host>:<port>" >&2
+if (( $# != 1 && $# != 2 )); then
+	echo "Usage: $0 <host> <port>" >&2
 	exit 2
 fi
 
 target=$1
-
-if ! [[ $target =~ ^([^:]+):([0-9]+)$ ]]; then
-	echo "Invalid target: $target" >&2
-	echo "Usage: $0 <host>:<port>" >&2
-	exit 2
+if [[ $target =~ ^([^:]+):([0-9]*)$ ]]; then
+	host=${BASH_REMATCH[1]}
+	port=${BASH_REMATCH[2]:-}
+else
+	host=$1
+	port=${2:-}
 fi
-
-host=${BASH_REMATCH[1]}
-port=${BASH_REMATCH[2]}
+port=${port:-80}
 
 if (( port < 1 || port > 65535 )); then
 	echo "Invalid port: $port" >&2
