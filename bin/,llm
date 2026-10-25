@@ -81,8 +81,10 @@ bwrap_sandbox() {
     fi
     local cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/,llm"
     local root="$cachedir/root"
-    local empty="$cachedir/empty"
-    mkdir -p "$root"/{var,mnt,srv,media,root} "$empty"
+    local emptydir="$cachedir/emptydir"
+    local hiderfile=${TMPDIR:-/tmp}/,llm_hider
+    echo "**This file is hidden from LLM by sandbox**" > "$hiderfile"
+    mkdir -p "$root"/{var,mnt,srv,media,root} "$emptydir"
     #
     local args=(
         bwrap
@@ -129,7 +131,7 @@ bwrap_sandbox() {
     # basic directories we need.
     addpath --ro-bind /bin /sbin /lib /lib64 /usr /etc /run /opt
     for i in /var /mnt /srv /media /root; do
-        add --ro-bind "$empty" "$i"
+        add --ro-bind "$emptydir" "$i"
     done
     # cache list to consider
     addpath --bind "$cache/uv" "$cache/getstuffcli"
@@ -239,8 +241,6 @@ bwrap_sandbox() {
         fi
     fi
     if (( !arg_no_hide )); then
-        local hiderfile=${TMPDIR:-/tmp}/,llm_hider
-        echo "**This file is hidden from LLM by sandbox**" > "$hiderfile"
         declare -A once=()
         # Hide
         shopt -s globstar nullglob extglob
@@ -276,7 +276,14 @@ bwrap_sandbox() {
         done
     fi
     # Git root mount
-    if (( !arg_no_git )); then
+    if (( arg_no_git )); then
+        L_info "Hiding git."
+        if set_git_root; then
+            args+=(--bind "$emptydir" "$git_root/.git")
+        fi
+        local git=$(which git)
+        args+=(--bind "$hiderfile" "$git")
+    else
         if set_git_root; then
             L_info "Mounting git root --rw %q" "$git_root"
             addpath --bind "$git_root"

@@ -29,36 +29,7 @@ end
 
 vim.api.nvim_create_user_command("KcInstall", function() lazyinstall(true) end, {})
 
-vim.api.nvim_create_user_command(
-  "KcConvertSpaceToTabs",
-  function(opts)
-    local n = tonumber(opts.args) or 2
-    if n <= 0 then n = 2 end
-    vim.cmd(
-      opts.line1 .. "," .. opts.line2
-        .. [[s#^\s\+#\=repeat("\t", indent(line('.')) / ]]
-        .. n
-        .. [[) . repeat(" ", indent(line('.')) % ]]
-        .. n
-        .. [[)#]]
-    )
-  end,
-  { nargs = "?", range = "%", desc = "Convert spaces to tabs. Usage: :%KcConvertSpaceToTabs [count]. Default count: 2" }
-)
-
-vim.api.nvim_create_user_command(
-  "KcConvertTabsToSpace",
-  function(opts)
-    local n = tonumber(opts.args) or 2
-    if n <= 0 then n = 2 end
-    vim.cmd(
-      opts.line1 .. "," .. opts.line2
-        .. [[s#^\t\+#\=repeat(" ", len(submatch(0)) * ]]
-        .. n
-        .. [[)#]]
-    )
-  end,
-  { nargs = "?", range = "%", desc = "Convert tabs to spaces. Usage: :%KcConvertTabsToSpace [count]. Default count: 2" }
-)
+-- Space ↔ tab conversion commands
+require "k.indent_convert"
 
 lazyinstall(false)

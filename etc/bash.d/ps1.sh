@@ -110,7 +110,7 @@ _kc_prompt_command() {
 EOF
 	)"
 	eval "$tmp"
-	PS1="\[$reset\]$pre\$(_kc_prompt_command \"\$?\")\n\\$\[$reset\] "
+	PS1="\[$reset\]$pre\$(_kc_prompt_command \$?)"$'\n'"\\$\[$reset\] "
 }
 
 _kc_prompt_setup

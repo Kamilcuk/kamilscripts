@@ -286,3 +286,7 @@ vim.api.nvim_create_autocmd({ "FileType" }, {
     state.commands.order_by_modified(state)
   end,
 })
+
+
+-- KcAllReplace / KcAllReplaceUndo (requires grug-far.nvim)
+require "k.kcallreplace"
