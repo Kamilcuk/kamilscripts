@@ -436,10 +436,15 @@ C_crush() {
     C_bwrap crush --yolo "$@"
 }
 C_opencode() {
+    local args=()
     if L_hash ,openrouter-token; then
-        ,openrouter-token r
+        local tmp=$(,openrouter-token g)
+        if [[ -z "$tmp" ]]; then
+            L_warn "Couldn't get openrouter token"
+        fi
+        args+=(--setenv OPENROUTER_API_KEY "$tmp")
     fi
-    C_bwrap opencode --standalone "$@"
+    C_bwrap "${args[@]}" opencode --standalone "$@"
 }
 
 pick_key() {
