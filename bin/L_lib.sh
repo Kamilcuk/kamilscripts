@@ -8916,7 +8916,7 @@ _L_argparse_optspec_gen_completion() {
 		bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs|file|directory)
 			echo "$_L_complete${_L_opt_help[_L_opti]:+${L_GS}${L_GS}${_L_opt_help[_L_opti]//[$L_GS[:space:]]/ }}" ;;
 		alias|arrayvar|binding|builtin|command|disabled|enabled|export|function|group|helptopic|hostname|job|keyword|running|service|setopt|shopt|signal|stopped|user|variable)
-			L_argparse_compgen -A "$_L_complete" -- "$1" || exit $? ;;
+			L_argparse_compgen -A "$_L_complete" -d "${_L_opt_help[_L_opti]//[$L_GS[:space:]]/ }}" -- "$1" || exit $? ;;
 		*" "*) eval "${_L_complete}" || return ;;
 		'') ;;
 		*) L_fatal "invalid $_L_complete part in complete of $(_L_argparse_print_curopt)"
@@ -8945,7 +8945,7 @@ _L_argparse_bash_completion_function() {
 		cword=${COMP_CWORD}
 		cur="${words[*]:cword:1}"
 	fi
-	response=$( "$1" --L_argparse_get_completion "${words[@]:1:cword}" ) &&
+	response=$( "$1" --L_argparse_get_completion_bash "${words[@]:1:cword}" ) &&
 	while IFS=$sep read -r mode comp desc _; do
 		case "$mode" in
 		bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs) compopt -o "$mode" ;;
@@ -9060,9 +9060,11 @@ _L_argparse_bash_completion_function() {
 						printf -v line "%s%-*s " "$line" "${collens[j]}" "${desc[j+1]:-}"
 					done
 					if ((${#desc} && ${#line} + 5 < COLUMNS)); then
-						line+="-- $desc"
+						line+="($desc)"
 						if ((${#line} > COLUMNS)); then
 							line="${line::COLUMNS-1}…"
+						else
+							printf -v line "%-*s" "$COLUMNS" "$line"
 						fi
 					fi
 					COMPREPLY+=("$line")
@@ -9246,7 +9248,7 @@ _L_argparse_fish_completion='
 function %(complete_func)s;
 	set -l args (commandline -pco) (commandline -pct);
 	set -e args[1];
-	%(prog_name)s --L_argparse_get_completion $args | while read -l -d \035 mode comp desc;
+	%(prog_name)s --L_argparse_get_completion_fish $args | while read -l -d \035 mode comp desc;
 		switch "$mode";
 		case file; __fish_complete_path "$key" "$desc";
 		case directory; __fish_complete_directories "$key" "$desc";
@@ -9343,9 +9345,16 @@ _L_argparse_parse_args_set_defaults() {
 # @arg [$2] <str> prefix to completion
 _L_argparse_gen_option_names_completion() {
 	if ((_L_comp_enabled)); then
-		local IFS=$' \t\n' _L_options
-		_L_argparse_parser_get_all_options _L_options || return
-		L_argparse_compgen -W "${_L_options[*]}" -P "${2:-}" -- "${1:-}" || return
+		local IFS=$' \t\n' _L_options _L_opti option _L_opthelp _L_prog
+		_L_argparse_parser_get_full_program_name _L_prog
+		for _L_opti in ${_L_parser__optionsi[_L_parseri]:-}; do
+			for option in ${_L_opt__options[_L_opti]}; do
+				if [[ "$option" == "${1:-}"* ]]; then
+					_L_argparse_optspec_get_help _L_opthelp || _L_opthelp=""
+					echo "plain${L_GS}${2:-}$option${_L_opthelp+$L_GS${_L_opthelp//[ $L_GS]/ }}"
+				fi
+			done
+		done
 		exit
 	fi
 }

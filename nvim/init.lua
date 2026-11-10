@@ -32,4 +32,7 @@ vim.api.nvim_create_user_command("KcInstall", function() lazyinstall(true) end, 
 -- Space ↔ tab conversion commands
 require "k.indent_convert"
 
+-- Trim lsp.log entries older than 1 day, in the background after startup.
+-- require("k.lsp_log").setup { age = "1d" }
+
 lazyinstall(false)
