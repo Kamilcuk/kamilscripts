@@ -8,7 +8,50 @@ elif hascmd xclip; then
   # https://stackoverflow.com/questions/749544/pipe-to-from-the-clipboard-in-bash-script
   xclip -selection clipboard "$@"
 else
-  echo "pbcopy: no method found" >&2
-  exit 123
-fi
+  # Fallback: ask the terminal itself to set the system clipboard with OSC 52.
+  # https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+  # The escape sequence has to reach the real terminal, so write it to /dev/tty
+  # (stdout may be a pipe) and only when the terminal is sane enough for it.
+  fail() {
+    echo "pbcopy: no method found: $*" >&2
+    exit 123
+  }
 
+  # Needs a controlling terminal to talk to.
+  { : >/dev/tty; } 2>/dev/null || fail "no usable terminal for OSC 52"
+
+  # Sane terminal: TERM is set and not something that would print junk.
+  case ${TERM:-} in
+    ''|dumb|unknown)
+      fail "TERM is unset or unsupported (${TERM:-})"
+      ;;
+    linux)
+      # the virtual console does not implement OSC 52
+      fail "virtual console does not support OSC 52"
+      ;;
+  esac
+
+  if hascmd base64; then
+    b64=$(base64 <&0 | tr -d '\n\r') || fail "base64 encoding failed"
+  elif hascmd openssl; then
+    b64=$(openssl base64 -A <&0) || fail "base64 encoding failed"
+  else
+    fail "no base64 encoder available"
+  fi
+
+  # Most terminals cap the OSC 52 payload (xterm defaults to 100 kB here).
+  if [ "${#b64}" -gt 100000 ]; then
+    fail "input too large for OSC 52 (${#b64} base64 chars)"
+  fi
+
+  # Multiplexers need the sequence wrapped in a DCS passthrough.
+  if [ -n "${TMUX:-}" ]; then
+    # shellcheck disable=SC1003  # \\ is the DCS terminator, not a quote
+    printf '\033Ptmux;\033\033]52;c;%s\a\033\\' "$b64" >/dev/tty
+  elif [ -n "${STY:-}" ]; then
+    # shellcheck disable=SC1003  # \\ is the DCS terminator, not a quote
+    printf '\033P\033]52;c;%s\a\033\\' "$b64" >/dev/tty
+  else
+    printf '\033]52;c;%s\a' "$b64" >/dev/tty
+  fi || fail "cannot write OSC 52 to terminal"
+fi
